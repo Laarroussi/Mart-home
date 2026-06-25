@@ -9,29 +9,64 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure SSH
+        env:
+          O2_SSH_KEY: ${{ secrets.O2_SSH_KEY }}
+          O2_HOST: ${{ secrets.O2_HOST }}
+          O2_PORT: ${{ secrets.O2_PORT }}
         run: |
+          set -e
+
+          echo "Préparation du dossier SSH..."
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.O2_SSH_KEY }}" > ~/.ssh/o2switch_key
+
+          echo "Vérification des secrets..."
+          test -n "$O2_SSH_KEY" || (echo "Erreur : le secret O2_SSH_KEY est vide ou absent" && exit 1)
+          test -n "$O2_HOST" || (echo "Erreur : le secret O2_HOST est vide ou absent" && exit 1)
+          test -n "$O2_PORT" || (echo "Erreur : le secret O2_PORT est vide ou absent" && exit 1)
+
+          echo "Écriture de la clé SSH..."
+          printf '%s\n' "$O2_SSH_KEY" > ~/.ssh/o2switch_key
           chmod 600 ~/.ssh/o2switch_key
-          ssh-keyscan -p "${{ secrets.O2_PORT }}" "${{ secrets.O2_HOST }}" >> ~/.ssh/known_hosts
+
+          echo "Vérification du format de la clé privée..."
+          head -n 1 ~/.ssh/o2switch_key | grep "BEGIN OPENSSH PRIVATE KEY" > /dev/null || (echo "Erreur : O2_SSH_KEY ne semble pas être une clé privée OpenSSH valide" && exit 1)
+
+          echo "Ajout de l'hôte o2switch aux known_hosts..."
+          ssh-keyscan -T 30 -p "$O2_PORT" "$O2_HOST" >> ~/.ssh/known_hosts
+
+          echo "Configuration SSH terminée."
 
       - name: Test SSH connection
+        env:
+          O2_HOST: ${{ secrets.O2_HOST }}
+          O2_USER: ${{ secrets.O2_USER }}
+          O2_PORT: ${{ secrets.O2_PORT }}
         run: |
-          ssh -i ~/.ssh/o2switch_key -p "${{ secrets.O2_PORT }}" "${{ secrets.O2_USER }}@${{ secrets.O2_HOST }}" "echo Connexion SSH OK"
+          ssh -i ~/.ssh/o2switch_key -p "$O2_PORT" "$O2_USER@$O2_HOST" "echo Connexion SSH OK"
 
       - name: Ensure target folder exists
+        env:
+          O2_HOST: ${{ secrets.O2_HOST }}
+          O2_USER: ${{ secrets.O2_USER }}
+          O2_PORT: ${{ secrets.O2_PORT }}
+          O2_PATH: ${{ secrets.O2_PATH }}
         run: |
-          ssh -i ~/.ssh/o2switch_key -p "${{ secrets.O2_PORT }}" "${{ secrets.O2_USER }}@${{ secrets.O2_HOST }}" "mkdir -p '${{ secrets.O2_PATH }}'"
+          ssh -i ~/.ssh/o2switch_key -p "$O2_PORT" "$O2_USER@$O2_HOST" "mkdir -p '$O2_PATH'"
 
       - name: Deploy files to o2switch
+        env:
+          O2_HOST: ${{ secrets.O2_HOST }}
+          O2_USER: ${{ secrets.O2_USER }}
+          O2_PORT: ${{ secrets.O2_PORT }}
+          O2_PATH: ${{ secrets.O2_PATH }}
         run: |
           rsync -avz \
             --exclude ".git" \
             --exclude ".github" \
             --exclude ".cpanel.yml" \
             --exclude "README.md" \
-            -e "ssh -i ~/.ssh/o2switch_key -p ${{ secrets.O2_PORT }}" \
-            ./ "${{ secrets.O2_USER }}@${{ secrets.O2_HOST }}:${{ secrets.O2_PATH }}/"
+            -e "ssh -i ~/.ssh/o2switch_key -p $O2_PORT" \
+            ./ "$O2_USER@$O2_HOST:$O2_PATH/"
