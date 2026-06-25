@@ -1,0 +1,37 @@
+name: Deploy to o2switch
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.O2_SSH_KEY }}" > ~/.ssh/o2switch_key
+          chmod 600 ~/.ssh/o2switch_key
+          ssh-keyscan -p "${{ secrets.O2_PORT }}" "${{ secrets.O2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Test SSH connection
+        run: |
+          ssh -i ~/.ssh/o2switch_key -p "${{ secrets.O2_PORT }}" "${{ secrets.O2_USER }}@${{ secrets.O2_HOST }}" "echo Connexion SSH OK"
+
+      - name: Ensure target folder exists
+        run: |
+          ssh -i ~/.ssh/o2switch_key -p "${{ secrets.O2_PORT }}" "${{ secrets.O2_USER }}@${{ secrets.O2_HOST }}" "mkdir -p '${{ secrets.O2_PATH }}'"
+
+      - name: Deploy files to o2switch
+        run: |
+          rsync -avz \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude ".cpanel.yml" \
+            --exclude "README.md" \
+            -e "ssh -i ~/.ssh/o2switch_key -p ${{ secrets.O2_PORT }}" \
+            ./ "${{ secrets.O2_USER }}@${{ secrets.O2_HOST }}:${{ secrets.O2_PATH }}/"
