@@ -4,69 +4,202 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  diagnose:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Configure SSH
+      - name: Diagnose DNS and SSH port
+        env:
+          O2_HOST: ${{ secrets.O2_HOST }}
+          O2_PORT: ${{ secrets.O2_PORT }}
+          O2_USER: ${{ secrets.O2_USER }}
+          O2_PATH: ${{ secrets.O2_PATH }}
+        shell: bash
+        run: |
+          set -u
+
+          echo "1) Vérification des secrets non sensibles..."
+
+          if [ -z "${O2_HOST:-}" ]; then
+            echo "::error::O2_HOST est vide ou absent"
+            exit 1
+          fi
+
+          if [ -z "${O2_PORT:-}" ]; then
+            echo "::error::O2_PORT est vide ou absent"
+            exit 1
+          fi
+
+          if [ -z "${O2_USER:-}" ]; then
+            echo "::error::O2_USER est vide ou absent"
+            exit 1
+          fi
+
+          if [ -z "${O2_PATH:-}" ]; then
+            echo "::error::O2_PATH est vide ou absent"
+            exit 1
+          fi
+
+          case "$O2_PORT" in
+            ''|*[!0-9]*)
+              echo "::error::O2_PORT doit être un nombre, par exemple 22"
+              exit 1
+              ;;
+          esac
+
+          echo "O2_HOST lu par GitHub Actions : $O2_HOST"
+          echo "O2_PORT lu par GitHub Actions : $O2_PORT"
+          echo "O2_USER lu par GitHub Actions : $O2_USER"
+          echo "O2_PATH lu par GitHub Actions : $O2_PATH"
+
+          echo ""
+          echo "2) Vérification DNS avec getent hosts..."
+          if getent hosts "$O2_HOST"; then
+            echo "DNS OK : $O2_HOST se résout depuis GitHub Actions."
+          else
+            echo "::error::DNS ECHEC : $O2_HOST ne se résout pas depuis GitHub Actions."
+            echo "Vérifiez le secret O2_HOST. Il doit être le serveur o2switch exact, par exemple arancia.o2switch.net."
+            exit 1
+          fi
+
+          echo ""
+          echo "3) IP publique IPv4 du runner GitHub Actions..."
+          RUNNER_IPV4="$(curl -4 -sS --max-time 15 https://api.ipify.org || true)"
+
+          if [ -z "$RUNNER_IPV4" ]; then
+            echo "::warning::Impossible de détecter l'IPv4 publique du runner."
+          else
+            echo "IPv4 publique du runner : $RUNNER_IPV4"
+            echo "Cette IP n'est pas votre IP personnelle. C'est l'IP temporaire utilisée par GitHub Actions."
+          fi
+
+          echo ""
+          echo "4) Test TCP brut vers $O2_HOST:$O2_PORT..."
+          if timeout 20 bash -c "cat < /dev/null > /dev/tcp/$O2_HOST/$O2_PORT" 2>/tmp/tcp.err; then
+            echo "TCP OK : le port $O2_PORT répond depuis GitHub Actions."
+          else
+            RC=$?
+            echo "::error::TCP ECHEC : impossible d'ouvrir $O2_HOST:$O2_PORT depuis GitHub Actions. Code retour : $RC"
+            echo "Message bas niveau éventuel :"
+            cat /tmp/tcp.err || true
+            echo ""
+            echo "Interprétation probable :"
+            echo "- DNS OK mais port inaccessible = pare-feu SSH o2switch ou IP GitHub Actions non autorisée."
+            echo "- Le problème n'est probablement pas la clé privée, car la clé n'est pas encore utilisée ici."
+            exit 1
+          fi
+
+      - name: Configure SSH key and known_hosts
         env:
           O2_SSH_KEY: ${{ secrets.O2_SSH_KEY }}
           O2_HOST: ${{ secrets.O2_HOST }}
           O2_PORT: ${{ secrets.O2_PORT }}
+        shell: bash
         run: |
-          set -e
+          set -Eeuo pipefail
 
           echo "Préparation du dossier SSH..."
           mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
 
-          echo "Vérification des secrets..."
-          test -n "$O2_SSH_KEY" || (echo "Erreur : le secret O2_SSH_KEY est vide ou absent" && exit 1)
-          test -n "$O2_HOST" || (echo "Erreur : le secret O2_HOST est vide ou absent" && exit 1)
-          test -n "$O2_PORT" || (echo "Erreur : le secret O2_PORT est vide ou absent" && exit 1)
+          echo "Vérification du secret O2_SSH_KEY sans afficher son contenu..."
+          if [ -z "${O2_SSH_KEY:-}" ]; then
+            echo "::error::O2_SSH_KEY est vide ou absent"
+            exit 1
+          fi
 
-          echo "Écriture de la clé SSH..."
+          echo "Écriture de la clé privée dans un fichier local temporaire du runner..."
           printf '%s\n' "$O2_SSH_KEY" > ~/.ssh/o2switch_key
           chmod 600 ~/.ssh/o2switch_key
 
-          echo "Vérification du format de la clé privée..."
-          head -n 1 ~/.ssh/o2switch_key | grep "BEGIN OPENSSH PRIVATE KEY" > /dev/null || (echo "Erreur : O2_SSH_KEY ne semble pas être une clé privée OpenSSH valide" && exit 1)
+          echo "Vérification BEGIN / END..."
+          if ! head -n 1 ~/.ssh/o2switch_key | grep -q "BEGIN OPENSSH PRIVATE KEY"; then
+            echo "::error::La première ligne de O2_SSH_KEY n'est pas BEGIN OPENSSH PRIVATE KEY"
+            exit 1
+          fi
 
-          echo "Ajout de l'hôte o2switch aux known_hosts..."
-          ssh-keyscan -T 30 -p "$O2_PORT" "$O2_HOST" >> ~/.ssh/known_hosts
+          if ! tail -n 1 ~/.ssh/o2switch_key | grep -q "END OPENSSH PRIVATE KEY"; then
+            echo "::error::La dernière ligne de O2_SSH_KEY n'est pas END OPENSSH PRIVATE KEY"
+            exit 1
+          fi
 
-          echo "Configuration SSH terminée."
+          echo "Vérification que OpenSSH peut lire la clé privée..."
+          if ! ssh-keygen -y -f ~/.ssh/o2switch_key > /dev/null 2>/tmp/keycheck.err; then
+            echo "::error::La clé privée est présente mais OpenSSH ne peut pas la lire."
+            cat /tmp/keycheck.err || true
+            exit 1
+          fi
 
-      - name: Test SSH connection
+          echo "Clé privée : présente et lisible. Son contenu n'est pas affiché."
+
+          echo ""
+          echo "Lancement de ssh-keyscan avec logs détaillés..."
+          rm -f /tmp/keyscan.out /tmp/keyscan.err
+
+          set +e
+          ssh-keyscan -T 30 -p "$O2_PORT" -t ed25519,rsa,ecdsa "$O2_HOST" > /tmp/keyscan.out 2> /tmp/keyscan.err
+          SCAN_RC=$?
+          set -e
+
+          echo "Code retour ssh-keyscan : $SCAN_RC"
+          echo "Messages ssh-keyscan :"
+          sed 's/^/[ssh-keyscan] /' /tmp/keyscan.err || true
+
+          if [ -s /tmp/keyscan.out ]; then
+            cat /tmp/keyscan.out >> ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+            echo "known_hosts alimenté avec succès."
+            echo "Nombre de lignes ajoutées : $(wc -l < /tmp/keyscan.out)"
+          else
+            echo "::error::ssh-keyscan n'a retourné aucune clé d'hôte."
+            echo "Cela confirme généralement un problème réseau, pare-feu, DNS ou port."
+            echo "La clé privée n'est probablement pas en cause à cette étape."
+            exit 1
+          fi
+
+      - name: Test SSH authentication
         env:
           O2_HOST: ${{ secrets.O2_HOST }}
           O2_USER: ${{ secrets.O2_USER }}
           O2_PORT: ${{ secrets.O2_PORT }}
+        shell: bash
         run: |
-          ssh -i ~/.ssh/o2switch_key -p "$O2_PORT" "$O2_USER@$O2_HOST" "echo Connexion SSH OK"
+          set -Eeuo pipefail
 
-      - name: Ensure target folder exists
+          echo "Test SSH en mode non interactif..."
+          echo "La clé privée ne sera pas affichée."
+
+          ssh -vvv \
+            -i ~/.ssh/o2switch_key \
+            -p "$O2_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=yes \
+            "$O2_USER@$O2_HOST" \
+            "echo Connexion SSH OK"
+
+      - name: Verify target folder
         env:
           O2_HOST: ${{ secrets.O2_HOST }}
           O2_USER: ${{ secrets.O2_USER }}
           O2_PORT: ${{ secrets.O2_PORT }}
           O2_PATH: ${{ secrets.O2_PATH }}
+        shell: bash
         run: |
-          ssh -i ~/.ssh/o2switch_key -p "$O2_PORT" "$O2_USER@$O2_HOST" "mkdir -p '$O2_PATH'"
+          set -Eeuo pipefail
 
-      - name: Deploy files to o2switch
-        env:
-          O2_HOST: ${{ secrets.O2_HOST }}
-          O2_USER: ${{ secrets.O2_USER }}
-          O2_PORT: ${{ secrets.O2_PORT }}
-          O2_PATH: ${{ secrets.O2_PATH }}
-        run: |
-          rsync -avz \
-            --exclude ".git" \
-            --exclude ".github" \
-            --exclude ".cpanel.yml" \
-            --exclude "README.md" \
-            -e "ssh -i ~/.ssh/o2switch_key -p $O2_PORT" \
-            ./ "$O2_USER@$O2_HOST:$O2_PATH/"
+          echo "Vérification du dossier cible sans déployer..."
+          ssh \
+            -i ~/.ssh/o2switch_key \
+            -p "$O2_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            "$O2_USER@$O2_HOST" \
+            "mkdir -p '$O2_PATH' && test -d '$O2_PATH' && ls -ld '$O2_PATH'"
+
+          echo "Dossier cible OK."
