@@ -3,96 +3,141 @@ name: Deploy to o2switch
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: o2switch-deploy
+  cancel-in-progress: false
+
 jobs:
-  diagnose:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Diagnose DNS and SSH port
+      - name: Validate secrets
         env:
           O2_HOST: ${{ secrets.O2_HOST }}
-          O2_PORT: ${{ secrets.O2_PORT }}
           O2_USER: ${{ secrets.O2_USER }}
+          O2_PORT: ${{ secrets.O2_PORT }}
           O2_PATH: ${{ secrets.O2_PATH }}
+          O2_SSH_KEY: ${{ secrets.O2_SSH_KEY }}
+          O2_CPANEL_TOKEN: ${{ secrets.O2_CPANEL_TOKEN }}
         shell: bash
         run: |
-          set -u
+          set -Eeuo pipefail
 
-          echo "1) Vérification des secrets non sensibles..."
+          echo "Vérification des secrets nécessaires..."
 
-          if [ -z "${O2_HOST:-}" ]; then
-            echo "::error::O2_HOST est vide ou absent"
-            exit 1
-          fi
-
-          if [ -z "${O2_PORT:-}" ]; then
-            echo "::error::O2_PORT est vide ou absent"
-            exit 1
-          fi
-
-          if [ -z "${O2_USER:-}" ]; then
-            echo "::error::O2_USER est vide ou absent"
-            exit 1
-          fi
-
-          if [ -z "${O2_PATH:-}" ]; then
-            echo "::error::O2_PATH est vide ou absent"
-            exit 1
-          fi
+          test -n "${O2_HOST:-}" || (echo "::error::O2_HOST est vide ou absent" && exit 1)
+          test -n "${O2_USER:-}" || (echo "::error::O2_USER est vide ou absent" && exit 1)
+          test -n "${O2_PORT:-}" || (echo "::error::O2_PORT est vide ou absent" && exit 1)
+          test -n "${O2_PATH:-}" || (echo "::error::O2_PATH est vide ou absent" && exit 1)
+          test -n "${O2_SSH_KEY:-}" || (echo "::error::O2_SSH_KEY est vide ou absent" && exit 1)
+          test -n "${O2_CPANEL_TOKEN:-}" || (echo "::error::O2_CPANEL_TOKEN est vide ou absent" && exit 1)
 
           case "$O2_PORT" in
             ''|*[!0-9]*)
-              echo "::error::O2_PORT doit être un nombre, par exemple 22"
+              echo "::error::O2_PORT doit être un nombre. Pour o2switch, utilisez 22."
               exit 1
               ;;
           esac
 
-          echo "O2_HOST lu par GitHub Actions : $O2_HOST"
-          echo "O2_PORT lu par GitHub Actions : $O2_PORT"
-          echo "O2_USER lu par GitHub Actions : $O2_USER"
-          echo "O2_PATH lu par GitHub Actions : $O2_PATH"
-
-          echo ""
-          echo "2) Vérification DNS avec getent hosts..."
-          if getent hosts "$O2_HOST"; then
-            echo "DNS OK : $O2_HOST se résout depuis GitHub Actions."
-          else
-            echo "::error::DNS ECHEC : $O2_HOST ne se résout pas depuis GitHub Actions."
-            echo "Vérifiez le secret O2_HOST. Il doit être le serveur o2switch exact, par exemple arancia.o2switch.net."
-            exit 1
+          if [ "$O2_PORT" != "22" ]; then
+            echo "::warning::O2_PORT vaut $O2_PORT. Chez o2switch, le SSH est normalement sur le port 22."
           fi
 
-          echo ""
-          echo "3) IP publique IPv4 du runner GitHub Actions..."
-          RUNNER_IPV4="$(curl -4 -sS --max-time 15 https://api.ipify.org || true)"
+          case "$O2_PATH" in
+            /home/jost2290/public_html/marfantraining|/home/jost2290/public_html/marfantraining/)
+              echo "O2_PATH correspond au dossier cible attendu."
+              ;;
+            *)
+              echo "::error::O2_PATH ne correspond pas au dossier cible attendu."
+              echo "Valeur attendue : /home/jost2290/public_html/marfantraining"
+              exit 1
+              ;;
+          esac
+
+          echo "Secrets présents. Les valeurs sensibles ne sont pas affichées."
+
+      - name: Whitelist GitHub Actions runner IP on o2switch
+        env:
+          O2_HOST: ${{ secrets.O2_HOST }}
+          O2_USER: ${{ secrets.O2_USER }}
+          O2_PORT: ${{ secrets.O2_PORT }}
+          O2_CPANEL_TOKEN: ${{ secrets.O2_CPANEL_TOKEN }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          echo "::add-mask::$O2_CPANEL_TOKEN"
+
+          echo "Détection de l'IPv4 publique temporaire du runner GitHub Actions..."
+          RUNNER_IPV4="$(curl -4 -fsS --max-time 15 https://api.ipify.org)"
 
           if [ -z "$RUNNER_IPV4" ]; then
-            echo "::warning::Impossible de détecter l'IPv4 publique du runner."
-          else
-            echo "IPv4 publique du runner : $RUNNER_IPV4"
-            echo "Cette IP n'est pas votre IP personnelle. C'est l'IP temporaire utilisée par GitHub Actions."
-          fi
-
-          echo ""
-          echo "4) Test TCP brut vers $O2_HOST:$O2_PORT..."
-          if timeout 20 bash -c "cat < /dev/null > /dev/tcp/$O2_HOST/$O2_PORT" 2>/tmp/tcp.err; then
-            echo "TCP OK : le port $O2_PORT répond depuis GitHub Actions."
-          else
-            RC=$?
-            echo "::error::TCP ECHEC : impossible d'ouvrir $O2_HOST:$O2_PORT depuis GitHub Actions. Code retour : $RC"
-            echo "Message bas niveau éventuel :"
-            cat /tmp/tcp.err || true
-            echo ""
-            echo "Interprétation probable :"
-            echo "- DNS OK mais port inaccessible = pare-feu SSH o2switch ou IP GitHub Actions non autorisée."
-            echo "- Le problème n'est probablement pas la clé privée, car la clé n'est pas encore utilisée ici."
+            echo "::error::Impossible de détecter l'IPv4 publique du runner GitHub Actions."
             exit 1
           fi
 
-      - name: Configure SSH key and known_hosts
+          echo "IPv4 temporaire du runner : $RUNNER_IPV4"
+          echo "RUNNER_IPV4=$RUNNER_IPV4" >> "$GITHUB_ENV"
+
+          echo ""
+          echo "Ajout de cette IP à la liste blanche SSH o2switch..."
+          echo "Aucun mot de passe ni token ne sera affiché."
+
+          curl -sS -m 45 \
+            -H "Authorization: cpanel $O2_USER:$O2_CPANEL_TOKEN" \
+            "https://$O2_HOST:2083/execute/SshWhitelist/add?address=$RUNNER_IPV4&port=$O2_PORT" \
+            > /tmp/o2-whitelist-add.json
+
+          echo "Réponse o2switch pour l'ajout à la liste blanche :"
+          cat /tmp/o2-whitelist-add.json
+          echo ""
+
+          if grep -q '"status"[[:space:]]*:[[:space:]]*1' /tmp/o2-whitelist-add.json; then
+            echo "o2switch indique que la demande de liste blanche est acceptée."
+          else
+            echo "::error::L'ajout de l'IP à la liste blanche o2switch n'a pas été confirmé."
+            echo "Causes possibles : token cPanel incorrect, limite de 5 exceptions atteinte, ou accès API refusé."
+            exit 1
+          fi
+
+          echo ""
+          echo "Vérification que le port SSH devient accessible depuis GitHub Actions..."
+
+          TCP_OK=0
+
+          for attempt in 1 2 3 4 5 6; do
+            echo "Tentative TCP $attempt/6 vers $O2_HOST:$O2_PORT..."
+
+            if timeout 10 bash -c "cat < /dev/null > /dev/tcp/$O2_HOST/$O2_PORT" 2>/tmp/tcp-after-whitelist.err; then
+              TCP_OK=1
+              echo "TCP OK : le port SSH est maintenant accessible depuis GitHub Actions."
+              break
+            fi
+
+            echo "Pas encore accessible. Pause de 10 secondes..."
+            sleep 10
+          done
+
+          if [ "$TCP_OK" != "1" ]; then
+            echo "::error::Le port SSH reste inaccessible après l'ajout en liste blanche."
+            echo "Message bas niveau éventuel :"
+            cat /tmp/tcp-after-whitelist.err || true
+            echo ""
+            echo "À vérifier :"
+            echo "- le token O2_CPANEL_TOKEN est-il bien un token API cPanel ?"
+            echo "- la limite de 5 exceptions o2switch est-elle atteinte ?"
+            echo "- le port O2_PORT est-il bien 22 ?"
+            exit 1
+          fi
+
+      - name: Configure SSH
         env:
           O2_SSH_KEY: ${{ secrets.O2_SSH_KEY }}
           O2_HOST: ${{ secrets.O2_HOST }}
@@ -105,38 +150,32 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          echo "Vérification du secret O2_SSH_KEY sans afficher son contenu..."
-          if [ -z "${O2_SSH_KEY:-}" ]; then
-            echo "::error::O2_SSH_KEY est vide ou absent"
-            exit 1
-          fi
-
-          echo "Écriture de la clé privée dans un fichier local temporaire du runner..."
+          echo "Écriture de la clé privée SSH dans le runner GitHub Actions..."
           printf '%s\n' "$O2_SSH_KEY" > ~/.ssh/o2switch_key
           chmod 600 ~/.ssh/o2switch_key
 
-          echo "Vérification BEGIN / END..."
+          echo "Vérification du format BEGIN / END de la clé privée..."
           if ! head -n 1 ~/.ssh/o2switch_key | grep -q "BEGIN OPENSSH PRIVATE KEY"; then
-            echo "::error::La première ligne de O2_SSH_KEY n'est pas BEGIN OPENSSH PRIVATE KEY"
+            echo "::error::O2_SSH_KEY ne commence pas par BEGIN OPENSSH PRIVATE KEY."
             exit 1
           fi
 
           if ! tail -n 1 ~/.ssh/o2switch_key | grep -q "END OPENSSH PRIVATE KEY"; then
-            echo "::error::La dernière ligne de O2_SSH_KEY n'est pas END OPENSSH PRIVATE KEY"
+            echo "::error::O2_SSH_KEY ne se termine pas par END OPENSSH PRIVATE KEY."
             exit 1
           fi
 
           echo "Vérification que OpenSSH peut lire la clé privée..."
           if ! ssh-keygen -y -f ~/.ssh/o2switch_key > /dev/null 2>/tmp/keycheck.err; then
-            echo "::error::La clé privée est présente mais OpenSSH ne peut pas la lire."
+            echo "::error::OpenSSH ne peut pas lire la clé privée."
             cat /tmp/keycheck.err || true
             exit 1
           fi
 
-          echo "Clé privée : présente et lisible. Son contenu n'est pas affiché."
+          echo "Clé privée présente et lisible. Son contenu n'est pas affiché."
 
           echo ""
-          echo "Lancement de ssh-keyscan avec logs détaillés..."
+          echo "Récupération de la clé publique du serveur avec ssh-keyscan..."
           rm -f /tmp/keyscan.out /tmp/keyscan.err
 
           set +e
@@ -155,12 +194,11 @@ jobs:
             echo "Nombre de lignes ajoutées : $(wc -l < /tmp/keyscan.out)"
           else
             echo "::error::ssh-keyscan n'a retourné aucune clé d'hôte."
-            echo "Cela confirme généralement un problème réseau, pare-feu, DNS ou port."
-            echo "La clé privée n'est probablement pas en cause à cette étape."
+            echo "Si cette erreur revient, le problème est encore réseau / pare-feu / port."
             exit 1
           fi
 
-      - name: Test SSH authentication
+      - name: Test SSH connection
         env:
           O2_HOST: ${{ secrets.O2_HOST }}
           O2_USER: ${{ secrets.O2_USER }}
@@ -169,10 +207,10 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          echo "Test SSH en mode non interactif..."
+          echo "Test de connexion SSH non interactive..."
           echo "La clé privée ne sera pas affichée."
 
-          ssh -vvv \
+          ssh \
             -i ~/.ssh/o2switch_key \
             -p "$O2_PORT" \
             -o BatchMode=yes \
@@ -182,7 +220,7 @@ jobs:
             "$O2_USER@$O2_HOST" \
             "echo Connexion SSH OK"
 
-      - name: Verify target folder
+      - name: Ensure target folder exists
         env:
           O2_HOST: ${{ secrets.O2_HOST }}
           O2_USER: ${{ secrets.O2_USER }}
@@ -192,14 +230,110 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          echo "Vérification du dossier cible sans déployer..."
+          echo "Vérification du dossier cible..."
+
+          case "$O2_PATH" in
+            /home/jost2290/public_html/marfantraining|/home/jost2290/public_html/marfantraining/)
+              ;;
+            *)
+              echo "::error::O2_PATH inattendu. Déploiement interrompu par sécurité."
+              exit 1
+              ;;
+          esac
+
           ssh \
             -i ~/.ssh/o2switch_key \
             -p "$O2_PORT" \
             -o BatchMode=yes \
             -o IdentitiesOnly=yes \
             -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=yes \
             "$O2_USER@$O2_HOST" \
             "mkdir -p '$O2_PATH' && test -d '$O2_PATH' && ls -ld '$O2_PATH'"
 
           echo "Dossier cible OK."
+
+      - name: Deploy files to o2switch
+        env:
+          O2_HOST: ${{ secrets.O2_HOST }}
+          O2_USER: ${{ secrets.O2_USER }}
+          O2_PORT: ${{ secrets.O2_PORT }}
+          O2_PATH: ${{ secrets.O2_PATH }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          echo "Déploiement rsync vers o2switch..."
+          echo "Dossier cible : $O2_PATH"
+          echo "Aucune clé privée ne sera affichée."
+          echo "Sécurité : ce premier rsync ne supprime pas les anciens fichiers distants."
+
+          case "$O2_PATH" in
+            /home/jost2290/public_html/marfantraining|/home/jost2290/public_html/marfantraining/)
+              ;;
+            *)
+              echo "::error::O2_PATH inattendu. Déploiement interrompu par sécurité."
+              exit 1
+              ;;
+          esac
+
+          rsync -avz \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude ".cpanel.yml" \
+            --exclude ".env" \
+            --exclude ".DS_Store" \
+            --exclude "README.md" \
+            --exclude "github_actions_o2switch" \
+            --exclude "github_actions_o2switch.pub" \
+            -e "ssh -i ~/.ssh/o2switch_key -p $O2_PORT -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
+            ./ "$O2_USER@$O2_HOST:$O2_PATH/"
+
+          echo "Déploiement terminé."
+
+      - name: Remove temporary runner IP from o2switch whitelist
+        if: always()
+        env:
+          O2_HOST: ${{ secrets.O2_HOST }}
+          O2_USER: ${{ secrets.O2_USER }}
+          O2_PORT: ${{ secrets.O2_PORT }}
+          O2_CPANEL_TOKEN: ${{ secrets.O2_CPANEL_TOKEN }}
+          RUNNER_IPV4: ${{ env.RUNNER_IPV4 }}
+        shell: bash
+        run: |
+          set +e
+
+          echo "::add-mask::$O2_CPANEL_TOKEN"
+
+          if [ -z "${RUNNER_IPV4:-}" ]; then
+            echo "Aucune IP temporaire de runner à retirer."
+            exit 0
+          fi
+
+          if [ -z "${O2_CPANEL_TOKEN:-}" ]; then
+            echo "Token cPanel absent, nettoyage impossible."
+            exit 0
+          fi
+
+          echo "Nettoyage de l'IP temporaire du runner dans la liste blanche o2switch : $RUNNER_IPV4"
+          echo "Cette étape ne doit jamais afficher le token."
+
+          curl -sS -m 45 \
+            -H "Authorization: cpanel $O2_USER:$O2_CPANEL_TOKEN" \
+            "https://$O2_HOST:2083/execute/SshWhitelist/remove?address=$RUNNER_IPV4&port=$O2_PORT&direction=in" \
+            > /tmp/o2-whitelist-remove-in.json
+
+          curl -sS -m 45 \
+            -H "Authorization: cpanel $O2_USER:$O2_CPANEL_TOKEN" \
+            "https://$O2_HOST:2083/execute/SshWhitelist/remove?address=$RUNNER_IPV4&port=$O2_PORT&direction=out" \
+            > /tmp/o2-whitelist-remove-out.json
+
+          echo "Réponse suppression direction in :"
+          cat /tmp/o2-whitelist-remove-in.json
+          echo ""
+
+          echo "Réponse suppression direction out :"
+          cat /tmp/o2-whitelist-remove-out.json
+          echo ""
+
+          echo "Nettoyage terminé ou demandé."
