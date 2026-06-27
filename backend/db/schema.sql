@@ -217,10 +217,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS set_patients_updated   ON patients;
-CREATE TRIGGER set_patients_updated   BEFORE UPDATE ON patients   FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER set_patients_updated   BEFORE UPDATE ON patients   FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
 DROP TRIGGER IF EXISTS set_education_updated  ON education_records;
-CREATE TRIGGER set_education_updated  BEFORE UPDATE ON education_records FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER set_education_updated  BEFORE UPDATE ON education_records FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
 -- ============================================================
 -- VUES PRATIQUES
