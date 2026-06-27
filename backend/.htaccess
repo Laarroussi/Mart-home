@@ -1,0 +1,17 @@
+# ============================================================
+# Apache/Passenger config — Backend Node.js sur o2switch
+# ============================================================
+# Ce .htaccess vit dans backend/ (pas à la racine du site).
+# Passenger gère seul le routage de l'app — pas de RewriteRule
+# manuelle nécessaire si l'application URL est correctement
+# configurée dans cPanel → Setup Node.js App.
+# ============================================================
+
+# Empêcher l'accès direct aux fichiers sensibles du backend
+<FilesMatch "(\.env|package\.json|package-lock\.json|\.sql|seed\.js|schema\.sql|reset\.sql|\.log)$">
+  Require all denied
+</FilesMatch>
+
+# Bloquer l'accès direct à node_modules/ et tmp/
+RedirectMatch 403 ^/api/node_modules/.*$
+RedirectMatch 403 ^/api/tmp/.*$

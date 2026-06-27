@@ -54,24 +54,31 @@ const uploadDir = path.resolve(__dirname, process.env.UPLOAD_DIR || './uploads')
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 // ============================================================
-// HEALTHCHECK
+// ROUTES — montées en double pour compat Passenger ET local dev
 // ============================================================
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });
-});
-
+// Selon le mode d'exécution :
+//   - Local dev (node server.js)        : appels vers /api/auth, /api/patients...
+//   - cPanel Node.js + Passenger        : Passenger forwarde déjà le chemin complet,
+//                                         donc /api/auth fonctionne nativement
+//   - cPanel avec URI prefix /api       : Passenger strippe /api → on reçoit /auth
+// Double-mount à /api/* ET /* couvre les 3 cas sans config.
 // ============================================================
-// ROUTES — montées dans un ordre logique
-// ============================================================
-app.use('/api/auth',           require('./routes/auth'));
-app.use('/api/users',          require('./routes/users'));
-app.use('/api/patients',       require('./routes/patients'));
-app.use('/api/evaluations',    require('./routes/evaluations'));
-app.use('/api/notifications',  require('./routes/notifications'));
-app.use('/api/education',      require('./routes/education'));
-app.use('/api/analyses',       require('./routes/analyses'));
-app.use('/api/visio',          require('./routes/visio'));
-app.use('/api/cohort',         require('./routes/cohort'));
+function mountRoutes(prefix) {
+  app.get(prefix + '/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0', mode: prefix === '/api' ? 'api' : 'root' });
+  });
+  app.use(prefix + '/auth',           require('./routes/auth'));
+  app.use(prefix + '/users',          require('./routes/users'));
+  app.use(prefix + '/patients',       require('./routes/patients'));
+  app.use(prefix + '/evaluations',    require('./routes/evaluations'));
+  app.use(prefix + '/notifications',  require('./routes/notifications'));
+  app.use(prefix + '/education',      require('./routes/education'));
+  app.use(prefix + '/analyses',       require('./routes/analyses'));
+  app.use(prefix + '/visio',          require('./routes/visio'));
+  app.use(prefix + '/cohort',         require('./routes/cohort'));
+}
+mountRoutes('/api');   // mode local dev OU Passenger qui garde le préfixe
+mountRoutes('');       // mode Passenger qui strippe le préfixe URI
 
 // ============================================================
 // SERVIR LE FRONTEND STATIQUE
