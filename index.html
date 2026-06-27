@@ -6615,6 +6615,7 @@
   // ============================================================
   function renderConnectedList() {
     const list = $('connectedList');
+    if (!list) return; // élément absent (ex : mode patient) → on ignore silencieusement
     list.innerHTML = '';
     patients.forEach(p => list.insertAdjacentHTML('beforeend', `
       <li class="connected-item">
@@ -8686,20 +8687,21 @@
   // ============================================================
   // === INIT
   // ============================================================
-  initKpis();
-  initQuickSelect();
-  initTrainingFilters();
-  renderPatientList();
-  renderHome();
-  renderPatientFile();
-  renderConnectedList();
-  renderParticipantGrid();
-  renderPatientTable();
-  renderDbTable();
-  renderTrainingVideos();
-  selectTrainingVideo(selectedTrainingVideo.id);
-  renderEducationCapsules();
-  setSelectedPatient(selectedPatient.id);
+  // ─── Init défensif : si une fonction plante, on log et on continue.
+  //     Sinon une seule erreur bloque tout le reste du boot (ex: les
+  //     event listeners des onglets patient plus bas dans le fichier).
+  [
+    initKpis, initQuickSelect, initTrainingFilters,
+    renderPatientList, renderHome, renderPatientFile,
+    renderConnectedList, renderParticipantGrid,
+    renderPatientTable, renderDbTable, renderTrainingVideos,
+    function () { selectTrainingVideo(selectedTrainingVideo.id); },
+    renderEducationCapsules,
+    function () { setSelectedPatient(selectedPatient.id); }
+  ].forEach(function (fn) {
+    try { fn(); }
+    catch (e) { console.warn('[init] step failed :', fn.name || '(anon)', '—', e.message); }
+  });
   const initialQuickPatientBox = document.querySelector('.quick-patient');
   if (initialQuickPatientBox) initialQuickPatientBox.style.display = 'none';
 
