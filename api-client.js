@@ -89,8 +89,19 @@
       try { const r = await request('GET', '/auth/me'); return r.user; }
       catch { return null; }
     },
+    async changePassword(oldPassword, newPassword) {
+      const res = await request('POST', '/auth/change-password', { oldPassword, newPassword });
+      // Met à jour le user en cache pour refléter must_change_password=false
+      const u = getUser();
+      if (u) { u.must_change_password = false; setToken(null, u); }
+      return res;
+    },
     isAuthenticated() { return !!getToken(); },
     currentUser() { return getUser(); },
+    mustChangePassword() {
+      const u = getUser();
+      return !!(u && u.must_change_password);
+    },
 
     /** ===== Utilisateurs ===== */
     users: {

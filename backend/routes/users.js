@@ -11,6 +11,9 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE, canManageRole } = require('../middleware/auth');
+const {
+  generateUsername, findUniqueUsername, formatBirthDateAsPassword
+} = require('../utils/account-helpers');
 
 const router = express.Router();
 
@@ -22,7 +25,8 @@ const router = express.Router();
 router.get('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR), async (req, res, next) => {
   try {
     const { role, active } = req.query;
-    let sql = `SELECT id, role, name, email, phone, service, patient_id, created_by, created_at, active, last_login
+    let sql = `SELECT id, role, name, username, email, phone, service, birth_date, patient_id,
+                      created_by, created_at, active, last_login, must_change_password
                  FROM users WHERE 1=1`;
     const params = [];
     // Investigator est limité aux comptes patient
@@ -46,12 +50,38 @@ router.get('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR
  * - investigator    : peut créer UNIQUEMENT patient
  * - autres          : refusé
  */
+/**
+ * POST /api/users — Créer un compte avec auto-username et mot de passe initial = date de naissance
+ *
+ * Body attendu (NOUVEAU FORMAT) :
+ *   {
+ *     role:        'patient' | 'investigator' | 'principal_admin',
+ *     firstName:   'Jean',                  // requis pour générer le username
+ *     lastName:    'Dupont',                // requis pour générer le username
+ *     birth_date:  '1980-09-25',            // requis : sert de mot de passe initial (JJ/MM/AAAA)
+ *     email:       'jean.dupont@bichat.fr', // requis
+ *     phone, service, patient_id            // optionnels
+ *   }
+ *
+ * Génère automatiquement :
+ *   - name = "Jean Dupont"
+ *   - username = "jean.dupont" (ou "jean.dupont2" si doublon)
+ *   - mot de passe initial = "25/09/1980" (hashé, must_change_password = true)
+ *
+ * Compat ancien format : si name/password sont fournis directement, on les respecte.
+ */
 router.post('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR), async (req, res, next) => {
   try {
-    const { role, name, email, password, phone, service, patient_id } = req.body || {};
-    if (!role || !name || !email || !password) {
-      return res.status(400).json({ error: 'role, name, email, password requis' });
-    }
+    let {
+      role, firstName, lastName, birth_date, email,
+      phone, service, patient_id,
+      // Compat ancien format :
+      name, password
+    } = req.body || {};
+
+    // Validation des champs minimaux
+    if (!role)  return res.status(400).json({ error: 'Champ role requis' });
+    if (!email) return res.status(400).json({ error: 'Champ email requis' });
 
     // Vérification stricte de la permission (defense in depth)
     if (!canManageRole(req.user.role, role)) {
@@ -60,26 +90,62 @@ router.post('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATO
       });
     }
 
+    // === Construction automatique des champs nom + username + mot de passe ===
+    let mustChange = false;
+    let username = null;
+
+    if (firstName || lastName) {
+      // Nouveau format : auto-génération
+      if (!birth_date) return res.status(400).json({ error: 'birth_date requis (mot de passe initial = date de naissance JJ/MM/AAAA)' });
+      if (!name) name = [firstName, lastName].filter(Boolean).join(' ').trim();
+      const base = generateUsername(firstName, lastName);
+      if (!base) return res.status(400).json({ error: 'firstName et/ou lastName invalides pour générer un username' });
+      username = await findUniqueUsername(base);
+      password = formatBirthDateAsPassword(birth_date);  // ex : "25/09/1980"
+      mustChange = true;                                  // changement obligatoire à la 1re connexion
+    } else {
+      // Ancien format : name + password fournis directement (compat)
+      if (!name)     return res.status(400).json({ error: 'name ou (firstName + lastName) requis' });
+      if (!password) return res.status(400).json({ error: 'password ou birth_date requis' });
+      // username par défaut : partie locale de l'email
+      username = await findUniqueUsername(email.split('@')[0].toLowerCase());
+    }
+
     // Email unique
     const exists = await query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
     if (exists.rows.length) return res.status(409).json({ error: 'Email déjà utilisé' });
 
-    if (password.length < 8) return res.status(400).json({ error: 'Mot de passe trop court (min. 8 caractères)' });
+    if (!password || password.length < 8) {
+      return res.status(400).json({ error: 'Mot de passe trop court (min. 8 caractères). Vérifiez le format de birth_date.' });
+    }
 
     const id = 'u-' + role.slice(0, 6) + '-' + Date.now().toString(36);
     const password_hash = await bcrypt.hash(password, parseInt(process.env.BCRYPT_ROUNDS, 10) || 10);
 
     const { rows } = await query(
-      `INSERT INTO users (id, role, name, email, password_hash, phone, service, patient_id, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-       RETURNING id, role, name, email, phone, service, patient_id, created_at`,
-      [id, role, name, email.toLowerCase(), password_hash, phone || null, service || null, patient_id || null, req.user.id]
+      `INSERT INTO users (id, role, name, username, email, password_hash, phone, service,
+                          birth_date, patient_id, created_by, must_change_password)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       RETURNING id, role, name, username, email, phone, service, birth_date, patient_id,
+                 created_at, must_change_password`,
+      [id, role, name, username, email.toLowerCase(), password_hash,
+       phone || null, service || null, birth_date || null, patient_id || null, req.user.id, mustChange]
     );
     await query(
       'INSERT INTO notification_log (user_id, action, details, ip_address) VALUES ($1, $2, $3, $4)',
-      [req.user.id, 'create-user', JSON.stringify({ created: id, role }), req.ip]
+      [req.user.id, 'create-user', JSON.stringify({ created: id, role, username }), req.ip]
     );
-    res.status(201).json({ user: rows[0] });
+
+    // Réponse enrichie : on renvoie le user créé + le mot de passe initial EN CLAIR
+    // (uniquement pour que le principal_admin puisse le communiquer à l'utilisateur).
+    // En prod : on pourrait à la place envoyer un email avec lien de définition initiale.
+    res.status(201).json({
+      user: rows[0],
+      initialPassword: mustChange ? password : undefined,
+      message: mustChange
+        ? `Compte créé. Username : ${username}. Mot de passe initial : ${password} (date de naissance). À changer obligatoirement à la 1re connexion.`
+        : `Compte créé avec mot de passe fourni. Username : ${username}.`
+    });
   } catch (err) { next(err); }
 });
 

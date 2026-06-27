@@ -9375,6 +9375,35 @@
     <button id="apiLogoutBtn" style="border:none; background:#f3f6fb; color:#5a6280; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:600; cursor:pointer;">Déconnexion</button>
   </div>
 
+  <!-- Overlay bloquant : changement de mot de passe obligatoire à la 1re connexion -->
+  <div id="apiChangePwdOverlay" style="display:none; position:fixed; inset:0; background:rgba(11,21,48,0.85); backdrop-filter:blur(8px); z-index:10000; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:18px; padding:32px 36px; width:420px; max-width:92vw; box-shadow:0 30px 80px rgba(0,0,0,0.30);">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+        <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,#ef4444,#f97316); display:flex; align-items:center; justify-content:center; color:white; font-weight:800;">🔒</div>
+        <div>
+          <div style="font-size:18px; font-weight:800; color:#0b1530;">Changement de mot de passe requis</div>
+          <div style="font-size:11.5px; color:#6b7390;">Vous utilisez encore votre mot de passe initial.</div>
+        </div>
+      </div>
+      <p style="font-size:12.5px; color:#5a6280; margin:10px 0 16px; line-height:1.55;">Pour des raisons de sécurité, vous devez définir un nouveau mot de passe personnel avant d'accéder à la plateforme.</p>
+      <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Ancien mot de passe (date de naissance JJ/MM/AAAA)</label>
+      <input id="apiChangeOldPwd" type="password" autocomplete="current-password" placeholder="25/09/1980"
+             style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:12px;">
+      <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Nouveau mot de passe</label>
+      <input id="apiChangeNewPwd" type="password" autocomplete="new-password" placeholder="Min. 8 caractères, 1 lettre + 1 chiffre/spécial"
+             style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:12px;">
+      <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Confirmer le nouveau mot de passe</label>
+      <input id="apiChangeNewPwd2" type="password" autocomplete="new-password" placeholder="Saisissez-le à nouveau"
+             style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:14px;">
+      <div id="apiChangeErr" style="display:none; padding:8px 10px; background:#fee2e2; color:#991b1b; border-radius:7px; font-size:11.5px; margin-bottom:10px;"></div>
+      <div id="apiChangeOk" style="display:none; padding:8px 10px; background:#d1fae5; color:#065f46; border-radius:7px; font-size:11.5px; margin-bottom:10px;"></div>
+      <button id="apiChangeBtn" style="width:100%; padding:11px; border:none; border-radius:9px; background:linear-gradient(135deg,#ef4444,#f97316); color:white; font-weight:700; font-size:13.5px; cursor:pointer;">Valider et continuer</button>
+      <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #e3e7ef; font-size:10.5px; color:#8b91a8; line-height:1.55;">
+        Règles : minimum 8 caractères, au moins 1 lettre et (1 chiffre ou 1 caractère spécial). Différent de votre date de naissance et de votre ancien mot de passe.
+      </div>
+    </div>
+  </div>
+
   <script>
   // ============================================================
   // Boot API : tente health, gère login, charge patients réels
@@ -9506,13 +9535,57 @@
       } catch (e) { console.warn('redirectByRole :', e); }
     }
 
+    // === OVERLAY CHANGEMENT DE MOT DE PASSE OBLIGATOIRE ===
+    const changeOverlay = document.getElementById('apiChangePwdOverlay');
+    function showChangePwdOverlay() { changeOverlay.style.display = 'flex'; }
+    function hideChangePwdOverlay() { changeOverlay.style.display = 'none'; }
+
+    document.getElementById('apiChangeBtn').addEventListener('click', async function () {
+      const oldP = document.getElementById('apiChangeOldPwd').value;
+      const newP = document.getElementById('apiChangeNewPwd').value;
+      const newP2 = document.getElementById('apiChangeNewPwd2').value;
+      const errEl = document.getElementById('apiChangeErr');
+      const okEl  = document.getElementById('apiChangeOk');
+      errEl.style.display = 'none'; okEl.style.display = 'none';
+      if (!oldP || !newP) { errEl.textContent = 'Tous les champs sont requis.'; errEl.style.display = 'block'; return; }
+      if (newP !== newP2) { errEl.textContent = 'Les deux nouveaux mots de passe ne correspondent pas.'; errEl.style.display = 'block'; return; }
+      if (newP.length < 8) { errEl.textContent = 'Le nouveau mot de passe doit faire au moins 8 caractères.'; errEl.style.display = 'block'; return; }
+      this.disabled = true; this.textContent = 'Validation…';
+      try {
+        await window.MarfanAPI.changePassword(oldP, newP);
+        okEl.textContent = '✓ Mot de passe modifié. Redirection…';
+        okEl.style.display = 'block';
+        setTimeout(() => {
+          hideChangePwdOverlay();
+          // Recharge l'utilisateur depuis l'API pour s'assurer que must_change_password est false
+          window.MarfanAPI.me().then(u => {
+            if (u) {
+              const role = syncApiUserToCurrentUser(u);
+              redirectByRole(role);
+              loadPatientsFromApi();
+            }
+          });
+        }, 800);
+      } catch (e) {
+        errEl.textContent = e.message || 'Échec du changement de mot de passe.';
+        errEl.style.display = 'block';
+      } finally {
+        this.disabled = false; this.textContent = 'Valider et continuer';
+      }
+    });
+
     async function onLoginSuccess(user) {
       hideOverlay();
+      // Vérif obligatoire : doit changer son mot de passe ?
+      if (user.must_change_password) {
+        console.log('[MarfanAPI] Mot de passe initial détecté pour ' + user.email + ' — changement obligatoire.');
+        showChangePwdOverlay();
+        return; // bloque tant que le changement n'est pas fait
+      }
       showUserBadge(user);
       const role = syncApiUserToCurrentUser(user);
       const n = await loadPatientsFromApi();
       console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s) BDD ajouté(s).');
-      // Redirection automatique vers l'interface correspondant au rôle
       redirectByRole(role);
     }
 

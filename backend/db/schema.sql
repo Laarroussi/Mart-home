@@ -14,21 +14,25 @@
 --   patient         = Patient (espace personnel uniquement)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS users (
-    id            VARCHAR(50)  PRIMARY KEY,
-    role          VARCHAR(20)  NOT NULL CHECK (role IN ('principal_admin','investigator','patient')),
-    name          VARCHAR(200) NOT NULL,
-    email         VARCHAR(200) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    phone         VARCHAR(50),
-    service       VARCHAR(200),
-    patient_id    VARCHAR(50),
-    created_by    VARCHAR(50)  REFERENCES users(id) ON DELETE SET NULL,
-    created_at    TIMESTAMPTZ  DEFAULT NOW(),
-    active        BOOLEAN      DEFAULT TRUE,
-    last_login    TIMESTAMPTZ
+    id                   VARCHAR(50)  PRIMARY KEY,
+    role                 VARCHAR(20)  NOT NULL CHECK (role IN ('principal_admin','investigator','patient')),
+    name                 VARCHAR(200) NOT NULL,
+    username             VARCHAR(100) UNIQUE,           -- login auto-généré : prenom.nom
+    email                VARCHAR(200) UNIQUE NOT NULL,
+    password_hash        VARCHAR(255) NOT NULL,
+    phone                VARCHAR(50),
+    service              VARCHAR(200),
+    birth_date           DATE,                          -- sert à générer le mot de passe initial
+    patient_id           VARCHAR(50),
+    created_by           VARCHAR(50)  REFERENCES users(id) ON DELETE SET NULL,
+    created_at           TIMESTAMPTZ  DEFAULT NOW(),
+    active               BOOLEAN      DEFAULT TRUE,
+    last_login           TIMESTAMPTZ,
+    must_change_password BOOLEAN      NOT NULL DEFAULT FALSE
 );
-CREATE INDEX IF NOT EXISTS idx_users_role  ON users(role);
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role     ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_email    ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
 -- ============================================================
 -- PATIENTS — Dossiers cliniques
