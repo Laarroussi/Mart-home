@@ -159,9 +159,17 @@
 
     /** ===== Visio ===== */
     visio: {
-      sessions: () => request('GET', '/visio/sessions'),
-      start:    (data) => request('POST', '/visio/sessions', data),
-      end:      (id, data) => request('PATCH', `/visio/sessions/${id}/end`, data)
+      sessions:        (filters = {}) => request('GET', '/visio/sessions?' + new URLSearchParams(filters).toString()),
+      mine:            ()             => request('GET', '/visio/mine'),
+      get:             (id)           => request('GET', `/visio/sessions/${id}`),
+      create:          (data)         => request('POST', '/visio/sessions', data),
+      update:          (id, data)     => request('PATCH', `/visio/sessions/${id}`, data),
+      cancel:          (id)           => request('POST', `/visio/sessions/${id}/cancel`),
+      start:           (id)           => request('POST', `/visio/sessions/${id}/start`),
+      end:             (id, data)     => request('PATCH', `/visio/sessions/${id}/end`, data),
+      remove:          (id)           => request('DELETE', `/visio/sessions/${id}`),
+      addParticipants: (id, patientIds) => request('POST', `/visio/sessions/${id}/participants`, { patientIds }),
+      removeParticipant:(id, patientId) => request('DELETE', `/visio/sessions/${id}/participants/${patientId}`)
     },
 
     /** ===== Vidéos (entraînement, éducation, info) ===== */

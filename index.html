@@ -9697,6 +9697,166 @@
       if (b) b.remove();
     }
 
+    // ====================================================================
+    // === MODULE VISIO — branchement sur la BDD avec règles par rôle
+    // ====================================================================
+    function formatVisioDate(iso) {
+      if (!iso) return 'Date non définie';
+      try {
+        const d = new Date(iso);
+        return d.toLocaleString('fr-FR', {
+          weekday: 'short', day: '2-digit', month: 'short',
+          hour: '2-digit', minute: '2-digit'
+        });
+      } catch (e) { return iso; }
+    }
+    function visioStatusBadge(status) {
+      const map = {
+        'scheduled':  { bg:'#dbeafe', color:'#1e40af', label:'Prévue' },
+        'in_progress':{ bg:'#dcfce7', color:'#166534', label:'En cours' },
+        'completed':  { bg:'#e2e8f0', color:'#475569', label:'Terminée' },
+        'cancelled':  { bg:'#fee2e2', color:'#991b1b', label:'Annulée' }
+      };
+      const s = map[status] || map['scheduled'];
+      return `<span style="background:${s.bg}; color:${s.color}; padding:2px 8px; border-radius:99px; font-size:10.5px; font-weight:700;">${s.label}</span>`;
+    }
+
+    function injectPatientVisioList(sessions) {
+      const panel = document.getElementById('pat-visio');
+      if (!panel) return;
+      // Retire la carte précédemment injectée si elle existe
+      const old = document.getElementById('apiPatVisioList');
+      if (old) old.remove();
+      const card = document.createElement('article');
+      card.className = 'pat-card';
+      card.id = 'apiPatVisioList';
+      card.style.cssText = 'margin-bottom:16px;';
+      if (!sessions.length) {
+        card.innerHTML = `
+          <h3>📅 Mes séances de visio</h3>
+          <p style="color:var(--muted);">Aucune séance programmée pour le moment. Vous serez notifié dès qu'une séance vous sera attribuée.</p>`;
+      } else {
+        card.innerHTML = `
+          <h3>📅 Mes séances de visio</h3>
+          <p style="margin-bottom:10px;">Vous avez ${sessions.length} séance(s) programmée(s) ou passée(s).</p>
+          ${sessions.map(s => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
+              <div style="flex:1; min-width:200px;">
+                <div style="font-weight:700; color:var(--ink); margin-bottom:4px;">${s.title || 'Séance APA'} ${visioStatusBadge(s.status)}</div>
+                <div style="font-size:12px; color:var(--muted);">${formatVisioDate(s.scheduled_at)}${s.duration_min ? ' · ' + s.duration_min + ' min' : ''}</div>
+                ${s.description ? `<div style="font-size:11.5px; color:var(--muted); margin-top:4px;">${s.description}</div>` : ''}
+              </div>
+              ${s.status === 'scheduled' || s.status === 'in_progress'
+                ? (s.meeting_link
+                    ? `<a href="${s.meeting_link}" target="_blank" rel="noopener" class="pat-btn-success" style="text-decoration:none;">▶ Rejoindre</a>`
+                    : `<span style="font-size:11px; color:var(--muted); font-style:italic;">Lien à venir</span>`)
+                : ''}
+            </div>
+          `).join('')}`;
+      }
+      panel.insertBefore(card, panel.firstChild);
+    }
+
+    async function loadVisioSessionsForRole(role) {
+      try {
+        if (role === 'patient') {
+          const data = await window.MarfanAPI.visio.mine();
+          injectPatientVisioList((data && data.sessions) || []);
+          return (data && data.sessions || []).length;
+        }
+        // staff : on peut récupérer pour pré-remplir des UI futures ; pour l'instant on ne fait rien d'invasif
+        return 0;
+      } catch (e) {
+        console.warn('[MarfanAPI] Chargement visio échoué :', e.message);
+        return 0;
+      }
+    }
+
+    // === Bouton flottant "+ Planifier visio" pour staff (admin + investigator) ===
+    function injectVisioStaffControls(role) {
+      if (role !== 'principal_admin' && role !== 'investigator') return;
+      if (document.getElementById('apiVisioStaffBtn')) return;
+      const btn = document.createElement('button');
+      btn.id = 'apiVisioStaffBtn';
+      btn.innerHTML = '+ Planifier visio';
+      btn.style.cssText = 'position:fixed; bottom:18px; right:200px; z-index:9990; padding:10px 16px; border:none; border-radius:999px; background:linear-gradient(135deg,#10b981,#059669); color:white; font-weight:700; font-size:12.5px; cursor:pointer; box-shadow:0 10px 24px rgba(0,0,0,0.18);';
+      btn.addEventListener('click', openCreateVisioModal);
+      document.body.appendChild(btn);
+    }
+
+    function openCreateVisioModal() {
+      // Récupère la liste des patients depuis la cohorte en mémoire
+      const patientOptions = (window.patients || []).map(p =>
+        `<option value="${p.id}">${p.id}${p.civil && p.civil.initials ? ' — ' + p.civil.initials : ''}</option>`
+      ).join('');
+
+      const html = `
+        <div id="apiCreateVisioBackdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.7); z-index:10001; display:flex; align-items:center; justify-content:center;">
+          <div style="background:white; border-radius:14px; padding:24px 28px; width:460px; max-width:92vw; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+            <div style="font-size:16px; font-weight:800; color:#0b1530; margin-bottom:6px;">Planifier une séance de visio</div>
+            <p style="font-size:12px; color:#6b7390; margin-bottom:14px;">Tous les patients invités verront la séance dans leur espace.</p>
+
+            <label style="font-size:11px; font-weight:600; color:#4a5070;">Titre *</label>
+            <input id="cv_title" placeholder="Séance APA hebdomadaire" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
+
+            <label style="font-size:11px; font-weight:600; color:#4a5070;">Description (optionnel)</label>
+            <textarea id="cv_desc" rows="2" placeholder="Objectifs, consignes..." style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px; font-family:inherit; resize:vertical;"></textarea>
+
+            <div style="display:flex; gap:8px;">
+              <div style="flex:2;">
+                <label style="font-size:11px; font-weight:600; color:#4a5070;">Date et heure *</label>
+                <input id="cv_when" type="datetime-local" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:11px; font-weight:600; color:#4a5070;">Durée (min)</label>
+                <input id="cv_dur" type="number" min="5" max="240" placeholder="45" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
+              </div>
+            </div>
+
+            <label style="font-size:11px; font-weight:600; color:#4a5070;">Lien de visio (Jitsi, Zoom, Teams...)</label>
+            <input id="cv_link" placeholder="https://meet.jit.si/marfan-XXXX" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
+
+            <label style="font-size:11px; font-weight:600; color:#4a5070;">Patients invités (Ctrl+clic pour plusieurs)</label>
+            <select id="cv_patients" multiple size="6" style="width:100%; padding:7px 9px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">${patientOptions}</select>
+
+            <div id="cv_err" style="display:none; padding:7px 9px; background:#fee2e2; color:#991b1b; border-radius:6px; font-size:11px; margin-bottom:8px;"></div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
+              <button id="cv_cancel" style="padding:8px 14px; border:1px solid #d8dde7; background:white; color:#5a6280; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">Annuler</button>
+              <button id="cv_ok" style="padding:8px 14px; border:none; background:linear-gradient(135deg,#10b981,#059669); color:white; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer;">Planifier</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+      document.getElementById('cv_cancel').addEventListener('click', closeCreateVisioModal);
+      document.getElementById('cv_ok').addEventListener('click', async () => {
+        const title = document.getElementById('cv_title').value.trim();
+        const description = document.getElementById('cv_desc').value.trim() || null;
+        const when = document.getElementById('cv_when').value;
+        const dur = document.getElementById('cv_dur').value;
+        const link = document.getElementById('cv_link').value.trim() || null;
+        const sel = document.getElementById('cv_patients');
+        const patientIds = Array.from(sel.selectedOptions).map(o => o.value);
+        const errEl = document.getElementById('cv_err');
+        errEl.style.display = 'none';
+        if (!title)         { errEl.textContent = 'Titre requis.'; errEl.style.display = 'block'; return; }
+        if (!when)          { errEl.textContent = 'Date et heure requises.'; errEl.style.display = 'block'; return; }
+        try {
+          const result = await window.MarfanAPI.visio.create({
+            title, description, scheduled_at: when, duration_min: dur ? parseInt(dur, 10) : null,
+            meeting_link: link, patientIds
+          });
+          closeCreateVisioModal();
+          alert('Séance planifiée ✓\nID : ' + (result.session && result.session.id) + '\n' + patientIds.length + ' patient(s) invité(s).');
+        } catch (e) {
+          errEl.textContent = e.message || 'Échec de la création.'; errEl.style.display = 'block';
+        }
+      });
+    }
+    function closeCreateVisioModal() {
+      const b = document.getElementById('apiCreateVisioBackdrop');
+      if (b) b.remove();
+    }
+
     async function onLoginSuccess(user) {
       hideOverlay();
       // Vérif obligatoire : doit changer son mot de passe ?
@@ -9709,8 +9869,10 @@
       const role = syncApiUserToCurrentUser(user);
       const n = await loadPatientsFromApi();
       const v = await loadVideosFromApi(role);
+      const s = await loadVisioSessionsForRole(role);
       injectVideoAdminControls(role);
-      console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s), ' + v + ' vidéo(s) BDD.');
+      injectVisioStaffControls(role);
+      console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s), ' + v + ' vidéo(s), ' + s + ' séance(s) BDD.');
       redirectByRole(role);
     }
 

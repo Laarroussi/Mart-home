@@ -228,17 +228,41 @@ CREATE INDEX IF NOT EXISTS idx_log_timestamp ON notification_log(timestamp DESC)
 -- VISIO_SESSIONS — Séances APA collectives
 -- ============================================================
 CREATE TABLE IF NOT EXISTS visio_sessions (
-    id              SERIAL PRIMARY KEY,
-    investigator_id VARCHAR(50) REFERENCES users(id),
-    started_at      TIMESTAMPTZ,
-    ended_at        TIMESTAMPTZ,
-    title           VARCHAR(200),
-    participants    TEXT[],
-    avg_hr          NUMERIC(5,1),
+    id                SERIAL PRIMARY KEY,
+    title             VARCHAR(200),
+    description       TEXT,
+    investigator_id   VARCHAR(50) REFERENCES users(id),                 -- investigateur en charge
+    owner_id          VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,  -- créateur
+    scheduled_at      TIMESTAMPTZ,                                       -- date/heure prévue
+    duration_min      INTEGER,                                           -- durée prévue
+    meeting_link      TEXT,                                              -- URL Jitsi/Zoom/Teams
+    status            VARCHAR(20) NOT NULL DEFAULT 'scheduled'
+                      CHECK (status IN ('scheduled','in_progress','completed','cancelled')),
+    started_at        TIMESTAMPTZ,
+    ended_at          TIMESTAMPTZ,
+    cancelled_at      TIMESTAMPTZ,
+    cancelled_by      VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
+    participants      TEXT[],
+    avg_hr            NUMERIC(5,1),
     total_energy_kcal NUMERIC(8,2),
-    notes           TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW()
+    notes             TEXT,
+    created_at        TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_visio_scheduled_at ON visio_sessions(scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_visio_status       ON visio_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_visio_owner        ON visio_sessions(owner_id);
+
+-- Jointure patients × visio (1 patient peut être invité à N séances)
+CREATE TABLE IF NOT EXISTS visio_participants (
+    id         SERIAL PRIMARY KEY,
+    visio_id   INTEGER     NOT NULL REFERENCES visio_sessions(id) ON DELETE CASCADE,
+    patient_id VARCHAR(50) NOT NULL REFERENCES patients(id)       ON DELETE CASCADE,
+    invited_at TIMESTAMPTZ DEFAULT NOW(),
+    joined_at  TIMESTAMPTZ,
+    UNIQUE(visio_id, patient_id)
+);
+CREATE INDEX IF NOT EXISTS idx_visio_part_patient ON visio_participants(patient_id);
+CREATE INDEX IF NOT EXISTS idx_visio_part_visio   ON visio_participants(visio_id);
 
 -- ============================================================
 -- ANALYSES_FILES — Fichiers CSV/XLSX uploadés (VO2, popmètre)
