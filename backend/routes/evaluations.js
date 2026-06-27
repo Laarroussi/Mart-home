@@ -22,7 +22,7 @@ router.get('/:patientId', requireAuth, async (req, res, next) => {
 });
 
 /** POST /api/evaluations/:patientId — Nouvelle évaluation */
-router.post('/:patientId', requireAuth, requireRole('admin', 'principal', 'investigator'), async (req, res, next) => {
+router.post('/:patientId', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
     const ev = req.body || {};
     // ID = max eval_id + 1
@@ -41,7 +41,7 @@ router.post('/:patientId', requireAuth, requireRole('admin', 'principal', 'inves
 });
 
 /** PATCH /api/evaluations/:id — Modifier une éval (notamment ajouter vo2_data/pulse_data/thresholds) */
-router.patch('/by-id/:id', requireAuth, requireRole('admin', 'principal', 'investigator'), async (req, res, next) => {
+router.patch('/by-id/:id', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
     const allowed = ['label','eval_date','vo2','sv1','sv2','ve_vco2_slope','watts','fc_max','force_kg','sf36','gpaq','aorta','validated','note','vo2_data','pulse_data','thresholds'];
     const fields = []; const params = [];

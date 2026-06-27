@@ -7,7 +7,7 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 const router = express.Router();
 
 /** GET /api/cohort/overview — KPI cohorte */
-router.get('/overview', requireAuth, requireRole('admin','principal','investigator'), async (req, res, next) => {
+router.get('/overview', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
     const [overview, geneDist, evalCount] = await Promise.all([
       query('SELECT * FROM v_cohort_overview'),
@@ -23,7 +23,7 @@ router.get('/overview', requireAuth, requireRole('admin','principal','investigat
 });
 
 /** GET /api/cohort/database?mode=long|wide|edu */
-router.get('/database', requireAuth, requireRole('admin','principal','investigator'), async (req, res, next) => {
+router.get('/database', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
     const mode = req.query.mode || 'long';
     if (mode === 'long') {
@@ -65,7 +65,7 @@ router.get('/database', requireAuth, requireRole('admin','principal','investigat
 });
 
 /** GET /api/cohort/export?mode=long|wide|edu — Export CSV */
-router.get('/export', requireAuth, requireRole('admin','principal','investigator'), async (req, res, next) => {
+router.get('/export', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
     const mode = req.query.mode || 'long';
     // Réutilise la même logique mais sort en CSV

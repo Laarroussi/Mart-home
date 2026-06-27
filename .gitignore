@@ -42,3 +42,4 @@ build/
 *.xlsx
 *.xls
 !backend/db/seed_demo.csv          # exception : données démo neutres OK
+backend/routes/*.bak

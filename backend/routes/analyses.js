@@ -35,7 +35,7 @@ const upload = multer({
  *  type = 'vo2' | 'pulse'
  *  form-data : file = <fichier>
  */
-router.post('/:type/upload/:patientId/:evaluationId', requireAuth, requireRole('admin', 'principal', 'investigator'),
+router.post('/:type/upload/:patientId/:evaluationId', requireAuth, requireRole('principal_admin', 'investigator'),
   upload.single('file'), async (req, res, next) => {
   try {
     const { type, patientId, evaluationId } = req.params;

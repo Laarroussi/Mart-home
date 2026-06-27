@@ -46,8 +46,47 @@ function requireRole(...roles) {
   };
 }
 
-// Helpers de rôles
-const isInvestigator = (role) => ['admin', 'principal', 'investigator'].includes(role);
-const canManageUsers = (role) => ['admin', 'principal'].includes(role);
+// ============================================================
+// Helpers de rôles — modèle à 3 rôles consolidés
+//   principal_admin : Investigateur principal / Administrateur (droits max)
+//   investigator    : Investigateur (suivi clinique + création comptes patients)
+//   patient         : Patient (espace personnel uniquement)
+// ============================================================
+const ROLE = {
+  PRINCIPAL_ADMIN: 'principal_admin',
+  INVESTIGATOR:    'investigator',
+  PATIENT:         'patient'
+};
 
-module.exports = { signToken, requireAuth, requireRole, isInvestigator, canManageUsers };
+const isPrincipalAdmin = (role) => role === ROLE.PRINCIPAL_ADMIN;
+const isInvestigator   = (role) => [ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR].includes(role);
+const isStaff          = (role) => [ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR].includes(role);
+
+// Qui peut gérer (créer/modifier/supprimer) un compte d'un rôle donné ?
+//   - principal_admin peut gérer TOUT
+//   - investigator peut UNIQUEMENT créer/modifier des comptes patients
+//   - patient ne peut rien gérer
+function canManageRole(actorRole, targetRole) {
+  if (actorRole === ROLE.PRINCIPAL_ADMIN) return true;
+  if (actorRole === ROLE.INVESTIGATOR && targetRole === ROLE.PATIENT) return true;
+  return false;
+}
+
+// Garde Express : vérifie que l'acteur peut gérer le rôle cible passé dans req.body.role
+function requireCanManageTargetRole(req, res, next) {
+  const target = (req.body && req.body.role) || ROLE.PATIENT;
+  if (!canManageRole(req.user.role, target)) {
+    return res.status(403).json({
+      error: `Vous (${req.user.role}) n'êtes pas autorisé à gérer un compte de rôle ${target}.`
+    });
+  }
+  next();
+}
+
+module.exports = {
+  signToken, requireAuth, requireRole,
+  ROLE, isPrincipalAdmin, isInvestigator, isStaff,
+  canManageRole, requireCanManageTargetRole,
+  // Backward compat
+  canManageUsers: isPrincipalAdmin
+};

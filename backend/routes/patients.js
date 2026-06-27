@@ -51,7 +51,7 @@ router.get('/:id', requireAuth, async (req, res, next) => {
 });
 
 /** POST /api/patients — Crée un patient + son compte utilisateur + envoi auto SF-36/GPAQ */
-router.post('/', requireAuth, requireRole('admin', 'principal', 'investigator'), async (req, res, next) => {
+router.post('/', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
     const p = req.body || {};
     if (!p.id || !p.sex || !p.age || !p.gene) {
@@ -126,7 +126,7 @@ router.post('/', requireAuth, requireRole('admin', 'principal', 'investigator'),
 });
 
 /** PATCH /api/patients/:id */
-router.patch('/:id', requireAuth, requireRole('admin', 'principal', 'investigator'), async (req, res, next) => {
+router.patch('/:id', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
     const allowed = ['sex','age','gene','aorta','status','status_class','progress','connected','risk_factor','risk_comment','alterations','incidents','civil','medical','study'];
     const fields = []; const params = [];

@@ -4359,27 +4359,43 @@
   // ============================================================
   // === SYSTÈME DE COMPTES UTILISATEURS — Rôles & permissions
   // ============================================================
-  // Rôles : 'admin' (tout) · 'principal' (investigateur principal, peut créer investigateurs + patients)
-  //         'investigator' (lecture / écriture standard) · 'patient' (espace patient uniquement)
+  // Modèle à 3 rôles consolidés (aligné avec le backend) :
+  //   - principal_admin : Investigateur principal / Administrateur (droits maximums)
+  //   - investigator    : Investigateur (peut créer comptes patients uniquement)
+  //   - patient         : espace patient uniquement
+  //
+  // Les anciens rôles 'admin' et 'principal' sont mappés vers 'principal_admin'
+  // (cf. mapApiRole() + ROLE_LABELS/ROLE_BADGES qui restent compatibles)
   const ROLE_LABELS = {
-    admin: 'Administrateur',
-    principal: 'Investigateur principal',
-    investigator: 'Investigateur',
-    patient: 'Patient'
+    principal_admin: 'Investigateur principal / Administrateur',
+    admin:           'Investigateur principal / Administrateur', // alias rétrocompat
+    principal:       'Investigateur principal / Administrateur', // alias rétrocompat
+    investigator:    'Investigateur',
+    patient:         'Patient'
   };
   const ROLE_BADGES = {
-    admin:        { bg:'#fef3c7', color:'#92400e', border:'#fcd34d', icon:'⚡' },
-    principal:    { bg:'#f5f3ff', color:'#5b21b6', border:'#c4b5fd', icon:'★' },
-    investigator: { bg:'#ecfeff', color:'#0369a1', border:'#7dd3fc', icon:'🔬' },
-    patient:      { bg:'#ecfdf5', color:'#065f46', border:'#86efac', icon:'👤' }
+    principal_admin: { bg:'#f5f3ff', color:'#5b21b6', border:'#c4b5fd', icon:'★' },
+    admin:           { bg:'#f5f3ff', color:'#5b21b6', border:'#c4b5fd', icon:'★' },
+    principal:       { bg:'#f5f3ff', color:'#5b21b6', border:'#c4b5fd', icon:'★' },
+    investigator:    { bg:'#ecfeff', color:'#0369a1', border:'#7dd3fc', icon:'🔬' },
+    patient:         { bg:'#ecfdf5', color:'#065f46', border:'#86efac', icon:'👤' }
   };
-  // Hiérarchie : un admin peut tout créer ; un principal peut créer investigateur + patient
+  // Qui peut créer quoi :
+  //   - principal_admin : tous les types de comptes
+  //   - investigator    : uniquement patient
+  //   - patient         : rien
   const ROLE_CAN_CREATE = {
-    admin: ['admin', 'principal', 'investigator', 'patient'],
-    principal: ['investigator', 'patient'],
-    investigator: ['patient'],
-    patient: []
+    principal_admin: ['principal_admin', 'investigator', 'patient'],
+    admin:           ['principal_admin', 'investigator', 'patient'], // alias
+    principal:       ['principal_admin', 'investigator', 'patient'], // alias
+    investigator:    ['patient'],
+    patient:         []
   };
+  // Normalise un rôle venant de l'API ou des anciennes données vers le modèle 3-rôles
+  function normalizeRole(role) {
+    if (role === 'admin' || role === 'principal') return 'principal_admin';
+    return role;
+  }
 
   const users = [
     { id:'u-admin-001', role:'admin', name:'Sophie Bernard', email:'admin@marfan-apa.fr', phone:'01 42 00 00 00', service:'Pilotage plateforme', createdBy:'system', createdAt:'2024-09-01', active:true },
@@ -4420,13 +4436,20 @@
   }
 
   function isInvestigatorRole(role) {
-    return role === 'admin' || role === 'principal' || role === 'investigator';
+    const r = normalizeRole(role);
+    return r === 'principal_admin' || r === 'investigator';
+  }
+  function isPrincipalAdmin(role) {
+    return normalizeRole(role) === 'principal_admin';
   }
 
   // Applique les permissions UI : montre/cache le tab "Gestion comptes" selon le rôle
+  // Règle : seul principal_admin et investigator y ont accès.
+  //         investigator ne peut créer que des comptes patient (vérifié dans createUserAccount).
   function applyRolePermissions() {
     const adminTab = document.querySelector('.tab-button[data-tab="accounts"]');
-    const canManage = currentUser && (currentUser.role === 'admin' || currentUser.role === 'principal');
+    const role = currentUser && normalizeRole(currentUser.role);
+    const canManage = role === 'principal_admin' || role === 'investigator';
     if (adminTab) adminTab.style.display = canManage ? '' : 'none';
     // Mise à jour du chip rôle dans l'investigateur
     const chip = document.getElementById('currentRoleChip');
@@ -4466,8 +4489,15 @@
   function deactivateUser(userId) {
     const u = users.find(x => x.id === userId);
     if (!u) return;
-    if (u.role === 'admin' && currentUser.role !== 'admin') {
-      toast(`✖ Seul un administrateur peut désactiver un compte administrateur.`, 'error'); return;
+    const targetRole = normalizeRole(u.role);
+    const actorRole = normalizeRole(currentUser && currentUser.role);
+    // Règle : seul principal_admin peut désactiver un compte principal_admin
+    if (targetRole === 'principal_admin' && actorRole !== 'principal_admin') {
+      toast(`✖ Seul un Investigateur principal / Administrateur peut désactiver un compte de ce rôle.`, 'error'); return;
+    }
+    // Investigator ne peut désactiver que des patients
+    if (actorRole === 'investigator' && targetRole !== 'patient') {
+      toast(`✖ Un Investigateur ne peut désactiver que des comptes patient.`, 'error'); return;
     }
     if (!confirm(`Désactiver le compte ${ROLE_LABELS[u.role]} de ${u.name} ?`)) return;
     u.active = false;
@@ -9424,11 +9454,66 @@
       }
     }
 
+    // Normalise un rôle API vers le modèle 3-rôles du frontend
+    function normalizeApiRole(r) {
+      if (r === 'admin' || r === 'principal') return 'principal_admin';
+      return r || 'patient';
+    }
+
+    // Branche le user API sur le système in-memory (currentUser, applyRolePermissions)
+    // puis redirige automatiquement vers la vue correspondant à son rôle.
+    function syncApiUserToCurrentUser(apiUser) {
+      const role = normalizeApiRole(apiUser.role);
+      // Construit un currentUser compatible avec le système in-memory
+      const adapted = {
+        id: apiUser.id,
+        role,
+        name: apiUser.name || apiUser.email,
+        email: apiUser.email,
+        phone: apiUser.phone || '',
+        service: apiUser.service || '',
+        patientId: apiUser.patient_id || apiUser.patientId || null,
+        active: true,
+        _fromApi: true
+      };
+      // Ajoute ce user à la liste si absent (pour que la table des comptes l'affiche)
+      try {
+        if (typeof users !== 'undefined') {
+          const i = users.findIndex(u => u.id === adapted.id);
+          if (i >= 0) users[i] = adapted; else users.push(adapted);
+        }
+      } catch (_) {}
+      // Active ce user comme session courante + recalcule les permissions UI
+      try {
+        if (typeof window.setCurrentUser === 'function') {
+          window.setCurrentUser(adapted.id);
+        } else if (typeof setCurrentUser === 'function') {
+          setCurrentUser(adapted.id);
+        }
+      } catch (e) { console.warn('setCurrentUser :', e); }
+      return role;
+    }
+
+    // Redirige vers la vue correspondant au rôle (mode-investigator OU mode-patient)
+    function redirectByRole(role) {
+      try {
+        if (role === 'patient') {
+          if (typeof goToPatient === 'function') goToPatient();
+        } else {
+          // principal_admin et investigator → interface investigateur
+          if (typeof goToInvestigator === 'function') goToInvestigator();
+        }
+      } catch (e) { console.warn('redirectByRole :', e); }
+    }
+
     async function onLoginSuccess(user) {
       hideOverlay();
       showUserBadge(user);
+      const role = syncApiUserToCurrentUser(user);
       const n = await loadPatientsFromApi();
-      console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' — ' + n + ' patient(s) BDD ajouté(s) à la cohorte.');
+      console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s) BDD ajouté(s).');
+      // Redirection automatique vers l'interface correspondant au rôle
+      redirectByRole(role);
     }
 
     document.getElementById('apiLoginBtn').addEventListener('click', async function () {
@@ -9500,6 +9585,43 @@
       }
 
       installCreatePatientHook();
+
+      // === GARDE D'ACCÈS PAR RÔLE ===
+      // Wrap goToInvestigator/goToPatient pour empêcher un patient connecté via l'API
+      // d'accéder à l'interface investigateur (même via la console).
+      // Ne bloque rien si pas connecté via l'API (mode démo conservé).
+      try {
+        if (typeof goToInvestigator === 'function' && !goToInvestigator.__roleGuarded) {
+          const orig = goToInvestigator;
+          window.goToInvestigator = function () {
+            if (window.MarfanAPI && window.MarfanAPI.isAuthenticated()) {
+              const u = window.MarfanAPI.currentUser();
+              const role = u && (u.role === 'admin' || u.role === 'principal' ? 'principal_admin' : u.role);
+              if (role === 'patient') {
+                console.warn('[MarfanAPI] Accès refusé : un patient ne peut pas accéder à l\'interface investigateur.');
+                return; // bloqué
+              }
+            }
+            return orig.apply(this, arguments);
+          };
+          window.goToInvestigator.__roleGuarded = true;
+        }
+        if (typeof goToPatient === 'function' && !goToPatient.__roleGuarded) {
+          const orig = goToPatient;
+          window.goToPatient = function () {
+            // Tout le monde peut aller en mode patient (preview), mais si on est
+            // staff connecté on log l'action pour traçabilité
+            if (window.MarfanAPI && window.MarfanAPI.isAuthenticated()) {
+              const u = window.MarfanAPI.currentUser();
+              if (u && u.role !== 'patient') {
+                console.log('[MarfanAPI] Preview interface patient par ' + u.email + ' (' + u.role + ')');
+              }
+            }
+            return orig.apply(this, arguments);
+          };
+          window.goToPatient.__roleGuarded = true;
+        }
+      } catch (e) { console.warn('Installation des gardes de rôle :', e); }
 
       // Probe API
       const up = await window.MarfanAPI.tryConnect();

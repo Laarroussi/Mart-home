@@ -8,11 +8,14 @@
 -- ============================================================
 
 -- ============================================================
--- USERS — Comptes (admin / principal / investigator / patient)
+-- USERS — Comptes (3 rôles : principal_admin / investigator / patient)
+--   principal_admin = Investigateur principal / Administrateur (droits max)
+--   investigator    = Investigateur (suivi patients, peut créer comptes patients)
+--   patient         = Patient (espace personnel uniquement)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS users (
     id            VARCHAR(50)  PRIMARY KEY,
-    role          VARCHAR(20)  NOT NULL CHECK (role IN ('admin','principal','investigator','patient')),
+    role          VARCHAR(20)  NOT NULL CHECK (role IN ('principal_admin','investigator','patient')),
     name          VARCHAR(200) NOT NULL,
     email         VARCHAR(200) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,

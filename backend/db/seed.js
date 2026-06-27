@@ -116,20 +116,20 @@ async function seed() {
     }
     console.log(`   ✓ ${CAPSULES.length} capsules`);
 
-    // 2. Admin (created_by = NULL car c'est le premier user — contrainte FK auto-référente)
-    console.log('\n[2/4] Création de l\'administrateur initial...');
+    // 2. Comptes initiaux — rôle 'principal_admin' = Investigateur principal / Administrateur
+    console.log('\n[2/4] Création des comptes initiaux...');
     const adminHash = await bcrypt.hash(ADMIN_PASSWORD, ROUNDS);
     await query(
       `INSERT INTO users (id, role, name, email, password_hash, service, created_by)
-       VALUES ('u-admin-001', 'admin', 'Administrateur Marfan APA', $1, $2, 'Pilotage plateforme', NULL)
+       VALUES ('u-admin-001', 'principal_admin', 'Administrateur Marfan APA', $1, $2, 'Pilotage plateforme', NULL)
        ON CONFLICT (id) DO NOTHING`,
       [ADMIN_EMAIL.toLowerCase(), adminHash]
     );
-    // Investigateur principal démo
+    // Investigateur principal / Administrateur démo (même rôle 'principal_admin')
     const prinHash = await bcrypt.hash('Principal!2024', ROUNDS);
     await query(
       `INSERT INTO users (id, role, name, email, password_hash, service, created_by)
-       VALUES ('u-prin-001', 'principal', 'Pr. Jean Martin', 'j.martin@bichat.fr', $1, 'Cardiologie · Marfan', 'u-admin-001')
+       VALUES ('u-prin-001', 'principal_admin', 'Pr. Jean Martin', 'j.martin@bichat.fr', $1, 'Cardiologie · Marfan', 'u-admin-001')
        ON CONFLICT (id) DO NOTHING`,
       [prinHash]
     );
@@ -141,10 +141,10 @@ async function seed() {
        ON CONFLICT (id) DO NOTHING`,
       [invHash]
     );
-    console.log('   ✓ Admin + Investigateur principal + Investigateur');
-    console.log(`   → Connexion admin    : ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
-    console.log(`   → Connexion principal: j.martin@bichat.fr / Principal!2024`);
-    console.log(`   → Connexion investig.: c.dupont@bichat.fr / Investigateur!2024`);
+    console.log('   ✓ 2 comptes principal_admin + 1 compte investigator');
+    console.log(`   → Connexion admin       : ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
+    console.log(`   → Connexion princ. admin : j.martin@bichat.fr / Principal!2024`);
+    console.log(`   → Connexion investigator: c.dupont@bichat.fr / Investigateur!2024`);
 
     // 3. Patients + évaluations + comptes patient
     console.log('\n[3/4] Création des 20 patients démo...');

@@ -30,7 +30,7 @@ router.get('/:patientId', requireAuth, async (req, res, next) => {
  *  Body: { patientIds: ['MRF-001', ...], types: ['sf36','gpaq'] }
  *  Si patientIds = "all" → tous les patients
  */
-router.post('/send', requireAuth, requireRole('admin', 'principal', 'investigator'), async (req, res, next) => {
+router.post('/send', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
     let { patientIds, types } = req.body || {};
     if (!types || !types.length) return res.status(400).json({ error: 'types[] requis' });
@@ -96,7 +96,7 @@ router.post('/:id/complete', requireAuth, async (req, res, next) => {
 });
 
 /** GET /api/notifications/log/recent — Journal des envois (admin/principal) */
-router.get('/log/recent', requireAuth, requireRole('admin', 'principal'), async (req, res, next) => {
+router.get('/log/recent', requireAuth, requireRole('principal_admin'), async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit, 10) || 100;
     const { rows } = await query(

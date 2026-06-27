@@ -17,7 +17,7 @@ router.get('/capsules', requireAuth, async (req, res, next) => {
 });
 
 /** GET /api/education/summary — Synthèse cohorte par capsule (vue v_education_summary) */
-router.get('/summary', requireAuth, requireRole('admin', 'principal', 'investigator'), async (req, res, next) => {
+router.get('/summary', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
     const { rows } = await query('SELECT * FROM v_education_summary ORDER BY capsule_id');
     res.json({ summary: rows });
@@ -44,7 +44,7 @@ router.get('/records', requireAuth, async (req, res, next) => {
 /** POST /api/education/send
  *  Body: { patientIds: ['MRF-001'] | 'all', capsuleId, when: 'pre' | 'post' }
  */
-router.post('/send', requireAuth, requireRole('admin', 'principal', 'investigator'), async (req, res, next) => {
+router.post('/send', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
     let { patientIds, capsuleId, when } = req.body || {};
     if (!capsuleId || !when) return res.status(400).json({ error: 'capsuleId et when requis' });
