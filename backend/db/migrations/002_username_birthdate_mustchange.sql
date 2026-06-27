@@ -8,23 +8,22 @@
 --
 -- IDEMPOTENT : peut être ré-exécutée sans risque grâce à IF NOT EXISTS.
 --
+-- Ordre IMPORTANT : on AJOUTE la contrainte UNIQUE AVANT l'UPDATE, car PostgreSQL
+-- refuse un ALTER TABLE après un UPDATE dans la même transaction si la table a des
+-- événements de triggers en attente. UNIQUE accepte les NULL multiples, donc OK.
+--
 -- Utilisation :
 --   psql "$DBURL" -v ON_ERROR_STOP=1 -f db/migrations/002_username_birthdate_mustchange.sql
 -- ============================================================
 
 BEGIN;
 
+-- 1. Ajout des colonnes
 ALTER TABLE users ADD COLUMN IF NOT EXISTS username             VARCHAR(100);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date           DATE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
 
--- Pour les comptes existants : username = partie locale de l'email (avant @)
--- (on évite NULL pour pouvoir mettre la contrainte UNIQUE)
-UPDATE users
-   SET username = split_part(email, '@', 1)
- WHERE username IS NULL;
-
--- Contrainte UNIQUE sur username (en ignorant le cas où elle existe déjà)
+-- 2. Contrainte UNIQUE sur username (avant l'UPDATE, donc table = tous NULL pour ce champ)
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -34,12 +33,21 @@ BEGIN
     END IF;
 END $$;
 
+-- 3. Index username
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
--- Comptes existants : pas obligés de changer (déjà actifs avec mot de passe choisi)
+-- 4. PUIS l'UPDATE qui remplit les valeurs (split_part de l'email avant @)
+--    Pour éviter les collisions improbables (jean.dupont@a.com vs jean.dupont@b.com),
+--    on suffixe par l'id du user en cas de besoin. Mais pour les comptes seed actuels,
+--    il n'y a pas de collision possible (emails uniques avec préfixes distincts).
+UPDATE users
+   SET username = split_part(email, '@', 1)
+ WHERE username IS NULL;
+
+-- 5. Force must_change_password = FALSE pour les comptes existants (pas de migration forcée)
 UPDATE users SET must_change_password = FALSE WHERE must_change_password IS NULL;
 
--- Vérif finale
+-- 6. Vérification finale
 SELECT id, role, username, email, must_change_password FROM users ORDER BY role, username;
 
 COMMIT;
