@@ -9772,6 +9772,173 @@
       }
     }
 
+    // ====================================================================
+    // === MODULE SAUVEGARDE & RESTAURATION (principal_admin uniquement)
+    // ====================================================================
+    function injectBackupAdminControls(role) {
+      if (role !== 'principal_admin') return;
+      if (document.getElementById('apiBackupBtn')) return;
+      const btn = document.createElement('button');
+      btn.id = 'apiBackupBtn';
+      btn.innerHTML = '💾 Sauvegarde';
+      btn.title = 'Sauvegarde et récupération de la plateforme';
+      btn.style.cssText = 'position:fixed; bottom:18px; right:380px; z-index:9990; padding:10px 16px; border:none; border-radius:999px; background:linear-gradient(135deg,#7c3aed,#a855f7); color:white; font-weight:700; font-size:12.5px; cursor:pointer; box-shadow:0 10px 24px rgba(0,0,0,0.18);';
+      btn.addEventListener('click', openBackupModal);
+      document.body.appendChild(btn);
+    }
+
+    async function openBackupModal() {
+      // Récupère d'abord le statut (comptes par table, date dernière sauvegarde)
+      let status;
+      try { status = await window.MarfanAPI.backup.status(); }
+      catch (e) { alert('Impossible de récupérer le statut : ' + e.message); return; }
+
+      const countsHtml = Object.entries(status.counts || {})
+        .map(([k, v]) => `<tr><td style="padding:3px 8px; color:#5a6280;">${k}</td><td style="padding:3px 8px; text-align:right; font-weight:700;">${v}</td></tr>`)
+        .join('');
+      const lastBackup = status.lastBackup
+        ? new Date(status.lastBackup.created_at).toLocaleString('fr-FR') + ' (par user ' + (status.lastBackup.user_id || 'inconnu') + ')'
+        : '— aucune sauvegarde précédente détectée —';
+
+      const html = `
+        <div id="apiBackupBackdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.7); z-index:10001; display:flex; align-items:center; justify-content:center;">
+          <div style="background:white; border-radius:14px; padding:24px 28px; width:560px; max-width:94vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+              <div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#7c3aed,#a855f7); display:flex; align-items:center; justify-content:center; color:white; font-size:18px;">💾</div>
+              <div>
+                <div style="font-size:17px; font-weight:800; color:#0b1530;">Sauvegarde et récupération</div>
+                <div style="font-size:11.5px; color:#6b7390;">Accessible uniquement à l'Investigateur principal / Administrateur.</div>
+              </div>
+            </div>
+
+            <div style="margin-top:14px; padding:12px; background:#f3f6fb; border-radius:9px; font-size:12px; color:#5a6280;">
+              <strong>Plateforme :</strong> backup v${status.backupVersion} · schéma ${status.schemaVersion}<br>
+              <strong>Dernière sauvegarde :</strong> ${lastBackup}
+              <details style="margin-top:8px;">
+                <summary style="cursor:pointer; font-weight:600; color:#0b1530;">Voir les compteurs actuels</summary>
+                <table style="margin-top:6px; width:100%; font-size:11.5px;">${countsHtml}</table>
+              </details>
+            </div>
+
+            <!-- Section Export -->
+            <div style="margin-top:18px; padding:14px; border:1px solid #e3e7ef; border-radius:10px;">
+              <h4 style="font-size:13px; color:#0b1530; margin-bottom:6px;">📤 Exporter une sauvegarde complète</h4>
+              <p style="font-size:11.5px; color:#5a6280; margin-bottom:10px;">Génère et télécharge un fichier <code>.backup.zip</code> contenant TOUTES les données (comptes, patients, vidéos, visio, capsules, journaux). Conservez-le en lieu sûr.</p>
+              <button id="bk_export" style="width:100%; padding:10px; border:none; border-radius:8px; background:linear-gradient(135deg,#7c3aed,#a855f7); color:white; font-weight:700; font-size:12.5px; cursor:pointer;">Générer et télécharger</button>
+              <div id="bk_export_status" style="display:none; padding:8px; margin-top:8px; background:#d1fae5; color:#065f46; border-radius:6px; font-size:11.5px;"></div>
+            </div>
+
+            <!-- Section Import / Restore -->
+            <div style="margin-top:14px; padding:14px; border:1px solid #fcd34d; border-radius:10px; background:#fffbeb;">
+              <h4 style="font-size:13px; color:#92400e; margin-bottom:6px;">📥 Restaurer depuis une sauvegarde</h4>
+              <p style="font-size:11.5px; color:#92400e; margin-bottom:10px;"><strong>⚠ Attention :</strong> la restauration ÉCRASE TOUTES les données actuelles. Une confirmation explicite est requise.</p>
+              <input id="bk_file" type="file" accept=".zip,.backup.zip" style="width:100%; padding:8px; border:1px solid #d8dde7; border-radius:7px; font-size:12px; background:white; margin-bottom:10px;">
+              <div id="bk_inspect_result" style="display:none; padding:10px; background:white; border:1px solid #e3e7ef; border-radius:7px; font-size:11.5px; color:#0b1530; margin-bottom:10px;"></div>
+              <label style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:#92400e; margin-bottom:10px;">
+                <input id="bk_force_pwd" type="checkbox">
+                <span>Forcer tous les utilisateurs à changer leur mot de passe à la prochaine connexion (recommandé)</span>
+              </label>
+              <button id="bk_inspect" style="width:100%; padding:9px; border:1px solid #d8dde7; border-radius:8px; background:white; color:#0b1530; font-weight:600; font-size:12px; cursor:pointer; margin-bottom:6px;">1️⃣ Inspecter le fichier (lecture seule)</button>
+              <button id="bk_restore" style="width:100%; padding:10px; border:none; border-radius:8px; background:#dc2626; color:white; font-weight:700; font-size:12.5px; cursor:pointer; opacity:0.5;" disabled>2️⃣ Restaurer (irréversible)</button>
+              <div id="bk_restore_status" style="display:none; padding:8px; margin-top:8px; border-radius:6px; font-size:11.5px;"></div>
+            </div>
+
+            <div style="margin-top:12px; text-align:right;">
+              <button id="bk_close" style="padding:8px 14px; border:1px solid #d8dde7; background:white; color:#5a6280; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">Fermer</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+
+      document.getElementById('bk_close').addEventListener('click', () => {
+        const b = document.getElementById('apiBackupBackdrop'); if (b) b.remove();
+      });
+
+      // EXPORT
+      document.getElementById('bk_export').addEventListener('click', async function () {
+        this.disabled = true; this.textContent = 'Génération en cours…';
+        const ok = document.getElementById('bk_export_status');
+        ok.style.display = 'none';
+        try {
+          const { blob, filename, sha256 } = await window.MarfanAPI.backup.exportZip();
+          // Déclenche le téléchargement
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+          document.body.removeChild(a); URL.revokeObjectURL(url);
+          ok.textContent = '✓ Sauvegarde téléchargée : ' + filename + ' (' + Math.round(blob.size/1024) + ' KB) — SHA-256 : ' + (sha256 || 'n/a').slice(0,16) + '…';
+          ok.style.display = 'block';
+        } catch (e) {
+          ok.style.background = '#fee2e2'; ok.style.color = '#991b1b';
+          ok.textContent = '✖ ' + e.message;
+          ok.style.display = 'block';
+        } finally {
+          this.disabled = false; this.textContent = 'Générer et télécharger';
+        }
+      });
+
+      // INSPECT
+      document.getElementById('bk_inspect').addEventListener('click', async function () {
+        const f = document.getElementById('bk_file').files[0];
+        const resEl = document.getElementById('bk_inspect_result');
+        const restoreBtn = document.getElementById('bk_restore');
+        resEl.style.display = 'none';
+        if (!f) { alert('Sélectionnez d\'abord un fichier .backup.zip'); return; }
+        this.disabled = true; this.textContent = 'Lecture…';
+        try {
+          const { manifest, summary } = await window.MarfanAPI.backup.inspect(f);
+          const integrityLine = summary.integrityOk === true
+            ? '<span style="color:#065f46; font-weight:700;">✓ Intégrité SHA-256 vérifiée</span>'
+            : summary.integrityOk === false
+              ? '<span style="color:#991b1b; font-weight:700;">✖ Hash SHA-256 INVALIDE — fichier corrompu ?</span>'
+              : '<span style="color:#92400e;">⚠ Pas de hash dans le manifest</span>';
+          const tableLines = (summary.presentTables || [])
+            .map(t => `<tr><td style="padding:2px 6px;">${t.name}</td><td style="padding:2px 6px; text-align:right; font-weight:600;">${t.count}</td></tr>`)
+            .join('');
+          resEl.innerHTML = `
+            <div style="margin-bottom:6px;"><strong>Backup v${manifest.backupVersion}</strong> · schéma ${manifest.schemaVersion}</div>
+            <div style="margin-bottom:6px;">Générée le <strong>${new Date(manifest.generatedAt).toLocaleString('fr-FR')}</strong> par ${(manifest.generatedBy && manifest.generatedBy.name) || '?'}</div>
+            <div style="margin-bottom:8px;">${integrityLine} · ${summary.totalRows} ligne(s) au total</div>
+            <table style="width:100%; font-size:11px;">${tableLines}</table>
+            ${summary.missingTables.length ? '<div style="margin-top:6px; color:#92400e;">Tables manquantes : ' + summary.missingTables.join(', ') + '</div>' : ''}`;
+          resEl.style.display = 'block';
+          restoreBtn.disabled = false;
+          restoreBtn.style.opacity = '1';
+        } catch (e) {
+          resEl.style.color = '#991b1b';
+          resEl.textContent = '✖ ' + e.message;
+          resEl.style.display = 'block';
+        } finally {
+          this.disabled = false; this.textContent = '1️⃣ Inspecter le fichier (lecture seule)';
+        }
+      });
+
+      // RESTORE
+      document.getElementById('bk_restore').addEventListener('click', async function () {
+        const f = document.getElementById('bk_file').files[0];
+        const force = document.getElementById('bk_force_pwd').checked;
+        if (!f) return;
+        if (!confirm('Confirmer la restauration ?\n\nCette action ÉCRASERA toutes les données actuelles de la plateforme et ne peut pas être annulée.\n\nForce changement de mot de passe : ' + (force ? 'OUI' : 'NON'))) return;
+        this.disabled = true; this.textContent = 'Restauration en cours…';
+        const st = document.getElementById('bk_restore_status');
+        st.style.display = 'none';
+        try {
+          const res = await window.MarfanAPI.backup.restore(f, force);
+          st.style.background = '#d1fae5'; st.style.color = '#065f46';
+          st.innerHTML = '✓ Restauration terminée. Lignes restaurées : ' +
+            Object.entries(res.restored).map(([k,v]) => k + '=' + v).join(', ') +
+            '<br><br>Vous allez être déconnecté pour recharger la session.';
+          st.style.display = 'block';
+          setTimeout(() => { window.MarfanAPI.logout(); window.location.reload(); }, 3500);
+        } catch (e) {
+          st.style.background = '#fee2e2'; st.style.color = '#991b1b';
+          st.textContent = '✖ ' + e.message;
+          st.style.display = 'block';
+          this.disabled = false; this.textContent = '2️⃣ Restaurer (irréversible)';
+        }
+      });
+    }
+
     // === Bouton flottant "+ Planifier visio" pour staff (admin + investigator) ===
     function injectVisioStaffControls(role) {
       if (role !== 'principal_admin' && role !== 'investigator') return;
@@ -9872,6 +10039,7 @@
       const s = await loadVisioSessionsForRole(role);
       injectVideoAdminControls(role);
       injectVisioStaffControls(role);
+      injectBackupAdminControls(role);
       console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s), ' + v + ' vidéo(s), ' + s + ' séance(s) BDD.');
       redirectByRole(role);
     }

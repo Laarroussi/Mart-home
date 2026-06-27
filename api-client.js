@@ -191,6 +191,42 @@
       exportUrl: (mode) => `${API_BASE}/cohort/export?mode=${mode}` // à utiliser avec token en query si besoin
     },
 
+    /** ===== Sauvegarde / Restauration (principal_admin uniquement) ===== */
+    backup: {
+      status:  () => request('GET',  '/backup/status'),
+      // Export : on n'utilise PAS request() (qui parse en JSON) car on veut le blob ZIP
+      async exportZip() {
+        const token = getToken();
+        const resp = await fetch(API_BASE + '/backup/export', {
+          method: 'POST',
+          headers: token ? { Authorization: 'Bearer ' + token } : {}
+        });
+        if (!resp.ok) {
+          let msg = 'Export échoué';
+          try { const j = await resp.json(); msg = j.error || msg; } catch (_) {}
+          throw new APIError(resp.status, msg);
+        }
+        const blob = await resp.blob();
+        const filename = (resp.headers.get('content-disposition') || '').match(/filename="?([^";]+)"?/);
+        return {
+          blob,
+          filename: filename ? filename[1] : 'marfan_apa_backup.backup.zip',
+          sha256: resp.headers.get('x-backup-sha256')
+        };
+      },
+      async inspect(file) {
+        const fd = new FormData(); fd.append('file', file);
+        return request('POST', '/backup/inspect', fd, { formData: true });
+      },
+      async restore(file, forcePasswordChange = false) {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('confirm', 'true');
+        fd.append('forcePasswordChange', forcePasswordChange ? 'true' : 'false');
+        return request('POST', '/backup/restore', fd, { formData: true });
+      }
+    },
+
     /** ===== Healthcheck ===== */
     health: () => request('GET', '/health'),
 
