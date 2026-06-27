@@ -164,6 +164,18 @@
       end:      (id, data) => request('PATCH', `/visio/sessions/${id}/end`, data)
     },
 
+    /** ===== Vidéos (entraînement, éducation, info) ===== */
+    videos: {
+      list:     (filters = {}) => request('GET', '/videos?' + new URLSearchParams(filters).toString()),
+      mine:     ()              => request('GET', '/videos/mine'),
+      create:   (data)          => request('POST', '/videos', data),
+      update:   (id, data)      => request('PATCH', `/videos/${id}`, data),
+      remove:   (id, hard=false)=> request('DELETE', `/videos/${id}${hard ? '?hard=true' : ''}`),
+      assign:   (id, patientIds, note) => request('POST', `/videos/${id}/assign`, { patientIds, note }),
+      unassign: (id, patientId) => request('DELETE', `/videos/${id}/assign/${patientId}`),
+      patients: (id)            => request('GET', `/videos/${id}/patients`)
+    },
+
     /** ===== Cohorte / BDD ===== */
     cohort: {
       overview: () => request('GET', '/cohort/overview'),

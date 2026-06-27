@@ -9574,6 +9574,127 @@
       }
     });
 
+    // ====================================================================
+    // === MODULE VIDÉOS (entraînement YouTube) — branchement sur la BDD
+    // ====================================================================
+    // - patient : voit uniquement ses vidéos attribuées (/videos/mine)
+    // - staff   : voit toutes les vidéos non archivées (/videos)
+    // Le résultat REMPLACE trainingVideos[] (utilisé par renderTrainingVideos).
+    // En cas d'erreur API : on garde les vidéos hardcodées (mode dégradé).
+    function adaptApiVideoToTrainingFormat(v) {
+      return {
+        id:           v.youtube_id || v.id,
+        title:        v.title,
+        category:     v.category || 'Autres',
+        it:           v.interval_label || '—',
+        duration_min: v.duration_min || null,
+        english:      v.english_title || '',
+        _apiId:       v.id,
+        _archived:    !!v.archived
+      };
+    }
+    async function loadVideosFromApi(role) {
+      try {
+        const data = role === 'patient'
+          ? await window.MarfanAPI.videos.mine()
+          : await window.MarfanAPI.videos.list({ type: 'training' });
+        const list = (data && data.videos) || [];
+        if (!list.length) return 0;
+        if (typeof trainingVideos !== 'undefined') {
+          trainingVideos.splice(0, trainingVideos.length);
+          list.forEach(v => trainingVideos.push(adaptApiVideoToTrainingFormat(v)));
+        }
+        try {
+          if (typeof initTrainingFilters === 'function') initTrainingFilters();
+          if (typeof renderTrainingVideos === 'function') renderTrainingVideos();
+          if (typeof selectTrainingVideo === 'function' && trainingVideos[0]) selectTrainingVideo(trainingVideos[0].id);
+        } catch (e) { console.warn('Re-render vidéos après chargement API :', e); }
+        return list.length;
+      } catch (e) {
+        console.warn('[MarfanAPI] Chargement vidéos échoué :', e.message);
+        return 0;
+      }
+    }
+
+    // === Bouton flottant "+ Vidéo YouTube" pour principal_admin ===
+    function injectVideoAdminControls(role) {
+      if (role !== 'principal_admin') return;
+      if (document.getElementById('apiVideoAdminBtn')) return; // déjà en place
+      const btn = document.createElement('button');
+      btn.id = 'apiVideoAdminBtn';
+      btn.innerHTML = '+ Ajouter vidéo YouTube';
+      btn.style.cssText = 'position:fixed; bottom:18px; right:18px; z-index:9990; padding:10px 16px; border:none; border-radius:999px; background:linear-gradient(135deg,#4f8cff,#7c5cff); color:white; font-weight:700; font-size:12.5px; cursor:pointer; box-shadow:0 10px 24px rgba(0,0,0,0.18);';
+      btn.addEventListener('click', openAddVideoModal);
+      document.body.appendChild(btn);
+    }
+
+    // === Modale d'ajout simple (URL YouTube + titre + catégorie) ===
+    function openAddVideoModal() {
+      const html = `
+        <div id="apiAddVideoBackdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.7); z-index:10001; display:flex; align-items:center; justify-content:center;">
+          <div style="background:white; border-radius:14px; padding:24px 28px; width:440px; max-width:92vw; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+            <div style="font-size:16px; font-weight:800; color:#0b1530; margin-bottom:6px;">Ajouter une vidéo YouTube</div>
+            <p style="font-size:12px; color:#6b7390; margin-bottom:14px;">Collez l'URL YouTube ou l'ID de la vidéo. Visible par tous les utilisateurs par défaut.</p>
+            <label style="font-size:11px; font-weight:600; color:#4a5070;">URL ou ID YouTube</label>
+            <input id="addvid_url" placeholder="https://youtu.be/XXXXXXXXXXX" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
+            <label style="font-size:11px; font-weight:600; color:#4a5070;">Titre</label>
+            <input id="addvid_title" placeholder="Ex : Cardio 10/5 (3 min)" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
+            <label style="font-size:11px; font-weight:600; color:#4a5070;">Catégorie</label>
+            <input id="addvid_cat" placeholder="Renforcement musculaire, Ceinture abdominale..." style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
+            <div style="display:flex; gap:8px;">
+              <div style="flex:1;">
+                <label style="font-size:11px; font-weight:600; color:#4a5070;">Intervalle</label>
+                <input id="addvid_interval" placeholder="10/5" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:11px; font-weight:600; color:#4a5070;">Durée (min)</label>
+                <input id="addvid_dur" type="number" placeholder="4" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
+              </div>
+            </div>
+            <div id="addvid_err" style="display:none; padding:7px 9px; background:#fee2e2; color:#991b1b; border-radius:6px; font-size:11px; margin-bottom:8px;"></div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
+              <button id="addvid_cancel" style="padding:8px 14px; border:1px solid #d8dde7; background:white; color:#5a6280; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">Annuler</button>
+              <button id="addvid_ok" style="padding:8px 14px; border:none; background:linear-gradient(135deg,#4f8cff,#7c5cff); color:white; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer;">Ajouter</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+      document.getElementById('addvid_cancel').addEventListener('click', closeAddVideoModal);
+      document.getElementById('addvid_ok').addEventListener('click', async () => {
+        const url = document.getElementById('addvid_url').value.trim();
+        const title = document.getElementById('addvid_title').value.trim();
+        const category = document.getElementById('addvid_cat').value.trim() || null;
+        const interval = document.getElementById('addvid_interval').value.trim() || null;
+        const duration = document.getElementById('addvid_dur').value || null;
+        const errEl = document.getElementById('addvid_err');
+        errEl.style.display = 'none';
+        if (!url || !title) { errEl.textContent = 'URL et titre requis.'; errEl.style.display = 'block'; return; }
+        // Extraction ID YouTube
+        let yid = url;
+        const m = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+        if (m) yid = m[1]; else if (!/^[A-Za-z0-9_-]{11}$/.test(url)) {
+          errEl.textContent = 'URL/ID YouTube invalide (11 caractères attendus).'; errEl.style.display = 'block'; return;
+        }
+        try {
+          await window.MarfanAPI.videos.create({
+            id: yid, youtube_id: yid, title, category, source: 'youtube', video_type: 'training',
+            interval_label: interval, duration_min: duration ? parseInt(duration, 10) : null
+          });
+          closeAddVideoModal();
+          // Recharge la liste
+          const user = window.MarfanAPI.currentUser();
+          await loadVideosFromApi((user && user.role) || 'principal_admin');
+          alert('Vidéo ajoutée ✓');
+        } catch (e) {
+          errEl.textContent = e.message || 'Échec de l\'ajout.'; errEl.style.display = 'block';
+        }
+      });
+    }
+    function closeAddVideoModal() {
+      const b = document.getElementById('apiAddVideoBackdrop');
+      if (b) b.remove();
+    }
+
     async function onLoginSuccess(user) {
       hideOverlay();
       // Vérif obligatoire : doit changer son mot de passe ?
@@ -9585,7 +9706,9 @@
       showUserBadge(user);
       const role = syncApiUserToCurrentUser(user);
       const n = await loadPatientsFromApi();
-      console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s) BDD ajouté(s).');
+      const v = await loadVideosFromApi(role);
+      injectVideoAdminControls(role);
+      console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s), ' + v + ' vidéo(s) BDD.');
       redirectByRole(role);
     }
 

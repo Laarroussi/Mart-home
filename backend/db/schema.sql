@@ -141,6 +141,52 @@ CREATE INDEX IF NOT EXISTS idx_edu_capsule   ON education_records(capsule_id);
 CREATE INDEX IF NOT EXISTS idx_edu_validated ON education_records(validated);
 
 -- ============================================================
+-- VIDEOS — Vidéos d'entraînement, info, etc. (gérées par principal_admin)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS videos (
+    id             VARCHAR(50)  PRIMARY KEY,
+    title          VARCHAR(300) NOT NULL,
+    description    TEXT,
+    category       VARCHAR(100),
+    video_type     VARCHAR(30)  NOT NULL DEFAULT 'training'
+                   CHECK (video_type IN ('training','education','info')),
+    source         VARCHAR(20)  NOT NULL DEFAULT 'youtube'
+                   CHECK (source IN ('youtube','upload','external')),
+    youtube_id     VARCHAR(50),
+    url            TEXT,
+    interval_label VARCHAR(20),
+    duration_min   INTEGER,
+    english_title  VARCHAR(300),
+    thumbnail_url  TEXT,
+    visibility     VARCHAR(20)  NOT NULL DEFAULT 'all'
+                   CHECK (visibility IN ('all','patient','staff','assigned')),
+    order_index    INTEGER      NOT NULL DEFAULT 0,
+    archived       BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_by     VARCHAR(50)  REFERENCES users(id) ON DELETE SET NULL,
+    created_at     TIMESTAMPTZ  DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ  DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_videos_category   ON videos(category);
+CREATE INDEX IF NOT EXISTS idx_videos_type       ON videos(video_type);
+CREATE INDEX IF NOT EXISTS idx_videos_archived   ON videos(archived);
+CREATE INDEX IF NOT EXISTS idx_videos_visibility ON videos(visibility);
+
+-- ============================================================
+-- PATIENT_VIDEOS — Attribution d'une vidéo à un patient
+-- ============================================================
+CREATE TABLE IF NOT EXISTS patient_videos (
+    id          SERIAL PRIMARY KEY,
+    patient_id  VARCHAR(50) NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    video_id    VARCHAR(50) NOT NULL REFERENCES videos(id)   ON DELETE CASCADE,
+    assigned_by VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
+    assigned_at TIMESTAMPTZ DEFAULT NOW(),
+    note        TEXT,
+    UNIQUE(patient_id, video_id)
+);
+CREATE INDEX IF NOT EXISTS idx_patient_videos_patient ON patient_videos(patient_id);
+CREATE INDEX IF NOT EXISTS idx_patient_videos_video   ON patient_videos(video_id);
+
+-- ============================================================
 -- NOTIFICATIONS — Envois SF-36, GPAQ, capsules
 -- ============================================================
 CREATE TABLE IF NOT EXISTS notifications (
