@@ -10,6 +10,8 @@
   <!-- Libs pour analyses VO₂ (CSV/XLSX) et onde de pouls -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
+  <script src="api-client.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -9298,6 +9300,234 @@
   }
 
   // Bouton "Accueil" désormais directement intégré au top-shell investigateur (HTML statique)
+  </script>
+
+  <!-- ============================================================ -->
+  <!-- ===== INTÉGRATION API : login + persistance PostgreSQL ===== -->
+  <!-- ============================================================ -->
+  <!-- Overlay de connexion (s'affiche au boot si API joignable et pas de token) -->
+  <div id="apiLoginOverlay" style="display:none; position:fixed; inset:0; background:rgba(11,21,48,0.75); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:18px; padding:32px 36px; width:380px; max-width:92vw; box-shadow:0 30px 80px rgba(0,0,0,0.25);">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+        <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,#4f8cff,#7c5cff); display:flex; align-items:center; justify-content:center; color:white; font-weight:800;">M</div>
+        <div>
+          <div style="font-size:18px; font-weight:800; color:#0b1530;">Marfan APA</div>
+          <div style="font-size:11.5px; color:#6b7390;">Connexion à la plateforme</div>
+        </div>
+      </div>
+      <p style="font-size:12.5px; color:#5a6280; margin:10px 0 16px;">Authentifiez-vous pour accéder aux données patients (PostgreSQL).</p>
+      <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Email</label>
+      <input id="apiLoginEmail" type="email" autocomplete="username" placeholder="admin@marfan-apa.fr"
+             style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:12px;">
+      <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Mot de passe</label>
+      <input id="apiLoginPwd" type="password" autocomplete="current-password" placeholder="••••••••"
+             style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:14px;">
+      <div id="apiLoginErr" style="display:none; padding:8px 10px; background:#fee2e2; color:#991b1b; border-radius:7px; font-size:11.5px; margin-bottom:10px;"></div>
+      <button id="apiLoginBtn" style="width:100%; padding:11px; border:none; border-radius:9px; background:linear-gradient(135deg,#4f8cff,#7c5cff); color:white; font-weight:700; font-size:13.5px; cursor:pointer;">Se connecter</button>
+      <button id="apiLoginDemo" style="width:100%; padding:9px; margin-top:8px; border:1px solid #d8dde7; border-radius:9px; background:white; color:#5a6280; font-weight:600; font-size:12px; cursor:pointer;">Continuer en mode démo (sans API)</button>
+      <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #e3e7ef; font-size:10.5px; color:#8b91a8; line-height:1.55;">
+        Comptes de test :<br>
+        admin@marfan-apa.fr / ChangezMoiTresTresFortement123!<br>
+        j.martin@bichat.fr / Principal!2024<br>
+        mrf-001@example.fr / Patient!2024
+      </div>
+    </div>
+  </div>
+
+  <!-- Bandeau "mode démo" si API down -->
+  <div id="apiDemoBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9990; background:#fef3c7; color:#92400e; padding:7px 16px; font-size:12px; font-weight:600; text-align:center; border-bottom:1px solid #fde68a;">
+    ⚠ Mode démo (données en mémoire uniquement) — l'API PostgreSQL n'est pas joignable.
+  </div>
+
+  <!-- Bouton déconnexion (visible après login API) -->
+  <div id="apiUserBadge" style="display:none; position:fixed; top:10px; right:14px; z-index:9991; background:rgba(255,255,255,0.96); border:1px solid #e3e7ef; border-radius:999px; padding:6px 12px 6px 14px; font-size:11.5px; color:#0b1530; box-shadow:0 6px 18px rgba(0,0,0,0.08); display:none; gap:10px; align-items:center;">
+    <span id="apiUserName" style="font-weight:700;"></span>
+    <button id="apiLogoutBtn" style="border:none; background:#f3f6fb; color:#5a6280; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:600; cursor:pointer;">Déconnexion</button>
+  </div>
+
+  <script>
+  // ============================================================
+  // Boot API : tente health, gère login, charge patients réels
+  // ============================================================
+  (function () {
+    const overlay = document.getElementById('apiLoginOverlay');
+    const banner  = document.getElementById('apiDemoBanner');
+    const badge   = document.getElementById('apiUserBadge');
+    const userNameEl = document.getElementById('apiUserName');
+
+    function showOverlay() { overlay.style.display = 'flex'; }
+    function hideOverlay() { overlay.style.display = 'none'; }
+    function showDemoBanner() { banner.style.display = 'block'; }
+    function showUserBadge(u) {
+      userNameEl.textContent = (u && u.name) || (u && u.email) || 'Connecté';
+      badge.style.display = 'flex';
+    }
+    function hideUserBadge() { badge.style.display = 'none'; }
+
+    // Mapping minimal d'un patient API → format in-memory attendu par l'UI
+    // (le frontend a beaucoup de champs ; on remplit le strict nécessaire,
+    // le reste prend des valeurs par défaut sans casser le rendu)
+    function adaptApiPatient(p) {
+      const statusClassMap = { 'Stable':'ok', 'Surveillance':'watch', 'Alerte':'alert' };
+      return {
+        id: p.id || p.code,
+        sex: p.sex || '?',
+        age: p.age || 0,
+        gene: p.gene || '—',
+        aorta: p.aorta || 0,
+        progress: p.progress || 75,
+        connected: false,
+        status: p.status || 'Stable',
+        statusClass: statusClassMap[p.status] || 'ok',
+        riskFactor: p.risk_factor || p.riskFactor || '—',
+        riskComment: p.risk_comment || p.riskComment || '',
+        alterations: p.alterations || ['—'],
+        incidents: p.incidents || ['—'],
+        civil: p.civil || {},
+        medical: p.medical || {},
+        study: p.study || {},
+        evaluations: (p.evaluations && p.evaluations.length) ? p.evaluations : [{
+          id: 1, label: 'Baseline', date: new Date().toISOString().slice(0,10),
+          vo2: 0, force: 0, aorta: p.aorta || 0, sf36: 0, gpaq: 0,
+          validated: false, note: 'Patient importé depuis l\'API.'
+        }],
+        notifications: p.notifications || [],
+        _fromApi: true
+      };
+    }
+
+    async function loadPatientsFromApi() {
+      try {
+        const apiPatients = await window.MarfanAPI.patients.list();
+        if (!Array.isArray(apiPatients) || apiPatients.length === 0) return 0;
+        const existingIds = new Set(window.patients ? window.patients.map(p => p.id) : []);
+        let added = 0;
+        apiPatients.forEach(p => {
+          const adapted = adaptApiPatient(p);
+          if (!existingIds.has(adapted.id)) {
+            if (window.patients) window.patients.push(adapted);
+            added++;
+          }
+        });
+        // Re-render
+        try {
+          if (typeof initKpis === 'function') initKpis();
+          if (typeof renderPatientList === 'function') renderPatientList('');
+          if (typeof renderCohortOverview === 'function') renderCohortOverview();
+          if (typeof renderPatientTable === 'function') renderPatientTable('');
+          if (typeof renderDbTable === 'function') renderDbTable('');
+        } catch (e) { console.warn('Re-render après chargement API :', e); }
+        return added;
+      } catch (e) {
+        console.warn('Chargement patients API échoué :', e.message);
+        return 0;
+      }
+    }
+
+    async function onLoginSuccess(user) {
+      hideOverlay();
+      showUserBadge(user);
+      const n = await loadPatientsFromApi();
+      console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' — ' + n + ' patient(s) BDD ajouté(s) à la cohorte.');
+    }
+
+    document.getElementById('apiLoginBtn').addEventListener('click', async function () {
+      const email = document.getElementById('apiLoginEmail').value.trim();
+      const pwd   = document.getElementById('apiLoginPwd').value;
+      const errEl = document.getElementById('apiLoginErr');
+      errEl.style.display = 'none';
+      if (!email || !pwd) { errEl.textContent = 'Email et mot de passe requis.'; errEl.style.display = 'block'; return; }
+      this.disabled = true; this.textContent = 'Connexion…';
+      try {
+        const user = await window.MarfanAPI.login(email, pwd);
+        await onLoginSuccess(user);
+      } catch (e) {
+        errEl.textContent = e.message || 'Échec de la connexion.'; errEl.style.display = 'block';
+      } finally {
+        this.disabled = false; this.textContent = 'Se connecter';
+      }
+    });
+
+    document.getElementById('apiLoginDemo').addEventListener('click', function () {
+      hideOverlay(); showDemoBanner();
+    });
+
+    document.getElementById('apiLogoutBtn').addEventListener('click', async function () {
+      await window.MarfanAPI.logout();
+      hideUserBadge();
+      window.location.reload();
+    });
+
+    // Hook sur createPatientFromForm pour POST l'API après le push local
+    function installCreatePatientHook() {
+      if (typeof window.createPatientFromForm !== 'function') return;
+      if (window.createPatientFromForm.__apiHooked) return;
+      const original = window.createPatientFromForm;
+      window.createPatientFromForm = function () {
+        const before = (window.patients || []).length;
+        const result = original.apply(this, arguments);
+        const after = (window.patients || []).length;
+        // Si un patient a été ajouté localement et que l'API est dispo, on persiste
+        if (after > before && window.MarfanAPI && window.MarfanAPI.isAuthenticated()) {
+          const newPatient = window.patients[window.patients.length - 1];
+          window.MarfanAPI.patients.create(newPatient).then(saved => {
+            console.log('[MarfanAPI] Patient ' + newPatient.id + ' persisté en BDD ✓');
+            newPatient._fromApi = true;
+          }).catch(err => {
+            console.warn('[MarfanAPI] Persistance échouée pour ' + newPatient.id + ' :', err.message);
+          });
+        }
+        return result;
+      };
+      window.createPatientFromForm.__apiHooked = true;
+    }
+
+    // Expose les variables UI globalement (sinon notre boot ne les voit pas)
+    // Le script principal déclare patients en const dans une IIFE implicite ?
+    // Non : ici tout est au scope global du <script>. On peut donc lire 'patients'.
+    // Mais 'const patients' n'est pas accessible depuis un autre <script>.
+    // → On utilisera window.patients ; si absent, on demande au script principal
+    //   d'exposer la variable. Pour l'instant on essaie window.patients direct.
+
+    async function boot() {
+      // Attendre que le DOM et le script principal soient prêts
+      // (le script principal s'exécute en mode 'sync', donc à ce stade c'est OK)
+
+      // Exposer 'patients' si possible (le script principal le déclare en 'const' au scope global,
+      // donc il devrait déjà être visible comme variable globale même sans window.patients)
+      if (typeof patients !== 'undefined' && !window.patients) {
+        try { window.patients = patients; } catch (_) {}
+      }
+
+      installCreatePatientHook();
+
+      // Probe API
+      const up = await window.MarfanAPI.tryConnect();
+      if (!up) {
+        console.log('[MarfanAPI] Mode démo activé (API down)');
+        showDemoBanner();
+        return;
+      }
+
+      // API joignable : vérifier le token existant
+      if (window.MarfanAPI.isAuthenticated()) {
+        const user = await window.MarfanAPI.me();
+        if (user) {
+          await onLoginSuccess(user);
+          return;
+        }
+      }
+      // Sinon : montrer le login
+      showOverlay();
+    }
+
+    // Lance le boot après l'init principal (qui tourne sync au load)
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(boot, 50);
+    } else {
+      window.addEventListener('DOMContentLoaded', () => setTimeout(boot, 50));
+    }
+  })();
   </script>
 </body>
 </html>
