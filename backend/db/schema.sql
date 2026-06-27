@@ -2,10 +2,10 @@
 -- SCHEMA POSTGRESQL — Plateforme Marfan APA
 -- Encodage UTF-8 · Timezone Europe/Paris
 -- ============================================================
-
--- Extensions utiles
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- Note : aucune extension PostgreSQL requise. Tous les IDs sont
+-- générés en JavaScript côté application (compatible mutualisé
+-- type o2switch où CREATE EXTENSION exige les droits superuser).
+-- ============================================================
 
 -- ============================================================
 -- USERS — Comptes (admin / principal / investigator / patient)
