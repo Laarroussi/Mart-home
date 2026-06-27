@@ -1,0 +1,44 @@
+# ============================================================
+# .gitignore — Marfan APA
+# ============================================================
+
+# Secrets et variables d'environnement
+.env
+.env.local
+.env.production
+backend/.env
+
+# Dépendances Node.js
+node_modules/
+backend/node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Uploads patients (CSV/XLSX VO₂, pOpmètre — JAMAIS dans Git)
+backend/uploads/
+uploads/
+
+# Logs
+*.log
+logs/
+
+# OS / éditeurs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Builds / temporaires
+backend/tmp/
+tmp/
+dist/
+build/
+
+# Données patient (sécurité RGPD)
+*.csv
+*.xlsx
+*.xls
+!backend/db/seed_demo.csv          # exception : données démo neutres OK
