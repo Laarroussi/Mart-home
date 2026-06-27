@@ -116,12 +116,12 @@ async function seed() {
     }
     console.log(`   ✓ ${CAPSULES.length} capsules`);
 
-    // 2. Admin
+    // 2. Admin (created_by = NULL car c'est le premier user — contrainte FK auto-référente)
     console.log('\n[2/4] Création de l\'administrateur initial...');
     const adminHash = await bcrypt.hash(ADMIN_PASSWORD, ROUNDS);
     await query(
       `INSERT INTO users (id, role, name, email, password_hash, service, created_by)
-       VALUES ('u-admin-001', 'admin', 'Administrateur Marfan APA', $1, $2, 'Pilotage plateforme', 'system')
+       VALUES ('u-admin-001', 'admin', 'Administrateur Marfan APA', $1, $2, 'Pilotage plateforme', NULL)
        ON CONFLICT (id) DO NOTHING`,
       [ADMIN_EMAIL.toLowerCase(), adminHash]
     );

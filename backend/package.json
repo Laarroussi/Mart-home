@@ -9,9 +9,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "db:init": "psql $DATABASE_URL -f db/schema.sql",
+    "db:init": "node db/init.js",
     "db:seed": "node db/seed.js",
-    "db:reset": "psql $DATABASE_URL -f db/reset.sql && npm run db:init && npm run db:seed"
+    "db:reset": "node db/reset-script.js && node db/init.js && node db/seed.js"
   },
   "dependencies": {
     "express": "^4.19.2",
