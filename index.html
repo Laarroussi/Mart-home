@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase6f-stafflivret"></script>
+  <script src="api-client.js?v=phase6g-bdd"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3642,6 +3642,25 @@
             <input type="text" id="dbSearch" placeholder="Rechercher : patient, gène, statut, évaluation, date..." />
           </div>
           <div class="table-wrap" id="dbTableWrap"></div>
+        </article>
+
+        <!-- ====================================================== -->
+        <!-- === Tableau Séances d'entraînement (rempli au boot) === -->
+        <!-- ====================================================== -->
+        <article class="card" style="padding:16px; margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
+            <h3 style="margin:0;"><span class="icon-bg violet">🏃</span>Séances d'entraînement</h3>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input id="apiDbTrainingSearch" type="search" placeholder="Filtrer par patient (ex: MRF-001)…"
+                style="padding:7px 11px; border:1px solid var(--line); border-radius:8px; font-size:12px; width:220px;">
+              <span id="apiDbTrainingCount" style="font-size:11.5px; color:var(--muted);">—</span>
+              <button id="apiDbTrainingRefresh" style="padding:6px 12px; border:none; background:#0b1530; color:white; border-radius:8px; font-weight:600; font-size:11.5px; cursor:pointer;">🔄</button>
+            </div>
+          </div>
+          <p style="font-size:12px; color:var(--muted); margin-bottom:10px;">
+            Toutes les séances réalisées par les patients, avec leurs indicateurs principaux : durée, RPE Borg, fréquence cardiaque (min/moy/max), pression artérielle estimée (min/moy/max) et dépense énergétique totale.
+          </p>
+          <div class="table-wrap" id="apiDbTrainingWrap"></div>
         </article>
       </section>
 
@@ -9797,6 +9816,98 @@
     };
 
     // ====================================================================
+    // === STAFF : tableau des séances training dans l'onglet BDD
+    // ====================================================================
+    let _allTrainingSessions = [];
+    async function loadTrainingTableInBDD(role) {
+      if (role !== 'principal_admin' && role !== 'investigator') return 0;
+      const wrap = document.getElementById('apiDbTrainingWrap');
+      const countEl = document.getElementById('apiDbTrainingCount');
+      const searchEl = document.getElementById('apiDbTrainingSearch');
+      const refreshBtn = document.getElementById('apiDbTrainingRefresh');
+      if (!wrap) return 0;
+
+      async function refresh(filter) {
+        wrap.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted);">Chargement…</div>';
+        try {
+          const r = await window.MarfanAPI.training.list({});
+          _allTrainingSessions = (r && r.sessions) || [];
+          renderTable(filter || '');
+        } catch (e) {
+          wrap.innerHTML = '<div style="padding:20px; color:#991b1b;">Erreur : ' + e.message + '</div>';
+        }
+      }
+
+      function renderTable(filter) {
+        const f = (filter || '').toLowerCase().trim();
+        const list = f
+          ? _allTrainingSessions.filter(s =>
+              (s.patient_id || '').toLowerCase().includes(f) ||
+              (s.status || '').toLowerCase().includes(f))
+          : _allTrainingSessions;
+        if (countEl) countEl.textContent = list.length + ' séance(s)';
+
+        if (!list.length) {
+          wrap.innerHTML = '<div style="padding:30px; text-align:center; color:var(--muted);">Aucune séance d\'entraînement enregistrée.</div>';
+          return;
+        }
+
+        const fmt = (v, dec) => v == null ? '—' : (typeof v === 'number' ? v.toFixed(dec || 0) : v);
+        const fmtDate = iso => iso ? new Date(iso).toLocaleString('fr-FR', { day:'2-digit', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+        const fmtDur = s => { if (s == null) return '—'; const mm = Math.floor(s/60); const ss = s%60; return mm + ':' + ss.toString().padStart(2,'0'); };
+
+        wrap.innerHTML = `
+          <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
+            <thead style="background:#f3f6fb; color:#0b1530;">
+              <tr>
+                <th style="text-align:left;  padding:8px 10px;">Patient</th>
+                <th style="text-align:left;  padding:8px 10px;">Date</th>
+                <th style="text-align:center;padding:8px 6px;">Statut</th>
+                <th style="text-align:right; padding:8px 6px;">Durée</th>
+                <th style="text-align:right; padding:8px 6px;">Borg</th>
+                <th style="text-align:right; padding:8px 6px; background:#fee2e220;" colspan="3">FC min / moy / max (bpm)</th>
+                <th style="text-align:right; padding:8px 6px; background:#fff1f220;" colspan="3">PA est. min / moy / max (mmHg)</th>
+                <th style="text-align:right; padding:8px 6px; background:#dcfce720;">Énergie (kcal)</th>
+                <th style="text-align:center;padding:8px 6px;">Fiche</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map((s, i) => `
+                <tr style="background:${i % 2 ? '#fafbfd' : 'white'}; border-top:1px solid #eef0f5;">
+                  <td style="padding:6px 10px; font-weight:700;">${s.patient_id}</td>
+                  <td style="padding:6px 10px; color:#5a6280;">${fmtDate(s.started_at)}</td>
+                  <td style="padding:6px 6px; text-align:center;">${trainingStatusBadge(s.status)}</td>
+                  <td style="padding:6px 6px; text-align:right; font-weight:600;">${fmtDur(s.duration_s)}</td>
+                  <td style="padding:6px 6px; text-align:right; font-weight:700; color:#92400e;">${s.borg_cr10 != null ? s.borg_cr10 + '/10' : '—'}</td>
+                  <td style="padding:6px 6px; text-align:right; background:#fee2e208;">${s.hr_min ?? '—'}</td>
+                  <td style="padding:6px 6px; text-align:right; background:#fee2e208;">${s.hr_avg != null ? Math.round(s.hr_avg) : '—'}</td>
+                  <td style="padding:6px 6px; text-align:right; background:#fee2e208; font-weight:700;">${s.hr_max ?? '—'}</td>
+                  <td style="padding:6px 6px; text-align:right; background:#fff1f208;">${s.pa_estimated_min ?? '—'}</td>
+                  <td style="padding:6px 6px; text-align:right; background:#fff1f208;">${s.pa_estimated_avg != null ? Math.round(s.pa_estimated_avg) : '—'}</td>
+                  <td style="padding:6px 6px; text-align:right; background:#fff1f208; font-weight:700;">${s.pa_estimated_max ?? '—'}</td>
+                  <td style="padding:6px 6px; text-align:right; background:#dcfce708; font-weight:700; color:#065f46;">${s.energy_total_kcal != null ? Number(s.energy_total_kcal).toFixed(1) : '—'}</td>
+                  <td style="padding:6px 6px; text-align:center;">
+                    <button onclick="window.__openTrainingFiche(${s.id})" style="padding:4px 8px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-size:10.5px; cursor:pointer;">📋</button>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+          <div style="margin-top:8px; font-size:10.5px; color:#8b91a8; font-style:italic;">
+            PA = pression artérielle estimée à partir de la FC (formule simplifiée, pas une mesure médicale directe).
+          </div>`;
+      }
+
+      if (searchEl) {
+        searchEl.oninput = (e) => renderTable(e.target.value);
+      }
+      if (refreshBtn) {
+        refreshBtn.onclick = () => refresh(searchEl ? searchEl.value : '');
+      }
+      await refresh('');
+      return _allTrainingSessions.length;
+    }
+
+    // ====================================================================
     // === STAFF : modale "Livrets d'entraînement" — voir séances de tous patients
     // ====================================================================
     function injectTrainingHistoryStaffControls(role) {
@@ -11019,7 +11130,8 @@
       injectBackupAdminControls(role);
       injectTrainingHistoryStaffControls(role);
       const h = await loadTrainingHistory(role);
-      console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s), ' + v + ' vidéo(s), ' + s + ' séance(s) visio, ' + h + ' séance(s) training.');
+      const t = await loadTrainingTableInBDD(role);
+      console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s), ' + v + ' vidéo(s), ' + s + ' visio(s), ' + h + ' training(s) perso, ' + t + ' training(s) BDD.');
       redirectByRole(role);
     }
 

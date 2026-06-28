@@ -161,7 +161,7 @@ router.get('/sessions/mine', requireAuth, async (req, res, next) => {
       `SELECT id, started_at, ended_at, duration_s, status, borg_cr10,
               hr_min, hr_avg, hr_max,
               pa_estimated_min, pa_estimated_avg, pa_estimated_max,
-              energy_total_kcal, visio_session_id
+              energy_total_kcal, visio_session_id, notes
          FROM training_sessions
         WHERE patient_id = $1
         ORDER BY started_at DESC
