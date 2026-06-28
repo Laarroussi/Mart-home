@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase6e-livret"></script>
+  <script src="api-client.js?v=phase6f-stafflivret"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -9796,6 +9796,93 @@
       }
     };
 
+    // ====================================================================
+    // === STAFF : modale "Livrets d'entraînement" — voir séances de tous patients
+    // ====================================================================
+    function injectTrainingHistoryStaffControls(role) {
+      if (role !== 'principal_admin' && role !== 'investigator') return;
+      if (document.getElementById('apiTrainingStaffBtn')) return;
+      const btn = document.createElement('button');
+      btn.id = 'apiTrainingStaffBtn';
+      btn.innerHTML = '📔 Livrets training';
+      btn.title = 'Voir l\'historique d\'entraînement des patients';
+      btn.style.cssText = 'position:fixed; bottom:18px; right:560px; z-index:9990; padding:10px 16px; border:none; border-radius:999px; background:linear-gradient(135deg,#0ea5e9,#06b6d4); color:white; font-weight:700; font-size:12.5px; cursor:pointer; box-shadow:0 10px 24px rgba(0,0,0,0.18);';
+      btn.addEventListener('click', openStaffTrainingModal);
+      document.body.appendChild(btn);
+    }
+
+    async function openStaffTrainingModal() {
+      const patientOpts = (window.patients || []).map(p =>
+        `<option value="${p.id}">${p.id}${p.civil && p.civil.initials ? ' — ' + p.civil.initials : ''}</option>`
+      ).join('');
+      const html = `
+        <div id="apiStaffTrainBackdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.75); z-index:10001; display:flex; align-items:center; justify-content:center; padding:20px;">
+          <div style="background:white; border-radius:14px; padding:24px 28px; width:780px; max-width:94vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+              <div>
+                <div style="font-size:17px; font-weight:800; color:#0b1530;">📔 Livrets d'entraînement</div>
+                <div style="font-size:11.5px; color:#6b7390;">Historique des séances réalisées par les patients</div>
+              </div>
+              <button id="apiStaffTrainClose" style="border:none; background:#f3f6fb; color:#5a6280; padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer;">Fermer</button>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
+              <label style="font-size:12px; font-weight:600; color:#4a5070;">Patient :</label>
+              <select id="apiStaffTrainPatient" style="flex:1; padding:8px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:13px;">
+                <option value="">— Tous les patients —</option>
+                ${patientOpts}
+              </select>
+              <button id="apiStaffTrainRefresh" style="padding:8px 14px; border:none; background:#0b1530; color:white; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">🔄 Charger</button>
+            </div>
+            <div id="apiStaffTrainList" style="min-height:200px;">
+              <div style="color:#6b7390; padding:20px; text-align:center;">Sélectionnez un patient (ou laissez "Tous") puis cliquez "Charger".</div>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+      document.getElementById('apiStaffTrainClose').onclick = () => {
+        const b = document.getElementById('apiStaffTrainBackdrop'); if (b) b.remove();
+      };
+      const refresh = async () => {
+        const pid = document.getElementById('apiStaffTrainPatient').value;
+        const listEl = document.getElementById('apiStaffTrainList');
+        listEl.innerHTML = '<div style="color:#6b7390; padding:20px; text-align:center;">Chargement…</div>';
+        try {
+          const filters = pid ? { patient_id: pid } : {};
+          const r = await window.MarfanAPI.training.list(filters);
+          const sessions = (r && r.sessions) || [];
+          if (!sessions.length) {
+            listEl.innerHTML = '<div style="color:#6b7390; padding:30px; text-align:center;">Aucune séance trouvée pour ce filtre.</div>';
+            return;
+          }
+          listEl.innerHTML = `
+            <div style="margin-bottom:8px; font-size:11.5px; color:#6b7390;"><strong>${sessions.length}</strong> séance(s) trouvée(s)</div>
+            ${sessions.map(s => `
+              <div style="padding:11px 13px; border:1px solid #e3e7ef; border-radius:9px; margin-bottom:7px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:220px;">
+                  <div style="display:flex; gap:7px; align-items:center; margin-bottom:3px; flex-wrap:wrap;">
+                    <strong style="color:#0b1530; font-size:12.5px;">${s.patient_id}</strong>
+                    ${trainingStatusBadge(s.status)}
+                    ${s.borg_cr10 != null ? `<span style="background:#fef3c7; color:#92400e; padding:2px 7px; border-radius:99px; font-size:10px; font-weight:700;">Borg ${s.borg_cr10}/10</span>` : ''}
+                  </div>
+                  <div style="font-size:11px; color:#6b7390;">
+                    ${formatSessionDate(s.started_at)} · ⏱ ${formatDurationSec(s.duration_s)}
+                    ${s.hr_avg ? ' · FC ' + Math.round(s.hr_avg) + '/' + (s.hr_max || '—') + ' bpm' : ''}
+                    ${s.energy_total_kcal ? ' · 🔥 ' + Number(s.energy_total_kcal).toFixed(1) + ' kcal' : ''}
+                  </div>
+                </div>
+                <button onclick="window.__openTrainingFiche(${s.id})" style="padding:7px 12px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:8px; font-weight:600; font-size:11.5px; cursor:pointer;">📋 Voir la fiche</button>
+              </div>
+            `).join('')}`;
+        } catch (e) {
+          listEl.innerHTML = '<div style="color:#991b1b; padding:20px;">Erreur : ' + e.message + '</div>';
+        }
+      };
+      document.getElementById('apiStaffTrainRefresh').onclick = refresh;
+      document.getElementById('apiStaffTrainPatient').onchange = refresh;
+      // Charge automatiquement "tous patients" à l'ouverture
+      refresh();
+    }
+
     // === Bouton flottant "+ Vidéo YouTube" pour principal_admin ===
     function injectVideoAdminControls(role) {
       if (role !== 'principal_admin') return;
@@ -10930,6 +11017,7 @@
       injectVideoAdminControls(role);
       injectVisioStaffControls(role);
       injectBackupAdminControls(role);
+      injectTrainingHistoryStaffControls(role);
       const h = await loadTrainingHistory(role);
       console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s), ' + v + ' vidéo(s), ' + s + ' séance(s) visio, ' + h + ' séance(s) training.');
       redirectByRole(role);
