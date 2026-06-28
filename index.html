@@ -11,7 +11,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
-  <script src="api-client.js"></script>
+  <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
+  <script src="api-client.js?v=phase6b-ble"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -9828,17 +9829,19 @@
     function resetTrainingState() {
       _train = {
         beltConnected: false,
-        hrInterval: null,
+        bleDevice: null,         // l'objet BluetoothDevice
+        bleCharacteristic: null, // characteristic HR Measurement (0x2A37)
         sessionId: null,
         currentVisioId: null,
         tickInterval: null,
         sampleInterval: null,
         startedAt: null,
         elapsed: 0,
-        currentHr: 0,
-        currentPa: 0,
+        currentHr: null,         // dernière FC reçue de la ceinture (null = pas encore de données)
+        lastHrAt: null,          // timestamp ms de la dernière notification HR
+        currentPa: null,
         energyCumul: 0,
-        buffer: []  // samples non encore poussés
+        buffer: []
       };
     }
     resetTrainingState();
@@ -9851,20 +9854,102 @@
       el.style.background = bg;
     }
 
-    function fakeHRGenerator() {
-      // Simulation simple : 80 + variation autour. À remplacer par Web Bluetooth pour une vraie ceinture.
-      const base = 90 + Math.round(Math.sin(_train.elapsed/10) * 15);
-      return Math.max(60, Math.min(170, base + Math.round((Math.random() - 0.5) * 10)));
-    }
     // PA estimée à partir de la FC (algo simplifié — à valider cliniquement)
+    // PA systolique ≈ 80 + (HR - 60) × 0.55
     function estimatePA(hr) {
-      // Formule simplifiée : PA systolique ≈ 80 + (HR - 60) * 0.5
+      if (hr == null) return null;
       return Math.round(80 + Math.max(0, hr - 60) * 0.55);
     }
-    // Énergie cumulée (kcal/min ≈ HR/8.5 par ex.)
+    // Énergie : approximation kcal/min ≈ HR / 8.5 (formule grossière, à raffiner par poids/âge)
     function energyIncrement(hr, dtSec) {
+      if (hr == null) return 0;
       const kcalPerMin = Math.max(0, hr / 8.5);
       return (kcalPerMin / 60) * dtSec;
+    }
+
+    // ====================================================================
+    // === VRAIE CONNEXION CEINTURE CARDIAQUE BLUETOOTH (Web Bluetooth API)
+    // ====================================================================
+    // Service Heart Rate standard BLE :
+    //   Service        : 0x180D (heart_rate)
+    //   Characteristic : 0x2A37 (heart_rate_measurement)
+    //
+    // ATTENTION : Web Bluetooth n'est PAS supporté par Safari ni Firefox.
+    // → Chrome, Edge, Opera (desktop et Android) uniquement.
+    // → L'appareil doit être en HTTPS (ce qu'on a sur marfan-sport-sante.fr).
+    // → L'utilisateur DOIT cliquer sur le bouton (geste explicite requis par le navigateur).
+    //
+    // Parsing Heart Rate Measurement (spec Bluetooth) :
+    //   byte 0 = flags ; bit 0 = format FC (0 = 8 bits uint, 1 = 16 bits uint LE)
+    //   byte 1+ = valeur FC selon le format
+    // ====================================================================
+
+    function isWebBluetoothSupported() {
+      return typeof navigator !== 'undefined' && !!navigator.bluetooth;
+    }
+
+    function parseHeartRate(dataView) {
+      const flags = dataView.getUint8(0);
+      const is16bit = (flags & 0x01) === 0x01;
+      return is16bit ? dataView.getUint16(1, true /* littleEndian */) : dataView.getUint8(1);
+    }
+
+    async function connectRealBelt() {
+      if (!isWebBluetoothSupported()) {
+        throw new Error(
+          'Web Bluetooth n\'est pas supporté par ce navigateur. ' +
+          'Utilisez Chrome, Edge ou Opera (Safari et Firefox ne le supportent pas).'
+        );
+      }
+      // requestDevice DOIT être appelé dans un handler de clic utilisateur
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ services: ['heart_rate'] }],
+        optionalServices: ['battery_service', 'device_information']
+      });
+
+      device.addEventListener('gattserverdisconnected', () => {
+        console.warn('[BLE] Ceinture déconnectée (gattserverdisconnected)');
+        _train.beltConnected = false;
+        setBeltStatus('🔴 Ceinture déconnectée', '#991b1b', '#fee2e2');
+        // Le bouton Reconnecter redevient utilisable
+        const bConn = document.getElementById('apiBtnConnectBelt');
+        if (bConn) { bConn.disabled = false; bConn.textContent = '⌁ Reconnecter la ceinture'; }
+      });
+
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService('heart_rate');
+      const characteristic = await service.getCharacteristic('heart_rate_measurement');
+
+      // Écoute les notifications HR (la ceinture envoie 1 mesure/seconde environ)
+      characteristic.addEventListener('characteristicvaluechanged', (event) => {
+        try {
+          const hr = parseHeartRate(event.target.value);
+          if (hr > 0 && hr < 250) {
+            _train.currentHr = hr;
+            _train.lastHrAt = Date.now();
+          }
+        } catch (e) { console.warn('[BLE] Parse HR raté :', e); }
+      });
+      await characteristic.startNotifications();
+
+      _train.bleDevice = device;
+      _train.bleCharacteristic = characteristic;
+      _train.beltConnected = true;
+      return device;
+    }
+
+    async function disconnectRealBelt() {
+      try {
+        if (_train.bleCharacteristic) {
+          try { await _train.bleCharacteristic.stopNotifications(); } catch (_) {}
+        }
+        if (_train.bleDevice && _train.bleDevice.gatt && _train.bleDevice.gatt.connected) {
+          _train.bleDevice.gatt.disconnect();
+        }
+      } catch (e) { console.warn('[BLE] Déconnexion échouée :', e); }
+      _train.bleDevice = null;
+      _train.bleCharacteristic = null;
+      _train.beltConnected = false;
     }
 
     function wireTrainingButtons() {
@@ -9873,18 +9958,36 @@
       const bStop  = document.getElementById('apiBtnStopSession');
       if (!bConn) return;
 
-      bConn.onclick = async function () {
-        setBeltStatus('🟡 Connexion en cours…', '#92400e', '#fffbeb');
+      // Si le navigateur ne supporte pas Web Bluetooth → message permanent
+      if (!isWebBluetoothSupported()) {
+        setBeltStatus(
+          '⚠ Ceinture indisponible sur ce navigateur — utilisez Chrome, Edge ou Opera',
+          '#92400e', '#fffbeb'
+        );
         bConn.disabled = true;
-        // Simulation : 1 seconde puis OK. À remplacer par Web Bluetooth (navigator.bluetooth.requestDevice).
-        setTimeout(() => {
-          _train.beltConnected = true;
-          setBeltStatus('🟢 Ceinture connectée', '#065f46', '#d1fae5');
+        bConn.style.opacity = '0.5';
+        bConn.title = 'Web Bluetooth non supporté par ce navigateur';
+        return;
+      }
+
+      bConn.onclick = async function () {
+        setBeltStatus('🟡 Sélection de la ceinture…', '#92400e', '#fffbeb');
+        bConn.disabled = true;
+        try {
+          const device = await connectRealBelt();
+          setBeltStatus('🟢 Ceinture connectée : ' + (device.name || 'sans nom'), '#065f46', '#d1fae5');
           bConn.disabled = false;
           bConn.textContent = '⌁ Reconnecter';
-          // Active le bouton Démarrer
           bStart.disabled = false; bStart.style.opacity = '1';
-        }, 1000);
+        } catch (e) {
+          // Si l'utilisateur a annulé la boîte de dialogue, ce n'est pas une vraie erreur
+          if (/cancel/i.test(e.message) || /user cancel/i.test(e.name || '')) {
+            setBeltStatus('⚪ Connexion annulée', '#475569', '#f3f6fb');
+          } else {
+            setBeltStatus('🔴 ' + (e.message || 'Échec de connexion'), '#991b1b', '#fee2e2');
+          }
+          bConn.disabled = false;
+        }
       };
 
       bStart.onclick = async function () {
@@ -9906,29 +10009,31 @@
           bStart.disabled = true; bStart.style.opacity = '0.4';
           bStop.disabled = false; bStop.style.opacity = '1';
 
-          // 4. Tick chaque seconde : génère HR/PA/énergie + maj UI
+          // 4. Tick chaque seconde : lit la FC VIVE depuis _train.currentHr
+          //    (alimentée par les notifications Bluetooth) + calcule PA + accumule l'énergie
           _train.tickInterval = setInterval(() => {
             _train.elapsed += 1;
-            const hr = fakeHRGenerator();
+            // Si pas de FC depuis >15s, on considère que la ceinture a un problème transitoire
+            const stale = _train.lastHrAt && (Date.now() - _train.lastHrAt > 15000);
+            const hr = stale ? null : _train.currentHr;
             const pa = estimatePA(hr);
             _train.energyCumul += energyIncrement(hr, 1);
-            _train.currentHr = hr;
             _train.currentPa = pa;
             // UI
             const elHr = document.getElementById('apiMetricHr');
             const elPa = document.getElementById('apiMetricPa');
             const elEn = document.getElementById('apiMetricEnergy');
             const elDu = document.getElementById('apiMetricDuration');
-            if (elHr) elHr.textContent = hr;
-            if (elPa) elPa.textContent = pa;
+            if (elHr) elHr.textContent = hr != null ? hr : (stale ? '⚠' : '…');
+            if (elPa) elPa.textContent = pa != null ? pa : '--';
             if (elEn) elEn.textContent = _train.energyCumul.toFixed(1);
             if (elDu) {
               const mm = Math.floor(_train.elapsed / 60).toString().padStart(2,'0');
               const ss = (_train.elapsed % 60).toString().padStart(2,'0');
               elDu.textContent = mm + ':' + ss;
             }
-            // Bufferise un sample toutes les 5 secondes (pour limiter la volumétrie)
-            if (_train.elapsed % 5 === 0) {
+            // Bufferise un sample toutes les 5 secondes (uniquement si on a une vraie FC)
+            if (_train.elapsed % 5 === 0 && hr != null) {
               _train.buffer.push({
                 t_seconds: _train.elapsed, hr, pa_estimated: pa,
                 energy_kcal: parseFloat(_train.energyCumul.toFixed(3))
@@ -9965,6 +10070,9 @@
           try { await window.MarfanAPI.training.pushSamples(_train.sessionId, _train.buffer); _train.buffer = []; }
           catch (e) { console.warn('[training] flush final échoué :', e.message); }
         }
+        // Déconnecte proprement la ceinture (selon spec : la connexion s'arrête à l'arrêt manuel)
+        try { await disconnectRealBelt(); } catch (_) {}
+        setBeltStatus('⚪ Ceinture déconnectée (séance terminée)', '#475569', '#f3f6fb');
         // Ouvre la modale Borg
         openBorgModal(_train.sessionId);
       };
