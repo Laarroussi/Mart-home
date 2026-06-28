@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase6b-ble"></script>
+  <script src="api-client.js?v=phase6c-zones"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -9810,6 +9810,30 @@
             <span style="color:#1e40af;">mm:ss</span>
           </div>
         </div>
+        <!-- Carte Zone Cardio (FCmax % + barre 5 zones colorées) -->
+        <div id="apiZoneCard" style="margin-top:14px; padding:14px; background:#fafbfd; border-radius:10px; opacity:0.5; pointer-events:none;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+            <strong style="font-size:12px; color:#0b1530;">Zone cardio actuelle</strong>
+            <span id="apiZonePct" style="font-size:18px; font-weight:800; color:#0b1530;">--%</span>
+          </div>
+          <div id="apiZoneLabel" style="font-size:11.5px; color:var(--muted); margin-bottom:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px;">— en attente —</div>
+          <!-- Barre colorée 5 segments -->
+          <div style="position:relative; margin-top:8px;">
+            <div style="display:flex; height:12px; border-radius:7px; overflow:hidden;">
+              <div style="background:#06b6d4; flex:1;" title="Z1 50-60% Échauffement/Récup"></div>
+              <div style="background:#22c55e; flex:1;" title="Z2 60-70% Endurance fondamentale"></div>
+              <div style="background:#eab308; flex:1;" title="Z3 70-80% Endurance active"></div>
+              <div style="background:#f97316; flex:1;" title="Z4 80-90% Seuil"></div>
+              <div style="background:#ef4444; flex:1;" title="Z5 90-100% VO2max"></div>
+            </div>
+            <!-- Curseur triangulaire qui se déplace -->
+            <div id="apiZoneCursor" style="position:absolute; top:-2px; left:0%; transform:translateX(-50%); width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-top:10px solid #0b1530; transition:left 0.4s ease;"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:#94a3b8; font-weight:600;">
+            <span>50%</span><span>60%</span><span>70%</span><span>80%</span><span>90%</span><span>100%</span>
+          </div>
+          <div id="apiZoneFCmax" style="margin-top:8px; font-size:10.5px; color:#94a3b8; text-align:right;"></div>
+        </div>
         <div id="apiTrainingHint" style="margin-top:10px; padding:8px 11px; background:#fffbeb; color:#92400e; font-size:11.5px; border-radius:6px; display:none;"></div>
       `;
       panel.appendChild(trainingCard);
@@ -9824,6 +9848,27 @@
     // ====================================================================
     // === LOGIQUE ENTRAÎNEMENT — ceinture + samples + Borg + résumé
     // ====================================================================
+    // Zones cardio basées sur le % de FCmax théorique (formule Fox : FCmax = 220 - âge)
+    const HR_ZONES = [
+      { id: 0, label: 'Repos / Sous-effort',       min: 0,   max: 50,  color: '#94a3b8', bg: '#e2e8f0' },
+      { id: 1, label: 'Échauffement / Récup.',     min: 50,  max: 60,  color: '#06b6d4', bg: '#cffafe' },
+      { id: 2, label: 'Endurance fondamentale',    min: 60,  max: 70,  color: '#22c55e', bg: '#dcfce7' },
+      { id: 3, label: 'Endurance active',           min: 70,  max: 80,  color: '#eab308', bg: '#fef9c3' },
+      { id: 4, label: 'Seuil / Résistance',         min: 80,  max: 90,  color: '#f97316', bg: '#ffedd5' },
+      { id: 5, label: 'VO2max / Intensif',           min: 90,  max: 200, color: '#ef4444', bg: '#fee2e2' }
+    ];
+    function getHRZone(percent) {
+      for (const z of HR_ZONES) if (percent >= z.min && percent < z.max) return z;
+      return HR_ZONES[HR_ZONES.length - 1];
+    }
+    function computeFCmax(age) {
+      // Fox/Astrand : FCmax = 220 - âge
+      if (!age || age < 5 || age > 100) return 180;  // fallback raisonnable
+      return 220 - age;
+    }
+    // FCmax courante (calculée au démarrage de la séance à partir de l'âge patient)
+    let _fcMax = 180;
+
     let _train = null;  // état courant
 
     function resetTrainingState() {
@@ -9993,6 +10038,20 @@
       bStart.onclick = async function () {
         if (!_train.beltConnected) { alert('Connectez d\'abord la ceinture.'); return; }
         try {
+          // 0. Récupère l'âge du patient → calcule FCmax (220 - âge)
+          try {
+            const me = window.MarfanAPI.currentUser();
+            if (me && me.patient_id) {
+              const pat = await window.MarfanAPI.patients.get(me.patient_id);
+              const age = (pat && pat.patient && pat.patient.age) || (pat && pat.age) || null;
+              _fcMax = computeFCmax(age);
+              const elFcm = document.getElementById('apiZoneFCmax');
+              if (elFcm) elFcm.textContent = age
+                ? 'FCmax théorique : ' + _fcMax + ' bpm (220 − ' + age + ' ans)'
+                : 'FCmax par défaut : ' + _fcMax + ' bpm (âge inconnu)';
+            }
+          } catch (e) { console.warn('[training] récup âge patient échouée :', e.message); }
+
           // 1. Crée la séance API
           const r = await window.MarfanAPI.training.start(_train.currentVisioId || null);
           _train.sessionId = r.session.id;
@@ -10001,9 +10060,11 @@
           _train.energyCumul = 0;
           _train.buffer = [];
 
-          // 2. Active les cartes métriques
+          // 2. Active les cartes métriques + la carte zone
           const m = document.getElementById('apiTrainingMetrics');
           if (m) { m.style.opacity = '1'; m.style.pointerEvents = 'auto'; }
+          const z = document.getElementById('apiZoneCard');
+          if (z) { z.style.opacity = '1'; z.style.pointerEvents = 'auto'; }
 
           // 3. Désactive Démarrer, active Arrêter
           bStart.disabled = true; bStart.style.opacity = '0.4';
@@ -10032,6 +10093,27 @@
               const ss = (_train.elapsed % 60).toString().padStart(2,'0');
               elDu.textContent = mm + ':' + ss;
             }
+
+            // === Mise à jour de la zone cardio (% FCmax + curseur sur la barre) ===
+            if (hr != null) {
+              const pct = (hr / _fcMax) * 100;
+              const zone = getHRZone(pct);
+              const elZp = document.getElementById('apiZonePct');
+              const elZl = document.getElementById('apiZoneLabel');
+              const elCu = document.getElementById('apiZoneCursor');
+              if (elZp) elZp.textContent = pct.toFixed(0) + '%';
+              if (elZl) {
+                elZl.textContent = zone.label;
+                elZl.style.color = zone.color;
+              }
+              if (elCu) {
+                // La barre couvre 50% à 100% de FCmax → on remappe
+                const barPos = Math.max(0, Math.min(100, ((pct - 50) / 50) * 100));
+                elCu.style.left = barPos + '%';
+                elCu.style.borderTopColor = zone.color;
+              }
+            }
+
             // Bufferise un sample toutes les 5 secondes (uniquement si on a une vraie FC)
             if (_train.elapsed % 5 === 0 && hr != null) {
               _train.buffer.push({
@@ -10140,15 +10222,20 @@
       const bStart = document.getElementById('apiBtnStartSession');
       const bStop  = document.getElementById('apiBtnStopSession');
       const m = document.getElementById('apiTrainingMetrics');
+      const z = document.getElementById('apiZoneCard');
       const hint = document.getElementById('apiTrainingHint');
       if (bStart) { bStart.disabled = false; bStart.style.opacity = '1'; }
       if (bStop)  { bStop.disabled = true; bStop.style.opacity = '0.4'; }
       if (m) { m.style.opacity = '0.5'; m.style.pointerEvents = 'none'; }
+      if (z) { z.style.opacity = '0.5'; z.style.pointerEvents = 'none'; }
       if (hint) hint.style.display = 'none';
       ['apiMetricHr','apiMetricPa','apiMetricEnergy'].forEach(id => {
         const el = document.getElementById(id); if (el) el.textContent = '--';
       });
       const elDu = document.getElementById('apiMetricDuration'); if (elDu) elDu.textContent = '00:00';
+      const elZp = document.getElementById('apiZonePct'); if (elZp) elZp.textContent = '--%';
+      const elZl = document.getElementById('apiZoneLabel'); if (elZl) { elZl.textContent = '— en attente —'; elZl.style.color = '#94a3b8'; }
+      const elCu = document.getElementById('apiZoneCursor'); if (elCu) elCu.style.left = '0%';
     }
 
     // === Fiche résumé avec 3 graphiques Chart.js ===
@@ -10176,6 +10263,14 @@
 
             <h4 style="font-size:13px; color:#0b1530; margin-bottom:6px;">📈 Fréquence cardiaque (bpm)</h4>
             <canvas id="apiSumChartHr" height="140"></canvas>
+            <div id="apiSumZoneLegend" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; font-size:10.5px;"></div>
+
+            <h4 style="font-size:13px; color:#0b1530; margin:14px 0 6px;">🍩 Répartition cardio (temps passé par zone)</h4>
+            <div style="display:grid; grid-template-columns:200px 1fr; gap:14px; align-items:center;">
+              <div style="position:relative;"><canvas id="apiSumChartZones" height="200"></canvas></div>
+              <table id="apiSumZoneTable" style="font-size:11.5px; border-collapse:collapse; width:100%;"></table>
+            </div>
+
             <h4 style="font-size:13px; color:#0b1530; margin:14px 0 6px;">🩺 Pression artérielle estimée (mmHg)</h4>
             <canvas id="apiSumChartPa" height="140"></canvas>
             <h4 style="font-size:13px; color:#0b1530; margin:14px 0 6px;">🔥 Dépense énergétique cumulée (kcal)</h4>
@@ -10201,22 +10296,111 @@
     function buildSummaryCharts(samples) {
       if (typeof Chart === 'undefined') return;
       const labels = samples.map(s => Math.round(s.t_seconds / 60 * 10) / 10);
-      const optsBase = (color) => ({
+
+      // ===== Plugin Chart.js : bandes horizontales colorées par zone FC =====
+      const fcMaxLocal = _fcMax || 180;
+      const zonesPlugin = {
+        id: 'zonesBg',
+        beforeDraw(chart) {
+          const { ctx, chartArea: ca, scales } = chart;
+          if (!ca) return;
+          ctx.save();
+          HR_ZONES.forEach(z => {
+            if (z.min === 0) return; // saute la zone "repos"
+            const yTop = scales.y.getPixelForValue(Math.min(fcMaxLocal * z.max / 100, scales.y.max));
+            const yBot = scales.y.getPixelForValue(Math.max(fcMaxLocal * z.min / 100, scales.y.min));
+            ctx.fillStyle = z.bg + 'CC'; // semi-transparent
+            ctx.fillRect(ca.left, yTop, ca.right - ca.left, yBot - yTop);
+          });
+          ctx.restore();
+        }
+      };
+
+      const lineOpts = (color, withZones) => ({
         type: 'line',
         data: { labels, datasets: [{ data: [], borderColor: color, backgroundColor: color + '22',
-                tension: 0.3, fill: true, pointRadius: 0, borderWidth: 2 }] },
+                tension: 0.3, fill: !withZones, pointRadius: 0, borderWidth: 2 }] },
         options: { responsive: true, maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: { x: { title: { display: true, text: 'Temps (min)', font: { size: 10 } } } }
-        }
+        },
+        plugins: withZones ? [zonesPlugin] : []
       });
+
       try {
-        const c1 = optsBase('#ef4444'); c1.data.datasets[0].data = samples.map(s => s.hr);
+        // --- Graph FC avec bandes de zones colorées en fond ---
+        const c1 = lineOpts('#0b1530', true);
+        c1.data.datasets[0].data = samples.map(s => s.hr);
+        c1.options.scales.y = { suggestedMin: 50, suggestedMax: Math.max(180, fcMaxLocal + 5) };
         new Chart(document.getElementById('apiSumChartHr').getContext('2d'), c1);
-        const c2 = optsBase('#f97316'); c2.data.datasets[0].data = samples.map(s => s.pa_estimated);
+
+        // --- Légende des zones sous le graph HR ---
+        const lg = document.getElementById('apiSumZoneLegend');
+        if (lg) {
+          lg.innerHTML = HR_ZONES.slice(1).map(z =>
+            `<span style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; background:${z.bg}; color:${z.color}; border-radius:5px; font-weight:600;">
+              <span style="width:10px; height:10px; background:${z.color}; border-radius:2px;"></span>
+              ${z.label} (${z.min}-${z.max === 200 ? '100+' : z.max}%)
+            </span>`).join('');
+        }
+
+        // --- Cinétique PA estimée ---
+        const c2 = lineOpts('#f97316', false);
+        c2.data.datasets[0].data = samples.map(s => s.pa_estimated);
         new Chart(document.getElementById('apiSumChartPa').getContext('2d'), c2);
-        const c3 = optsBase('#10b981'); c3.data.datasets[0].data = samples.map(s => parseFloat(s.energy_kcal));
+
+        // --- Cinétique dépense énergétique ---
+        const c3 = lineOpts('#10b981', false);
+        c3.data.datasets[0].data = samples.map(s => parseFloat(s.energy_kcal));
         new Chart(document.getElementById('apiSumChartEn').getContext('2d'), c3);
+
+        // ===== Donut "Répartition cardio" =====
+        // Compte le nombre de samples par zone (chaque sample = 5 sec)
+        const SAMPLE_PERIOD_S = 5;
+        const counts = HR_ZONES.map(() => 0);
+        samples.forEach(s => {
+          if (s.hr == null) return;
+          const pct = (s.hr / fcMaxLocal) * 100;
+          const zi = HR_ZONES.findIndex(z => pct >= z.min && pct < z.max);
+          counts[zi >= 0 ? zi : HR_ZONES.length - 1]++;
+        });
+        const totalS = counts.reduce((a,b) => a+b, 0) * SAMPLE_PERIOD_S;
+
+        // Construit le donut (on enlève la zone "repos" si elle n'a pas de samples)
+        const donutData = [];
+        const donutColors = [];
+        const donutLabels = [];
+        HR_ZONES.forEach((z, i) => {
+          if (counts[i] > 0) {
+            donutData.push(counts[i] * SAMPLE_PERIOD_S);
+            donutColors.push(z.color);
+            donutLabels.push(z.label);
+          }
+        });
+        if (donutData.length === 0) {
+          donutData.push(1); donutColors.push('#e2e8f0'); donutLabels.push('Pas de données');
+        }
+        new Chart(document.getElementById('apiSumChartZones').getContext('2d'), {
+          type: 'doughnut',
+          data: { labels: donutLabels,
+                  datasets: [{ data: donutData, backgroundColor: donutColors, borderWidth: 2, borderColor: '#fff' }] },
+          options: { responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false },
+                       tooltip: { callbacks: { label: ctx => ctx.label + ' : ' + ctx.parsed + 's (' + Math.round(ctx.parsed/totalS*100) + '%)' } } } }
+        });
+
+        // ===== Tableau récap zones à droite du donut =====
+        const tbl = document.getElementById('apiSumZoneTable');
+        if (tbl) {
+          tbl.innerHTML = '<tr style="background:#f3f6fb;"><th style="text-align:left; padding:5px 7px;">Zone</th><th style="text-align:right; padding:5px 7px;">Temps</th><th style="text-align:right; padding:5px 7px;">%</th></tr>' +
+            HR_ZONES.map((z, i) => {
+              if (counts[i] === 0) return '';
+              const sec = counts[i] * SAMPLE_PERIOD_S;
+              const mm = Math.floor(sec/60), ss = sec % 60;
+              const pct = totalS > 0 ? Math.round(sec/totalS*100) : 0;
+              return `<tr><td style="padding:4px 7px;"><span style="display:inline-block; width:10px; height:10px; background:${z.color}; border-radius:2px; margin-right:5px;"></span>${z.label}</td><td style="text-align:right; padding:4px 7px;">${mm}:${ss.toString().padStart(2,'0')}</td><td style="text-align:right; padding:4px 7px; font-weight:700;">${pct}%</td></tr>`;
+            }).join('');
+        }
       } catch (e) { console.warn('Charts résumé :', e); }
     }
 
