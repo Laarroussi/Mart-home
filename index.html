@@ -9724,19 +9724,37 @@
     function injectPatientVisioList(sessions) {
       const panel = document.getElementById('pat-visio');
       if (!panel) return;
-      // Retire la carte précédemment injectée si elle existe
-      const old = document.getElementById('apiPatVisioList');
-      if (old) old.remove();
-      const card = document.createElement('article');
-      card.className = 'pat-card';
-      card.id = 'apiPatVisioList';
-      card.style.cssText = 'margin-bottom:16px;';
+      // Vide le panel et reconstruit (on remplace l'ancien stage statique)
+      // On conserve la grille participants existante en bas si présente
+      const existing = document.getElementById('patParticipantsPanel');
+      panel.innerHTML = '';
+
+      // === Carte 1 : Visio intégrée (initialement vide, l'iframe s'injecte au "Rejoindre") ===
+      const visioCard = document.createElement('article');
+      visioCard.className = 'pat-card';
+      visioCard.id = 'apiVisioIntegratedCard';
+      visioCard.style.cssText = 'padding:0; overflow:hidden; margin-bottom:16px;';
+      visioCard.innerHTML = `
+        <div id="apiVisioStage" style="background:linear-gradient(135deg,#063b35,#0f766e); color:white; min-height:200px; padding:30px; text-align:center; display:flex; align-items:center; justify-content:center;">
+          <div>
+            <div style="font-size:48px; margin-bottom:10px;">🎥</div>
+            <strong style="font-size:18px; font-family:'Sora',sans-serif; display:block;">Aucune séance en cours</strong>
+            <p style="color:#ccfbf1; margin-top:8px; font-size:13px;">Cliquez sur <strong>Rejoindre</strong> dans la liste ci-dessous pour démarrer.</p>
+          </div>
+        </div>`;
+      panel.appendChild(visioCard);
+
+      // === Carte 2 : Liste des séances ===
+      const listCard = document.createElement('article');
+      listCard.className = 'pat-card';
+      listCard.id = 'apiPatVisioList';
+      listCard.style.cssText = 'margin-bottom:16px;';
       if (!sessions.length) {
-        card.innerHTML = `
+        listCard.innerHTML = `
           <h3>📅 Mes séances de visio</h3>
           <p style="color:var(--muted);">Aucune séance programmée pour le moment. Vous serez notifié dès qu'une séance vous sera attribuée.</p>`;
       } else {
-        card.innerHTML = `
+        listCard.innerHTML = `
           <h3>📅 Mes séances de visio</h3>
           <p style="margin-bottom:10px;">Vous avez ${sessions.length} séance(s) programmée(s) ou passée(s).</p>
           ${sessions.map(s => `
@@ -9746,16 +9764,378 @@
                 <div style="font-size:12px; color:var(--muted);">${formatVisioDate(s.scheduled_at)}${s.duration_min ? ' · ' + s.duration_min + ' min' : ''}</div>
                 ${s.description ? `<div style="font-size:11.5px; color:var(--muted); margin-top:4px;">${s.description}</div>` : ''}
               </div>
-              ${s.status === 'scheduled' || s.status === 'in_progress'
-                ? (s.meeting_link
-                    ? `<a href="${s.meeting_link}" target="_blank" rel="noopener" class="pat-btn-success" style="text-decoration:none;">▶ Rejoindre</a>`
-                    : `<span style="font-size:11px; color:var(--muted); font-style:italic;">Lien à venir</span>`)
-                : ''}
+              ${(s.status === 'scheduled' || s.status === 'in_progress') && s.meeting_link
+                ? `<button class="pat-btn-success" onclick="window.__joinVisioInline(${s.id}, '${s.meeting_link.replace(/'/g,'')}', '${(s.title||'Séance').replace(/'/g,'')}')">▶ Rejoindre</button>`
+                : (s.status === 'completed' ? '<span style="font-size:11px; color:var(--muted);">Terminée</span>' : '')}
             </div>
           `).join('')}`;
       }
-      panel.insertBefore(card, panel.firstChild);
+      panel.appendChild(listCard);
+
+      // === Carte 3 : Entraînement (3 boutons + métriques en direct) ===
+      const trainingCard = document.createElement('article');
+      trainingCard.className = 'pat-card';
+      trainingCard.id = 'apiTrainingCard';
+      trainingCard.style.cssText = 'margin-bottom:16px;';
+      trainingCard.innerHTML = `
+        <h3>🏃 Ma séance d'entraînement</h3>
+        <p style="color:var(--muted); margin-bottom:14px;">Connectez votre ceinture cardiaque, lancez la séance, puis cliquez sur Arrêter à la fin pour générer votre fiche.</p>
+        <!-- État ceinture -->
+        <div id="apiBeltStatus" style="padding:9px 12px; border-radius:8px; background:#f3f6fb; color:#475569; font-size:12px; font-weight:600; margin-bottom:12px;">
+          ⚪ Ceinture non connectée
+        </div>
+        <!-- 3 boutons principaux -->
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:14px;">
+          <button id="apiBtnConnectBelt" class="pat-btn-secondary" style="padding:14px; font-size:13px;">⌁ Connecter la ceinture</button>
+          <button id="apiBtnStartSession" class="pat-btn-success" disabled style="padding:14px; font-size:13px; opacity:0.4;">▶ Démarrer la séance</button>
+          <button id="apiBtnStopSession" class="pat-btn-secondary" disabled style="padding:14px; font-size:13px; background:#fee2e2; color:#991b1b; opacity:0.4;">■ Arrêter la séance</button>
+        </div>
+        <!-- Cartes métriques en direct -->
+        <div id="apiTrainingMetrics" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; opacity:0.5; pointer-events:none;">
+          <div class="pat-metric"><small>FC</small><strong id="apiMetricHr">--</strong><span>bpm</span></div>
+          <div class="pat-metric" style="background:linear-gradient(135deg,#fff1f2,#fef3c7); border-color:#fda4af;">
+            <small style="color:#9a3412;">PA estimée</small>
+            <strong style="color:#9a3412;" id="apiMetricPa">--</strong>
+            <span style="color:#9a3412;">mmHg · estimée</span>
+          </div>
+          <div class="pat-metric" style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5); border-color:#86efac;">
+            <small style="color:#065f46;">Énergie cumulée</small>
+            <strong style="color:#065f46;" id="apiMetricEnergy">--</strong>
+            <span style="color:#065f46;">kcal</span>
+          </div>
+          <div class="pat-metric" style="background:linear-gradient(135deg,#eff6ff,#dbeafe); border-color:#93c5fd;">
+            <small style="color:#1e40af;">Durée</small>
+            <strong style="color:#1e40af;" id="apiMetricDuration">00:00</strong>
+            <span style="color:#1e40af;">mm:ss</span>
+          </div>
+        </div>
+        <div id="apiTrainingHint" style="margin-top:10px; padding:8px 11px; background:#fffbeb; color:#92400e; font-size:11.5px; border-radius:6px; display:none;"></div>
+      `;
+      panel.appendChild(trainingCard);
+
+      // Réintègre la grille des participants si elle existait
+      if (existing) panel.appendChild(existing);
+
+      // === Câblage des boutons ===
+      wireTrainingButtons();
     }
+
+    // ====================================================================
+    // === LOGIQUE ENTRAÎNEMENT — ceinture + samples + Borg + résumé
+    // ====================================================================
+    let _train = null;  // état courant
+
+    function resetTrainingState() {
+      _train = {
+        beltConnected: false,
+        hrInterval: null,
+        sessionId: null,
+        currentVisioId: null,
+        tickInterval: null,
+        sampleInterval: null,
+        startedAt: null,
+        elapsed: 0,
+        currentHr: 0,
+        currentPa: 0,
+        energyCumul: 0,
+        buffer: []  // samples non encore poussés
+      };
+    }
+    resetTrainingState();
+
+    function setBeltStatus(text, color, bg) {
+      const el = document.getElementById('apiBeltStatus');
+      if (!el) return;
+      el.textContent = text;
+      el.style.color = color;
+      el.style.background = bg;
+    }
+
+    function fakeHRGenerator() {
+      // Simulation simple : 80 + variation autour. À remplacer par Web Bluetooth pour une vraie ceinture.
+      const base = 90 + Math.round(Math.sin(_train.elapsed/10) * 15);
+      return Math.max(60, Math.min(170, base + Math.round((Math.random() - 0.5) * 10)));
+    }
+    // PA estimée à partir de la FC (algo simplifié — à valider cliniquement)
+    function estimatePA(hr) {
+      // Formule simplifiée : PA systolique ≈ 80 + (HR - 60) * 0.5
+      return Math.round(80 + Math.max(0, hr - 60) * 0.55);
+    }
+    // Énergie cumulée (kcal/min ≈ HR/8.5 par ex.)
+    function energyIncrement(hr, dtSec) {
+      const kcalPerMin = Math.max(0, hr / 8.5);
+      return (kcalPerMin / 60) * dtSec;
+    }
+
+    function wireTrainingButtons() {
+      const bConn  = document.getElementById('apiBtnConnectBelt');
+      const bStart = document.getElementById('apiBtnStartSession');
+      const bStop  = document.getElementById('apiBtnStopSession');
+      if (!bConn) return;
+
+      bConn.onclick = async function () {
+        setBeltStatus('🟡 Connexion en cours…', '#92400e', '#fffbeb');
+        bConn.disabled = true;
+        // Simulation : 1 seconde puis OK. À remplacer par Web Bluetooth (navigator.bluetooth.requestDevice).
+        setTimeout(() => {
+          _train.beltConnected = true;
+          setBeltStatus('🟢 Ceinture connectée', '#065f46', '#d1fae5');
+          bConn.disabled = false;
+          bConn.textContent = '⌁ Reconnecter';
+          // Active le bouton Démarrer
+          bStart.disabled = false; bStart.style.opacity = '1';
+        }, 1000);
+      };
+
+      bStart.onclick = async function () {
+        if (!_train.beltConnected) { alert('Connectez d\'abord la ceinture.'); return; }
+        try {
+          // 1. Crée la séance API
+          const r = await window.MarfanAPI.training.start(_train.currentVisioId || null);
+          _train.sessionId = r.session.id;
+          _train.startedAt = Date.now();
+          _train.elapsed = 0;
+          _train.energyCumul = 0;
+          _train.buffer = [];
+
+          // 2. Active les cartes métriques
+          const m = document.getElementById('apiTrainingMetrics');
+          if (m) { m.style.opacity = '1'; m.style.pointerEvents = 'auto'; }
+
+          // 3. Désactive Démarrer, active Arrêter
+          bStart.disabled = true; bStart.style.opacity = '0.4';
+          bStop.disabled = false; bStop.style.opacity = '1';
+
+          // 4. Tick chaque seconde : génère HR/PA/énergie + maj UI
+          _train.tickInterval = setInterval(() => {
+            _train.elapsed += 1;
+            const hr = fakeHRGenerator();
+            const pa = estimatePA(hr);
+            _train.energyCumul += energyIncrement(hr, 1);
+            _train.currentHr = hr;
+            _train.currentPa = pa;
+            // UI
+            const elHr = document.getElementById('apiMetricHr');
+            const elPa = document.getElementById('apiMetricPa');
+            const elEn = document.getElementById('apiMetricEnergy');
+            const elDu = document.getElementById('apiMetricDuration');
+            if (elHr) elHr.textContent = hr;
+            if (elPa) elPa.textContent = pa;
+            if (elEn) elEn.textContent = _train.energyCumul.toFixed(1);
+            if (elDu) {
+              const mm = Math.floor(_train.elapsed / 60).toString().padStart(2,'0');
+              const ss = (_train.elapsed % 60).toString().padStart(2,'0');
+              elDu.textContent = mm + ':' + ss;
+            }
+            // Bufferise un sample toutes les 5 secondes (pour limiter la volumétrie)
+            if (_train.elapsed % 5 === 0) {
+              _train.buffer.push({
+                t_seconds: _train.elapsed, hr, pa_estimated: pa,
+                energy_kcal: parseFloat(_train.energyCumul.toFixed(3))
+              });
+            }
+          }, 1000);
+
+          // 5. Push des samples toutes les 10 secondes
+          _train.sampleInterval = setInterval(async () => {
+            if (!_train.buffer.length || !_train.sessionId) return;
+            const batch = _train.buffer.splice(0, _train.buffer.length);
+            try { await window.MarfanAPI.training.pushSamples(_train.sessionId, batch); }
+            catch (e) {
+              console.warn('[training] push samples échoué, re-bufferisé :', e.message);
+              _train.buffer = batch.concat(_train.buffer); // re-injecte
+            }
+          }, 10000);
+
+          // Hint pour rappeler de cliquer Arrêter à la fin
+          const hint = document.getElementById('apiTrainingHint');
+          if (hint) { hint.textContent = '⚠ N\'oubliez pas de cliquer sur "Arrêter la séance" à la fin pour générer votre fiche résumé.'; hint.style.display = 'block'; }
+        } catch (e) {
+          alert('Impossible de démarrer la séance : ' + e.message);
+        }
+      };
+
+      bStop.onclick = async function () {
+        if (!_train.sessionId) return;
+        // Stoppe les timers
+        clearInterval(_train.tickInterval);
+        clearInterval(_train.sampleInterval);
+        // Flush du buffer restant
+        if (_train.buffer.length && _train.sessionId) {
+          try { await window.MarfanAPI.training.pushSamples(_train.sessionId, _train.buffer); _train.buffer = []; }
+          catch (e) { console.warn('[training] flush final échoué :', e.message); }
+        }
+        // Ouvre la modale Borg
+        openBorgModal(_train.sessionId);
+      };
+    }
+
+    // === Modale Borg CR10 (obligatoire avant fiche résumé) ===
+    function openBorgModal(sessionId) {
+      const html = `
+        <div id="apiBorgBackdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.85); z-index:10001; display:flex; align-items:center; justify-content:center;">
+          <div style="background:white; border-radius:14px; padding:24px 28px; width:520px; max-width:94vw; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+            <div style="font-size:17px; font-weight:800; color:#0b1530; margin-bottom:6px;">🏁 Comment avez-vous ressenti l'effort ?</div>
+            <p style="font-size:12px; color:#6b7390; margin-bottom:14px;">Sélectionnez une valeur entre 0 et 10 sur l'échelle de Borg CR10. Ce choix est obligatoire pour finaliser votre séance.</p>
+            <div id="apiBorgGrid" style="display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; margin-bottom:12px;"></div>
+            <div id="apiBorgSelected" style="text-align:center; padding:10px; background:#f3f6fb; border-radius:8px; font-size:12px; color:#5a6280; margin-bottom:12px;">Aucune valeur sélectionnée</div>
+            <div id="apiBorgErr" style="display:none; padding:8px 10px; background:#fee2e2; color:#991b1b; border-radius:7px; font-size:11.5px; margin-bottom:10px;"></div>
+            <button id="apiBorgConfirm" disabled style="width:100%; padding:11px; border:none; border-radius:9px; background:#94a3b8; color:white; font-weight:700; font-size:13px; cursor:pointer;">Valider et générer la fiche résumé</button>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+      const labels = ['Repos','Très très facile','Facile','Modéré','Un peu difficile','Difficile','','Très difficile','','Extrêmement difficile','Maximal'];
+      const grid = document.getElementById('apiBorgGrid');
+      let selected = null;
+      for (let i = 0; i <= 10; i++) {
+        const btn = document.createElement('button');
+        btn.dataset.val = i;
+        btn.textContent = i;
+        btn.title = labels[i] || '';
+        btn.style.cssText = 'padding:14px; border:1.5px solid #d8dde7; background:white; border-radius:8px; font-size:15px; font-weight:800; cursor:pointer; color:#0b1530;';
+        btn.onclick = () => {
+          selected = i;
+          Array.from(grid.children).forEach(b => {
+            b.style.background = b === btn ? 'linear-gradient(135deg,#4f8cff,#7c5cff)' : 'white';
+            b.style.color = b === btn ? 'white' : '#0b1530';
+            b.style.borderColor = b === btn ? '#4f8cff' : '#d8dde7';
+          });
+          document.getElementById('apiBorgSelected').innerHTML = `<strong>Borg ${i}</strong> — ${labels[i] || '(intermédiaire)'}`;
+          const ok = document.getElementById('apiBorgConfirm');
+          ok.disabled = false;
+          ok.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+        };
+        grid.appendChild(btn);
+      }
+      document.getElementById('apiBorgConfirm').onclick = async function () {
+        if (selected == null) return;
+        this.disabled = true; this.textContent = 'Enregistrement…';
+        try {
+          const r = await window.MarfanAPI.training.end(sessionId, selected);
+          // Ferme modale Borg
+          const b = document.getElementById('apiBorgBackdrop'); if (b) b.remove();
+          // Réinitialise UI training
+          resetUIAfterStop();
+          // Récupère la séance complète avec samples et ouvre la fiche résumé
+          const full = await window.MarfanAPI.training.get(sessionId);
+          openTrainingSummary(full.session);
+          resetTrainingState();
+        } catch (e) {
+          const err = document.getElementById('apiBorgErr');
+          err.textContent = e.message; err.style.display = 'block';
+          this.disabled = false; this.textContent = 'Valider et générer la fiche résumé';
+        }
+      };
+    }
+
+    function resetUIAfterStop() {
+      const bStart = document.getElementById('apiBtnStartSession');
+      const bStop  = document.getElementById('apiBtnStopSession');
+      const m = document.getElementById('apiTrainingMetrics');
+      const hint = document.getElementById('apiTrainingHint');
+      if (bStart) { bStart.disabled = false; bStart.style.opacity = '1'; }
+      if (bStop)  { bStop.disabled = true; bStop.style.opacity = '0.4'; }
+      if (m) { m.style.opacity = '0.5'; m.style.pointerEvents = 'none'; }
+      if (hint) hint.style.display = 'none';
+      ['apiMetricHr','apiMetricPa','apiMetricEnergy'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.textContent = '--';
+      });
+      const elDu = document.getElementById('apiMetricDuration'); if (elDu) elDu.textContent = '00:00';
+    }
+
+    // === Fiche résumé avec 3 graphiques Chart.js ===
+    function openTrainingSummary(session) {
+      const samples = session.samples || [];
+      const dur = session.duration_s || 0;
+      const mm = Math.floor(dur/60), ss = dur % 60;
+      const html = `
+        <div id="apiSummaryBackdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.85); z-index:10001; display:flex; align-items:center; justify-content:center; padding:20px;">
+          <div style="background:white; border-radius:14px; padding:24px 28px; width:780px; max-width:94vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:14px;">
+              <div>
+                <div style="font-size:18px; font-weight:800; color:#0b1530;">📋 Fiche de séance</div>
+                <div style="font-size:12px; color:#6b7390;">${new Date(session.started_at).toLocaleString('fr-FR')}</div>
+              </div>
+              <button id="apiSummaryClose" style="border:none; background:#f3f6fb; color:#5a6280; padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer;">Fermer</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:18px;">
+              <div class="pat-metric"><small>Durée</small><strong>${mm}:${ss.toString().padStart(2,'0')}</strong><span>mm:ss</span></div>
+              <div class="pat-metric"><small>Borg CR10</small><strong>${session.borg_cr10 != null ? session.borg_cr10 : '—'}</strong><span>/10</span></div>
+              <div class="pat-metric"><small>FC moy / max</small><strong>${session.hr_avg ? Math.round(session.hr_avg) : '—'} / ${session.hr_max || '—'}</strong><span>bpm</span></div>
+              <div class="pat-metric" style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);"><small>Énergie totale</small><strong>${session.energy_total_kcal ? Number(session.energy_total_kcal).toFixed(1) : '—'}</strong><span>kcal</span></div>
+            </div>
+
+            <h4 style="font-size:13px; color:#0b1530; margin-bottom:6px;">📈 Fréquence cardiaque (bpm)</h4>
+            <canvas id="apiSumChartHr" height="140"></canvas>
+            <h4 style="font-size:13px; color:#0b1530; margin:14px 0 6px;">🩺 Pression artérielle estimée (mmHg)</h4>
+            <canvas id="apiSumChartPa" height="140"></canvas>
+            <h4 style="font-size:13px; color:#0b1530; margin:14px 0 6px;">🔥 Dépense énergétique cumulée (kcal)</h4>
+            <canvas id="apiSumChartEn" height="140"></canvas>
+
+            <table style="width:100%; margin-top:16px; font-size:12px; border-collapse:collapse;">
+              <tr style="background:#f3f6fb;"><th style="text-align:left; padding:6px;">Variable</th><th style="text-align:right; padding:6px;">Min</th><th style="text-align:right; padding:6px;">Moy</th><th style="text-align:right; padding:6px;">Max</th></tr>
+              <tr><td style="padding:6px;">FC (bpm)</td><td style="text-align:right;">${session.hr_min || '—'}</td><td style="text-align:right;">${session.hr_avg ? Math.round(session.hr_avg) : '—'}</td><td style="text-align:right;">${session.hr_max || '—'}</td></tr>
+              <tr style="background:#fafbfd;"><td style="padding:6px;">PA est. (mmHg)</td><td style="text-align:right;">${session.pa_estimated_min || '—'}</td><td style="text-align:right;">${session.pa_estimated_avg ? Math.round(session.pa_estimated_avg) : '—'}</td><td style="text-align:right;">${session.pa_estimated_max || '—'}</td></tr>
+              <tr><td style="padding:6px;">Énergie totale (kcal)</td><td colspan="3" style="text-align:right;">${session.energy_total_kcal ? Number(session.energy_total_kcal).toFixed(2) : '—'}</td></tr>
+            </table>
+            <p style="margin-top:10px; font-size:10.5px; color:#8b91a8; font-style:italic;">La pression artérielle affichée est <strong>estimée</strong> à partir de la fréquence cardiaque. Ce n'est pas une mesure médicale directe.</p>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+      document.getElementById('apiSummaryClose').onclick = () => {
+        const b = document.getElementById('apiSummaryBackdrop'); if (b) b.remove();
+      };
+      // Construit les graphiques après que les canvas soient dans le DOM
+      setTimeout(() => buildSummaryCharts(samples), 50);
+    }
+
+    function buildSummaryCharts(samples) {
+      if (typeof Chart === 'undefined') return;
+      const labels = samples.map(s => Math.round(s.t_seconds / 60 * 10) / 10);
+      const optsBase = (color) => ({
+        type: 'line',
+        data: { labels, datasets: [{ data: [], borderColor: color, backgroundColor: color + '22',
+                tension: 0.3, fill: true, pointRadius: 0, borderWidth: 2 }] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { x: { title: { display: true, text: 'Temps (min)', font: { size: 10 } } } }
+        }
+      });
+      try {
+        const c1 = optsBase('#ef4444'); c1.data.datasets[0].data = samples.map(s => s.hr);
+        new Chart(document.getElementById('apiSumChartHr').getContext('2d'), c1);
+        const c2 = optsBase('#f97316'); c2.data.datasets[0].data = samples.map(s => s.pa_estimated);
+        new Chart(document.getElementById('apiSumChartPa').getContext('2d'), c2);
+        const c3 = optsBase('#10b981'); c3.data.datasets[0].data = samples.map(s => parseFloat(s.energy_kcal));
+        new Chart(document.getElementById('apiSumChartEn').getContext('2d'), c3);
+      } catch (e) { console.warn('Charts résumé :', e); }
+    }
+
+    // === Intégration de la visio dans le site (iframe Jitsi) ===
+    window.__joinVisioInline = function (visioId, link, title) {
+      _train.currentVisioId = visioId;
+      const stage = document.getElementById('apiVisioStage');
+      if (!stage) return;
+      // Si lien Jitsi → embed direct. Sinon → iframe générique (Zoom/Teams refuseront probablement X-Frame-Options).
+      const isJitsi = /jit\.si|meet\.jit\.si/.test(link);
+      if (isJitsi) {
+        stage.innerHTML = `
+          <iframe src="${link}#config.prejoinPageEnabled=false&userInfo.displayName=Patient"
+                  allow="camera; microphone; fullscreen; display-capture; autoplay"
+                  style="width:100%; height:520px; border:0; display:block;"></iframe>`;
+      } else {
+        // Affiche un avertissement + lien fallback
+        stage.innerHTML = `
+          <div style="background:linear-gradient(135deg,#063b35,#0f766e); color:white; padding:24px; text-align:center;">
+            <strong style="font-size:16px;">${title}</strong>
+            <p style="color:#ccfbf1; margin:10px 0;">Cette plateforme (${new URL(link).hostname}) ne permet pas l'embed direct. Cliquez ci-dessous pour ouvrir.</p>
+            <a href="${link}" target="_blank" rel="noopener" class="pat-btn-success" style="text-decoration:none;">Ouvrir dans un nouvel onglet</a>
+          </div>`;
+      }
+      // Scroll jusqu'à la carte
+      document.getElementById('apiVisioIntegratedCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     async function loadVisioSessionsForRole(role) {
       try {

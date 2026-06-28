@@ -265,6 +265,49 @@ CREATE INDEX IF NOT EXISTS idx_visio_part_patient ON visio_participants(patient_
 CREATE INDEX IF NOT EXISTS idx_visio_part_visio   ON visio_participants(visio_id);
 
 -- ============================================================
+-- TRAINING_SESSIONS — Séances d'entraînement patient (visio ou solo)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS training_sessions (
+    id                  SERIAL PRIMARY KEY,
+    patient_id          VARCHAR(50) NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    investigator_id     VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
+    visio_session_id    INTEGER     REFERENCES visio_sessions(id) ON DELETE SET NULL,
+    started_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ended_at            TIMESTAMPTZ,
+    duration_s          INTEGER,
+    status              VARCHAR(20) NOT NULL DEFAULT 'in_progress'
+                        CHECK (status IN ('in_progress','completed','interrupted','cancelled')),
+    borg_cr10           INTEGER CHECK (borg_cr10 BETWEEN 0 AND 10),
+    hr_min              INTEGER,
+    hr_avg              NUMERIC(5,1),
+    hr_max              INTEGER,
+    pa_estimated_min    INTEGER,
+    pa_estimated_avg    NUMERIC(5,1),
+    pa_estimated_max    INTEGER,
+    energy_total_kcal   NUMERIC(8,2),
+    belt_connected      BOOLEAN DEFAULT FALSE,
+    pa_method           VARCHAR(50) DEFAULT 'estimated_from_hr',
+    notes               TEXT,
+    created_at          TIMESTAMPTZ DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_training_patient    ON training_sessions(patient_id);
+CREATE INDEX IF NOT EXISTS idx_training_started_at ON training_sessions(started_at);
+
+-- TRAINING_SAMPLES — Échantillons temporels (FC/PA/énergie en fonction du temps)
+CREATE TABLE IF NOT EXISTS training_samples (
+    id              BIGSERIAL PRIMARY KEY,
+    session_id      INTEGER NOT NULL REFERENCES training_sessions(id) ON DELETE CASCADE,
+    t_seconds       INTEGER NOT NULL,
+    hr              INTEGER,
+    pa_estimated    INTEGER,
+    energy_kcal     NUMERIC(7,3),
+    recorded_at     TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(session_id, t_seconds)
+);
+CREATE INDEX IF NOT EXISTS idx_training_samples_session ON training_samples(session_id, t_seconds);
+
+-- ============================================================
 -- ANALYSES_FILES — Fichiers CSV/XLSX uploadés (VO2, popmètre)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS analyses_files (

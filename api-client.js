@@ -191,6 +191,17 @@
       exportUrl: (mode) => `${API_BASE}/cohort/export?mode=${mode}` // à utiliser avec token en query si besoin
     },
 
+    /** ===== Séances d'entraînement patient ===== */
+    training: {
+      start:       (visioId)                => request('POST', '/training/sessions', { visio_session_id: visioId || null }),
+      pushSamples: (id, samples)            => request('POST', `/training/sessions/${id}/samples`, { samples }),
+      end:         (id, borg, opts={})      => request('POST', `/training/sessions/${id}/end`,
+                                                       Object.assign({ borg_cr10: borg }, opts)),
+      mine:        ()                       => request('GET',  '/training/sessions/mine'),
+      get:         (id)                     => request('GET',  `/training/sessions/${id}`),
+      list:        (filters={})             => request('GET',  '/training/sessions?' + new URLSearchParams(filters).toString())
+    },
+
     /** ===== Sauvegarde / Restauration (principal_admin uniquement) ===== */
     backup: {
       status:  () => request('GET',  '/backup/status'),
