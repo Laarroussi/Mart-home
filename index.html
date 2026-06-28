@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase6i-wide"></script>
+  <script src="api-client.js?v=phase6j-assign"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -10058,6 +10058,197 @@
       document.body.appendChild(btn);
     }
 
+    // ====================================================================
+    // === STAFF : Attribuer vidéos aux patients (sans visio, en solo)
+    // ====================================================================
+    function injectAssignVideosControls(role) {
+      if (role !== 'principal_admin' && role !== 'investigator') return;
+      if (document.getElementById('apiAssignVideoBtn')) return;
+      const btn = document.createElement('button');
+      btn.id = 'apiAssignVideoBtn';
+      btn.innerHTML = '🎯 Attribuer vidéos';
+      btn.title = 'Attribuer des vidéos d\'entraînement à des patients (sans visio)';
+      btn.style.cssText = 'position:fixed; bottom:18px; right:740px; z-index:9990; padding:10px 16px; border:none; border-radius:999px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; font-weight:700; font-size:12.5px; cursor:pointer; box-shadow:0 10px 24px rgba(0,0,0,0.18);';
+      btn.addEventListener('click', openAssignVideosModal);
+      document.body.appendChild(btn);
+    }
+
+    async function openAssignVideosModal() {
+      // 1. Charge la liste des vidéos disponibles
+      let videos = [];
+      try {
+        const r = await window.MarfanAPI.videos.list({ type: 'training' });
+        videos = (r && r.videos) || [];
+      } catch (e) { alert('Impossible de charger les vidéos : ' + e.message); return; }
+
+      const patientsList = (window.patients || []).slice().sort((a,b) => a.id.localeCompare(b.id));
+      if (!patientsList.length) { alert('Aucun patient dans la cohorte.'); return; }
+
+      const html = `
+        <div id="apiAssignBackdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.75); z-index:10001; display:flex; align-items:center; justify-content:center; padding:20px;">
+          <div style="background:white; border-radius:14px; padding:22px 26px; width:980px; max-width:96vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+              <div>
+                <div style="font-size:17px; font-weight:800; color:#0b1530;">🎯 Attribuer des vidéos d'entraînement</div>
+                <div style="font-size:11.5px; color:#6b7390;">Cochez vidéos et patients, puis cliquez sur "Attribuer". Le patient verra les vidéos dans son onglet 🏃 Entraînement (pas besoin de visio).</div>
+              </div>
+              <button id="apiAssignClose" style="border:none; background:#f3f6fb; color:#5a6280; padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer;">Fermer</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:2fr 1fr; gap:14px;">
+              <!-- Colonne vidéos -->
+              <div style="border:1px solid #e3e7ef; border-radius:10px; padding:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+                  <strong style="font-size:13px; color:#0b1530;">Vidéos disponibles (${videos.length})</strong>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <input id="apiAssignVideoSearch" type="search" placeholder="Filtrer…" style="padding:5px 9px; border:1px solid #d8dde7; border-radius:6px; font-size:11.5px; width:140px;">
+                    <button id="apiAssignVideoAll" style="padding:4px 9px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-weight:600; font-size:10.5px; cursor:pointer;">Tout cocher</button>
+                    <button id="apiAssignVideoNone" style="padding:4px 9px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-weight:600; font-size:10.5px; cursor:pointer;">Décocher</button>
+                  </div>
+                </div>
+                <div id="apiAssignVideoGrid" style="max-height:380px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:8px;">
+                  ${videos.map(v => {
+                    const yid = v.youtube_id || v.id;
+                    const thumb = 'https://img.youtube.com/vi/' + yid + '/mqdefault.jpg';
+                    return `
+                      <label class="apiAssignVideoItem" data-text="${(v.title + ' ' + (v.category||'')).toLowerCase()}" style="position:relative; display:block; border:2px solid #e3e7ef; border-radius:8px; overflow:hidden; cursor:pointer; transition:border-color .15s;">
+                        <input type="checkbox" class="apiAssignVideoCb" data-video-id="${v.id}" style="position:absolute; top:5px; left:5px; z-index:2; width:18px; height:18px;">
+                        <img src="${thumb}" alt="${v.title}" loading="lazy" style="width:100%; height:90px; object-fit:cover; display:block;">
+                        <div style="padding:6px 8px;">
+                          <div style="font-size:11px; font-weight:700; color:#0b1530; line-height:1.25;">${v.title}</div>
+                          <div style="font-size:10px; color:#6b7390; margin-top:2px;">${v.category || '—'}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}</div>
+                        </div>
+                      </label>`;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- Colonne patients -->
+              <div style="border:1px solid #e3e7ef; border-radius:10px; padding:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+                  <strong style="font-size:13px; color:#0b1530;">Patients (${patientsList.length})</strong>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <button id="apiAssignPatAll" style="padding:4px 9px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-weight:600; font-size:10.5px; cursor:pointer;">Tout</button>
+                    <button id="apiAssignPatNone" style="padding:4px 9px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-weight:600; font-size:10.5px; cursor:pointer;">Aucun</button>
+                  </div>
+                </div>
+                <div style="max-height:380px; overflow-y:auto;">
+                  ${patientsList.map(p => `
+                    <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px;" onmouseover="this.style.background='#f3f6fb'" onmouseout="this.style.background='transparent'">
+                      <input type="checkbox" class="apiAssignPatCb" data-patient-id="${p.id}" style="width:16px; height:16px;">
+                      <strong>${p.id}</strong>
+                      <span style="color:var(--muted);">${p.civil && p.civil.initials ? p.civil.initials : ''}</span>
+                    </label>`).join('')}
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:12px;">
+              <label style="font-size:11px; font-weight:600; color:#4a5070;">Note pour le patient (optionnel, affichée dans son livret)</label>
+              <input id="apiAssignNote" placeholder="Ex : Programme semaine 1, à faire 3× par semaine" style="width:100%; padding:8px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:12px; margin-top:3px;">
+            </div>
+
+            <div id="apiAssignStatus" style="display:none; margin-top:10px; padding:8px 10px; border-radius:7px; font-size:11.5px;"></div>
+
+            <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <div id="apiAssignCounter" style="font-size:11.5px; color:#6b7390;">0 vidéo(s) × 0 patient(s)</div>
+              <button id="apiAssignSubmit" disabled style="padding:10px 18px; border:none; background:#94a3b8; color:white; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer;">Attribuer</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+
+      const closeFn = () => { const b = document.getElementById('apiAssignBackdrop'); if (b) b.remove(); };
+      document.getElementById('apiAssignClose').onclick = closeFn;
+
+      function updateCounter() {
+        const nv = document.querySelectorAll('.apiAssignVideoCb:checked').length;
+        const np = document.querySelectorAll('.apiAssignPatCb:checked').length;
+        const counter = document.getElementById('apiAssignCounter');
+        const btn = document.getElementById('apiAssignSubmit');
+        if (counter) counter.textContent = nv + ' vidéo(s) × ' + np + ' patient(s) = ' + (nv * np) + ' attribution(s)';
+        const canSubmit = nv > 0 && np > 0;
+        if (btn) {
+          btn.disabled = !canSubmit;
+          btn.style.background = canSubmit ? 'linear-gradient(135deg,#f59e0b,#f97316)' : '#94a3b8';
+        }
+        // Visuel des cards cochées
+        document.querySelectorAll('.apiAssignVideoItem').forEach(item => {
+          const cb = item.querySelector('.apiAssignVideoCb');
+          item.style.borderColor = cb.checked ? '#f97316' : '#e3e7ef';
+        });
+      }
+
+      // Wire all checkboxes
+      document.querySelectorAll('.apiAssignVideoCb, .apiAssignPatCb').forEach(cb => {
+        cb.addEventListener('change', updateCounter);
+      });
+      // Boutons tout/aucun
+      document.getElementById('apiAssignVideoAll').onclick = () => {
+        document.querySelectorAll('.apiAssignVideoCb').forEach(cb => {
+          const label = cb.closest('.apiAssignVideoItem');
+          if (!label || label.style.display !== 'none') cb.checked = true;
+        });
+        updateCounter();
+      };
+      document.getElementById('apiAssignVideoNone').onclick = () => {
+        document.querySelectorAll('.apiAssignVideoCb').forEach(cb => cb.checked = false);
+        updateCounter();
+      };
+      document.getElementById('apiAssignPatAll').onclick = () => {
+        document.querySelectorAll('.apiAssignPatCb').forEach(cb => cb.checked = true);
+        updateCounter();
+      };
+      document.getElementById('apiAssignPatNone').onclick = () => {
+        document.querySelectorAll('.apiAssignPatCb').forEach(cb => cb.checked = false);
+        updateCounter();
+      };
+      // Recherche vidéos
+      document.getElementById('apiAssignVideoSearch').oninput = (e) => {
+        const q = e.target.value.toLowerCase().trim();
+        document.querySelectorAll('.apiAssignVideoItem').forEach(item => {
+          const txt = item.dataset.text || '';
+          item.style.display = (!q || txt.includes(q)) ? 'block' : 'none';
+        });
+      };
+
+      // Submit : 1 appel POST par vidéo, avec la liste des patients en batch
+      document.getElementById('apiAssignSubmit').onclick = async function () {
+        const videoIds = Array.from(document.querySelectorAll('.apiAssignVideoCb:checked')).map(cb => cb.dataset.videoId);
+        const patientIds = Array.from(document.querySelectorAll('.apiAssignPatCb:checked')).map(cb => cb.dataset.patientId);
+        const note = (document.getElementById('apiAssignNote').value || '').trim() || null;
+        if (!videoIds.length || !patientIds.length) return;
+
+        const statusEl = document.getElementById('apiAssignStatus');
+        statusEl.style.display = 'block';
+        statusEl.style.background = '#dbeafe'; statusEl.style.color = '#1e40af';
+        statusEl.textContent = 'Attribution en cours…';
+        this.disabled = true;
+
+        let success = 0, failed = 0, errors = [];
+        for (const vid of videoIds) {
+          try {
+            const r = await window.MarfanAPI.videos.assign(vid, patientIds, note);
+            success += (r && r.assigned) || 0;
+          } catch (e) {
+            failed++;
+            errors.push(vid + ' : ' + e.message);
+          }
+        }
+        if (failed === 0) {
+          statusEl.style.background = '#d1fae5'; statusEl.style.color = '#065f46';
+          statusEl.textContent = '✓ ' + success + ' attribution(s) effectuée(s). Les patients verront les vidéos dans leur onglet 🏃 Entraînement.';
+          setTimeout(closeFn, 2000);
+        } else {
+          statusEl.style.background = '#fee2e2'; statusEl.style.color = '#991b1b';
+          statusEl.textContent = '⚠ ' + success + ' OK, ' + failed + ' échec(s) : ' + errors.join(' · ');
+          this.disabled = false;
+        }
+      };
+
+      updateCounter();
+    }
+
     async function openStaffTrainingModal() {
       const patientOpts = (window.patients || []).map(p =>
         `<option value="${p.id}">${p.id}${p.civil && p.civil.initials ? ' — ' + p.civil.initials : ''}</option>`
@@ -11265,6 +11456,7 @@
       injectVisioStaffControls(role);
       injectBackupAdminControls(role);
       injectTrainingHistoryStaffControls(role);
+      injectAssignVideosControls(role);
       const h = await loadTrainingHistory(role);
       const t = await loadTrainingTableInBDD(role);
       console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s), ' + v + ' vidéo(s), ' + s + ' visio(s), ' + h + ' training(s) perso, ' + t + ' training(s) BDD.');
