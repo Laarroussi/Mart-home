@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase6c-zones"></script>
+  <script src="api-client.js?v=phase6d-toggle"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2312,6 +2312,7 @@
       <nav class="patient-tabs" role="tablist">
         <button class="patient-tab active" data-pat-tab="pat-questionnaires">📨 Mes questionnaires <span id="patNotifCount" style="background:#f43f5e; color:white; padding:1px 7px; border-radius:99px; font-size:10.5px; font-weight:800;"></span></button>
         <button class="patient-tab" data-pat-tab="pat-visio">🎥 Séance en visio</button>
+        <button class="patient-tab" data-pat-tab="pat-training">🏃 Entraînement</button>
         <button class="patient-tab" data-pat-tab="pat-education">📚 Éducation thérapeutique</button>
         <button class="patient-tab" data-pat-tab="pat-progress">📊 Mes données</button>
       </nav>
@@ -2421,6 +2422,26 @@
           </div>
           <div id="patParticipantGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:10px;"></div>
         </article>
+      </section>
+
+      <!-- ===== PANEL : ENTRAÎNEMENT (vidéos attribuées par l'investigateur) ===== -->
+      <section class="patient-panel" id="pat-training">
+        <article class="pat-card" style="margin-bottom:14px;">
+          <h3>🏃 Mes vidéos d'entraînement</h3>
+          <p>Voici les vidéos d'entraînement <strong>sélectionnées par votre investigateur</strong>. Cliquez pour lancer la vidéo dans la page.</p>
+        </article>
+        <article class="pat-card" id="apiPatTrainingPlayerCard" style="display:none; padding:0; overflow:hidden; margin-bottom:14px;">
+          <div id="apiPatTrainingPlayer" style="background:#020617; min-height:360px;"></div>
+          <div style="padding:12px 14px; background:rgba(11,21,48,0.96); color:white; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <strong id="apiPatTrainingPlayerTitle" style="font-size:14px;">—</strong>
+            <button onclick="document.getElementById('apiPatTrainingPlayerCard').style.display='none'; document.getElementById('apiPatTrainingPlayer').innerHTML='';" class="pat-btn-light">Fermer le lecteur</button>
+          </div>
+        </article>
+        <div id="apiPatTrainingGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:14px;"></div>
+        <div id="apiPatTrainingEmpty" style="text-align:center; padding:30px; color:var(--muted); display:none;">
+          <div style="font-size:32px; margin-bottom:8px;">📺</div>
+          Aucune vidéo n'a encore été attribuée pour vous. Demandez à votre investigateur de vous en attribuer.
+        </div>
       </section>
 
       <!-- ===== PANEL : ÉDUCATION ===== -->
@@ -9602,7 +9623,8 @@
           ? await window.MarfanAPI.videos.mine()
           : await window.MarfanAPI.videos.list({ type: 'training' });
         const list = (data && data.videos) || [];
-        if (!list.length) return 0;
+
+        // Côté investigateur/admin : remplit le tableau in-memory trainingVideos[]
         if (typeof trainingVideos !== 'undefined') {
           trainingVideos.splice(0, trainingVideos.length);
           list.forEach(v => trainingVideos.push(adaptApiVideoToTrainingFormat(v)));
@@ -9612,11 +9634,63 @@
           if (typeof renderTrainingVideos === 'function') renderTrainingVideos();
           if (typeof selectTrainingVideo === 'function' && trainingVideos[0]) selectTrainingVideo(trainingVideos[0].id);
         } catch (e) { console.warn('Re-render vidéos après chargement API :', e); }
+
+        // Côté patient : remplit aussi le nouvel onglet "Entraînement"
+        if (role === 'patient') injectPatientTrainingGrid(list);
+
         return list.length;
       } catch (e) {
         console.warn('[MarfanAPI] Chargement vidéos échoué :', e.message);
         return 0;
       }
+    }
+
+    // === Grille des vidéos attribuées au patient (nouvel onglet pat-training) ===
+    function injectPatientTrainingGrid(videos) {
+      const grid = document.getElementById('apiPatTrainingGrid');
+      const empty = document.getElementById('apiPatTrainingEmpty');
+      if (!grid) return;
+      grid.innerHTML = '';
+      if (!videos || !videos.length) {
+        if (empty) empty.style.display = 'block';
+        return;
+      }
+      if (empty) empty.style.display = 'none';
+      videos.forEach(v => {
+        const yid = v.youtube_id || v.id;
+        const thumb = v.thumbnail_url || 'https://img.youtube.com/vi/' + yid + '/hqdefault.jpg';
+        const card = document.createElement('div');
+        card.style.cssText = 'border:1px solid var(--line); border-radius:10px; overflow:hidden; cursor:pointer; transition:transform .15s; background:white;';
+        card.onmouseenter = () => card.style.transform = 'translateY(-2px)';
+        card.onmouseleave = () => card.style.transform = 'none';
+        card.innerHTML = `
+          <div style="position:relative; aspect-ratio:16/9; background:#020617;">
+            <img src="${thumb}" alt="${v.title}" loading="lazy" style="width:100%; height:100%; object-fit:cover; display:block;">
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.18); opacity:0; transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">
+              <div style="background:rgba(220,38,38,0.95); color:white; padding:8px 14px; border-radius:99px; font-weight:700; font-size:13px;">▶ Lancer</div>
+            </div>
+          </div>
+          <div style="padding:10px 12px;">
+            <div style="font-weight:700; font-size:12.5px; color:var(--ink); line-height:1.3; margin-bottom:4px;">${v.title}</div>
+            <div style="font-size:10.5px; color:var(--muted);">${v.category || '—'}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}${v.interval_label ? ' · ' + v.interval_label : ''}</div>
+          </div>`;
+        card.onclick = () => playPatientVideo(yid, v.title);
+        grid.appendChild(card);
+      });
+    }
+
+    function playPatientVideo(youtubeId, title) {
+      const player = document.getElementById('apiPatTrainingPlayer');
+      const card = document.getElementById('apiPatTrainingPlayerCard');
+      const titleEl = document.getElementById('apiPatTrainingPlayerTitle');
+      if (!player || !card) return;
+      player.innerHTML = `<iframe src="https://www.youtube.com/embed/${youtubeId}?rel=0&autoplay=1"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowfullscreen
+                          style="width:100%; height:360px; border:0; display:block;"></iframe>`;
+      if (titleEl) titleEl.textContent = title || '';
+      card.style.display = 'block';
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // === Bouton flottant "+ Vidéo YouTube" pour principal_admin ===
@@ -10261,20 +10335,22 @@
               <div class="pat-metric" style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);"><small>Énergie totale</small><strong>${session.energy_total_kcal ? Number(session.energy_total_kcal).toFixed(1) : '—'}</strong><span>kcal</span></div>
             </div>
 
-            <h4 style="font-size:13px; color:#0b1530; margin-bottom:6px;">📈 Fréquence cardiaque (bpm)</h4>
-            <canvas id="apiSumChartHr" height="140"></canvas>
+            <!-- Boutons toggle pour choisir la variable à afficher dans le graphique principal -->
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+              <button class="apiSumTab" data-var="hr"     style="padding:6px 12px; border:1px solid #d8dde7; border-radius:99px; background:#0b1530; color:white; font-weight:700; font-size:11.5px; cursor:pointer;">📈 FC</button>
+              <button class="apiSumTab" data-var="pa"     style="padding:6px 12px; border:1px solid #d8dde7; border-radius:99px; background:white; color:#0b1530; font-weight:600; font-size:11.5px; cursor:pointer;">🩺 PA estimée</button>
+              <button class="apiSumTab" data-var="energy" style="padding:6px 12px; border:1px solid #d8dde7; border-radius:99px; background:white; color:#0b1530; font-weight:600; font-size:11.5px; cursor:pointer;">🔥 Énergie</button>
+              <button class="apiSumTab" data-var="met"    style="padding:6px 12px; border:1px solid #d8dde7; border-radius:99px; background:white; color:#0b1530; font-weight:600; font-size:11.5px; cursor:pointer;">⚡ MET</button>
+            </div>
+            <div id="apiSumChartTitle" style="font-size:13px; color:#0b1530; font-weight:700; margin-bottom:4px;">📈 Fréquence cardiaque (bpm)</div>
+            <canvas id="apiSumChartMain" height="160"></canvas>
             <div id="apiSumZoneLegend" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; font-size:10.5px;"></div>
 
-            <h4 style="font-size:13px; color:#0b1530; margin:14px 0 6px;">🍩 Répartition cardio (temps passé par zone)</h4>
+            <h4 style="font-size:13px; color:#0b1530; margin:18px 0 6px;">🍩 Répartition cardio (temps passé par zone)</h4>
             <div style="display:grid; grid-template-columns:200px 1fr; gap:14px; align-items:center;">
               <div style="position:relative;"><canvas id="apiSumChartZones" height="200"></canvas></div>
               <table id="apiSumZoneTable" style="font-size:11.5px; border-collapse:collapse; width:100%;"></table>
             </div>
-
-            <h4 style="font-size:13px; color:#0b1530; margin:14px 0 6px;">🩺 Pression artérielle estimée (mmHg)</h4>
-            <canvas id="apiSumChartPa" height="140"></canvas>
-            <h4 style="font-size:13px; color:#0b1530; margin:14px 0 6px;">🔥 Dépense énergétique cumulée (kcal)</h4>
-            <canvas id="apiSumChartEn" height="140"></canvas>
 
             <table style="width:100%; margin-top:16px; font-size:12px; border-collapse:collapse;">
               <tr style="background:#f3f6fb;"><th style="text-align:left; padding:6px;">Variable</th><th style="text-align:right; padding:6px;">Min</th><th style="text-align:right; padding:6px;">Moy</th><th style="text-align:right; padding:6px;">Max</th></tr>
@@ -10296,45 +10372,92 @@
     function buildSummaryCharts(samples) {
       if (typeof Chart === 'undefined') return;
       const labels = samples.map(s => Math.round(s.t_seconds / 60 * 10) / 10);
-
-      // ===== Plugin Chart.js : bandes horizontales colorées par zone FC =====
       const fcMaxLocal = _fcMax || 180;
+
+      // ===== Plugin Chart.js : bandes colorées de zones (utilisé uniquement quand var=hr) =====
       const zonesPlugin = {
         id: 'zonesBg',
         beforeDraw(chart) {
+          if (chart.__currentVar !== 'hr') return;
           const { ctx, chartArea: ca, scales } = chart;
           if (!ca) return;
           ctx.save();
           HR_ZONES.forEach(z => {
-            if (z.min === 0) return; // saute la zone "repos"
-            const yTop = scales.y.getPixelForValue(Math.min(fcMaxLocal * z.max / 100, scales.y.max));
-            const yBot = scales.y.getPixelForValue(Math.max(fcMaxLocal * z.min / 100, scales.y.min));
-            ctx.fillStyle = z.bg + 'CC'; // semi-transparent
+            if (z.min === 0) return;
+            const yMaxVal = Math.min(fcMaxLocal * z.max / 100, scales.y.max);
+            const yMinVal = Math.max(fcMaxLocal * z.min / 100, scales.y.min);
+            if (yMaxVal <= scales.y.min || yMinVal >= scales.y.max) return;
+            const yTop = scales.y.getPixelForValue(yMaxVal);
+            const yBot = scales.y.getPixelForValue(yMinVal);
+            ctx.fillStyle = z.bg + 'CC';
             ctx.fillRect(ca.left, yTop, ca.right - ca.left, yBot - yTop);
           });
           ctx.restore();
         }
       };
 
-      const lineOpts = (color, withZones) => ({
-        type: 'line',
-        data: { labels, datasets: [{ data: [], borderColor: color, backgroundColor: color + '22',
-                tension: 0.3, fill: !withZones, pointRadius: 0, borderWidth: 2 }] },
-        options: { responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: { x: { title: { display: true, text: 'Temps (min)', font: { size: 10 } } } }
-        },
-        plugins: withZones ? [zonesPlugin] : []
-      });
+      // === Compute MET séries (approximation : MET ≈ 1 + (HR - 60) / 12) ===
+      // (formule grossière, ratio HR / repos ; à raffiner avec poids/âge/VO2 mesuré)
+      function hrToMET(hr) {
+        if (hr == null) return null;
+        return Math.max(1, 1 + (hr - 60) / 12);
+      }
+
+      // === Données et configs par variable ===
+      const VARS = {
+        hr:     { label: '📈 Fréquence cardiaque (bpm)', color: '#0b1530', data: samples.map(s => s.hr),
+                  yScale: { suggestedMin: 50, suggestedMax: Math.max(180, fcMaxLocal + 5) }, fill: false },
+        pa:     { label: '🩺 Pression artérielle estimée (mmHg)', color: '#f97316', data: samples.map(s => s.pa_estimated),
+                  yScale: { suggestedMin: 70, suggestedMax: 180 }, fill: true },
+        energy: { label: '🔥 Dépense énergétique cumulée (kcal)', color: '#10b981', data: samples.map(s => parseFloat(s.energy_kcal)),
+                  yScale: { beginAtZero: true }, fill: true },
+        met:    { label: '⚡ Équivalent métabolique (MET, approx. HR/VO₂)', color: '#7c3aed', data: samples.map(s => hrToMET(s.hr) ? Math.round(hrToMET(s.hr) * 10)/10 : null),
+                  yScale: { suggestedMin: 0, suggestedMax: 15 }, fill: true }
+      };
 
       try {
-        // --- Graph FC avec bandes de zones colorées en fond ---
-        const c1 = lineOpts('#0b1530', true);
-        c1.data.datasets[0].data = samples.map(s => s.hr);
-        c1.options.scales.y = { suggestedMin: 50, suggestedMax: Math.max(180, fcMaxLocal + 5) };
-        new Chart(document.getElementById('apiSumChartHr').getContext('2d'), c1);
+        // === 1 SEUL graphique principal, mutable ===
+        const ctx = document.getElementById('apiSumChartMain').getContext('2d');
+        const mainChart = new Chart(ctx, {
+          type: 'line',
+          data: { labels, datasets: [{ data: VARS.hr.data, borderColor: VARS.hr.color,
+                  backgroundColor: VARS.hr.color + '22', tension: 0.3, fill: false, pointRadius: 0, borderWidth: 2 }] },
+          options: { responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { title: { display: true, text: 'Temps (min)', font: { size: 10 } } },
+                      y: VARS.hr.yScale } },
+          plugins: [zonesPlugin]
+        });
+        mainChart.__currentVar = 'hr';
 
-        // --- Légende des zones sous le graph HR ---
+        // === Bind les boutons toggle ===
+        function switchVar(k) {
+          const v = VARS[k]; if (!v) return;
+          mainChart.__currentVar = k;
+          mainChart.data.datasets[0].data = v.data;
+          mainChart.data.datasets[0].borderColor = v.color;
+          mainChart.data.datasets[0].backgroundColor = v.color + '22';
+          mainChart.data.datasets[0].fill = v.fill;
+          mainChart.options.scales.y = v.yScale;
+          mainChart.update();
+          const title = document.getElementById('apiSumChartTitle');
+          if (title) title.textContent = v.label;
+          // Visuel des pills
+          document.querySelectorAll('.apiSumTab').forEach(b => {
+            const sel = b.dataset.var === k;
+            b.style.background = sel ? '#0b1530' : 'white';
+            b.style.color = sel ? 'white' : '#0b1530';
+            b.style.fontWeight = sel ? '700' : '600';
+          });
+          // Légende des zones visible uniquement sur FC
+          const lg = document.getElementById('apiSumZoneLegend');
+          if (lg) lg.style.display = (k === 'hr') ? 'flex' : 'none';
+        }
+        document.querySelectorAll('.apiSumTab').forEach(b => {
+          b.onclick = () => switchVar(b.dataset.var);
+        });
+
+        // === Légende des zones (sous le graph, visible quand var=hr) ===
         const lg = document.getElementById('apiSumZoneLegend');
         if (lg) {
           lg.innerHTML = HR_ZONES.slice(1).map(z =>
@@ -10343,16 +10466,6 @@
               ${z.label} (${z.min}-${z.max === 200 ? '100+' : z.max}%)
             </span>`).join('');
         }
-
-        // --- Cinétique PA estimée ---
-        const c2 = lineOpts('#f97316', false);
-        c2.data.datasets[0].data = samples.map(s => s.pa_estimated);
-        new Chart(document.getElementById('apiSumChartPa').getContext('2d'), c2);
-
-        // --- Cinétique dépense énergétique ---
-        const c3 = lineOpts('#10b981', false);
-        c3.data.datasets[0].data = samples.map(s => parseFloat(s.energy_kcal));
-        new Chart(document.getElementById('apiSumChartEn').getContext('2d'), c3);
 
         // ===== Donut "Répartition cardio" =====
         // Compte le nombre de samples par zone (chaque sample = 5 sec)
