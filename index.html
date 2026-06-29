@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase8b-multi"></script>
+  <script src="api-client.js?v=phase8c-fix"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -11683,6 +11683,13 @@
       injectBackupAdminControls(role);
       injectTrainingHistoryStaffControls(role);
       injectAssignVideosControls(role);
+      // === Injecte le dispositif dans les onglets "Entraînement avec vidéo"
+      //     et "Entraînement libre" — appelé INCONDITIONNELLEMENT (pas dépendant des visios) ===
+      if (role === 'patient') {
+        try { injectExtraDeviceCards(); wireTrainingButtons(); } catch (e) {
+          console.warn('[device] injectExtraDeviceCards échoué :', e.message);
+        }
+      }
       const h = await loadTrainingHistory(role);
       const t = await loadTrainingTableInBDD(role);
       console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s), ' + v + ' vidéo(s), ' + s + ' visio(s), ' + h + ' training(s) perso, ' + t + ' training(s) BDD.');
