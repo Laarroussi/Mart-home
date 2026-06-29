@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase8a-types"></script>
+  <script src="api-client.js?v=phase8b-multi"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2444,6 +2444,11 @@
           Aucune vidéo n'a encore été attribuée pour vous. Demandez à votre investigateur de vous en attribuer.
         </div>
 
+        <!-- Dispositif FC pour cet onglet (injecté par JS au boot patient) -->
+        <article class="pat-card apiTrainingCard" id="apiTrainingDeviceVideo" style="margin-top:18px;">
+          <!-- contenu injecté via buildDeviceCardHTML('avec vidéo') -->
+        </article>
+
         <!-- ===== LIVRET D'ENTRAÎNEMENT — historique des séances ===== -->
         <article class="pat-card" style="margin-top:18px;">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
@@ -2466,11 +2471,9 @@
           <h3>🏃 Entraînement libre — sans vidéo</h3>
           <p>Pour une séance d'entraînement en autonomie (course, vélo, marche, renforcement, étirements ciblés…) avec suivi temps réel de votre fréquence cardiaque, pression artérielle estimée et dépense énergétique. Vos données sont enregistrées dans votre livret.</p>
         </article>
-        <article class="pat-card" id="apiFreeTrainingHost" style="text-align:center; padding:30px;">
-          <div style="font-size:48px; margin-bottom:12px;">⌁</div>
-          <h3 style="margin-bottom:8px;">Dispositif de suivi physiologique</h3>
-          <p style="color:var(--muted); max-width:520px; margin:0 auto 18px;">Le dispositif (ceinture cardiaque + cartes métriques + zones colorées) se trouve dans l'onglet « Séance en visio ». Cliquez ci-dessous pour y accéder et lancer votre séance — aucune visio nécessaire, vous pouvez l'utiliser en autonomie.</p>
-          <button id="apiGoToDevice" class="pat-btn-success" style="padding:14px 24px; font-size:14px;">▶ Aller au dispositif de suivi</button>
+        <!-- Dispositif FC pour cet onglet (injecté par JS au boot patient) -->
+        <article class="pat-card apiTrainingCard" id="apiTrainingDeviceFree">
+          <!-- contenu injecté via buildDeviceCardHTML('libre') -->
         </article>
       </section>
 
@@ -10566,6 +10569,15 @@
       return `<span style="background:${s.bg}; color:${s.color}; padding:2px 8px; border-radius:99px; font-size:10.5px; font-weight:700;">${s.label}</span>`;
     }
 
+    // Injecte le dispositif dans les onglets "Entraînement avec vidéo" et "Entraînement libre"
+    // (qui ont des conteneurs HTML statiques en attente)
+    function injectExtraDeviceCards() {
+      const videoCard = document.getElementById('apiTrainingDeviceVideo');
+      const freeCard  = document.getElementById('apiTrainingDeviceFree');
+      if (videoCard && !videoCard.innerHTML.trim()) videoCard.innerHTML = buildDeviceCardHTML('avec vidéo');
+      if (freeCard  && !freeCard.innerHTML.trim())  freeCard.innerHTML  = buildDeviceCardHTML('libre');
+    }
+
     function injectPatientVisioList(sessions) {
       const panel = document.getElementById('pat-visio');
       if (!panel) return;
@@ -10617,82 +10629,95 @@
       }
       panel.appendChild(listCard);
 
-      // === Carte 3 : Entraînement (3 boutons + métriques en grille cards) ===
+      // === Carte 3 : Dispositif d'entraînement (utilise buildDeviceCardHTML) ===
       const trainingCard = document.createElement('article');
-      trainingCard.className = 'pat-card';
-      trainingCard.id = 'apiTrainingCard';
+      trainingCard.className = 'pat-card apiTrainingCard';
       trainingCard.style.cssText = 'margin-bottom:16px;';
-      trainingCard.innerHTML = `
-        <h3>🏃 Ma séance d'entraînement (avec coach visio)</h3>
-        <p style="color:var(--muted); margin-bottom:14px;">Connectez votre ceinture cardiaque, lancez la séance pendant la visio, puis cliquez sur Arrêter à la fin.</p>
-        <!-- État ceinture -->
-        <div id="apiBeltStatus" style="padding:9px 12px; border-radius:8px; background:#f3f6fb; color:#475569; font-size:12px; font-weight:600; margin-bottom:12px;">
-          ⚪ Ceinture non connectée
-        </div>
-        <!-- 3 boutons en grille de 3 cartes -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;">
-          <button id="apiBtnConnectBelt" class="pat-btn-secondary" style="padding:14px; font-size:13px;">⌁ Connecter la ceinture</button>
-          <button id="apiBtnStartSession" class="pat-btn-success" disabled style="padding:14px; font-size:13px; opacity:0.4;">▶ Démarrer la séance</button>
-          <button id="apiBtnStopSession" class="pat-btn-secondary" disabled style="padding:14px; font-size:13px; background:#fee2e2; color:#991b1b; opacity:0.4;">■ Arrêter la séance</button>
-        </div>
-        <!-- Métriques en cartes côte à côte (auto-fit pour responsive) -->
-        <div id="apiTrainingMetrics" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; opacity:0.5; pointer-events:none;">
-          <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; border:1.5px solid #e3e7ef; background:white;">
-            <small style="display:block; font-size:11px; color:#6b7390; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Fréquence cardiaque</small>
-            <strong id="apiMetricHr" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#0b1530;">--</strong>
-            <span style="font-size:11px; color:#6b7390;">bpm</span>
-          </div>
-          <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; background:linear-gradient(135deg,#fff1f2,#fef3c7); border:1.5px solid #fda4af;">
-            <small style="display:block; font-size:11px; color:#9a3412; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">PA estimée</small>
-            <strong id="apiMetricPa" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#9a3412;">--</strong>
-            <span style="font-size:11px; color:#9a3412;">mmHg · estimée</span>
-          </div>
-          <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; background:linear-gradient(135deg,#f0fdf4,#ecfdf5); border:1.5px solid #86efac;">
-            <small style="display:block; font-size:11px; color:#065f46; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Énergie cumulée</small>
-            <strong id="apiMetricEnergy" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#065f46;">--</strong>
-            <span style="font-size:11px; color:#065f46;">kcal</span>
-          </div>
-          <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; background:linear-gradient(135deg,#eff6ff,#dbeafe); border:1.5px solid #93c5fd;">
-            <small style="display:block; font-size:11px; color:#1e40af; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Durée</small>
-            <strong id="apiMetricDuration" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#1e40af;">00:00</strong>
-            <span style="font-size:11px; color:#1e40af;">mm:ss</span>
-          </div>
-        </div>
-
-        <!-- Carte Zone Cardio (FCmax % + barre 5 zones colorées) -->
-        <div id="apiZoneCard" style="margin-top:14px; padding:14px; background:#fafbfd; border-radius:10px; opacity:0.5; pointer-events:none;">
-          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-            <strong style="font-size:12px; color:#0b1530;">Zone cardio actuelle</strong>
-            <span id="apiZonePct" style="font-size:18px; font-weight:800; color:#0b1530;">--%</span>
-          </div>
-          <div id="apiZoneLabel" style="font-size:11.5px; color:var(--muted); margin-bottom:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px;">— en attente —</div>
-          <!-- Barre colorée 5 segments -->
-          <div style="position:relative; margin-top:8px;">
-            <div style="display:flex; height:12px; border-radius:7px; overflow:hidden;">
-              <div style="background:#06b6d4; flex:1;" title="Z1 50-60% Échauffement/Récup"></div>
-              <div style="background:#22c55e; flex:1;" title="Z2 60-70% Endurance fondamentale"></div>
-              <div style="background:#eab308; flex:1;" title="Z3 70-80% Endurance active"></div>
-              <div style="background:#f97316; flex:1;" title="Z4 80-90% Seuil"></div>
-              <div style="background:#ef4444; flex:1;" title="Z5 90-100% VO2max"></div>
-            </div>
-            <!-- Curseur triangulaire qui se déplace -->
-            <div id="apiZoneCursor" style="position:absolute; top:-2px; left:0%; transform:translateX(-50%); width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-top:10px solid #0b1530; transition:left 0.4s ease;"></div>
-          </div>
-          <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:#94a3b8; font-weight:600;">
-            <span>50%</span><span>60%</span><span>70%</span><span>80%</span><span>90%</span><span>100%</span>
-          </div>
-          <div id="apiZoneFCmax" style="margin-top:8px; font-size:10.5px; color:#94a3b8; text-align:right;"></div>
-        </div>
-        <div id="apiTrainingHint" style="margin-top:10px; padding:8px 11px; background:#fffbeb; color:#92400e; font-size:11.5px; border-radius:6px; display:none;"></div>
-      `;
+      trainingCard.innerHTML = buildDeviceCardHTML('en visio');
       panel.appendChild(trainingCard);
 
       // Réintègre la grille des participants si elle existait
       if (existing) panel.appendChild(existing);
 
-      // === Câblage des boutons ===
+      // === Injecte aussi le dispositif dans les 2 autres onglets ===
+      injectExtraDeviceCards();
+      // === Câblage des boutons (s'applique à TOUTES les instances) ===
       wireTrainingButtons();
     }
+
+    // ====================================================================
+    // === DISPOSITIF FC RÉUTILISABLE — HTML avec CLASSES (pas IDs)
+    // ====================================================================
+    // Cette fonction retourne le HTML d'un dispositif COMPLET (statut + 3 boutons +
+    // 4 cartes métriques + carte zones cardio). Toutes les classes sont communes
+    // entre les instances, ce qui permet de l'injecter dans plusieurs onglets et
+    // de mettre à jour toutes les copies en même temps via querySelectorAll.
+    function buildDeviceCardHTML(titleSuffix) {
+      const suffix = titleSuffix || '';
+      return `
+        <h3>🏃 Ma séance d'entraînement${suffix ? ' — ' + suffix : ''}</h3>
+        <p style="color:var(--muted); margin-bottom:14px;">La ceinture FC est optionnelle. Vous pouvez démarrer la séance sans, durée et ressenti seront enregistrés.</p>
+        <div class="apiBeltStatus" style="padding:9px 12px; border-radius:8px; background:#f3f6fb; color:#475569; font-size:12px; font-weight:600; margin-bottom:12px;">
+          ⚪ Ceinture non connectée
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;">
+          <button class="apiBtnConnectBelt pat-btn-secondary" style="padding:14px; font-size:13px;">⌁ Connecter la ceinture</button>
+          <button class="apiBtnStartSession pat-btn-success" style="padding:14px; font-size:13px;">▶ Démarrer la séance</button>
+          <button class="apiBtnStopSession pat-btn-secondary" disabled style="padding:14px; font-size:13px; background:#fee2e2; color:#991b1b; opacity:0.4;">■ Arrêter la séance</button>
+        </div>
+        <div class="apiTrainingMetrics" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; opacity:0.5; pointer-events:none;">
+          <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; border:1.5px solid #e3e7ef; background:white;">
+            <small style="display:block; font-size:11px; color:#6b7390; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Fréquence cardiaque</small>
+            <strong class="apiMetricHr" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#0b1530;">--</strong>
+            <span style="font-size:11px; color:#6b7390;">bpm</span>
+          </div>
+          <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; background:linear-gradient(135deg,#fff1f2,#fef3c7); border:1.5px solid #fda4af;">
+            <small style="display:block; font-size:11px; color:#9a3412; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">PA estimée</small>
+            <strong class="apiMetricPa" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#9a3412;">--</strong>
+            <span style="font-size:11px; color:#9a3412;">mmHg · estimée</span>
+          </div>
+          <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; background:linear-gradient(135deg,#f0fdf4,#ecfdf5); border:1.5px solid #86efac;">
+            <small style="display:block; font-size:11px; color:#065f46; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Énergie cumulée</small>
+            <strong class="apiMetricEnergy" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#065f46;">--</strong>
+            <span style="font-size:11px; color:#065f46;">kcal</span>
+          </div>
+          <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; background:linear-gradient(135deg,#eff6ff,#dbeafe); border:1.5px solid #93c5fd;">
+            <small style="display:block; font-size:11px; color:#1e40af; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Durée</small>
+            <strong class="apiMetricDuration" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#1e40af;">00:00</strong>
+            <span style="font-size:11px; color:#1e40af;">mm:ss</span>
+          </div>
+        </div>
+        <div class="apiZoneCard" style="margin-top:14px; padding:14px; background:#fafbfd; border-radius:10px; opacity:0.5; pointer-events:none;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+            <strong style="font-size:12px; color:#0b1530;">Zone cardio actuelle</strong>
+            <span class="apiZonePct" style="font-size:18px; font-weight:800; color:#0b1530;">--%</span>
+          </div>
+          <div class="apiZoneLabel" style="font-size:11.5px; color:var(--muted); margin-bottom:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px;">— en attente —</div>
+          <div style="position:relative; margin-top:8px;">
+            <div style="display:flex; height:12px; border-radius:7px; overflow:hidden;">
+              <div style="background:#06b6d4; flex:1;"></div>
+              <div style="background:#22c55e; flex:1;"></div>
+              <div style="background:#eab308; flex:1;"></div>
+              <div style="background:#f97316; flex:1;"></div>
+              <div style="background:#ef4444; flex:1;"></div>
+            </div>
+            <div class="apiZoneCursor" style="position:absolute; top:-2px; left:0%; transform:translateX(-50%); width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-top:10px solid #0b1530; transition:left 0.4s ease;"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:#94a3b8; font-weight:600;">
+            <span>50%</span><span>60%</span><span>70%</span><span>80%</span><span>90%</span><span>100%</span>
+          </div>
+          <div class="apiZoneFCmax" style="margin-top:8px; font-size:10.5px; color:#94a3b8; text-align:right;"></div>
+        </div>
+        <div class="apiTrainingHint" style="margin-top:10px; padding:8px 11px; background:#fffbeb; color:#92400e; font-size:11.5px; border-radius:6px; display:none;"></div>
+      `;
+    }
+
+    // Helpers DOM : applique une opération à TOUTES les instances du dispositif
+    function $$device(cls) { return document.querySelectorAll('.' + cls); }
+    function setTextAll(cls, text) { $$device(cls).forEach(el => el.textContent = text); }
+    function setHTMLAll(cls, html) { $$device(cls).forEach(el => el.innerHTML = html); }
+    function setStyleAll(cls, key, value) { $$device(cls).forEach(el => el.style[key] = value); }
+    function setAttrAll(cls, key, value) { $$device(cls).forEach(el => el[key] = value); }
 
     // ====================================================================
     // === LOGIQUE ENTRAÎNEMENT — ceinture + samples + Borg + résumé
@@ -10743,11 +10768,11 @@
     resetTrainingState();
 
     function setBeltStatus(text, color, bg) {
-      const el = document.getElementById('apiBeltStatus');
-      if (!el) return;
-      el.textContent = text;
-      el.style.color = color;
-      el.style.background = bg;
+      $$device('apiBeltStatus').forEach(el => {
+        el.textContent = text;
+        el.style.color = color;
+        el.style.background = bg;
+      });
     }
 
     // PA estimée à partir de la FC (algo simplifié — à valider cliniquement)
@@ -10807,9 +10832,8 @@
         console.warn('[BLE] Ceinture déconnectée (gattserverdisconnected)');
         _train.beltConnected = false;
         setBeltStatus('🔴 Ceinture déconnectée', '#991b1b', '#fee2e2');
-        // Le bouton Reconnecter redevient utilisable
-        const bConn = document.getElementById('apiBtnConnectBelt');
-        if (bConn) { bConn.disabled = false; bConn.textContent = '⌁ Reconnecter la ceinture'; }
+        // Les boutons Reconnecter redeviennent utilisables (TOUTES les instances)
+        $$device('apiBtnConnectBelt').forEach(b => { b.disabled = false; b.textContent = '⌁ Reconnecter la ceinture'; });
       });
 
       const server = await device.gatt.connect();
@@ -10849,50 +10873,47 @@
     }
 
     function wireTrainingButtons() {
-      const bConn  = document.getElementById('apiBtnConnectBelt');
-      const bStart = document.getElementById('apiBtnStartSession');
-      const bStop  = document.getElementById('apiBtnStopSession');
-      if (!bConn) return;
+      const allConn  = $$device('apiBtnConnectBelt');
+      const allStart = $$device('apiBtnStartSession');
+      const allStop  = $$device('apiBtnStopSession');
+      if (!allConn.length) return;
 
-      // === IMPORTANT : la ceinture est OPTIONNELLE ===
-      // On active "Démarrer" même sans ceinture connectée. La séance pourra être faite
-      // avec ceinture (FC enregistrée) ou sans (durée + contenu + Borg uniquement).
-      bStart.disabled = false;
-      bStart.style.opacity = '1';
+      // === Ceinture OPTIONNELLE : "Démarrer" toujours actif ===
+      allStart.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
 
-      // Si le navigateur ne supporte pas Web Bluetooth → message permanent (mais "Démarrer" reste actif)
+      // Si navigateur ne supporte pas Web Bluetooth → désactive tous les boutons "Connecter"
       if (!isWebBluetoothSupported()) {
         setBeltStatus(
-          '⚠ Web Bluetooth non disponible (Chrome/Edge requis pour la ceinture FC) — démarrage de séance possible sans ceinture',
+          '⚠ Web Bluetooth non disponible (Chrome/Edge requis pour la ceinture FC) — démarrage possible sans ceinture',
           '#92400e', '#fffbeb'
         );
-        bConn.disabled = true;
-        bConn.style.opacity = '0.5';
-        bConn.title = 'Web Bluetooth non supporté par ce navigateur';
-        // On câble quand même Start et Stop
+        allConn.forEach(b => {
+          b.disabled = true; b.style.opacity = '0.5';
+          b.title = 'Web Bluetooth non supporté par ce navigateur';
+        });
       }
 
-      bConn.onclick = async function () {
+      async function connectHandler() {
         setBeltStatus('🟡 Sélection de la ceinture…', '#92400e', '#fffbeb');
-        bConn.disabled = true;
+        $$device('apiBtnConnectBelt').forEach(b => b.disabled = true);
         try {
           const device = await connectRealBelt();
           setBeltStatus('🟢 Ceinture connectée : ' + (device.name || 'sans nom'), '#065f46', '#d1fae5');
-          bConn.disabled = false;
-          bConn.textContent = '⌁ Reconnecter';
-          bStart.disabled = false; bStart.style.opacity = '1';
+          $$device('apiBtnConnectBelt').forEach(b => {
+            b.disabled = false; b.textContent = '⌁ Reconnecter';
+          });
         } catch (e) {
-          // Si l'utilisateur a annulé la boîte de dialogue, ce n'est pas une vraie erreur
           if (/cancel/i.test(e.message) || /user cancel/i.test(e.name || '')) {
             setBeltStatus('⚪ Connexion annulée', '#475569', '#f3f6fb');
           } else {
             setBeltStatus('🔴 ' + (e.message || 'Échec de connexion'), '#991b1b', '#fee2e2');
           }
-          bConn.disabled = false;
+          $$device('apiBtnConnectBelt').forEach(b => b.disabled = false);
         }
-      };
+      }
+      allConn.forEach(b => b.onclick = connectHandler);
 
-      bStart.onclick = async function () {
+      async function startHandler() {
         // Ceinture OPTIONNELLE : on prévient juste le patient si non connectée
         if (!_train.beltConnected) {
           if (!confirm('La ceinture n\'est pas connectée. Voulez-vous démarrer la séance sans suivi de fréquence cardiaque ?\n\n(La durée, le contenu et le ressenti d\'effort seront quand même enregistrés.)')) return;
@@ -10905,10 +10926,10 @@
               const pat = await window.MarfanAPI.patients.get(me.patient_id);
               const age = (pat && pat.patient && pat.patient.age) || (pat && pat.age) || null;
               _fcMax = computeFCmax(age);
-              const elFcm = document.getElementById('apiZoneFCmax');
-              if (elFcm) elFcm.textContent = age
+              const txt = age
                 ? 'FCmax théorique : ' + _fcMax + ' bpm (220 − ' + age + ' ans)'
                 : 'FCmax par défaut : ' + _fcMax + ' bpm (âge inconnu)';
+              setTextAll('apiZoneFCmax', txt);
             }
           } catch (e) { console.warn('[training] récup âge patient échouée :', e.message); }
 
@@ -10928,15 +10949,13 @@
           _train.energyCumul = 0;
           _train.buffer = [];
 
-          // 2. Active les cartes métriques + la carte zone
-          const m = document.getElementById('apiTrainingMetrics');
-          if (m) { m.style.opacity = '1'; m.style.pointerEvents = 'auto'; }
-          const z = document.getElementById('apiZoneCard');
-          if (z) { z.style.opacity = '1'; z.style.pointerEvents = 'auto'; }
+          // 2. Active les cartes métriques + la carte zone (TOUTES les instances)
+          $$device('apiTrainingMetrics').forEach(m => { m.style.opacity = '1'; m.style.pointerEvents = 'auto'; });
+          $$device('apiZoneCard').forEach(z => { z.style.opacity = '1'; z.style.pointerEvents = 'auto'; });
 
-          // 3. Désactive Démarrer, active Arrêter
-          bStart.disabled = true; bStart.style.opacity = '0.4';
-          bStop.disabled = false; bStop.style.opacity = '1';
+          // 3. Désactive Démarrer, active Arrêter (TOUTES les instances)
+          $$device('apiBtnStartSession').forEach(b => { b.disabled = true; b.style.opacity = '0.4'; });
+          $$device('apiBtnStopSession').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
 
           // 4. Tick chaque seconde : lit la FC VIVE depuis _train.currentHr
           //    (alimentée par les notifications Bluetooth) + calcule PA + accumule l'énergie
@@ -10948,38 +10967,28 @@
             const pa = estimatePA(hr);
             _train.energyCumul += energyIncrement(hr, 1);
             _train.currentPa = pa;
-            // UI
-            const elHr = document.getElementById('apiMetricHr');
-            const elPa = document.getElementById('apiMetricPa');
-            const elEn = document.getElementById('apiMetricEnergy');
-            const elDu = document.getElementById('apiMetricDuration');
-            if (elHr) elHr.textContent = hr != null ? hr : (stale ? '⚠' : '…');
-            if (elPa) elPa.textContent = pa != null ? pa : '--';
-            if (elEn) elEn.textContent = _train.energyCumul.toFixed(1);
-            if (elDu) {
-              const mm = Math.floor(_train.elapsed / 60).toString().padStart(2,'0');
-              const ss = (_train.elapsed % 60).toString().padStart(2,'0');
-              elDu.textContent = mm + ':' + ss;
-            }
+            // UI : update TOUTES les instances (les 3 onglets)
+            setTextAll('apiMetricHr', hr != null ? hr : (stale ? '⚠' : '…'));
+            setTextAll('apiMetricPa', pa != null ? pa : '--');
+            setTextAll('apiMetricEnergy', _train.energyCumul.toFixed(1));
+            const mm = Math.floor(_train.elapsed / 60).toString().padStart(2,'0');
+            const ss = (_train.elapsed % 60).toString().padStart(2,'0');
+            setTextAll('apiMetricDuration', mm + ':' + ss);
 
-            // === Mise à jour de la zone cardio (% FCmax + curseur sur la barre) ===
+            // === Zone cardio (% FCmax + curseur sur la barre, TOUTES les instances) ===
             if (hr != null) {
               const pct = (hr / _fcMax) * 100;
               const zone = getHRZone(pct);
-              const elZp = document.getElementById('apiZonePct');
-              const elZl = document.getElementById('apiZoneLabel');
-              const elCu = document.getElementById('apiZoneCursor');
-              if (elZp) elZp.textContent = pct.toFixed(0) + '%';
-              if (elZl) {
-                elZl.textContent = zone.label;
-                elZl.style.color = zone.color;
-              }
-              if (elCu) {
-                // La barre couvre 50% à 100% de FCmax → on remappe
-                const barPos = Math.max(0, Math.min(100, ((pct - 50) / 50) * 100));
-                elCu.style.left = barPos + '%';
-                elCu.style.borderTopColor = zone.color;
-              }
+              setTextAll('apiZonePct', pct.toFixed(0) + '%');
+              $$device('apiZoneLabel').forEach(el => {
+                el.textContent = zone.label;
+                el.style.color = zone.color;
+              });
+              const barPos = Math.max(0, Math.min(100, ((pct - 50) / 50) * 100));
+              $$device('apiZoneCursor').forEach(el => {
+                el.style.left = barPos + '%';
+                el.style.borderTopColor = zone.color;
+              });
             }
 
             // Bufferise un sample toutes les 5 secondes (uniquement si on a une vraie FC)
@@ -11002,15 +11011,19 @@
             }
           }, 10000);
 
-          // Hint pour rappeler de cliquer Arrêter à la fin
-          const hint = document.getElementById('apiTrainingHint');
-          if (hint) { hint.textContent = '⚠ N\'oubliez pas de cliquer sur "Arrêter la séance" à la fin pour générer votre fiche résumé.'; hint.style.display = 'block'; }
+          // Hint pour rappeler de cliquer Arrêter à la fin (TOUTES les instances)
+          $$device('apiTrainingHint').forEach(h => {
+            h.textContent = '⚠ N\'oubliez pas de cliquer sur "Arrêter la séance" à la fin pour générer votre fiche résumé.';
+            h.style.display = 'block';
+          });
         } catch (e) {
           alert('Impossible de démarrer la séance : ' + e.message);
         }
       };
 
-      bStop.onclick = async function () {
+      allStart.forEach(b => b.onclick = startHandler);
+      allStop.forEach(b => b.onclick = stopHandler);
+      async function stopHandler() {
         if (!_train.sessionId) return;
         // Stoppe les timers
         clearInterval(_train.tickInterval);
@@ -11123,23 +11136,18 @@
     }
 
     function resetUIAfterStop() {
-      const bStart = document.getElementById('apiBtnStartSession');
-      const bStop  = document.getElementById('apiBtnStopSession');
-      const m = document.getElementById('apiTrainingMetrics');
-      const z = document.getElementById('apiZoneCard');
-      const hint = document.getElementById('apiTrainingHint');
-      if (bStart) { bStart.disabled = false; bStart.style.opacity = '1'; }
-      if (bStop)  { bStop.disabled = true; bStop.style.opacity = '0.4'; }
-      if (m) { m.style.opacity = '0.5'; m.style.pointerEvents = 'none'; }
-      if (z) { z.style.opacity = '0.5'; z.style.pointerEvents = 'none'; }
-      if (hint) hint.style.display = 'none';
-      ['apiMetricHr','apiMetricPa','apiMetricEnergy'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.textContent = '--';
-      });
-      const elDu = document.getElementById('apiMetricDuration'); if (elDu) elDu.textContent = '00:00';
-      const elZp = document.getElementById('apiZonePct'); if (elZp) elZp.textContent = '--%';
-      const elZl = document.getElementById('apiZoneLabel'); if (elZl) { elZl.textContent = '— en attente —'; elZl.style.color = '#94a3b8'; }
-      const elCu = document.getElementById('apiZoneCursor'); if (elCu) elCu.style.left = '0%';
+      $$device('apiBtnStartSession').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+      $$device('apiBtnStopSession').forEach(b => { b.disabled = true; b.style.opacity = '0.4'; });
+      $$device('apiTrainingMetrics').forEach(m => { m.style.opacity = '0.5'; m.style.pointerEvents = 'none'; });
+      $$device('apiZoneCard').forEach(z => { z.style.opacity = '0.5'; z.style.pointerEvents = 'none'; });
+      $$device('apiTrainingHint').forEach(h => { h.style.display = 'none'; });
+      setTextAll('apiMetricHr', '--');
+      setTextAll('apiMetricPa', '--');
+      setTextAll('apiMetricEnergy', '--');
+      setTextAll('apiMetricDuration', '00:00');
+      setTextAll('apiZonePct', '--%');
+      $$device('apiZoneLabel').forEach(el => { el.textContent = '— en attente —'; el.style.color = '#94a3b8'; });
+      $$device('apiZoneCursor').forEach(el => { el.style.left = '0%'; });
     }
 
     // === Fiche résumé avec 3 graphiques Chart.js ===
@@ -11353,15 +11361,11 @@
       if (!_train) resetTrainingState();
       _train.sessionType = type || 'libre';
       _train.sessionContext = context || {};
-      // Pour info dans l'UI : maj du titre de la carte si présent
-      const card = document.getElementById('apiTrainingCard');
-      if (card) {
-        const h = card.querySelector('h3');
-        if (h) {
-          const labels = { video: 'avec vidéo', visio: 'en visio', libre: 'libre', autre: '' };
-          h.textContent = '🏃 Ma séance d\'entraînement ' + (labels[type] || '');
-        }
-      }
+      // Maj du titre de TOUTES les cartes du dispositif (les 3 onglets)
+      const labels = { video: 'avec vidéo', visio: 'en visio', libre: 'libre', autre: '' };
+      document.querySelectorAll('.apiTrainingCard h3').forEach(h => {
+        h.textContent = '🏃 Ma séance d\'entraînement ' + (labels[type] || '');
+      });
     };
 
     // === Intégration de la visio dans le site (iframe Jitsi) ===
