@@ -12,9 +12,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase9f-dropdown"></script>
+  <script src="api-client.js?v=phase10-unified"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase9f"></script>
+  <script src="questionnaires-defs.js?v=phase10"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3635,30 +3635,41 @@
         </header>
 
         <!-- ============================================================ -->
-        <!-- === Sélecteur de catégorie BDD (menu déroulant hiérarchique) === -->
+        <!-- === Sélection multi-section (checkboxes) — tableau unifié === -->
         <!-- ============================================================ -->
-        <div style="display:flex; align-items:center; gap:12px; padding:14px; background:#f3f6fb; border-radius:10px; margin-bottom:14px; flex-wrap:wrap;">
-          <label for="apiDbCatSelect" style="font-size:12px; font-weight:700; color:#0b1530;">🔎 Filtrer la base par :</label>
-          <select id="apiDbCatSelect" style="flex:1; min-width:280px; padding:10px 14px; border:1.5px solid #0b1530; border-radius:9px; background:white; color:#0b1530; font-weight:600; font-size:13px; cursor:pointer;">
-            <option value="all">Tout afficher</option>
-            <optgroup label="📊 Évaluations à l'effort">
-              <option value="eval-cpet">Test CPET (VO₂, Watts, FC)</option>
-              <option value="eval-efr">EFR — épreuve fonctionnelle respiratoire</option>
-              <option value="eval-echo">Échocardiographie (aorte, FE)</option>
-              <option value="eval-pwv">Analyse onde de pouls (VOP)</option>
-              <option value="eval-pa-iso">Test PA en isométrie</option>
-              <option value="evals">→ Toutes les évaluations (vue large)</option>
-            </optgroup>
-            <optgroup label="🏃 Entraînement">
-              <option value="training">Séances d'entraînement (FC, PA, énergie, Borg)</option>
-            </optgroup>
-            <optgroup label="📋 Questionnaires">
-              <option value="sf36">SF-36 — Qualité de vie (8 dimensions)</option>
-              <option value="gpaq">GPAQ — Activité physique OMS</option>
-            </optgroup>
-          </select>
-          <span id="apiDbCatHint" style="font-size:11px; color:#6b7390; font-style:italic;"></span>
-        </div>
+        <article class="card" style="padding:18px; margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; gap:10px; flex-wrap:wrap;">
+            <div>
+              <h3 style="margin:0 0 4px;">🔎 Construire votre tableau unifié</h3>
+              <p style="margin:0; font-size:12px; color:var(--muted);">Cochez les sections à inclure dans le tableau. Toutes les données fusionnent dans <strong>un seul tableau</strong>, une ligne par patient.</p>
+            </div>
+            <div id="apiDbUnifiedStatus" style="font-size:11.5px; color:#6b7390; text-align:right;"></div>
+          </div>
+
+          <!-- "Tout cocher" en haut bien visible -->
+          <label style="display:inline-flex; align-items:center; gap:10px; padding:10px 16px; background:linear-gradient(135deg,#0b1530,#1e2746); color:white; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer; margin-bottom:14px;">
+            <input type="checkbox" id="apiDbCheckAll" style="width:18px; height:18px; cursor:pointer;">
+            <span>☑️ Tout cocher / décocher</span>
+          </label>
+
+          <!-- Grille des cases à cocher par section -->
+          <div id="apiDbSectionsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
+            <!-- Rempli par JS -->
+          </div>
+        </article>
+
+        <!-- Tableau unifié -->
+        <article class="card" id="apiDbUnifiedCard" style="padding:16px; margin-bottom:14px; display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
+            <h3 style="margin:0;"><span class="icon-bg violet">📊</span>Tableau unifié</h3>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <input id="apiDbUnifiedSearch" type="search" placeholder="Filtrer par patient (MRF-001…)" style="padding:7px 11px; border:1px solid var(--line); border-radius:8px; font-size:12px; width:240px;">
+              <button id="apiDbUnifiedExport" style="padding:7px 14px; border:none; background:linear-gradient(135deg,#10b981,#059669); color:white; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer;">⤓ Export CSV unique</button>
+            </div>
+          </div>
+          <div id="apiDbUnifiedInfo" style="margin-bottom:8px; padding:8px 10px; background:#eff6ff; border-radius:7px; font-size:11.5px; color:#1e40af;"></div>
+          <div class="table-wrap" id="apiDbUnifiedWrap" style="overflow-x:auto; max-height:600px;"></div>
+        </article>
 
         <div class="db-grid" data-db-cat="evals">
           <article class="card db-card">
@@ -3682,7 +3693,8 @@
           </article>
         </div>
 
-        <article class="card" style="padding: 16px;" data-db-cat="evals">
+        <!-- Tableau d'évaluations longitudinales legacy — caché (remplacé par le tableau unifié) -->
+        <article class="card" style="padding: 16px; display:none;" data-db-cat="evals" data-db-legacy="true">
           <div class="search-box" style="padding: 0 0 14px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="left:12px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="dbSearch" placeholder="Rechercher : patient, gène, statut, évaluation, date..." />
@@ -3691,9 +3703,9 @@
         </article>
 
         <!-- ====================================================== -->
-        <!-- === Tableau Séances d'entraînement (data scientifique) -->
+        <!-- === Tableau Séances d'entraînement (LEGACY, caché — utilisez le tableau unifié) -->
         <!-- ====================================================== -->
-        <article class="card" style="padding:16px; margin-top:16px;" data-db-cat="training">
+        <article class="card" style="padding:16px; margin-top:16px; display:none;" data-db-cat="training" data-db-legacy="true">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
             <h3 style="margin:0;"><span class="icon-bg violet">🏃</span>Séances d'entraînement</h3>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -3711,9 +3723,9 @@
         </article>
 
         <!-- ============================================================ -->
-        <!-- === Tableau SF-36 (data scientifique, format wide)        === -->
+        <!-- === Tableau SF-36 (LEGACY, caché — utilisez le tableau unifié) -->
         <!-- ============================================================ -->
-        <article class="card" style="padding:16px; margin-top:16px;" data-db-cat="sf36">
+        <article class="card" style="padding:16px; margin-top:16px; display:none;" data-db-cat="sf36" data-db-legacy="true">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
             <h3 style="margin:0;"><span class="icon-bg violet">📋</span>Questionnaires SF-36 (qualité de vie)</h3>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -3731,9 +3743,9 @@
         </article>
 
         <!-- ============================================================ -->
-        <!-- === Tableau GPAQ (data scientifique, format wide)         === -->
+        <!-- === Tableau GPAQ (LEGACY, caché — utilisez le tableau unifié) -->
         <!-- ============================================================ -->
-        <article class="card" style="padding:16px; margin-top:16px;" data-db-cat="gpaq">
+        <article class="card" style="padding:16px; margin-top:16px; display:none;" data-db-cat="gpaq" data-db-legacy="true">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
             <h3 style="margin:0;"><span class="icon-bg emerald">🏃</span>Questionnaires GPAQ (activité physique OMS)</h3>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -11884,38 +11896,307 @@
     // ====================================================================
     // === STAFF — Sélecteur de catégorie BDD (Tout / Évaluations / Training / SF-36 / GPAQ)
     // ====================================================================
-    function wireDbCategoryFilter(role) {
-      if (role !== 'principal_admin' && role !== 'investigator') return;
-      const select = document.getElementById('apiDbCatSelect');
-      const hint = document.getElementById('apiDbCatHint');
-      if (!select) return;
+    // ====================================================================
+    // === TABLEAU UNIFIÉ BDD — multi-sections + export CSV unique
+    // ====================================================================
+    const UNIFIED_SECTIONS = [
+      { id:'clinical',  label:'Données cliniques',        color:'#475569', short:'Clin' },
+      { id:'cpet',      label:'Test CPET (VO₂, Watts, FC)', color:'#4f46e5', short:'CPET' },
+      { id:'echo',      label:'Échocardiographie (aorte)', color:'#0ea5e9', short:'Echo' },
+      { id:'force',     label:'Force isométrique',          color:'#22c55e', short:'Force' },
+      { id:'training',  label:'Séances d\'entraînement',   color:'#f59e0b', short:'Train' },
+      { id:'sf36',      label:'SF-36 (qualité de vie)',     color:'#7c3aed', short:'SF36' },
+      { id:'gpaq',      label:'GPAQ (activité physique)',   color:'#10b981', short:'GPAQ' }
+    ];
+    const _dbCache = { training: null, sf36: null, gpaq: null };
 
-      // Map de chaque option vers la (les) catégorie(s) de carte affichée(s) et une note explicative
-      const CAT_MAP = {
-        'all':         { cats: null,                  hint: 'Toutes les sections sont visibles.' },
-        // Sous-types évaluations à l'effort → affichent la grande table d'évaluations
-        'eval-cpet':   { cats: ['evals'],             hint: 'Test CPET — colonnes pertinentes : VO₂ pic, Watts, FC, validation. Dates en V1_DATE / V2_DATE / etc.' },
-        'eval-efr':    { cats: ['evals'],             hint: 'EFR — à venir (à intégrer dans les évaluations longitudinales).' },
-        'eval-echo':   { cats: ['evals'],             hint: 'Échocardiographie — colonne aorte (mm) + dates par visite.' },
-        'eval-pwv':    { cats: ['evals'],             hint: 'Analyse de l\'onde de pouls (VOP) — à venir.' },
-        'eval-pa-iso': { cats: ['evals'],             hint: 'Test de pression artérielle en isométrie — à venir.' },
-        'evals':       { cats: ['evals'],             hint: 'Vue large : 1 patient × N visites avec toutes les variables physio.' },
-        'training':    { cats: ['training'],          hint: 'Séances d\'entraînement (FC, PA estimée, énergie, RPE Borg).' },
-        'sf36':        { cats: ['sf36'],              hint: 'Questionnaire SF-36 — 8 dimensions (PF, RP, BP, GH, VT, SF, RE, MH) sur 100.' },
-        'gpaq':        { cats: ['gpaq'],              hint: 'Questionnaire GPAQ — MET-min/semaine + niveau d\'activité OMS.' }
+    async function preloadDbApiData() {
+      try {
+        const r = await window.MarfanAPI.training.list({});
+        _dbCache.training = (r && r.sessions) || [];
+      } catch { _dbCache.training = []; }
+      try {
+        const r = await window.MarfanAPI.questionnaires.list({ type:'sf36', status:'completed' });
+        _dbCache.sf36 = (r && r.responses) || [];
+      } catch { _dbCache.sf36 = []; }
+      try {
+        const r = await window.MarfanAPI.questionnaires.list({ type:'gpaq', status:'completed' });
+        _dbCache.gpaq = (r && r.responses) || [];
+      } catch { _dbCache.gpaq = []; }
+    }
+
+    function getSelectedSections() {
+      return UNIFIED_SECTIONS.filter(s => {
+        const cb = document.querySelector('.apiDbSectionCb[data-section="' + s.id + '"] input[type=checkbox]');
+        return cb && cb.checked;
+      });
+    }
+
+    function renderSectionsGrid() {
+      const grid = document.getElementById('apiDbSectionsGrid');
+      if (!grid) return;
+      grid.innerHTML = UNIFIED_SECTIONS.map(s => `
+        <label class="apiDbSectionCb" data-section="${s.id}" style="display:flex; align-items:center; gap:10px; padding:11px 14px; background:white; border:1.5px solid #d8dde7; border-left:4px solid ${s.color}; border-radius:8px; cursor:pointer; font-size:12.5px; transition:background 0.15s;">
+          <input type="checkbox" style="width:18px; height:18px; cursor:pointer; flex-shrink:0; accent-color:${s.color};">
+          <span style="font-weight:600; color:#0b1530;">${s.label}</span>
+        </label>
+      `).join('');
+    }
+
+    function fmtVisit(iso, fallback) {
+      if (!iso) return fallback || '';
+      try { return new Date(iso).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'2-digit' }); }
+      catch { return iso; }
+    }
+
+    // Construit la structure de colonnes selon les sections cochées
+    // Retourne un tableau de { key, label, format(patient), section }
+    function buildUnifiedColumns(selectedSections, patients, maxByPatient) {
+      const cols = [];
+      // Colonne sticky : patient
+      cols.push({ key:'patient_id', label:'PATIENT', sticky:true, get: p => p.id });
+
+      selectedSections.forEach(sec => {
+        if (sec.id === 'clinical') {
+          cols.push({ key:'sex', label:'SEXE', section:sec, get: p => p.sex || '—' });
+          cols.push({ key:'age', label:'AGE', section:sec, get: p => p.age != null ? p.age : '—' });
+          cols.push({ key:'gene', label:'GÈNE', section:sec, get: p => p.gene || '—' });
+          cols.push({ key:'status', label:'STATUT', section:sec, get: p => p.status || '—' });
+          cols.push({ key:'aorta_baseline', label:'AORTE_BASELINE', section:sec, get: p => p.aorta != null ? p.aorta : '—' });
+        }
+        else if (sec.id === 'cpet' || sec.id === 'echo' || sec.id === 'force') {
+          // Ces sections viennent des évaluations cliniques en mémoire (basePatients.evaluations[])
+          const maxN = maxByPatient.eval || 0;
+          for (let i = 1; i <= maxN; i++) {
+            cols.push({ key:'V'+i+'_DATE', label:'V'+i+'_DATE', section:sec, get: p => fmtVisit((p.evaluations||[])[i-1] && (p.evaluations[i-1]).date) });
+            if (sec.id === 'cpet') {
+              cols.push({ key:'V'+i+'_VO2',     label:'V'+i+'_VO2',     section:sec, get: p => ((p.evaluations||[])[i-1]||{}).vo2 ?? '—' });
+              cols.push({ key:'V'+i+'_WATTS',   label:'V'+i+'_WATTS',   section:sec, get: p => ((p.evaluations||[])[i-1]||{}).watts ?? '—' });
+              cols.push({ key:'V'+i+'_FC',      label:'V'+i+'_FC',      section:sec, get: p => ((p.evaluations||[])[i-1]||{}).fc ?? '—' });
+            }
+            if (sec.id === 'echo') {
+              cols.push({ key:'V'+i+'_AORTE',   label:'V'+i+'_AORTE_mm', section:sec, get: p => ((p.evaluations||[])[i-1]||{}).aorta ?? '—' });
+            }
+            if (sec.id === 'force') {
+              cols.push({ key:'V'+i+'_FORCE',   label:'V'+i+'_FORCE_kg', section:sec, get: p => ((p.evaluations||[])[i-1]||{}).force ?? '—' });
+            }
+          }
+        }
+        else if (sec.id === 'training') {
+          const maxN = maxByPatient.training || 0;
+          for (let i = 1; i <= maxN; i++) {
+            cols.push({ key:'TR'+i+'_DATE',  label:'TR'+i+'_DATE',  section:sec, get: p => fmtVisit(p._train && p._train[i-1] && p._train[i-1].started_at) });
+            cols.push({ key:'TR'+i+'_DUR',   label:'TR'+i+'_DUREE_S', section:sec, get: p => (p._train && p._train[i-1]) ? (p._train[i-1].duration_s || '—') : '—' });
+            cols.push({ key:'TR'+i+'_BORG',  label:'TR'+i+'_BORG',  section:sec, get: p => (p._train && p._train[i-1]) ? (p._train[i-1].borg_cr10 != null ? p._train[i-1].borg_cr10 : '—') : '—' });
+            cols.push({ key:'TR'+i+'_FCMOY', label:'TR'+i+'_FC_MOY', section:sec, get: p => (p._train && p._train[i-1] && p._train[i-1].hr_avg != null) ? Math.round(p._train[i-1].hr_avg) : '—' });
+            cols.push({ key:'TR'+i+'_FCMAX', label:'TR'+i+'_FC_MAX', section:sec, get: p => (p._train && p._train[i-1]) ? (p._train[i-1].hr_max || '—') : '—' });
+            cols.push({ key:'TR'+i+'_KCAL',  label:'TR'+i+'_KCAL',  section:sec, get: p => (p._train && p._train[i-1] && p._train[i-1].energy_total_kcal != null) ? Number(p._train[i-1].energy_total_kcal).toFixed(1) : '—' });
+          }
+        }
+        else if (sec.id === 'sf36') {
+          const maxN = maxByPatient.sf36 || 0;
+          for (let i = 1; i <= maxN; i++) {
+            cols.push({ key:'S'+i+'_DATE', label:'S'+i+'_DATE', section:sec, get: p => fmtVisit(p._sf36 && p._sf36[i-1] && p._sf36[i-1].completed_at) });
+            ['PF','RP','BP','GH','VT','SF','RE','MH'].forEach(d => {
+              cols.push({ key:'S'+i+'_'+d, label:'S'+i+'_'+d, section:sec, get: p => {
+                const r = p._sf36 && p._sf36[i-1]; return r && r.scores && r.scores[d] != null ? r.scores[d] : '—';
+              }});
+            });
+          }
+        }
+        else if (sec.id === 'gpaq') {
+          const maxN = maxByPatient.gpaq || 0;
+          for (let i = 1; i <= maxN; i++) {
+            cols.push({ key:'G'+i+'_DATE',   label:'G'+i+'_DATE',   section:sec, get: p => fmtVisit(p._gpaq && p._gpaq[i-1] && p._gpaq[i-1].completed_at) });
+            cols.push({ key:'G'+i+'_WORK',   label:'G'+i+'_WORK',   section:sec, get: p => (p._gpaq && p._gpaq[i-1] && p._gpaq[i-1].scores) ? (p._gpaq[i-1].scores.work_metmin ?? 0) : '—' });
+            cols.push({ key:'G'+i+'_TRANS',  label:'G'+i+'_TRANS',  section:sec, get: p => (p._gpaq && p._gpaq[i-1] && p._gpaq[i-1].scores) ? (p._gpaq[i-1].scores.transport_metmin ?? 0) : '—' });
+            cols.push({ key:'G'+i+'_LEIS',   label:'G'+i+'_LEISURE', section:sec, get: p => (p._gpaq && p._gpaq[i-1] && p._gpaq[i-1].scores) ? (p._gpaq[i-1].scores.leisure_metmin ?? 0) : '—' });
+            cols.push({ key:'G'+i+'_TOTAL',  label:'G'+i+'_TOTAL',  section:sec, get: p => (p._gpaq && p._gpaq[i-1] && p._gpaq[i-1].scores) ? (p._gpaq[i-1].scores.total_metmin ?? 0) : '—' });
+            cols.push({ key:'G'+i+'_SEDENT', label:'G'+i+'_SEDENT', section:sec, get: p => (p._gpaq && p._gpaq[i-1] && p._gpaq[i-1].scores) ? (p._gpaq[i-1].scores.sedentary_min_per_day ?? 0) : '—' });
+            cols.push({ key:'G'+i+'_LEVEL',  label:'G'+i+'_LEVEL',  section:sec, get: p => (p._gpaq && p._gpaq[i-1] && p._gpaq[i-1].scores) ? (p._gpaq[i-1].scores.activity_level || '—') : '—' });
+          }
+        }
+      });
+      return cols;
+    }
+
+    function buildEnrichedPatients(filterText) {
+      // Patients de window.patients (en mémoire) + données API agrégées
+      const allPatients = (window.patients || []).slice();
+      // Index training/sf36/gpaq par patient_id, triés chronologiquement
+      function indexByPatient(arr, dateKey) {
+        const m = {};
+        (arr || []).forEach(x => {
+          const pid = x.patient_id;
+          if (!m[pid]) m[pid] = [];
+          m[pid].push(x);
+        });
+        Object.keys(m).forEach(pid => m[pid].sort((a,b) => new Date(a[dateKey]) - new Date(b[dateKey])));
+        return m;
+      }
+      const tIdx = indexByPatient(_dbCache.training, 'started_at');
+      const sIdx = indexByPatient(_dbCache.sf36, 'completed_at');
+      const gIdx = indexByPatient(_dbCache.gpaq, 'completed_at');
+      const enriched = allPatients.map(p => Object.assign({}, p, {
+        _train: tIdx[p.id] || [],
+        _sf36:  sIdx[p.id] || [],
+        _gpaq:  gIdx[p.id] || []
+      }));
+      // Filtre
+      const f = (filterText || '').toLowerCase().trim();
+      const filtered = f ? enriched.filter(p => (p.id || '').toLowerCase().includes(f)) : enriched;
+      // Compteurs max par section
+      const maxByPatient = {
+        eval:     Math.max(0, ...filtered.map(p => (p.evaluations || []).length)),
+        training: Math.max(0, ...filtered.map(p => p._train.length)),
+        sf36:     Math.max(0, ...filtered.map(p => p._sf36.length)),
+        gpaq:     Math.max(0, ...filtered.map(p => p._gpaq.length))
+      };
+      return { patients: filtered, maxByPatient };
+    }
+
+    function renderUnifiedTable() {
+      const card = document.getElementById('apiDbUnifiedCard');
+      const wrap = document.getElementById('apiDbUnifiedWrap');
+      const info = document.getElementById('apiDbUnifiedInfo');
+      const status = document.getElementById('apiDbUnifiedStatus');
+      const searchEl = document.getElementById('apiDbUnifiedSearch');
+      if (!card || !wrap) return;
+
+      const selected = getSelectedSections();
+      if (!selected.length) {
+        card.style.display = 'none';
+        if (status) status.textContent = '0 section sélectionnée';
+        return;
+      }
+      card.style.display = 'block';
+
+      const { patients, maxByPatient } = buildEnrichedPatients(searchEl ? searchEl.value : '');
+      const cols = buildUnifiedColumns(selected, patients, maxByPatient);
+
+      if (status) status.textContent = selected.length + ' section(s) cochée(s) · ' + patients.length + ' patient(s) affiché(s) · ' + cols.length + ' colonne(s)';
+
+      if (info) {
+        info.innerHTML = '📊 <strong>Tableau unifié</strong> — Sections : ' +
+          selected.map(s => `<span style="background:${s.color}; color:white; padding:1px 7px; border-radius:99px; font-size:10.5px; font-weight:700;">${s.short}</span>`).join(' ') +
+          ' · <strong>' + patients.length + '</strong> patient(s) · <strong>' + cols.length + '</strong> colonne(s) · cellules vides = "—"';
+      }
+
+      if (!patients.length) {
+        wrap.innerHTML = '<div style="padding:30px; text-align:center; color:var(--muted);">Aucun patient correspondant au filtre.</div>';
+        return;
+      }
+
+      // Header (1 ligne)
+      let header = '<tr>';
+      cols.forEach((c, ci) => {
+        const sec = c.section;
+        const bg = c.sticky ? '#f3f6fb' : (sec ? sec.color + '22' : '#f3f6fb');
+        const stickyStyle = c.sticky ? 'position:sticky; left:0; background:#0b1530; color:white; z-index:2;' : '';
+        header += `<th style="text-align:left; padding:9px 10px; ${stickyStyle} background:${c.sticky ? '#0b1530' : bg}; ${c.sticky ? 'color:white;' : 'color:#0b1530;'} font-size:10.5px; font-weight:700; white-space:nowrap;">${c.label}</th>`;
+      });
+      header += '</tr>';
+
+      // Body
+      const body = patients.map((p, ri) => {
+        const altBg = ri % 2 ? '#fafbfd' : 'white';
+        let row = `<tr style="background:${altBg}; border-top:1px solid #eef0f5;">`;
+        cols.forEach(c => {
+          const val = c.get(p);
+          const stickyStyle = c.sticky ? `position:sticky; left:0; background:${altBg}; z-index:1; font-weight:700; color:#0b1530;` : '';
+          row += `<td style="padding:6px 10px; ${stickyStyle} font-size:11.5px; white-space:nowrap;">${val == null || val === '' ? '—' : val}</td>`;
+        });
+        row += '</tr>';
+        return row;
+      }).join('');
+
+      wrap.innerHTML = `
+        <table style="border-collapse:collapse; min-width:100%;">
+          <thead style="position:sticky; top:0; z-index:3;">${header}</thead>
+          <tbody>${body}</tbody>
+        </table>`;
+    }
+
+    function exportUnifiedCSV() {
+      const selected = getSelectedSections();
+      if (!selected.length) { alert('Cochez au moins une section.'); return; }
+      const searchEl = document.getElementById('apiDbUnifiedSearch');
+      const { patients, maxByPatient } = buildEnrichedPatients(searchEl ? searchEl.value : '');
+      if (!patients.length) { alert('Aucun patient à exporter.'); return; }
+      const cols = buildUnifiedColumns(selected, patients, maxByPatient);
+
+      const escape = v => {
+        if (v == null || v === '—') return '';
+        const s = String(v);
+        if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g,'""') + '"';
+        return s;
       };
 
-      function applyFilter(value) {
-        const conf = CAT_MAP[value] || CAT_MAP.all;
-        const cats = conf.cats;
-        document.querySelectorAll('#database [data-db-cat]').forEach(el => {
-          el.style.display = (cats === null || cats.includes(el.dataset.dbCat)) ? '' : 'none';
-        });
-        if (hint) hint.textContent = conf.hint || '';
-      }
-      select.onchange = () => applyFilter(select.value);
-      applyFilter('all');
+      const headers = cols.map(c => c.label).join(',');
+      const rows = patients.map(p => cols.map(c => escape(c.get(p))).join(',')).join('\n');
+      const csv = headers + '\n' + rows;
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const sectionsTag = selected.map(s => s.id).join('-');
+      const fname = 'marfan_unified_' + sectionsTag + '_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.csv';
+      a.href = url; a.download = fname; document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
     }
+
+    async function wireUnifiedBdd(role) {
+      if (role !== 'principal_admin' && role !== 'investigator') return;
+      const grid = document.getElementById('apiDbSectionsGrid');
+      const checkAll = document.getElementById('apiDbCheckAll');
+      const search = document.getElementById('apiDbUnifiedSearch');
+      const exportBtn = document.getElementById('apiDbUnifiedExport');
+      if (!grid) return;
+
+      renderSectionsGrid();
+      await preloadDbApiData();
+
+      function updateCheckAllState() {
+        const cbs = document.querySelectorAll('.apiDbSectionCb input[type=checkbox]');
+        if (!cbs.length) return;
+        const allChecked = Array.from(cbs).every(cb => cb.checked);
+        const noneChecked = Array.from(cbs).every(cb => !cb.checked);
+        if (checkAll) {
+          checkAll.checked = allChecked;
+          checkAll.indeterminate = !allChecked && !noneChecked;
+        }
+        // Mise à jour visuelle des labels cochés
+        document.querySelectorAll('.apiDbSectionCb').forEach(label => {
+          const cb = label.querySelector('input[type=checkbox]');
+          if (cb && cb.checked) { label.style.background = '#eff6ff'; label.style.borderColor = '#4f8cff'; }
+          else                  { label.style.background = 'white'; label.style.borderColor = '#d8dde7'; }
+        });
+        renderUnifiedTable();
+      }
+
+      // Listeners checkboxes individuelles
+      document.querySelectorAll('.apiDbSectionCb input[type=checkbox]').forEach(cb => {
+        cb.addEventListener('change', updateCheckAllState);
+      });
+      // "Tout cocher"
+      if (checkAll) {
+        checkAll.addEventListener('change', () => {
+          const v = checkAll.checked;
+          document.querySelectorAll('.apiDbSectionCb input[type=checkbox]').forEach(cb => cb.checked = v);
+          updateCheckAllState();
+        });
+      }
+      if (search) search.addEventListener('input', renderUnifiedTable);
+      if (exportBtn) exportBtn.onclick = exportUnifiedCSV;
+
+      // État initial : aucune cochée → tableau caché
+      updateCheckAllState();
+    }
+
+    function wireDbCategoryFilter(role) {
+      // Cette fonction est conservée pour compat mais ne fait plus rien (sélecteur dropdown supprimé)
+      return wireUnifiedBdd(role);
+    }
+    // (Ancienne fonction dropdown supprimée — remplacée par wireUnifiedBdd avec checkboxes)
 
     // ====================================================================
     // === STAFF — Tableaux WIDE des questionnaires dans BDD investigateur
