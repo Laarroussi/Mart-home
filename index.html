@@ -12,11 +12,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase11a-validate"></script>
+  <script src="api-client.js?v=phase11a-clean"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase11a-validate"></script>
+  <script src="questionnaires-defs.js?v=phase11a-clean"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase11a-validate"></script>
+  <script src="medical-parsers.js?v=phase11a-clean"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3014,15 +3014,41 @@
         </header>
 
         <!-- ============================================================ -->
-        <!-- === Dossiers médicaux (imports CSV/XLSX d'examens) === -->
+        <!-- === Dossiers médicaux — UI ÉPURÉE (Phase A) === -->
+        <!-- === Seul et unique endroit d'import d'examens cliniques === -->
         <!-- ============================================================ -->
-        <article class="card" id="apiMedicalExamsCard" style="padding:18px; margin-bottom:14px;">
-          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:10px; flex-wrap:wrap;">
-            <h3 style="margin:0;"><span class="icon-bg violet">🩺</span>Dossiers médicaux — Examens importés</h3>
-            <button id="apiMedExImportBtn" class="btn-violet" style="padding:9px 16px; font-size:12.5px;">📥 Importer un examen (CSV / XLSX)</button>
+        <article class="card" id="apiMedicalExamsCard" style="padding:0; margin-bottom:14px; overflow:hidden;">
+          <!-- En-tête sobre -->
+          <div style="padding:18px 22px; background:linear-gradient(135deg,#7c3aed,#a855f7); color:white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <div>
+                <h3 style="margin:0; color:white; font-size:17px;">🩺 Dossiers médicaux</h3>
+                <p style="margin:4px 0 0; font-size:12px; opacity:0.92;">Espace unique pour importer et consulter les examens cliniques du patient (CPET, Onde de pouls, ...).</p>
+              </div>
+              <span id="apiMedExCount" style="background:rgba(255,255,255,0.18); padding:6px 14px; border-radius:99px; font-size:11.5px; font-weight:700;">— examen(s)</span>
+            </div>
           </div>
-          <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">Importez des fichiers d'examens cliniques (CPET, Onde de pouls, ...). Les données sont parsées automatiquement et stockées dans la base. Cliquez sur un examen pour voir le détail.</p>
-          <div id="apiMedExList"></div>
+
+          <!-- Zone drag & drop UNIQUE -->
+          <div id="apiMedExDropZone" style="margin:16px 22px; padding:24px; border:2px dashed #c4b5fd; border-radius:12px; text-align:center; background:#faf5ff; cursor:pointer; transition:all 0.2s;">
+            <div style="font-size:36px; margin-bottom:8px;">📥</div>
+            <div style="font-size:13.5px; font-weight:700; color:#5b21b6; margin-bottom:4px;">Glissez un fichier ici ou cliquez pour parcourir</div>
+            <div style="font-size:11.5px; color:#6b7390;">Formats acceptés : <code>.csv</code> (onde de pouls) · <code>.xlsx</code> (CPET COSMED) — max 10 MB</div>
+            <input id="apiMedExHiddenFile" type="file" accept=".csv,.xlsx,.xls,.txt" style="display:none;">
+          </div>
+
+          <!-- Filtres légers -->
+          <div style="margin:0 22px 12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <span style="font-size:11px; color:var(--muted); font-weight:600;">Filtrer :</span>
+            <button class="apiMedExFilter" data-filter="all" style="padding:5px 12px; border:1px solid #d8dde7; background:#0b1530; color:white; border-radius:99px; font-size:11px; font-weight:600; cursor:pointer;">Tout</button>
+            <button class="apiMedExFilter" data-filter="cpet" style="padding:5px 12px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:99px; font-size:11px; font-weight:600; cursor:pointer;">🫁 CPET</button>
+            <button class="apiMedExFilter" data-filter="pulse_wave" style="padding:5px 12px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:99px; font-size:11px; font-weight:600; cursor:pointer;">💗 Onde de pouls</button>
+            <button class="apiMedExFilter" data-filter="pending" style="padding:5px 12px; border:1px solid #fcd34d; background:white; color:#92400e; border-radius:99px; font-size:11px; font-weight:600; cursor:pointer;">⏳ En attente</button>
+            <button class="apiMedExFilter" data-filter="validated" style="padding:5px 12px; border:1px solid #86efac; background:white; color:#166534; border-radius:99px; font-size:11px; font-weight:600; cursor:pointer;">✓ Validés</button>
+          </div>
+
+          <!-- Liste des examens -->
+          <div id="apiMedExList" style="padding:0 22px 22px;"></div>
         </article>
 
         <div id="dossierSharedHeader">
@@ -3041,8 +3067,9 @@
           <button class="subtab-button" data-subtab="patient-aorte">❤️ Aorte</button>
           <button class="subtab-button" data-subtab="patient-questionnaires">📝 SF-36 & GPAQ</button>
           <button class="subtab-button" data-subtab="patient-comparaisons">🎯 Comparaisons</button>
-          <button class="subtab-button" data-subtab="patient-vo2">🫁 Analyse VO₂</button>
-          <button class="subtab-button" data-subtab="patient-pulse">💓 Onde de pouls</button>
+          <!-- Anciens sous-onglets d'import VO2/Pulse Wave masqués — remplacés par la carte unique "Dossiers médicaux" en haut du Dossier patient -->
+          <button class="subtab-button" data-subtab="patient-vo2" style="display:none;">🫁 Analyse VO₂</button>
+          <button class="subtab-button" data-subtab="patient-pulse" style="display:none;">💓 Onde de pouls</button>
         </div>
 
         <div id="dossierGraphBoard">
@@ -11780,31 +11807,50 @@
       try { return (window.patients && window.patients[0]) ? window.patients[0].id : null; } catch { return null; }
     }
 
+    let _medExCache = [];
+    let _medExFilter = 'all';
+
     async function loadMedicalExamsForCurrentPatient() {
       const list = document.getElementById('apiMedExList');
+      const countEl = document.getElementById('apiMedExCount');
       if (!list) return;
       const pid = getSelectedPatientId();
-      if (!pid) { list.innerHTML = '<p style="color:var(--muted);">Aucun patient sélectionné.</p>'; return; }
-
+      if (!pid) {
+        list.innerHTML = '<p style="color:var(--muted); text-align:center; padding:14px;">Sélectionnez un patient.</p>';
+        if (countEl) countEl.textContent = '— examen(s)';
+        return;
+      }
       try {
         const r = await window.MarfanAPI.medicalExams.listByPatient(pid);
-        const exams = (r && r.exams) || [];
-        if (!exams.length) {
-          list.innerHTML = `<div style="text-align:center; padding:24px; color:var(--muted); background:#f3f6fb; border-radius:10px;">
-            <div style="font-size:32px; margin-bottom:8px;">📋</div>
-            Aucun examen importé pour ce patient.<br>
-            <span style="font-size:11px;">Cliquez sur « Importer un examen » pour ajouter un fichier CSV ou XLSX.</span>
-          </div>`;
-          return;
-        }
-        list.innerHTML = exams.map(renderExamCard).join('');
-        // Wire click pour ouvrir détail
-        list.querySelectorAll('[data-exam-id]').forEach(card => {
-          card.addEventListener('click', () => openExamDetail(parseInt(card.dataset.examId, 10)));
-        });
+        _medExCache = (r && r.exams) || [];
+        if (countEl) countEl.textContent = _medExCache.length + ' examen' + (_medExCache.length > 1 ? 's' : '');
+        renderMedExList();
       } catch (e) {
-        list.innerHTML = '<p style="color:#991b1b;">Erreur : ' + e.message + '</p>';
+        list.innerHTML = '<p style="color:#991b1b; padding:14px;">Erreur : ' + e.message + '</p>';
       }
+    }
+
+    function renderMedExList() {
+      const list = document.getElementById('apiMedExList');
+      if (!list) return;
+      let exams = _medExCache.slice();
+      if (_medExFilter === 'cpet') exams = exams.filter(e => e.exam_type === 'cpet');
+      else if (_medExFilter === 'pulse_wave') exams = exams.filter(e => e.exam_type === 'pulse_wave');
+      else if (_medExFilter === 'pending') exams = exams.filter(e => ['imported','parsed','pending_validation'].includes(e.status));
+      else if (_medExFilter === 'validated') exams = exams.filter(e => ['validated','modified_after_validation'].includes(e.status));
+
+      if (!exams.length) {
+        list.innerHTML = `<div style="text-align:center; padding:30px; color:var(--muted); background:#fafbfd; border-radius:10px;">
+          <div style="font-size:36px; margin-bottom:8px; opacity:0.4;">📋</div>
+          <div style="font-size:13px;">${_medExCache.length === 0 ? 'Aucun examen importé pour ce patient' : 'Aucun examen dans cette catégorie'}</div>
+          ${_medExCache.length === 0 ? '<div style="font-size:11px; margin-top:4px;">Glissez un fichier dans la zone violette ci-dessus pour commencer.</div>' : ''}
+        </div>`;
+        return;
+      }
+      list.innerHTML = exams.map(renderExamCard).join('');
+      list.querySelectorAll('[data-exam-id]').forEach(card => {
+        card.addEventListener('click', () => openExamDetail(parseInt(card.dataset.examId, 10)));
+      });
     }
 
     function statusBadgeExam(status) {
@@ -11823,41 +11869,57 @@
 
     function renderExamCard(exam) {
       const s = exam.parsed_summary || {};
-      const typeLabel = { cpet:'🫁 CPET (épreuve d\'effort)', pulse_wave:'💗 Onde de pouls (VOP)', echocardiography:'🫀 Échocardiographie', biology:'🧪 Biologie', ecg:'📈 ECG', spirometry:'🌬 Spirométrie', other:'📄 Autre examen' }[exam.exam_type] || exam.exam_type;
+      const typeMeta = {
+        cpet:        { icon:'🫁', label:'Test d\'effort CPET',   color:'#4f46e5' },
+        pulse_wave:  { icon:'💗', label:'Onde de pouls (VOP)',   color:'#ec4899' },
+        echocardiography: { icon:'🫀', label:'Échocardiographie', color:'#0ea5e9' },
+        biology:     { icon:'🧪', label:'Biologie',                color:'#10b981' },
+        ecg:         { icon:'📈', label:'ECG',                     color:'#f59e0b' },
+        spirometry:  { icon:'🌬', label:'Spirométrie',             color:'#0ea5e9' },
+        other:       { icon:'📄', label:'Autre examen',            color:'#64748b' }
+      };
+      const t = typeMeta[exam.exam_type] || typeMeta.other;
       const date = exam.exam_date ? new Date(exam.exam_date).toLocaleDateString('fr-FR') :
                     (exam.imported_at ? new Date(exam.imported_at).toLocaleDateString('fr-FR') : '—');
 
-      // Synthèse rapide selon le type
-      let synth = '';
+      // 2 ou 3 valeurs CLÉS uniquement, pas plus
+      let keyValues = '';
       if (exam.exam_type === 'cpet') {
-        synth = `
-          <span style="margin-right:14px;"><strong>VO₂max</strong> ${s.vo2_max_ml_kg_min != null ? Math.round(s.vo2_max_ml_kg_min*10)/10 + ' ml/kg/min' : '—'}</span>
-          <span style="margin-right:14px;"><strong>FC max</strong> ${s.hr_max != null ? Math.round(s.hr_max) + ' bpm' : '—'}</span>
-          <span style="margin-right:14px;"><strong>Puissance max</strong> ${s.power_max != null ? Math.round(s.power_max) + ' W' : '—'}</span>
-          <span><strong>RER max</strong> ${s.rer_max != null ? Math.round(s.rer_max*100)/100 : '—'}</span>`;
+        const kv = [
+          { k:'VO₂max',  v: s.vo2_max_ml_kg_min != null ? Math.round(s.vo2_max_ml_kg_min*10)/10 + ' ml/kg/min' : null },
+          { k:'FC max',  v: s.hr_max != null ? Math.round(s.hr_max) + ' bpm' : null },
+          { k:'Puissance', v: s.power_max != null ? Math.round(s.power_max) + ' W' : null }
+        ].filter(x => x.v);
+        keyValues = kv.map(x => `<span style="display:inline-block; padding:3px 9px; background:#f3f6fb; border-radius:6px; font-size:11px; margin-right:6px;"><strong style="color:#0b1530;">${x.k}</strong> <span style="color:#475569;">${x.v}</span></span>`).join('');
       } else if (exam.exam_type === 'pulse_wave') {
-        synth = `
-          <span style="margin-right:14px;"><strong>VOP (PWV)</strong> ${s.ftpwv != null ? s.ftpwv + ' m/s' : '—'}</span>
-          <span style="margin-right:14px;"><strong>SI</strong> ${s.si != null ? s.si : '—'}</span>
-          <span style="margin-right:14px;"><strong>PA centrale</strong> ${s.csp != null ? s.csp + '/' + (s.cdp != null ? s.cdp : '?') + ' mmHg' : '—'}</span>
-          <span><strong>FC</strong> ${s.heart_rate != null ? s.heart_rate + ' bpm' : '—'}</span>`;
-      } else {
-        synth = '<span style="color:var(--muted);">Synthèse non disponible pour ce type</span>';
+        const kv = [
+          { k:'VOP',          v: s.ftpwv != null ? s.ftpwv + ' m/s' : null },
+          { k:'PA centrale',  v: s.csp != null ? s.csp + '/' + (s.cdp != null ? s.cdp : '?') + ' mmHg' : null },
+          { k:'FC',           v: s.heart_rate != null ? s.heart_rate + ' bpm' : null }
+        ].filter(x => x.v);
+        keyValues = kv.map(x => `<span style="display:inline-block; padding:3px 9px; background:#f3f6fb; border-radius:6px; font-size:11px; margin-right:6px;"><strong style="color:#0b1530;">${x.k}</strong> <span style="color:#475569;">${x.v}</span></span>`).join('');
       }
 
       return `
-        <div data-exam-id="${exam.id}" style="padding:14px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; cursor:pointer; transition:background 0.15s; background:white;"
-             onmouseover="this.style.background='#f3f6fb'" onmouseout="this.style.background='white'">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
-            <div>
-              <strong style="font-size:13px; color:var(--ink);">${typeLabel}</strong>
-              <span style="color:var(--muted); font-size:11.5px; margin-left:8px;">${date}</span>
-              <span style="margin-left:8px;">${statusBadgeExam(exam.status)}</span>
+        <div data-exam-id="${exam.id}" style="padding:14px 16px; border:1px solid var(--line); border-left:4px solid ${t.color}; border-radius:10px; margin-bottom:10px; cursor:pointer; transition:transform 0.15s, box-shadow 0.15s; background:white;"
+             onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.06)';"
+             onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+          <div style="display:flex; justify-content:space-between; align-items:start; gap:10px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+                <span style="font-size:18px;">${t.icon}</span>
+                <strong style="font-size:13.5px; color:var(--ink);">${t.label}</strong>
+                <span style="color:var(--muted); font-size:11px;">·</span>
+                <span style="color:var(--muted); font-size:11.5px;">${date}</span>
+                ${statusBadgeExam(exam.status)}
+              </div>
+              <div>${keyValues || '<span style="font-size:11px; color:var(--muted);">Aucune synthèse disponible</span>'}</div>
             </div>
-            <div style="font-size:10.5px; color:var(--muted);">${exam.file_name || ''} (${exam.file_size_kb || '?'} KB)</div>
+            <div style="color:var(--muted); font-size:10.5px; text-align:right;">
+              <div>#${exam.id}</div>
+              <div>${exam.file_size_kb ? exam.file_size_kb + ' KB' : ''}</div>
+            </div>
           </div>
-          <div style="font-size:11.5px; color:#475569; margin-bottom:4px;">${synth}</div>
-          ${s.conclusion ? `<div style="font-size:11px; color:var(--muted); font-style:italic; margin-top:6px;">${s.conclusion}</div>` : ''}
         </div>`;
     }
 
@@ -12090,10 +12152,62 @@
       }
     }
 
-    // Wire le bouton d'import dans la fiche patient
-    document.addEventListener('click', (e) => {
-      if (e.target && e.target.id === 'apiMedExImportBtn') openExamImportModal();
-    });
+    // === Wire le drag-drop + clic sur la zone d'import unique ===
+    function wireMedExDropZone() {
+      const zone = document.getElementById('apiMedExDropZone');
+      const input = document.getElementById('apiMedExHiddenFile');
+      if (!zone || !input || zone._wired) return;
+      zone._wired = true;
+
+      zone.addEventListener('click', () => input.click());
+      input.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) openExamImportModalWithFile(e.target.files[0]);
+      });
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault(); zone.style.background = '#ede9fe'; zone.style.borderColor = '#7c3aed';
+      });
+      zone.addEventListener('dragleave', () => {
+        zone.style.background = '#faf5ff'; zone.style.borderColor = '#c4b5fd';
+      });
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.style.background = '#faf5ff'; zone.style.borderColor = '#c4b5fd';
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) openExamImportModalWithFile(e.dataTransfer.files[0]);
+      });
+
+      // Filtres
+      document.querySelectorAll('.apiMedExFilter').forEach(btn => {
+        btn.addEventListener('click', () => {
+          _medExFilter = btn.dataset.filter;
+          // Style actif
+          document.querySelectorAll('.apiMedExFilter').forEach(b => {
+            const active = b.dataset.filter === _medExFilter;
+            b.style.background = active ? '#0b1530' : 'white';
+            b.style.color = active ? 'white' : (b.dataset.filter === 'pending' ? '#92400e' : (b.dataset.filter === 'validated' ? '#166534' : '#0b1530'));
+          });
+          renderMedExList();
+        });
+      });
+    }
+
+    // Variante de openExamImportModal qui démarre avec un fichier déjà sélectionné
+    async function openExamImportModalWithFile(file) {
+      openExamImportModal();
+      // Injecte le fichier dans le input de la modale
+      setTimeout(() => {
+        const fi = document.getElementById('medExFile');
+        if (!fi) return;
+        // On ne peut pas assigner directement les fichiers, on déclenche le parsing à la main
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fi.files = dt.files;
+        fi.dispatchEvent(new Event('change'));
+      }, 50);
+    }
+
+    // Câble la zone au boot patient et après chaque switch de patient
+    document.addEventListener('DOMContentLoaded', wireMedExDropZone);
+    setTimeout(wireMedExDropZone, 1500); // fallback si DOM déjà prêt
 
     // === Validation d'un examen importé (sauve parsed_summary comme validated_data) ===
     window.__validateMedExam = async function (examId, isRevalidation) {
