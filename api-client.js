@@ -191,6 +191,16 @@
       exportUrl: (mode) => `${API_BASE}/cohort/export?mode=${mode}` // à utiliser avec token en query si besoin
     },
 
+    /** ===== Programmes / séances prescrites d'entraînement ===== */
+    trainingPrograms: {
+      list:   (filters = {}) => request('GET', '/training-programs?' + new URLSearchParams(filters).toString()),
+      mine:   ()             => request('GET', '/training-programs/mine'),
+      get:    (id)           => request('GET', `/training-programs/${id}`),
+      create: (data)         => request('POST', '/training-programs', data),
+      update: (id, data)     => request('PATCH', `/training-programs/${id}`, data),
+      remove: (id, hard=false) => request('DELETE', `/training-programs/${id}${hard ? '?hard=true' : ''}`)
+    },
+
     /** ===== Séances d'entraînement patient ===== */
     training: {
       start:       (visioId)                => request('POST', '/training/sessions', { visio_session_id: visioId || null }),

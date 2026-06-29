@@ -79,6 +79,7 @@ function mountRoutes(prefix) {
   app.use(prefix + '/videos',         require('./routes/videos'));
   app.use(prefix + '/backup',         require('./routes/backup'));
   app.use(prefix + '/training',       require('./routes/training'));
+  app.use(prefix + '/training-programs', require('./routes/training-programs'));
 }
 mountRoutes('/api');   // mode local dev OU Passenger qui garde le préfixe
 mountRoutes('');       // mode Passenger qui strippe le préfixe URI

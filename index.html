@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase6j-assign"></script>
+  <script src="api-client.js?v=phase7a-libre"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2312,7 +2312,8 @@
       <nav class="patient-tabs" role="tablist">
         <button class="patient-tab active" data-pat-tab="pat-questionnaires">📨 Mes questionnaires <span id="patNotifCount" style="background:#f43f5e; color:white; padding:1px 7px; border-radius:99px; font-size:10.5px; font-weight:800;"></span></button>
         <button class="patient-tab" data-pat-tab="pat-visio">🎥 Séance en visio</button>
-        <button class="patient-tab" data-pat-tab="pat-training">🏃 Entraînement</button>
+        <button class="patient-tab" data-pat-tab="pat-training">🏃 Entraînement avec vidéo</button>
+        <button class="patient-tab" data-pat-tab="pat-free-training">🏃 Entraînement libre</button>
         <button class="patient-tab" data-pat-tab="pat-education">📚 Éducation thérapeutique</button>
         <button class="patient-tab" data-pat-tab="pat-progress">📊 Mes données</button>
       </nav>
@@ -2456,6 +2457,20 @@
             Aucune séance enregistrée pour le moment.<br>
             <span style="font-size:11px;">Faites votre première séance dans l'onglet "🎥 Séance en visio" : connectez la ceinture, démarrez, puis arrêtez la séance pour générer votre première fiche.</span>
           </div>
+        </article>
+      </section>
+
+      <!-- ===== PANEL : ENTRAÎNEMENT LIBRE (sans vidéo, juste dispositif FC) ===== -->
+      <section class="patient-panel" id="pat-free-training">
+        <article class="pat-card" style="margin-bottom:14px;">
+          <h3>🏃 Entraînement libre — sans vidéo</h3>
+          <p>Pour une séance d'entraînement en autonomie (course, vélo, marche, renforcement, étirements ciblés…) avec suivi temps réel de votre fréquence cardiaque, pression artérielle estimée et dépense énergétique. Vos données sont enregistrées dans votre livret.</p>
+        </article>
+        <article class="pat-card" id="apiFreeTrainingHost" style="text-align:center; padding:30px;">
+          <div style="font-size:48px; margin-bottom:12px;">⌁</div>
+          <h3 style="margin-bottom:8px;">Dispositif de suivi physiologique</h3>
+          <p style="color:var(--muted); max-width:520px; margin:0 auto 18px;">Le dispositif (ceinture cardiaque + cartes métriques + zones colorées) se trouve dans l'onglet « Séance en visio ». Cliquez ci-dessous pour y accéder et lancer votre séance — aucune visio nécessaire, vous pouvez l'utiliser en autonomie.</p>
+          <button id="apiGoToDevice" class="pat-btn-success" style="padding:14px 24px; font-size:14px;">▶ Aller au dispositif de suivi</button>
         </article>
       </section>
 
@@ -9680,17 +9695,12 @@
       }
     }
 
-    // === Grille des vidéos attribuées au patient (nouvel onglet pat-training) ===
+    // === Grille des vidéos brutes (vidéos non groupées dans un programme) ===
     function injectPatientTrainingGrid(videos) {
       const grid = document.getElementById('apiPatTrainingGrid');
-      const empty = document.getElementById('apiPatTrainingEmpty');
       if (!grid) return;
       grid.innerHTML = '';
-      if (!videos || !videos.length) {
-        if (empty) empty.style.display = 'block';
-        return;
-      }
-      if (empty) empty.style.display = 'none';
+      if (!videos || !videos.length) return;
       videos.forEach(v => {
         const yid = v.youtube_id || v.id;
         const thumb = v.thumbnail_url || 'https://img.youtube.com/vi/' + yid + '/hqdefault.jpg';
@@ -9701,9 +9711,6 @@
         card.innerHTML = `
           <div style="position:relative; aspect-ratio:16/9; background:#020617;">
             <img src="${thumb}" alt="${v.title}" loading="lazy" style="width:100%; height:100%; object-fit:cover; display:block;">
-            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.18); opacity:0; transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">
-              <div style="background:rgba(220,38,38,0.95); color:white; padding:8px 14px; border-radius:99px; font-weight:700; font-size:13px;">▶ Lancer</div>
-            </div>
           </div>
           <div style="padding:10px 12px;">
             <div style="font-weight:700; font-size:12.5px; color:var(--ink); line-height:1.3; margin-bottom:4px;">${v.title}</div>
@@ -9711,6 +9718,103 @@
           </div>`;
         card.onclick = () => playPatientVideo(yid, v.title);
         grid.appendChild(card);
+      });
+    }
+
+    // === SÉANCES PRESCRITES (programmes) — affichées au-dessus des vidéos individuelles ===
+    async function loadPatientTrainingPrograms() {
+      try {
+        const r = await window.MarfanAPI.trainingPrograms.mine();
+        const programs = (r && r.programs) || [];
+        renderPatientPrograms(programs);
+        return programs.length;
+      } catch (e) {
+        console.warn('[programs] mine échoué :', e.message);
+        return 0;
+      }
+    }
+
+    function renderPatientPrograms(programs) {
+      // On injecte une section AU-DESSUS de la grille de vidéos individuelles
+      const panel = document.getElementById('pat-training');
+      if (!panel) return;
+      let card = document.getElementById('apiPatProgramsCard');
+      if (!card) {
+        card = document.createElement('article');
+        card.className = 'pat-card';
+        card.id = 'apiPatProgramsCard';
+        card.style.cssText = 'margin-bottom:18px;';
+        panel.insertBefore(card, panel.firstChild.nextSibling);  // après le header
+      }
+      const emptyVid = document.getElementById('apiPatTrainingEmpty');
+      if (!programs.length) {
+        card.innerHTML = '';
+        card.style.display = 'none';
+        if (emptyVid) emptyVid.style.display = 'block';
+        return;
+      }
+      card.style.display = 'block';
+      if (emptyVid) emptyVid.style.display = 'none';
+
+      card.innerHTML = `
+        <h3 style="margin-bottom:6px;">📋 Mes séances d'entraînement prescrites</h3>
+        <p style="color:var(--muted); margin-bottom:14px;">Voici les séances que votre investigateur vous a prescrites. Cliquez sur une séance pour voir les consignes et lancer les vidéos.</p>
+        <div id="apiPatProgramsList" style="display:grid; gap:12px;"></div>`;
+      const list = card.querySelector('#apiPatProgramsList');
+      programs.forEach((p) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'border:1px solid var(--line); border-radius:12px; overflow:hidden; background:white;';
+        const date = p.assigned_at ? new Date(p.assigned_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' }) : '';
+        item.innerHTML = `
+          <div class="apiProgramHeader" style="padding:14px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg,#fff7ed,#ffedd5); border-bottom:1px solid var(--line);">
+            <div style="flex:1;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:3px;">
+                <span style="font-size:11px; font-weight:800; color:#9a3412; text-transform:uppercase; letter-spacing:0.4px;">Séance prescrite${date ? ' · ' + date : ''}</span>
+              </div>
+              <strong style="font-size:15px; color:#0b1530; display:block; margin-bottom:3px;">${p.title}</strong>
+              ${p.description ? `<div style="font-size:12px; color:#6b7390;">${p.description}</div>` : ''}
+            </div>
+            <div style="text-align:right; margin-left:14px;">
+              <span style="background:white; color:#9a3412; padding:4px 10px; border-radius:99px; font-size:11px; font-weight:700;">${(p.videos || []).length} vidéo(s)</span>
+              <div class="apiProgramChevron" style="margin-top:6px; color:#9a3412; font-size:18px; transition:transform 0.2s;">▼</div>
+            </div>
+          </div>
+          <div class="apiProgramBody" style="display:none; padding:14px 16px;">
+            ${p.instructions ? `<div style="margin-bottom:12px; padding:10px 12px; background:#fef3c7; border-left:3px solid #f59e0b; border-radius:6px;">
+              <strong style="font-size:11.5px; color:#92400e; display:block; margin-bottom:4px;">📌 Consignes de votre investigateur</strong>
+              <div style="font-size:12.5px; color:#0b1530; white-space:pre-wrap;">${p.instructions}</div>
+            </div>` : ''}
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px;"></div>
+          </div>`;
+        const body = item.querySelector('.apiProgramBody');
+        const grid = body.querySelector('div[style*="grid"]');
+        const header = item.querySelector('.apiProgramHeader');
+        const chevron = item.querySelector('.apiProgramChevron');
+        // Toggle expansion au clic du header
+        header.addEventListener('click', () => {
+          const isOpen = body.style.display !== 'none';
+          body.style.display = isOpen ? 'none' : 'block';
+          chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+        // Vidéos du programme
+        (p.videos || []).forEach((v, i) => {
+          const yid = v.youtube_id || v.video_id;
+          const thumb = v.thumbnail_url || ('https://img.youtube.com/vi/' + yid + '/mqdefault.jpg');
+          const vidCard = document.createElement('div');
+          vidCard.style.cssText = 'border:1px solid var(--line); border-radius:8px; overflow:hidden; cursor:pointer; transition:transform .15s; background:white;';
+          vidCard.innerHTML = `
+            <div style="position:relative; aspect-ratio:16/9; background:#020617;">
+              <img src="${thumb}" alt="${v.title}" loading="lazy" style="width:100%; height:100%; object-fit:cover;">
+              <div style="position:absolute; top:5px; left:5px; background:rgba(220,38,38,0.95); color:white; padding:2px 8px; border-radius:99px; font-size:10px; font-weight:700;">▶ ${i+1}</div>
+            </div>
+            <div style="padding:8px 10px;">
+              <div style="font-size:11.5px; font-weight:700; color:var(--ink); line-height:1.3;">${v.title}</div>
+              <div style="font-size:10px; color:var(--muted); margin-top:3px;">${v.category || ''}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}</div>
+            </div>`;
+          vidCard.onclick = () => playPatientVideo(yid, v.title);
+          grid.appendChild(vidCard);
+        });
+        list.appendChild(item);
       });
     }
 
@@ -9805,6 +9909,20 @@
         return 0;
       }
     }
+
+    // === Bouton "Aller au dispositif" depuis l'onglet Entraînement libre ===
+    // Switch automatiquement vers pat-visio (où le dispositif est physiquement)
+    document.addEventListener('click', function (e) {
+      if (e.target && e.target.id === 'apiGoToDevice') {
+        const visioTab = document.querySelector('.patient-tab[data-pat-tab="pat-visio"]');
+        if (visioTab) visioTab.click();
+        // Scroll vers la carte du dispositif après le switch
+        setTimeout(() => {
+          const card = document.getElementById('apiTrainingCard');
+          if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 200);
+      }
+    });
 
     // Rouvre la fiche résumé complète pour une séance donnée (avec samples pour redessiner les cinétiques)
     window.__openTrainingFiche = async function (sessionId) {
@@ -10066,8 +10184,8 @@
       if (document.getElementById('apiAssignVideoBtn')) return;
       const btn = document.createElement('button');
       btn.id = 'apiAssignVideoBtn';
-      btn.innerHTML = '🎯 Attribuer vidéos';
-      btn.title = 'Attribuer des vidéos d\'entraînement à des patients (sans visio)';
+      btn.innerHTML = '📋 Prescrire séance';
+      btn.title = 'Créer et prescrire une séance d\'entraînement à des patients (titre, consignes, vidéos)';
       btn.style.cssText = 'position:fixed; bottom:18px; right:740px; z-index:9990; padding:10px 16px; border:none; border-radius:999px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; font-weight:700; font-size:12.5px; cursor:pointer; box-shadow:0 10px 24px rgba(0,0,0,0.18);';
       btn.addEventListener('click', openAssignVideosModal);
       document.body.appendChild(btn);
@@ -10089,10 +10207,26 @@
           <div style="background:white; border-radius:14px; padding:22px 26px; width:980px; max-width:96vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
               <div>
-                <div style="font-size:17px; font-weight:800; color:#0b1530;">🎯 Attribuer des vidéos d'entraînement</div>
-                <div style="font-size:11.5px; color:#6b7390;">Cochez vidéos et patients, puis cliquez sur "Attribuer". Le patient verra les vidéos dans son onglet 🏃 Entraînement (pas besoin de visio).</div>
+                <div style="font-size:17px; font-weight:800; color:#0b1530;">📋 Prescrire une séance d'entraînement</div>
+                <div style="font-size:11.5px; color:#6b7390;">Donnez un titre, des consignes, sélectionnez des vidéos et des patients. La séance sera enregistrée et apparaîtra dans le livret d'entraînement du patient.</div>
               </div>
               <button id="apiAssignClose" style="border:none; background:#f3f6fb; color:#5a6280; padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer;">Fermer</button>
+            </div>
+
+            <!-- Bloc TITRE + CONSIGNES (en haut de la modale) -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+              <div>
+                <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:3px;">Titre de la séance *</label>
+                <input id="apiAssignTitle" placeholder="Ex : Séance 1 — Cardio doux" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:13px;">
+              </div>
+              <div>
+                <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:3px;">Description courte (optionnel)</label>
+                <input id="apiAssignDescription" placeholder="Ex : Programme semaine 1 — initiation" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:13px;">
+              </div>
+            </div>
+            <div style="margin-bottom:14px;">
+              <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:3px;">Consignes / observations pour le patient (optionnel)</label>
+              <textarea id="apiAssignInstructions" rows="2" placeholder="Ex : À faire 3 fois par semaine. Prendre 2 min de récupération entre chaque vidéo. Stopper si douleur thoracique." style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:13px; font-family:inherit; resize:vertical;"></textarea>
             </div>
 
             <div style="display:grid; grid-template-columns:2fr 1fr; gap:14px;">
@@ -10143,16 +10277,11 @@
               </div>
             </div>
 
-            <div style="margin-top:12px;">
-              <label style="font-size:11px; font-weight:600; color:#4a5070;">Note pour le patient (optionnel, affichée dans son livret)</label>
-              <input id="apiAssignNote" placeholder="Ex : Programme semaine 1, à faire 3× par semaine" style="width:100%; padding:8px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:12px; margin-top:3px;">
-            </div>
-
             <div id="apiAssignStatus" style="display:none; margin-top:10px; padding:8px 10px; border-radius:7px; font-size:11.5px;"></div>
 
             <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
-              <div id="apiAssignCounter" style="font-size:11.5px; color:#6b7390;">0 vidéo(s) × 0 patient(s)</div>
-              <button id="apiAssignSubmit" disabled style="padding:10px 18px; border:none; background:#94a3b8; color:white; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer;">Attribuer</button>
+              <div id="apiAssignCounter" style="font-size:11.5px; color:#6b7390;">0 vidéo(s) · 0 patient(s)</div>
+              <button id="apiAssignSubmit" disabled style="padding:10px 18px; border:none; background:#94a3b8; color:white; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer;">Prescrire la séance</button>
             </div>
           </div>
         </div>`;
@@ -10164,13 +10293,15 @@
       function updateCounter() {
         const nv = document.querySelectorAll('.apiAssignVideoCb:checked').length;
         const np = document.querySelectorAll('.apiAssignPatCb:checked').length;
+        const title = (document.getElementById('apiAssignTitle').value || '').trim();
         const counter = document.getElementById('apiAssignCounter');
         const btn = document.getElementById('apiAssignSubmit');
-        if (counter) counter.textContent = nv + ' vidéo(s) × ' + np + ' patient(s) = ' + (nv * np) + ' attribution(s)';
-        const canSubmit = nv > 0 && np > 0;
+        if (counter) counter.textContent = nv + ' vidéo(s) · ' + np + ' patient(s)';
+        const canSubmit = !!title && nv > 0 && np > 0;
         if (btn) {
           btn.disabled = !canSubmit;
           btn.style.background = canSubmit ? 'linear-gradient(135deg,#f59e0b,#f97316)' : '#94a3b8';
+          btn.title = canSubmit ? '' : 'Renseignez un titre, au moins 1 vidéo et 1 patient';
         }
         // Visuel des cards cochées
         document.querySelectorAll('.apiAssignVideoItem').forEach(item => {
@@ -10178,6 +10309,9 @@
           item.style.borderColor = cb.checked ? '#f97316' : '#e3e7ef';
         });
       }
+      // Réagit aussi à la saisie du titre
+      const titleEl = document.getElementById('apiAssignTitle');
+      if (titleEl) titleEl.addEventListener('input', updateCounter);
 
       // Wire all checkboxes
       document.querySelectorAll('.apiAssignVideoCb, .apiAssignPatCb').forEach(cb => {
@@ -10212,36 +10346,38 @@
         });
       };
 
-      // Submit : 1 appel POST par vidéo, avec la liste des patients en batch
+      // Submit : crée un PROGRAMME (titre + consignes + vidéos + patients) en 1 appel API
       document.getElementById('apiAssignSubmit').onclick = async function () {
+        const title = (document.getElementById('apiAssignTitle').value || '').trim();
+        const description = (document.getElementById('apiAssignDescription').value || '').trim() || null;
+        const instructions = (document.getElementById('apiAssignInstructions').value || '').trim() || null;
         const videoIds = Array.from(document.querySelectorAll('.apiAssignVideoCb:checked')).map(cb => cb.dataset.videoId);
         const patientIds = Array.from(document.querySelectorAll('.apiAssignPatCb:checked')).map(cb => cb.dataset.patientId);
-        const note = (document.getElementById('apiAssignNote').value || '').trim() || null;
-        if (!videoIds.length || !patientIds.length) return;
+
+        if (!title) { alert('Titre de la séance requis.'); return; }
+        if (!videoIds.length) { alert('Sélectionnez au moins 1 vidéo.'); return; }
+        if (!patientIds.length) { alert('Sélectionnez au moins 1 patient.'); return; }
 
         const statusEl = document.getElementById('apiAssignStatus');
         statusEl.style.display = 'block';
         statusEl.style.background = '#dbeafe'; statusEl.style.color = '#1e40af';
-        statusEl.textContent = 'Attribution en cours…';
+        statusEl.textContent = 'Création de la séance en cours…';
         this.disabled = true;
 
-        let success = 0, failed = 0, errors = [];
-        for (const vid of videoIds) {
-          try {
-            const r = await window.MarfanAPI.videos.assign(vid, patientIds, note);
-            success += (r && r.assigned) || 0;
-          } catch (e) {
-            failed++;
-            errors.push(vid + ' : ' + e.message);
-          }
-        }
-        if (failed === 0) {
+        try {
+          const r = await window.MarfanAPI.trainingPrograms.create({
+            title, description, instructions, videoIds, patientIds
+          });
+          const programId = r && r.program && r.program.id;
           statusEl.style.background = '#d1fae5'; statusEl.style.color = '#065f46';
-          statusEl.textContent = '✓ ' + success + ' attribution(s) effectuée(s). Les patients verront les vidéos dans leur onglet 🏃 Entraînement.';
-          setTimeout(closeFn, 2000);
-        } else {
+          statusEl.textContent = '✓ Séance "' + title + '" créée (#' + programId + '). ' +
+            videoIds.length + ' vidéo(s) prescrite(s) à ' + patientIds.length + ' patient(s).';
+          // Refresh historique staff si la modale d'historique est ouverte
+          if (typeof loadProgramsHistoryStaff === 'function') loadProgramsHistoryStaff();
+          setTimeout(closeFn, 2200);
+        } catch (e) {
           statusEl.style.background = '#fee2e2'; statusEl.style.color = '#991b1b';
-          statusEl.textContent = '⚠ ' + success + ' OK, ' + failed + ' échec(s) : ' + errors.join(' · ');
+          statusEl.textContent = '✖ ' + e.message;
           this.disabled = false;
         }
       };
@@ -10475,43 +10611,48 @@
       }
       panel.appendChild(listCard);
 
-      // === Carte 3 : Entraînement (3 boutons + métriques en direct) ===
+      // === Carte 3 : Entraînement (3 boutons + métriques en grille cards) ===
       const trainingCard = document.createElement('article');
       trainingCard.className = 'pat-card';
       trainingCard.id = 'apiTrainingCard';
       trainingCard.style.cssText = 'margin-bottom:16px;';
       trainingCard.innerHTML = `
-        <h3>🏃 Ma séance d'entraînement</h3>
-        <p style="color:var(--muted); margin-bottom:14px;">Connectez votre ceinture cardiaque, lancez la séance, puis cliquez sur Arrêter à la fin pour générer votre fiche.</p>
+        <h3>🏃 Ma séance d'entraînement (avec coach visio)</h3>
+        <p style="color:var(--muted); margin-bottom:14px;">Connectez votre ceinture cardiaque, lancez la séance pendant la visio, puis cliquez sur Arrêter à la fin.</p>
         <!-- État ceinture -->
         <div id="apiBeltStatus" style="padding:9px 12px; border-radius:8px; background:#f3f6fb; color:#475569; font-size:12px; font-weight:600; margin-bottom:12px;">
           ⚪ Ceinture non connectée
         </div>
-        <!-- 3 boutons principaux -->
-        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:14px;">
+        <!-- 3 boutons en grille de 3 cartes -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;">
           <button id="apiBtnConnectBelt" class="pat-btn-secondary" style="padding:14px; font-size:13px;">⌁ Connecter la ceinture</button>
           <button id="apiBtnStartSession" class="pat-btn-success" disabled style="padding:14px; font-size:13px; opacity:0.4;">▶ Démarrer la séance</button>
           <button id="apiBtnStopSession" class="pat-btn-secondary" disabled style="padding:14px; font-size:13px; background:#fee2e2; color:#991b1b; opacity:0.4;">■ Arrêter la séance</button>
         </div>
-        <!-- Cartes métriques en direct -->
-        <div id="apiTrainingMetrics" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; opacity:0.5; pointer-events:none;">
-          <div class="pat-metric"><small>FC</small><strong id="apiMetricHr">--</strong><span>bpm</span></div>
-          <div class="pat-metric" style="background:linear-gradient(135deg,#fff1f2,#fef3c7); border-color:#fda4af;">
-            <small style="color:#9a3412;">PA estimée</small>
-            <strong style="color:#9a3412;" id="apiMetricPa">--</strong>
-            <span style="color:#9a3412;">mmHg · estimée</span>
+        <!-- Métriques en cartes côte à côte (auto-fit pour responsive) -->
+        <div id="apiTrainingMetrics" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; opacity:0.5; pointer-events:none;">
+          <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; border:1.5px solid #e3e7ef; background:white;">
+            <small style="display:block; font-size:11px; color:#6b7390; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Fréquence cardiaque</small>
+            <strong id="apiMetricHr" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#0b1530;">--</strong>
+            <span style="font-size:11px; color:#6b7390;">bpm</span>
           </div>
-          <div class="pat-metric" style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5); border-color:#86efac;">
-            <small style="color:#065f46;">Énergie cumulée</small>
-            <strong style="color:#065f46;" id="apiMetricEnergy">--</strong>
-            <span style="color:#065f46;">kcal</span>
+          <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; background:linear-gradient(135deg,#fff1f2,#fef3c7); border:1.5px solid #fda4af;">
+            <small style="display:block; font-size:11px; color:#9a3412; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">PA estimée</small>
+            <strong id="apiMetricPa" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#9a3412;">--</strong>
+            <span style="font-size:11px; color:#9a3412;">mmHg · estimée</span>
           </div>
-          <div class="pat-metric" style="background:linear-gradient(135deg,#eff6ff,#dbeafe); border-color:#93c5fd;">
-            <small style="color:#1e40af;">Durée</small>
-            <strong style="color:#1e40af;" id="apiMetricDuration">00:00</strong>
-            <span style="color:#1e40af;">mm:ss</span>
+          <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; background:linear-gradient(135deg,#f0fdf4,#ecfdf5); border:1.5px solid #86efac;">
+            <small style="display:block; font-size:11px; color:#065f46; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Énergie cumulée</small>
+            <strong id="apiMetricEnergy" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#065f46;">--</strong>
+            <span style="font-size:11px; color:#065f46;">kcal</span>
+          </div>
+          <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; background:linear-gradient(135deg,#eff6ff,#dbeafe); border:1.5px solid #93c5fd;">
+            <small style="display:block; font-size:11px; color:#1e40af; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Durée</small>
+            <strong id="apiMetricDuration" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#1e40af;">00:00</strong>
+            <span style="font-size:11px; color:#1e40af;">mm:ss</span>
           </div>
         </div>
+
         <!-- Carte Zone Cardio (FCmax % + barre 5 zones colorées) -->
         <div id="apiZoneCard" style="margin-top:14px; padding:14px; background:#fafbfd; border-radius:10px; opacity:0.5; pointer-events:none;">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
