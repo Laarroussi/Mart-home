@@ -21,21 +21,35 @@ const router = express.Router();
 
 // ============================================================
 // POST /api/training/sessions — Démarrer une séance
-// Body : { visio_session_id? }
-// Le patient_id est déduit du token (req.user.patient_id)
+// Body : {
+//   session_type        : 'video' | 'visio' | 'libre' | 'autre' (défaut 'libre')
+//   video_id?           : si type=video, l'id de la vidéo regardée
+//   training_program_id?: si la séance fait partie d'un programme prescrit
+//   visio_session_id?   : si type=visio, l'id de la séance visio
+//   content?            : pré-rempli automatiquement selon le contexte (modifiable à la fin)
+// }
+// Le patient_id est déduit du token. Statut initial = 'in_progress'.
 // ============================================================
 router.post('/sessions', requireAuth, async (req, res, next) => {
   try {
     if (req.user.role !== ROLE.PATIENT || !req.user.patient_id) {
       return res.status(403).json({ error: 'Seul un patient peut démarrer une séance d\'entraînement' });
     }
-    const { visio_session_id } = req.body || {};
+    const {
+      session_type, video_id, training_program_id, visio_session_id, content
+    } = req.body || {};
+
+    const type = ['video', 'visio', 'libre', 'autre'].includes(session_type) ? session_type : 'libre';
+
     const { rows } = await query(
       `INSERT INTO training_sessions
-         (patient_id, visio_session_id, started_at, status)
-       VALUES ($1, $2, NOW(), 'in_progress')
+         (patient_id, session_type, video_id, training_program_id, visio_session_id,
+          content, started_at, status)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), 'in_progress')
        RETURNING *`,
-      [req.user.patient_id, visio_session_id || null]
+      [req.user.patient_id, type, video_id || null,
+       training_program_id || null, visio_session_id || null,
+       content || null]
     );
     res.status(201).json({ session: rows[0] });
   } catch (err) { next(err); }
@@ -98,9 +112,20 @@ router.post('/sessions/:id/samples', requireAuth, async (req, res, next) => {
 // Body : { borg_cr10 (0-10), status?, notes? }
 // Calcule automatiquement les stats agrégées depuis training_samples
 // ============================================================
+// ============================================================
+// POST /api/training/sessions/:id/end — Terminer la séance
+// Body : {
+//   borg_cr10 (0-10, OBLIGATOIRE)
+//   content?         : contenu de la séance (obligatoire pour libre si pas déjà rempli)
+//   patient_comment? : commentaire libre du patient
+//   status?          : 'completed' (défaut) | 'interrupted' | 'cancelled'
+//   notes?           : notes additionnelles (rarement utilisé côté client)
+// }
+// Calcule automatiquement les stats agrégées depuis training_samples
+// ============================================================
 router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
   try {
-    const { borg_cr10, status, notes } = req.body || {};
+    const { borg_cr10, content, patient_comment, status, notes } = req.body || {};
     if (borg_cr10 == null || borg_cr10 < 0 || borg_cr10 > 10) {
       return res.status(400).json({ error: 'borg_cr10 entre 0 et 10 requis' });
     }
@@ -108,6 +133,11 @@ router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
     if (!own.ok) return res.status(own.status).json({ error: own.error });
 
     const finalStatus = (status === 'interrupted' || status === 'cancelled') ? status : 'completed';
+
+    // Vérif contenu obligatoire pour les séances libres si pas déjà rempli
+    if (own.session.session_type === 'libre' && !own.session.content && !content) {
+      return res.status(400).json({ error: 'content obligatoire pour une séance libre (décrivez ce que vous avez fait)' });
+    }
 
     // Calcul stats agrégées depuis training_samples
     const aggR = await query(
@@ -130,8 +160,10 @@ router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
               hr_min = $4, hr_avg = $5, hr_max = $6,
               pa_estimated_min = $7, pa_estimated_avg = $8, pa_estimated_max = $9,
               energy_total_kcal = $10,
-              notes = COALESCE($11, notes)
-        WHERE id = $12
+              notes = COALESCE($11, notes),
+              content = COALESCE($12, content),
+              patient_comment = COALESCE($13, patient_comment)
+        WHERE id = $14
         RETURNING *`,
       [
         a.max_t || null,
@@ -141,6 +173,8 @@ router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
         a.pa_min, a.pa_avg, a.pa_max,
         a.energy_total,
         notes || null,
+        content || null,
+        patient_comment || null,
         req.params.id
       ]
     );
@@ -159,9 +193,11 @@ router.get('/sessions/mine', requireAuth, async (req, res, next) => {
     }
     const { rows } = await query(
       `SELECT id, started_at, ended_at, duration_s, status, borg_cr10,
+              session_type, content, patient_comment,
+              video_id, training_program_id, visio_session_id,
               hr_min, hr_avg, hr_max,
               pa_estimated_min, pa_estimated_avg, pa_estimated_max,
-              energy_total_kcal, visio_session_id, notes
+              energy_total_kcal, notes
          FROM training_sessions
         WHERE patient_id = $1
         ORDER BY started_at DESC
@@ -196,7 +232,11 @@ router.get('/sessions/:id', requireAuth, async (req, res, next) => {
 router.get('/sessions', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR), async (req, res, next) => {
   try {
     let sql = `SELECT id, patient_id, started_at, ended_at, duration_s, status,
-                      borg_cr10, hr_avg, hr_max, energy_total_kcal
+                      session_type, content, patient_comment,
+                      video_id, training_program_id, visio_session_id,
+                      borg_cr10, hr_min, hr_avg, hr_max,
+                      pa_estimated_min, pa_estimated_avg, pa_estimated_max,
+                      energy_total_kcal, notes
                  FROM training_sessions WHERE 1=1`;
     const params = [];
     if (req.query.patient_id) {

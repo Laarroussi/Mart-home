@@ -201,9 +201,22 @@
       remove: (id, hard=false) => request('DELETE', `/training-programs/${id}${hard ? '?hard=true' : ''}`)
     },
 
-    /** ===== Séances d'entraînement patient ===== */
+    /** ===== Séances d'entraînement patient =====
+     *  start(opts) où opts = {
+     *    session_type: 'video' | 'visio' | 'libre' | 'autre'
+     *    video_id?, training_program_id?, visio_session_id?, content?
+     *  }
+     *  Compat ancienne signature : start(visioId) avec un nombre/string
+     */
     training: {
-      start:       (visioId)                => request('POST', '/training/sessions', { visio_session_id: visioId || null }),
+      start: (opts) => {
+        // Compat : si on reçoit juste un id de visio (number/string), on convertit
+        if (opts == null) opts = { session_type: 'libre' };
+        else if (typeof opts === 'number' || typeof opts === 'string') {
+          opts = { session_type: 'visio', visio_session_id: opts };
+        }
+        return request('POST', '/training/sessions', opts);
+      },
       pushSamples: (id, samples)            => request('POST', `/training/sessions/${id}/samples`, { samples }),
       end:         (id, borg, opts={})      => request('POST', `/training/sessions/${id}/end`,
                                                        Object.assign({ borg_cr10: borg }, opts)),

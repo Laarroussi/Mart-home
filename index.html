@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase7a-libre"></script>
+  <script src="api-client.js?v=phase8a-types"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -9830,6 +9830,11 @@
       if (titleEl) titleEl.textContent = title || '';
       card.style.display = 'block';
       card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Prépare le contexte "vidéo" pour la prochaine séance lancée depuis le dispositif
+      window.__setSessionContext('video', {
+        videoId: youtubeId,
+        contentPrefilled: 'Entraînement avec vidéo : ' + (title || '')
+      });
     }
 
     // ====================================================================
@@ -9914,9 +9919,10 @@
     // Switch automatiquement vers pat-visio (où le dispositif est physiquement)
     document.addEventListener('click', function (e) {
       if (e.target && e.target.id === 'apiGoToDevice') {
+        // Prépare le type "libre" pour la prochaine séance
+        window.__setSessionContext('libre', { contentPrefilled: '' });
         const visioTab = document.querySelector('.patient-tab[data-pat-tab="pat-visio"]');
         if (visioTab) visioTab.click();
-        // Scroll vers la carte du dispositif après le switch
         setTimeout(() => {
           const card = document.getElementById('apiTrainingCard');
           if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -10717,16 +10723,18 @@
     function resetTrainingState() {
       _train = {
         beltConnected: false,
-        bleDevice: null,         // l'objet BluetoothDevice
-        bleCharacteristic: null, // characteristic HR Measurement (0x2A37)
+        bleDevice: null,
+        bleCharacteristic: null,
         sessionId: null,
+        sessionType: 'libre',       // 'video' | 'visio' | 'libre' | 'autre'
+        sessionContext: {},         // { videoId, programId, visioId, contentPrefilled }
         currentVisioId: null,
         tickInterval: null,
         sampleInterval: null,
         startedAt: null,
         elapsed: 0,
-        currentHr: null,         // dernière FC reçue de la ceinture (null = pas encore de données)
-        lastHrAt: null,          // timestamp ms de la dernière notification HR
+        currentHr: null,
+        lastHrAt: null,
         currentPa: null,
         energyCumul: 0,
         buffer: []
@@ -10846,16 +10854,22 @@
       const bStop  = document.getElementById('apiBtnStopSession');
       if (!bConn) return;
 
-      // Si le navigateur ne supporte pas Web Bluetooth → message permanent
+      // === IMPORTANT : la ceinture est OPTIONNELLE ===
+      // On active "Démarrer" même sans ceinture connectée. La séance pourra être faite
+      // avec ceinture (FC enregistrée) ou sans (durée + contenu + Borg uniquement).
+      bStart.disabled = false;
+      bStart.style.opacity = '1';
+
+      // Si le navigateur ne supporte pas Web Bluetooth → message permanent (mais "Démarrer" reste actif)
       if (!isWebBluetoothSupported()) {
         setBeltStatus(
-          '⚠ Ceinture indisponible sur ce navigateur — utilisez Chrome, Edge ou Opera',
+          '⚠ Web Bluetooth non disponible (Chrome/Edge requis pour la ceinture FC) — démarrage de séance possible sans ceinture',
           '#92400e', '#fffbeb'
         );
         bConn.disabled = true;
         bConn.style.opacity = '0.5';
         bConn.title = 'Web Bluetooth non supporté par ce navigateur';
-        return;
+        // On câble quand même Start et Stop
       }
 
       bConn.onclick = async function () {
@@ -10879,7 +10893,10 @@
       };
 
       bStart.onclick = async function () {
-        if (!_train.beltConnected) { alert('Connectez d\'abord la ceinture.'); return; }
+        // Ceinture OPTIONNELLE : on prévient juste le patient si non connectée
+        if (!_train.beltConnected) {
+          if (!confirm('La ceinture n\'est pas connectée. Voulez-vous démarrer la séance sans suivi de fréquence cardiaque ?\n\n(La durée, le contenu et le ressenti d\'effort seront quand même enregistrés.)')) return;
+        }
         try {
           // 0. Récupère l'âge du patient → calcule FCmax (220 - âge)
           try {
@@ -10895,8 +10912,16 @@
             }
           } catch (e) { console.warn('[training] récup âge patient échouée :', e.message); }
 
-          // 1. Crée la séance API
-          const r = await window.MarfanAPI.training.start(_train.currentVisioId || null);
+          // 1. Crée la séance API avec le TYPE + CONTEXTE choisi par le patient
+          const ctx = _train.sessionContext || {};
+          const startOpts = {
+            session_type: _train.sessionType || 'libre',
+            video_id: ctx.videoId || null,
+            training_program_id: ctx.programId || null,
+            visio_session_id: ctx.visioId || _train.currentVisioId || null,
+            content: ctx.contentPrefilled || null
+          };
+          const r = await window.MarfanAPI.training.start(startOpts);
           _train.sessionId = r.session.id;
           _train.startedAt = Date.now();
           _train.elapsed = 0;
@@ -10998,20 +11023,47 @@
         // Déconnecte proprement la ceinture (selon spec : la connexion s'arrête à l'arrêt manuel)
         try { await disconnectRealBelt(); } catch (_) {}
         setBeltStatus('⚪ Ceinture déconnectée (séance terminée)', '#475569', '#f3f6fb');
-        // Ouvre la modale Borg
-        openBorgModal(_train.sessionId);
+        // Ouvre la modale fin de séance (Borg + Contenu + Commentaire) avec le contexte
+        openBorgModal(_train.sessionId, {
+          type: _train.sessionType || 'libre',
+          contentPrefilled: (_train.sessionContext && _train.sessionContext.contentPrefilled) || ''
+        });
       };
     }
 
-    // === Modale Borg CR10 (obligatoire avant fiche résumé) ===
-    function openBorgModal(sessionId) {
+    // === Modale FIN DE SÉANCE : Borg CR10 + Contenu + Commentaire (selon type) ===
+    // sessionContext = { type, contentPrefilled (optionnel) }
+    function openBorgModal(sessionId, sessionContext) {
+      const ctx = sessionContext || { type: 'libre', contentPrefilled: '' };
+      const isLibre = ctx.type === 'libre';
+      const typeLabel = { video: 'Entraînement avec vidéo', visio: 'Entraînement en visio', libre: 'Entraînement libre', autre: 'Autre' }[ctx.type] || ctx.type;
+
       const html = `
-        <div id="apiBorgBackdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.85); z-index:10001; display:flex; align-items:center; justify-content:center;">
-          <div style="background:white; border-radius:14px; padding:24px 28px; width:520px; max-width:94vw; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
-            <div style="font-size:17px; font-weight:800; color:#0b1530; margin-bottom:6px;">🏁 Comment avez-vous ressenti l'effort ?</div>
-            <p style="font-size:12px; color:#6b7390; margin-bottom:14px;">Sélectionnez une valeur entre 0 et 10 sur l'échelle de Borg CR10. Ce choix est obligatoire pour finaliser votre séance.</p>
-            <div id="apiBorgGrid" style="display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; margin-bottom:12px;"></div>
-            <div id="apiBorgSelected" style="text-align:center; padding:10px; background:#f3f6fb; border-radius:8px; font-size:12px; color:#5a6280; margin-bottom:12px;">Aucune valeur sélectionnée</div>
+        <div id="apiBorgBackdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.85); z-index:10001; display:flex; align-items:center; justify-content:center; padding:20px;">
+          <div style="background:white; border-radius:14px; padding:24px 28px; width:560px; max-width:96vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+            <div style="font-size:17px; font-weight:800; color:#0b1530; margin-bottom:6px;">🏁 Fin de séance</div>
+            <div style="display:inline-block; background:#f3f6fb; color:#5a6280; padding:3px 9px; border-radius:99px; font-size:11px; font-weight:700; margin-bottom:14px;">Type : ${typeLabel}</div>
+
+            <!-- 1. Borg CR10 -->
+            <label style="display:block; font-size:12px; font-weight:700; color:#0b1530; margin-bottom:4px;">1. Ressenti d'effort (Borg CR10) *</label>
+            <p style="font-size:11.5px; color:#6b7390; margin-bottom:8px;">Sélectionnez une valeur entre 0 (repos) et 10 (effort maximal).</p>
+            <div id="apiBorgGrid" style="display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; margin-bottom:8px;"></div>
+            <div id="apiBorgSelected" style="text-align:center; padding:8px; background:#f3f6fb; border-radius:8px; font-size:12px; color:#5a6280; margin-bottom:14px;">Aucune valeur sélectionnée</div>
+
+            <!-- 2. Contenu de la séance -->
+            <label style="display:block; font-size:12px; font-weight:700; color:#0b1530; margin-bottom:4px;">
+              2. Contenu de la séance ${isLibre ? '*' : '<span style="font-weight:400; color:#94a3b8;">(prérempli, modifiable)</span>'}
+            </label>
+            <p style="font-size:11.5px; color:#6b7390; margin-bottom:6px;">${isLibre ? 'Décrivez ce que vous avez fait (marche, vélo, renforcement musculaire, circuit, étirements...).' : 'Vous pouvez modifier ou compléter cette description.'}</p>
+            <textarea id="apiSessionContent" rows="3" placeholder="${isLibre ? 'Ex : Vélo 30 min sur home-trainer, intensité modérée, alternance plat/montée' : ''}"
+                      style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:13px; font-family:inherit; resize:vertical; margin-bottom:14px;">${ctx.contentPrefilled || ''}</textarea>
+
+            <!-- 3. Commentaire libre -->
+            <label style="display:block; font-size:12px; font-weight:700; color:#0b1530; margin-bottom:4px;">3. Commentaire libre <span style="font-weight:400; color:#94a3b8;">(optionnel)</span></label>
+            <p style="font-size:11.5px; color:#6b7390; margin-bottom:6px;">Sensations, douleurs, contexte (chaleur, fatigue préalable...), incidents, etc.</p>
+            <textarea id="apiSessionComment" rows="2" placeholder="Ex : Bonne séance, légère gêne au genou en fin. Échauffement plus long la prochaine fois."
+                      style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:13px; font-family:inherit; resize:vertical; margin-bottom:14px;"></textarea>
+
             <div id="apiBorgErr" style="display:none; padding:8px 10px; background:#fee2e2; color:#991b1b; border-radius:7px; font-size:11.5px; margin-bottom:10px;"></div>
             <button id="apiBorgConfirm" disabled style="width:100%; padding:11px; border:none; border-radius:9px; background:#94a3b8; color:white; font-weight:700; font-size:13px; cursor:pointer;">Valider et générer la fiche résumé</button>
           </div>
@@ -11025,7 +11077,7 @@
         btn.dataset.val = i;
         btn.textContent = i;
         btn.title = labels[i] || '';
-        btn.style.cssText = 'padding:14px; border:1.5px solid #d8dde7; background:white; border-radius:8px; font-size:15px; font-weight:800; cursor:pointer; color:#0b1530;';
+        btn.style.cssText = 'padding:12px; border:1.5px solid #d8dde7; background:white; border-radius:8px; font-size:14px; font-weight:800; cursor:pointer; color:#0b1530;';
         btn.onclick = () => {
           selected = i;
           Array.from(grid.children).forEach(b => {
@@ -11034,26 +11086,33 @@
             b.style.borderColor = b === btn ? '#4f8cff' : '#d8dde7';
           });
           document.getElementById('apiBorgSelected').innerHTML = `<strong>Borg ${i}</strong> — ${labels[i] || '(intermédiaire)'}`;
-          const ok = document.getElementById('apiBorgConfirm');
-          ok.disabled = false;
-          ok.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+          updateSubmitState();
         };
         grid.appendChild(btn);
       }
+
+      function updateSubmitState() {
+        const content = document.getElementById('apiSessionContent').value.trim();
+        const valid = (selected != null) && (!isLibre || content.length > 0);
+        const ok = document.getElementById('apiBorgConfirm');
+        ok.disabled = !valid;
+        ok.style.background = valid ? 'linear-gradient(135deg,#10b981,#059669)' : '#94a3b8';
+      }
+      document.getElementById('apiSessionContent').addEventListener('input', updateSubmitState);
+
       document.getElementById('apiBorgConfirm').onclick = async function () {
         if (selected == null) return;
+        const content = document.getElementById('apiSessionContent').value.trim() || null;
+        const patient_comment = document.getElementById('apiSessionComment').value.trim() || null;
+        if (isLibre && !content) return;
         this.disabled = true; this.textContent = 'Enregistrement…';
         try {
-          const r = await window.MarfanAPI.training.end(sessionId, selected);
-          // Ferme modale Borg
+          await window.MarfanAPI.training.end(sessionId, selected, { content, patient_comment });
           const b = document.getElementById('apiBorgBackdrop'); if (b) b.remove();
-          // Réinitialise UI training
           resetUIAfterStop();
-          // Récupère la séance complète avec samples et ouvre la fiche résumé
           const full = await window.MarfanAPI.training.get(sessionId);
           openTrainingSummary(full.session);
           resetTrainingState();
-          // Rafraîchit le livret d'entraînement pour faire apparaître la nouvelle séance
           try { await loadTrainingHistory('patient'); } catch (_) {}
         } catch (e) {
           const err = document.getElementById('apiBorgErr');
@@ -11288,8 +11347,30 @@
       } catch (e) { console.warn('Charts résumé :', e); }
     }
 
+    // === Helper : prépare le type+contexte de la prochaine séance ===
+    // Appelé depuis : Rejoindre visio / Lancer vidéo prescrite / Aller au dispositif (libre)
+    window.__setSessionContext = function (type, context) {
+      if (!_train) resetTrainingState();
+      _train.sessionType = type || 'libre';
+      _train.sessionContext = context || {};
+      // Pour info dans l'UI : maj du titre de la carte si présent
+      const card = document.getElementById('apiTrainingCard');
+      if (card) {
+        const h = card.querySelector('h3');
+        if (h) {
+          const labels = { video: 'avec vidéo', visio: 'en visio', libre: 'libre', autre: '' };
+          h.textContent = '🏃 Ma séance d\'entraînement ' + (labels[type] || '');
+        }
+      }
+    };
+
     // === Intégration de la visio dans le site (iframe Jitsi) ===
     window.__joinVisioInline = function (visioId, link, title) {
+      // Prépare le contexte visio
+      window.__setSessionContext('visio', {
+        visioId: visioId,
+        contentPrefilled: 'Séance en visio — ' + (title || 'Séance APA')
+      });
       _train.currentVisioId = visioId;
       const stage = document.getElementById('apiVisioStage');
       if (!stage) return;
