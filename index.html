@@ -12,9 +12,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase10-unified"></script>
+  <script src="api-client.js?v=phase11a-medex"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase10"></script>
+  <script src="questionnaires-defs.js?v=phase11a"></script>
+  <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
+  <script src="medical-parsers.js?v=phase11a"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3011,6 +3013,18 @@
           </div>
         </header>
 
+        <!-- ============================================================ -->
+        <!-- === Dossiers médicaux (imports CSV/XLSX d'examens) === -->
+        <!-- ============================================================ -->
+        <article class="card" id="apiMedicalExamsCard" style="padding:18px; margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:10px; flex-wrap:wrap;">
+            <h3 style="margin:0;"><span class="icon-bg violet">🩺</span>Dossiers médicaux — Examens importés</h3>
+            <button id="apiMedExImportBtn" class="btn-violet" style="padding:9px 16px; font-size:12.5px;">📥 Importer un examen (CSV / XLSX)</button>
+          </div>
+          <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">Importez des fichiers d'examens cliniques (CPET, Onde de pouls, ...). Les données sont parsées automatiquement et stockées dans la base. Cliquez sur un examen pour voir le détail.</p>
+          <div id="apiMedExList"></div>
+        </article>
+
         <div id="dossierSharedHeader">
         <article class="card timeline-card">
           <div class="timeline-head">
@@ -4983,6 +4997,8 @@
     renderPatientList($('patientSearch').value);
     renderHome();
     renderPatientFile();
+    // Recharge les dossiers médicaux importés (API) pour ce patient
+    try { if (typeof loadMedicalExamsForCurrentPatient === 'function') loadMedicalExamsForCurrentPatient(); } catch (_) {}
   }
 
   function initQuickSelect() {
@@ -11749,6 +11765,306 @@
       const b = document.getElementById('apiCreateVisioBackdrop');
       if (b) b.remove();
     }
+
+    // ====================================================================
+    // === MODULE DOSSIERS MÉDICAUX — Import CSV/XLSX (CPET + Onde de pouls)
+    // ====================================================================
+    function getSelectedPatientId() {
+      // Tente de récupérer le patient sélectionné depuis le sélecteur existant
+      try {
+        if (typeof selectedPatient !== 'undefined' && selectedPatient) return selectedPatient.id;
+      } catch (_) {}
+      const sel = document.getElementById('patientPicker') || document.getElementById('headerPatient');
+      if (sel && sel.value) return sel.value;
+      // Fallback : premier patient
+      try { return (window.patients && window.patients[0]) ? window.patients[0].id : null; } catch { return null; }
+    }
+
+    async function loadMedicalExamsForCurrentPatient() {
+      const list = document.getElementById('apiMedExList');
+      if (!list) return;
+      const pid = getSelectedPatientId();
+      if (!pid) { list.innerHTML = '<p style="color:var(--muted);">Aucun patient sélectionné.</p>'; return; }
+
+      try {
+        const r = await window.MarfanAPI.medicalExams.listByPatient(pid);
+        const exams = (r && r.exams) || [];
+        if (!exams.length) {
+          list.innerHTML = `<div style="text-align:center; padding:24px; color:var(--muted); background:#f3f6fb; border-radius:10px;">
+            <div style="font-size:32px; margin-bottom:8px;">📋</div>
+            Aucun examen importé pour ce patient.<br>
+            <span style="font-size:11px;">Cliquez sur « Importer un examen » pour ajouter un fichier CSV ou XLSX.</span>
+          </div>`;
+          return;
+        }
+        list.innerHTML = exams.map(renderExamCard).join('');
+        // Wire click pour ouvrir détail
+        list.querySelectorAll('[data-exam-id]').forEach(card => {
+          card.addEventListener('click', () => openExamDetail(parseInt(card.dataset.examId, 10)));
+        });
+      } catch (e) {
+        list.innerHTML = '<p style="color:#991b1b;">Erreur : ' + e.message + '</p>';
+      }
+    }
+
+    function statusBadgeExam(status) {
+      const map = {
+        'imported':                 { bg:'#dbeafe', color:'#1e40af', label:'Importé' },
+        'parsed':                   { bg:'#dbeafe', color:'#1e40af', label:'En attente de validation' },
+        'pending_validation':       { bg:'#fef3c7', color:'#92400e', label:'En attente de validation' },
+        'validated':                { bg:'#dcfce7', color:'#166534', label:'✓ Validé' },
+        'modified_after_validation':{ bg:'#fef3c7', color:'#92400e', label:'⚠ Modifié après validation' },
+        'error':                    { bg:'#fee2e2', color:'#991b1b', label:'✖ Erreur' },
+        'incomplete':               { bg:'#fef3c7', color:'#92400e', label:'⚠ Données incomplètes' }
+      };
+      const s = map[status] || map['parsed'];
+      return `<span style="background:${s.bg}; color:${s.color}; padding:2px 9px; border-radius:99px; font-size:10.5px; font-weight:700;">${s.label}</span>`;
+    }
+
+    function renderExamCard(exam) {
+      const s = exam.parsed_summary || {};
+      const typeLabel = { cpet:'🫁 CPET (épreuve d\'effort)', pulse_wave:'💗 Onde de pouls (VOP)', echocardiography:'🫀 Échocardiographie', biology:'🧪 Biologie', ecg:'📈 ECG', spirometry:'🌬 Spirométrie', other:'📄 Autre examen' }[exam.exam_type] || exam.exam_type;
+      const date = exam.exam_date ? new Date(exam.exam_date).toLocaleDateString('fr-FR') :
+                    (exam.imported_at ? new Date(exam.imported_at).toLocaleDateString('fr-FR') : '—');
+
+      // Synthèse rapide selon le type
+      let synth = '';
+      if (exam.exam_type === 'cpet') {
+        synth = `
+          <span style="margin-right:14px;"><strong>VO₂max</strong> ${s.vo2_max_ml_kg_min != null ? Math.round(s.vo2_max_ml_kg_min*10)/10 + ' ml/kg/min' : '—'}</span>
+          <span style="margin-right:14px;"><strong>FC max</strong> ${s.hr_max != null ? Math.round(s.hr_max) + ' bpm' : '—'}</span>
+          <span style="margin-right:14px;"><strong>Puissance max</strong> ${s.power_max != null ? Math.round(s.power_max) + ' W' : '—'}</span>
+          <span><strong>RER max</strong> ${s.rer_max != null ? Math.round(s.rer_max*100)/100 : '—'}</span>`;
+      } else if (exam.exam_type === 'pulse_wave') {
+        synth = `
+          <span style="margin-right:14px;"><strong>VOP (PWV)</strong> ${s.ftpwv != null ? s.ftpwv + ' m/s' : '—'}</span>
+          <span style="margin-right:14px;"><strong>SI</strong> ${s.si != null ? s.si : '—'}</span>
+          <span style="margin-right:14px;"><strong>PA centrale</strong> ${s.csp != null ? s.csp + '/' + (s.cdp != null ? s.cdp : '?') + ' mmHg' : '—'}</span>
+          <span><strong>FC</strong> ${s.heart_rate != null ? s.heart_rate + ' bpm' : '—'}</span>`;
+      } else {
+        synth = '<span style="color:var(--muted);">Synthèse non disponible pour ce type</span>';
+      }
+
+      return `
+        <div data-exam-id="${exam.id}" style="padding:14px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; cursor:pointer; transition:background 0.15s; background:white;"
+             onmouseover="this.style.background='#f3f6fb'" onmouseout="this.style.background='white'">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
+            <div>
+              <strong style="font-size:13px; color:var(--ink);">${typeLabel}</strong>
+              <span style="color:var(--muted); font-size:11.5px; margin-left:8px;">${date}</span>
+              <span style="margin-left:8px;">${statusBadgeExam(exam.status)}</span>
+            </div>
+            <div style="font-size:10.5px; color:var(--muted);">${exam.file_name || ''} (${exam.file_size_kb || '?'} KB)</div>
+          </div>
+          <div style="font-size:11.5px; color:#475569; margin-bottom:4px;">${synth}</div>
+          ${s.conclusion ? `<div style="font-size:11px; color:var(--muted); font-style:italic; margin-top:6px;">${s.conclusion}</div>` : ''}
+        </div>`;
+    }
+
+    // === Bouton "Importer un examen" → ouvre la modale d'upload ===
+    function openExamImportModal() {
+      const pid = getSelectedPatientId();
+      if (!pid) { alert('Sélectionnez d\'abord un patient dans le sélecteur.'); return; }
+
+      const html = `
+        <div id="apiMedExModal" style="position:fixed; inset:0; background:rgba(11,21,48,0.75); z-index:10001; display:flex; align-items:center; justify-content:center; padding:20px;">
+          <div style="background:white; border-radius:14px; padding:24px 28px; width:560px; max-width:96vw; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+              <div>
+                <h3 style="margin:0;">📥 Importer un examen pour ${pid}</h3>
+                <p style="font-size:11.5px; color:var(--muted); margin:4px 0 0;">Le fichier est parsé localement puis envoyé en base avec une synthèse extraite.</p>
+              </div>
+              <button id="medExClose" style="border:none; background:#f3f6fb; color:#5a6280; padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer;">Fermer</button>
+            </div>
+
+            <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Type d'examen</label>
+            <select id="medExType" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:12px;">
+              <option value="auto">Auto-détection (recommandé)</option>
+              <option value="cpet">🫁 CPET — Test d'effort cardio-pulmonaire (.xlsx)</option>
+              <option value="pulse_wave">💗 Onde de pouls / VOP (.csv)</option>
+              <option value="other">📄 Autre (stockage brut)</option>
+            </select>
+
+            <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Date de l'examen (optionnel)</label>
+            <input id="medExDate" type="date" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:12px;">
+
+            <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Fichier (CSV ou XLSX, max 10 MB)</label>
+            <input id="medExFile" type="file" accept=".csv,.xlsx,.xls,.txt" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:14px;">
+
+            <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Notes (optionnel)</label>
+            <textarea id="medExNotes" rows="2" placeholder="Commentaires sur les conditions d'examen…" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; font-family:inherit; resize:vertical; margin-bottom:14px;"></textarea>
+
+            <div id="medExPreview" style="display:none; padding:12px; background:#f3f6fb; border-radius:8px; margin-bottom:14px; font-size:12px;"></div>
+            <div id="medExStatus" style="display:none; padding:8px 10px; border-radius:7px; font-size:11.5px; margin-bottom:12px;"></div>
+
+            <button id="medExUpload" disabled style="width:100%; padding:11px; border:none; background:#94a3b8; color:white; border-radius:9px; font-weight:700; font-size:13.5px; cursor:pointer;">📤 Parser et importer</button>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+
+      const fileInput = document.getElementById('medExFile');
+      const typeSel = document.getElementById('medExType');
+      const previewEl = document.getElementById('medExPreview');
+      const statusEl = document.getElementById('medExStatus');
+      const btnUpload = document.getElementById('medExUpload');
+      let parsedResult = null;
+      let detectedType = null;
+
+      document.getElementById('medExClose').onclick = () => document.getElementById('apiMedExModal').remove();
+
+      fileInput.onchange = async () => {
+        const f = fileInput.files[0];
+        if (!f) return;
+        previewEl.style.display = 'none';
+        statusEl.style.display = 'none';
+        btnUpload.disabled = true; btnUpload.style.background = '#94a3b8'; btnUpload.textContent = '📤 Parser et importer';
+
+        const M = window.MedicalParsers;
+        if (!M) { showStatus(statusEl, '✖ Module medical-parsers.js non chargé', 'error'); return; }
+
+        try {
+          let typeChoice = typeSel.value;
+          let content = null;
+          if (f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls')) {
+            const ab = await M.fileToArrayBuffer(f);
+            if (typeChoice === 'auto') typeChoice = 'cpet';
+            detectedType = 'cpet';
+            parsedResult = M.parseCPETXlsx(ab);
+          } else {
+            content = await M.fileToText(f);
+            if (typeChoice === 'auto') typeChoice = M.detectType(f.name, content);
+            detectedType = typeChoice;
+            if (typeChoice === 'pulse_wave') parsedResult = M.parsePulseWaveCSV(content);
+            else parsedResult = { summary: {}, full: { raw_text_preview: content.substring(0, 2000) }, errors: ['Type non géré ; fichier stocké en brut.'] };
+          }
+          // Show preview
+          previewEl.innerHTML = renderPreview(detectedType, parsedResult);
+          previewEl.style.display = 'block';
+          btnUpload.disabled = false;
+          btnUpload.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+        } catch (e) {
+          showStatus(statusEl, '✖ Parsing échoué : ' + e.message, 'error');
+        }
+      };
+
+      btnUpload.onclick = async () => {
+        if (!parsedResult) return;
+        btnUpload.disabled = true; btnUpload.textContent = 'Upload en cours…';
+        try {
+          const f = fileInput.files[0];
+          const base64 = await window.MedicalParsers.fileToBase64(f);
+          const r = await window.MarfanAPI.medicalExams.create({
+            patient_id: getSelectedPatientId(),
+            exam_type: detectedType,
+            exam_date: document.getElementById('medExDate').value || null,
+            file_name: f.name,
+            file_size_kb: Math.round(f.size / 1024),
+            file_mime: f.type || 'application/octet-stream',
+            raw_file: base64,
+            parsed_summary: parsedResult.summary,
+            parsed_full: parsedResult.full,
+            notes: document.getElementById('medExNotes').value || null
+          });
+          showStatus(statusEl, '✓ Examen #' + (r.exam && r.exam.id) + ' importé avec succès.', 'success');
+          setTimeout(() => {
+            document.getElementById('apiMedExModal').remove();
+            loadMedicalExamsForCurrentPatient();
+          }, 1200);
+        } catch (e) {
+          showStatus(statusEl, '✖ Échec de l\'envoi : ' + e.message, 'error');
+          btnUpload.disabled = false; btnUpload.textContent = '📤 Parser et importer';
+        }
+      };
+    }
+
+    function showStatus(el, msg, kind) {
+      el.style.display = 'block';
+      el.textContent = msg;
+      if (kind === 'success') { el.style.background = '#d1fae5'; el.style.color = '#065f46'; }
+      else if (kind === 'error') { el.style.background = '#fee2e2'; el.style.color = '#991b1b'; }
+      else { el.style.background = '#dbeafe'; el.style.color = '#1e40af'; }
+    }
+
+    function renderPreview(type, result) {
+      const s = result.summary || {};
+      const errs = (result.errors || []).length
+        ? `<div style="background:#fef3c7; color:#92400e; padding:6px 9px; border-radius:6px; margin-top:6px; font-size:11px;">⚠ ${result.errors.join(' · ')}</div>`
+        : '';
+      let html = '<strong>Aperçu de la synthèse extraite :</strong>';
+      if (type === 'cpet') {
+        html += `<table style="width:100%; margin-top:8px; font-size:11.5px;">
+          <tr><td>VO₂ max</td><td style="text-align:right; font-weight:700;">${s.vo2_max_ml_kg_min != null ? Math.round(s.vo2_max_ml_kg_min*10)/10 + ' ml/kg/min' : '—'}</td></tr>
+          <tr><td>VO₂ max (ml/min)</td><td style="text-align:right;">${s.vo2_max_ml_min != null ? Math.round(s.vo2_max_ml_min) : '—'}</td></tr>
+          <tr><td>FC max</td><td style="text-align:right;">${s.hr_max != null ? Math.round(s.hr_max) + ' bpm' : '—'}</td></tr>
+          <tr><td>Puissance max</td><td style="text-align:right;">${s.power_max != null ? Math.round(s.power_max) + ' W' : '—'}</td></tr>
+          <tr><td>RER max</td><td style="text-align:right;">${s.rer_max != null ? Math.round(s.rer_max*100)/100 : '—'}</td></tr>
+          <tr><td>SV1 (VO₂)</td><td style="text-align:right;">${s.sv1_vo2 != null ? Math.round(s.sv1_vo2) : '—'}</td></tr>
+          <tr><td>SV2 (VO₂)</td><td style="text-align:right;">${s.sv2_vo2 != null ? Math.round(s.sv2_vo2) : '—'}</td></tr>
+          <tr><td>Protocole</td><td style="text-align:right;">${s.protocol || '—'}</td></tr>
+        </table>`;
+      } else if (type === 'pulse_wave') {
+        html += `<table style="width:100%; margin-top:8px; font-size:11.5px;">
+          <tr><td>VOP (FTPWV)</td><td style="text-align:right; font-weight:700;">${s.ftpwv != null ? s.ftpwv + ' m/s' : '—'}</td></tr>
+          <tr><td>Stiffness Index</td><td style="text-align:right;">${s.si != null ? s.si : '—'}</td></tr>
+          <tr><td>PA brachiale (SBP/DBP)</td><td style="text-align:right;">${s.sbp != null ? s.sbp + '/' + s.dbp + ' mmHg' : '—'}</td></tr>
+          <tr><td>PA centrale (CSP/CDP)</td><td style="text-align:right;">${s.csp != null ? s.csp + '/' + s.cdp + ' mmHg' : '—'}</td></tr>
+          <tr><td>FC</td><td style="text-align:right;">${s.heart_rate != null ? s.heart_rate + ' bpm' : '—'}</td></tr>
+          <tr><td>Échantillonnage</td><td style="text-align:right;">${s.sample_rate_hz || '—'} Hz</td></tr>
+        </table>`;
+      } else {
+        html += '<div style="color:var(--muted); font-style:italic; margin-top:6px;">Type non standardisé — fichier stocké en brut.</div>';
+      }
+      html += s.conclusion ? `<div style="margin-top:8px; padding:8px; background:white; border-radius:6px; font-style:italic; color:#475569;">${s.conclusion}</div>` : '';
+      return html + errs;
+    }
+
+    // === Modale de détail (vue minimale en phase A — version riche prévue en phase B) ===
+    async function openExamDetail(examId) {
+      try {
+        const r = await window.MarfanAPI.medicalExams.get(examId);
+        const exam = r.exam;
+        const s = exam.parsed_summary || {};
+        const typeLabel = { cpet:'CPET', pulse_wave:'Onde de pouls' }[exam.exam_type] || exam.exam_type;
+
+        const rows = Object.entries(s).map(([k, v]) =>
+          `<tr><td style="padding:4px 8px; color:#475569;">${k}</td><td style="padding:4px 8px; text-align:right; font-weight:600;">${v == null ? '—' : v}</td></tr>`
+        ).join('');
+
+        const html = `
+          <div id="apiMedExDetailModal" style="position:fixed; inset:0; background:rgba(11,21,48,0.85); z-index:10001; display:flex; align-items:center; justify-content:center; padding:20px;">
+            <div style="background:white; border-radius:14px; padding:24px 28px; width:780px; max-width:96vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+              <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:14px;">
+                <div>
+                  <h3 style="margin:0 0 4px;">📋 ${typeLabel} — Examen #${exam.id}</h3>
+                  <p style="font-size:12px; color:var(--muted); margin:0;">
+                    Patient ${exam.patient_id}${exam.exam_date ? ' · ' + new Date(exam.exam_date).toLocaleDateString('fr-FR') : ''}
+                    · ${exam.file_name || '?'}${exam.file_size_kb ? ' (' + exam.file_size_kb + ' KB)' : ''}
+                  </p>
+                  <div style="margin-top:6px;">${statusBadgeExam(exam.status)}</div>
+                </div>
+                <button onclick="document.getElementById('apiMedExDetailModal').remove()" style="border:none; background:#f3f6fb; color:#5a6280; padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer;">Fermer</button>
+              </div>
+
+              <h4 style="font-size:13px; color:#0b1530; margin:14px 0 6px;">Synthèse extraite</h4>
+              <table style="width:100%; font-size:12px; border-collapse:collapse;">${rows}</table>
+
+              ${s.conclusion ? `<div style="margin-top:12px; padding:10px 12px; background:#eff6ff; border-left:3px solid #4f8cff; border-radius:6px; color:#1e40af; font-size:12px;">${s.conclusion}</div>` : ''}
+
+              <div style="margin-top:18px; padding:12px; background:#fef3c7; border-radius:8px; font-size:11.5px; color:#92400e;">
+                ⏳ <strong>Phase A — vue minimale.</strong> La page détaillée complète (graphiques de cinétiques, recalibrage SV1/SV2, courbes Wasserman/V-slope, validation finale) arrivera en Phase B.
+              </div>
+            </div>
+          </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+      } catch (e) {
+        alert('Erreur : ' + e.message);
+      }
+    }
+
+    // Wire le bouton d'import dans la fiche patient
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.id === 'apiMedExImportBtn') openExamImportModal();
+    });
 
     // ====================================================================
     // === MODULE QUESTIONNAIRES (SF-36 / GPAQ)

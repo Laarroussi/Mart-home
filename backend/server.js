@@ -38,8 +38,9 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+// Limite 15 MB pour accepter les fichiers d'examens médicaux en base64 (10 MB de fichier → ~13.5 MB base64)
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 // Rate limit global (anti-DoS basique)
 const limiter = rateLimit({
@@ -81,6 +82,7 @@ function mountRoutes(prefix) {
   app.use(prefix + '/training',       require('./routes/training'));
   app.use(prefix + '/training-programs', require('./routes/training-programs'));
   app.use(prefix + '/questionnaires', require('./routes/questionnaires'));
+  app.use(prefix + '/medical-exams',  require('./routes/medical-exams'));
 }
 mountRoutes('/api');   // mode local dev OU Passenger qui garde le préfixe
 mountRoutes('');       // mode Passenger qui strippe le préfixe URI

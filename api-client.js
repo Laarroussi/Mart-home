@@ -191,6 +191,17 @@
       exportUrl: (mode) => `${API_BASE}/cohort/export?mode=${mode}` // à utiliser avec token en query si besoin
     },
 
+    /** ===== Examens médicaux (CPET, Onde de pouls, ...) ===== */
+    medicalExams: {
+      create:        (data)         => request('POST', '/medical-exams', data),
+      listByPatient: (patientId)    => request('GET', `/medical-exams/patient/${patientId}`),
+      get:           (id, withRaw)  => request('GET', `/medical-exams/${id}${withRaw ? '?withRaw=true' : ''}`),
+      validate:      (id, validatedData, notes) => request('POST', `/medical-exams/${id}/validate`,
+                                                            { validated_data: validatedData, notes }),
+      remove:        (id)           => request('DELETE', `/medical-exams/${id}`),
+      list:          (filters = {}) => request('GET', '/medical-exams?' + new URLSearchParams(filters).toString())
+    },
+
     /** ===== Questionnaires validés (SF-36, GPAQ) ===== */
     questionnaires: {
       mine:    ()             => request('GET',  '/questionnaires/mine'),
