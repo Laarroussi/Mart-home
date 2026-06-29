@@ -136,9 +136,25 @@ router.post('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATO
       [req.user.id, 'create-user', JSON.stringify({ created: id, role, username }), req.ip]
     );
 
+    // === SI compte patient : crée automatiquement SF-36 + GPAQ obligatoires ===
+    if (role === 'patient' && (patient_id || rows[0].patient_id)) {
+      const pid = patient_id || rows[0].patient_id;
+      try {
+        await query(
+          `INSERT INTO questionnaire_responses (patient_id, questionnaire_type, sent_by, status, mandatory, notes)
+           VALUES ($1, 'sf36', $2, 'pending', TRUE, 'Auto-créé à l''inclusion')`,
+          [pid, req.user.id]
+        );
+        await query(
+          `INSERT INTO questionnaire_responses (patient_id, questionnaire_type, sent_by, status, mandatory, notes)
+           VALUES ($1, 'gpaq', $2, 'pending', TRUE, 'Auto-créé à l''inclusion')`,
+          [pid, req.user.id]
+        );
+      } catch (e) { console.warn('[users] auto-questionnaires échoué :', e.message); }
+    }
+
     // Réponse enrichie : on renvoie le user créé + le mot de passe initial EN CLAIR
     // (uniquement pour que le principal_admin puisse le communiquer à l'utilisateur).
-    // En prod : on pourrait à la place envoyer un email avec lien de définition initiale.
     res.status(201).json({
       user: rows[0],
       initialPassword: mustChange ? password : undefined,

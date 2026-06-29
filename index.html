@@ -12,7 +12,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase8d-fix"></script>
+  <script src="api-client.js?v=phase9-questionnaires"></script>
+  <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
+  <script src="questionnaires-defs.js?v=phase9"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -11670,6 +11672,269 @@
       if (b) b.remove();
     }
 
+    // ====================================================================
+    // === MODULE QUESTIONNAIRES (SF-36 / GPAQ)
+    // ====================================================================
+    async function checkPendingQuestionnaires(role) {
+      if (role !== 'patient') return [];
+      try {
+        const r = await window.MarfanAPI.questionnaires.pending();
+        return (r && r.pending) || [];
+      } catch (e) { console.warn('[questionnaires] pending échoué :', e.message); return []; }
+    }
+
+    // Affiche la modale de remplissage pour un questionnaire pending donné
+    function openQuestionnaireModal(item, onComplete) {
+      const Q = window.MarfanQuestionnaires;
+      if (!Q) { alert('Définitions des questionnaires non chargées.'); return; }
+      const def = item.questionnaire_type === 'sf36' ? Q.SF36 : Q.GPAQ;
+      const answers = {};
+      let currentSection = 0;
+
+      function isItemVisible(it) {
+        if (!it.dependsOn) return true;
+        return String(answers[it.dependsOn]) === String(it.dependsValue);
+      }
+      function renderItem(it, sectionOpts) {
+        const opts = it.options || sectionOpts || [];
+        if (it.type === 'number' || it.type === 'minutes') {
+          const unit = it.unit || (it.type === 'minutes' ? 'minutes' : '');
+          return `
+            <div class="qItem" data-id="${it.id}" style="margin-bottom:12px; padding:11px; background:#fafbfd; border-radius:8px; ${!isItemVisible(it) ? 'display:none;' : ''}">
+              <div style="font-size:13px; color:#0b1530; margin-bottom:6px;">${it.text}</div>
+              <input type="number" data-q="${it.id}" min="${it.min ?? 0}" max="${it.max ?? 1440}"
+                     value="${answers[it.id] != null ? answers[it.id] : ''}"
+                     style="width:120px; padding:7px 10px; border:1px solid #d8dde7; border-radius:7px; font-size:13px;">
+              <span style="font-size:11.5px; color:#6b7390; margin-left:8px;">${unit}</span>
+            </div>`;
+        }
+        return `
+          <div class="qItem" data-id="${it.id}" style="margin-bottom:12px; padding:11px; background:#fafbfd; border-radius:8px; ${!isItemVisible(it) ? 'display:none;' : ''}">
+            <div style="font-size:13px; color:#0b1530; margin-bottom:6px;">${it.text}</div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+              ${opts.map(o => `
+                <label style="display:flex; align-items:center; gap:5px; padding:6px 10px; border:1.5px solid #d8dde7; border-radius:7px; cursor:pointer; font-size:11.5px;">
+                  <input type="radio" name="${it.id}" value="${o.v}" ${answers[it.id] == o.v ? 'checked' : ''} style="margin:0;">
+                  <span>${o.label}</span>
+                </label>
+              `).join('')}
+            </div>
+          </div>`;
+      }
+      function renderSection(idx) {
+        const s = def.sections[idx];
+        return `
+          <div style="font-size:11.5px; color:#6b7390; margin-bottom:4px;">Étape ${idx + 1} / ${def.sections.length}</div>
+          <h3 style="margin-bottom:4px;">${s.title}</h3>
+          ${s.introduction ? `<p style="color:#6b7390; font-size:12.5px; margin-bottom:10px;">${s.introduction}</p>` : ''}
+          ${s.items.map(it => renderItem(it, s.commonOptions)).join('')}`;
+      }
+
+      const html = `
+        <div id="apiQModal" style="position:fixed; inset:0; background:rgba(11,21,48,0.88); z-index:10002; display:flex; align-items:center; justify-content:center; padding:20px;">
+          <div style="background:white; border-radius:14px; padding:24px 28px; width:760px; max-width:96vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:14px;">
+              <div>
+                <div style="font-size:17px; font-weight:800; color:#0b1530;">📋 ${def.title}</div>
+                <p style="font-size:12px; color:#6b7390; margin-top:4px;">${def.description} · ~${def.estimatedMinutes} min</p>
+                ${item.mandatory ? '<span style="display:inline-block; margin-top:6px; background:#fee2e2; color:#991b1b; padding:3px 9px; border-radius:99px; font-size:10.5px; font-weight:700;">OBLIGATOIRE</span>' : ''}
+              </div>
+              ${item.mandatory ? '' : '<button id="apiQClose" style="border:none; background:#f3f6fb; color:#5a6280; padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer;">Plus tard</button>'}
+            </div>
+            <div id="apiQSection" style="margin-bottom:14px;">${renderSection(0)}</div>
+            <div style="display:flex; justify-content:space-between; gap:10px;">
+              <button id="apiQPrev" style="padding:10px 18px; border:1px solid #d8dde7; background:white; color:#5a6280; border-radius:9px; font-weight:600; font-size:13px; cursor:pointer; visibility:hidden;">← Précédent</button>
+              <button id="apiQNext" style="padding:10px 18px; border:none; background:linear-gradient(135deg,#4f8cff,#7c5cff); color:white; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer;">Suivant →</button>
+            </div>
+            <div id="apiQErr" style="display:none; margin-top:10px; padding:8px 10px; background:#fee2e2; color:#991b1b; border-radius:7px; font-size:11.5px;"></div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+      const close = document.getElementById('apiQClose');
+      if (close) close.onclick = () => document.getElementById('apiQModal').remove();
+
+      const sectionEl = document.getElementById('apiQSection');
+      const errEl = document.getElementById('apiQErr');
+      const btnPrev = document.getElementById('apiQPrev');
+      const btnNext = document.getElementById('apiQNext');
+
+      function captureCurrentAnswers() {
+        sectionEl.querySelectorAll('input[type=radio]:checked').forEach(r => answers[r.name] = parseInt(r.value, 10));
+        sectionEl.querySelectorAll('input[type=number]').forEach(r => {
+          if (r.value !== '') answers[r.dataset.q] = parseInt(r.value, 10);
+        });
+      }
+      function reRender() {
+        captureCurrentAnswers();
+        sectionEl.innerHTML = renderSection(currentSection);
+        // Wire radios pour live-update (deps GPAQ)
+        sectionEl.querySelectorAll('input').forEach(inp => {
+          inp.addEventListener('change', () => { captureCurrentAnswers(); reRender(); });
+        });
+        btnPrev.style.visibility = currentSection > 0 ? 'visible' : 'hidden';
+        btnNext.textContent = currentSection === def.sections.length - 1 ? '✓ Soumettre' : 'Suivant →';
+        errEl.style.display = 'none';
+      }
+      reRender();
+
+      btnPrev.onclick = () => { captureCurrentAnswers(); currentSection--; reRender(); };
+      btnNext.onclick = async () => {
+        captureCurrentAnswers();
+        // Vérif que tous les items VISIBLES de la section ont une réponse
+        const s = def.sections[currentSection];
+        const missing = s.items.filter(it => isItemVisible(it) && (answers[it.id] == null || answers[it.id] === '')).map(it => it.id);
+        if (missing.length) {
+          errEl.textContent = 'Veuillez répondre à toutes les questions visibles (' + missing.length + ' manquante(s)).';
+          errEl.style.display = 'block';
+          return;
+        }
+        if (currentSection < def.sections.length - 1) {
+          currentSection++; reRender();
+          window.scrollTo({ top: 0 }); // pas idéal mais simple
+          return;
+        }
+        // Dernière section : soumet à l'API
+        btnNext.disabled = true; btnNext.textContent = 'Envoi…';
+        try {
+          await window.MarfanAPI.questionnaires.submit(item.id, answers);
+          document.getElementById('apiQModal').remove();
+          if (typeof onComplete === 'function') onComplete();
+        } catch (e) {
+          errEl.textContent = e.message || 'Échec de soumission';
+          errEl.style.display = 'block';
+          btnNext.disabled = false; btnNext.textContent = '✓ Soumettre';
+        }
+      };
+    }
+
+    // === Tableaux compacts SF-36 et GPAQ dans l'onglet "Mes données" patient ===
+    async function renderPatientSF36Table() {
+      const panel = document.getElementById('pat-progress');
+      if (!panel) return;
+      let card = document.getElementById('apiPatQuestionnaireCard');
+      if (!card) {
+        card = document.createElement('article');
+        card.className = 'pat-card';
+        card.id = 'apiPatQuestionnaireCard';
+        card.style.cssText = 'margin-top:16px;';
+        panel.appendChild(card);
+      }
+      let responses = [];
+      try {
+        const r = await window.MarfanAPI.questionnaires.mine();
+        responses = (r && r.responses) || [];
+      } catch (e) {
+        card.innerHTML = '<p style="color:#991b1b;">Impossible de charger vos questionnaires.</p>';
+        return;
+      }
+      const sf36 = responses.filter(r => r.questionnaire_type === 'sf36' && r.status === 'completed' && r.scores)
+                            .sort((a,b) => new Date(a.completed_at) - new Date(b.completed_at));
+      const gpaq = responses.filter(r => r.questionnaire_type === 'gpaq' && r.status === 'completed' && r.scores)
+                            .sort((a,b) => new Date(a.completed_at) - new Date(b.completed_at));
+      const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'2-digit' }) : '—';
+
+      const DIMS = [
+        ['PF', 'Phys.'], ['RP', 'Rôle ph.'], ['BP', 'Doul.'], ['GH', 'Santé'],
+        ['VT', 'Vital.'], ['SF', 'Social'], ['RE', 'Rôle ém.'], ['MH', 'Mental']
+      ];
+      let sf36Html = '<p style="color:var(--muted);">Aucun SF-36 complété pour le moment.</p>';
+      if (sf36.length) {
+        sf36Html = `
+          <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
+            <thead style="background:#f3f6fb;">
+              <tr>
+                <th style="text-align:left; padding:6px 8px;">Date</th>
+                ${DIMS.map(d => `<th title="${d[0]}" style="text-align:center; padding:6px 6px; font-weight:700;">${d[1]}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${sf36.map((r, i) => {
+                const s = r.scores || {};
+                return `<tr style="background:${i % 2 ? '#fafbfd' : 'white'}; border-top:1px solid #eef0f5;">
+                  <td style="padding:6px 8px; font-weight:600; color:#0b1530;">${fmtDate(r.completed_at)}</td>
+                  ${DIMS.map(d => {
+                    const v = s[d[0]];
+                    const bg = v == null ? '' : (v >= 70 ? '#dcfce7' : v >= 50 ? '#fef9c3' : v >= 30 ? '#ffedd5' : '#fee2e2');
+                    return `<td style="text-align:center; padding:6px 6px; background:${bg};">${v != null ? v : '—'}</td>`;
+                  }).join('')}
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          <p style="font-size:10.5px; color:#8b91a8; font-style:italic; margin-top:6px;">
+            Codes : PF = Fonctionnement physique · RP = Rôle physique · BP = Douleurs · GH = Santé générale · VT = Vitalité · SF = Vie sociale · RE = Rôle émotionnel · MH = Santé mentale. Scores 0-100 (plus haut = meilleur).
+          </p>`;
+      }
+
+      let gpaqHtml = '<p style="color:var(--muted);">Aucun GPAQ complété pour le moment.</p>';
+      if (gpaq.length) {
+        gpaqHtml = `
+          <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
+            <thead style="background:#f3f6fb;">
+              <tr>
+                <th style="text-align:left; padding:6px 8px;">Date</th>
+                <th style="text-align:right; padding:6px 6px;">Travail</th>
+                <th style="text-align:right; padding:6px 6px;">Dépl.</th>
+                <th style="text-align:right; padding:6px 6px;">Loisirs</th>
+                <th style="text-align:right; padding:6px 6px;">Total</th>
+                <th style="text-align:right; padding:6px 6px;">Sédent.</th>
+                <th style="text-align:center; padding:6px 6px;">Niveau</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${gpaq.map((r, i) => {
+                const s = r.scores || {};
+                const level = s.activity_level;
+                const levelColor = level === 'high' ? '#dcfce7' : level === 'moderate' ? '#fef9c3' : '#fee2e2';
+                const levelLabel = level === 'high' ? 'Élevé' : level === 'moderate' ? 'Modéré' : 'Faible';
+                return `<tr style="background:${i % 2 ? '#fafbfd' : 'white'}; border-top:1px solid #eef0f5;">
+                  <td style="padding:6px 8px; font-weight:600;">${fmtDate(r.completed_at)}</td>
+                  <td style="text-align:right; padding:6px 6px;">${s.work_metmin || 0}</td>
+                  <td style="text-align:right; padding:6px 6px;">${s.transport_metmin || 0}</td>
+                  <td style="text-align:right; padding:6px 6px;">${s.leisure_metmin || 0}</td>
+                  <td style="text-align:right; padding:6px 6px; font-weight:700;">${s.total_metmin || 0}</td>
+                  <td style="text-align:right; padding:6px 6px;">${s.sedentary_min_per_day || 0}</td>
+                  <td style="text-align:center; padding:6px 6px;">
+                    <span style="background:${levelColor}; padding:2px 8px; border-radius:99px; font-weight:700;">${levelLabel}</span>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          <p style="font-size:10.5px; color:#8b91a8; font-style:italic; margin-top:6px;">
+            Unité : MET-min/semaine. Recommandation OMS : ≥600 (modéré) ; ≥3000 (élevé).
+          </p>`;
+      }
+
+      card.innerHTML = `
+        <h3>📋 Mes questionnaires</h3>
+        <p>Synthèse longitudinale de vos questionnaires de qualité de vie (SF-36) et d'activité physique (GPAQ).</p>
+        <h4 style="font-size:13px; color:#0b1530; margin:14px 0 6px;">SF-36 — 8 dimensions (0-100)</h4>
+        ${sf36Html}
+        <h4 style="font-size:13px; color:#0b1530; margin:14px 0 6px;">GPAQ — Activité physique (OMS)</h4>
+        ${gpaqHtml}`;
+    }
+
+    // Affiche en série tous les questionnaires obligatoires pending
+    async function maybeShowMandatoryQuestionnaires(role) {
+      if (role !== 'patient') return;
+      const pending = await checkPendingQuestionnaires(role);
+      const mandatory = pending.filter(p => p.mandatory);
+      if (!mandatory.length) return;
+      console.log('[Questionnaires] ' + mandatory.length + ' questionnaire(s) obligatoire(s) à remplir.');
+      // Affiche un par un, en série
+      function next() {
+        if (!mandatory.length) {
+          // Tout fait → recharge l'affichage des données
+          if (typeof renderPatientSF36Table === 'function') renderPatientSF36Table();
+          return;
+        }
+        const q = mandatory.shift();
+        openQuestionnaireModal(q, next);
+      }
+      next();
+    }
+
     async function onLoginSuccess(user) {
       hideOverlay();
       // Vérif obligatoire : doit changer son mot de passe ?
@@ -11699,6 +11964,10 @@
       const t = await loadTrainingTableInBDD(role);
       console.log('[MarfanAPI] Connexion OK comme ' + user.email + ' (rôle ' + role + ') — ' + n + ' patient(s), ' + v + ' vidéo(s), ' + s + ' visio(s), ' + h + ' training(s) perso, ' + t + ' training(s) BDD.');
       redirectByRole(role);
+      // === Patient : force le remplissage des questionnaires SF-36/GPAQ pending mandatory ===
+      maybeShowMandatoryQuestionnaires(role);
+      // Tableau compact SF-36/GPAQ dans Mes données
+      if (role === 'patient') setTimeout(renderPatientSF36Table, 600);
     }
 
     document.getElementById('apiLoginBtn').addEventListener('click', async function () {

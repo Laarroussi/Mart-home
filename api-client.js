@@ -191,6 +191,16 @@
       exportUrl: (mode) => `${API_BASE}/cohort/export?mode=${mode}` // à utiliser avec token en query si besoin
     },
 
+    /** ===== Questionnaires validés (SF-36, GPAQ) ===== */
+    questionnaires: {
+      mine:    ()             => request('GET',  '/questionnaires/mine'),
+      pending: ()             => request('GET',  '/questionnaires/pending'),
+      get:     (id)           => request('GET',  `/questionnaires/${id}`),
+      send:    (data)         => request('POST', '/questionnaires/send', data),
+      submit:  (id, answers)  => request('POST', `/questionnaires/${id}/submit`, { answers }),
+      list:    (filters = {}) => request('GET',  '/questionnaires?' + new URLSearchParams(filters).toString())
+    },
+
     /** ===== Programmes / séances prescrites d'entraînement ===== */
     trainingPrograms: {
       list:   (filters = {}) => request('GET', '/training-programs?' + new URLSearchParams(filters).toString()),
