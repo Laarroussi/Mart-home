@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase8c-fix"></script>
+  <script src="api-client.js?v=phase8d-fix"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -10570,12 +10570,17 @@
     }
 
     // Injecte le dispositif dans les onglets "Entraînement avec vidéo" et "Entraînement libre"
-    // (qui ont des conteneurs HTML statiques en attente)
+    // Test "déjà injecté" via la présence d'un vrai élément interne (pas .innerHTML.trim()
+    // qui considère les commentaires HTML comme du contenu non vide).
     function injectExtraDeviceCards() {
       const videoCard = document.getElementById('apiTrainingDeviceVideo');
       const freeCard  = document.getElementById('apiTrainingDeviceFree');
-      if (videoCard && !videoCard.innerHTML.trim()) videoCard.innerHTML = buildDeviceCardHTML('avec vidéo');
-      if (freeCard  && !freeCard.innerHTML.trim())  freeCard.innerHTML  = buildDeviceCardHTML('libre');
+      if (videoCard && !videoCard.querySelector('.apiBeltStatus')) {
+        videoCard.innerHTML = buildDeviceCardHTML('avec vidéo');
+      }
+      if (freeCard && !freeCard.querySelector('.apiBeltStatus')) {
+        freeCard.innerHTML = buildDeviceCardHTML('libre');
+      }
     }
 
     function injectPatientVisioList(sessions) {
