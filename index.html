@@ -12,9 +12,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase9d-bdd"></script>
+  <script src="api-client.js?v=phase9e-cat"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase9d"></script>
+  <script src="questionnaires-defs.js?v=phase9e"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3626,7 +3626,7 @@
         <header class="page-header">
           <div>
             <h2>Base de données</h2>
-            <p>Vue large par défaut : une ligne par patient, puis une série de colonnes par visite. Le même patient peut donc avoir V1, V2, V3… sans limite, avec les données VO₂, SV1, SV2, pente VE/VCO₂, Watts, FC et questionnaires.</p>
+            <p>Vue large par défaut : une ligne par patient, puis une série de colonnes par visite. Sélectionnez la catégorie ci-dessous pour filtrer l'affichage.</p>
           </div>
           <div class="actions">
             <button class="btn-secondary" onclick="alert('Import CSV à développer')">⬆ Importer CSV</button>
@@ -3634,7 +3634,18 @@
           </div>
         </header>
 
-        <div class="db-grid">
+        <!-- ============================================================ -->
+        <!-- === Sélecteur de catégorie BDD === -->
+        <!-- ============================================================ -->
+        <div id="apiDbCatFilter" style="display:flex; gap:8px; flex-wrap:wrap; padding:10px; background:#f3f6fb; border-radius:10px; margin-bottom:14px;">
+          <button data-cat="all"      class="apiDbCatBtn" style="padding:8px 16px; border:none; border-radius:99px; background:#0b1530; color:white; font-weight:700; font-size:12px; cursor:pointer;">🔎 Tout</button>
+          <button data-cat="evals"    class="apiDbCatBtn" style="padding:8px 16px; border:1px solid #d8dde7; border-radius:99px; background:white; color:#0b1530; font-weight:600; font-size:12px; cursor:pointer;">🩺 Évaluations à l'effort</button>
+          <button data-cat="training" class="apiDbCatBtn" style="padding:8px 16px; border:1px solid #d8dde7; border-radius:99px; background:white; color:#0b1530; font-weight:600; font-size:12px; cursor:pointer;">🏃 Entraînement</button>
+          <button data-cat="sf36"     class="apiDbCatBtn" style="padding:8px 16px; border:1px solid #d8dde7; border-radius:99px; background:white; color:#0b1530; font-weight:600; font-size:12px; cursor:pointer;">📋 SF-36 (qualité de vie)</button>
+          <button data-cat="gpaq"     class="apiDbCatBtn" style="padding:8px 16px; border:1px solid #d8dde7; border-radius:99px; background:white; color:#0b1530; font-weight:600; font-size:12px; cursor:pointer;">🏃 GPAQ (activité physique)</button>
+        </div>
+
+        <div class="db-grid" data-db-cat="evals">
           <article class="card db-card">
             <h3><span class="icon-bg cyan"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></span>Structure flexible</h3>
             <p>Aucun temps figé. Chaque patient peut avoir 3, 12, 25 évaluations ou plus. Les colonnes / lignes sont générées dynamiquement.</p>
@@ -3656,7 +3667,7 @@
           </article>
         </div>
 
-        <article class="card" style="padding: 16px;">
+        <article class="card" style="padding: 16px;" data-db-cat="evals">
           <div class="search-box" style="padding: 0 0 14px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="left:12px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="dbSearch" placeholder="Rechercher : patient, gène, statut, évaluation, date..." />
@@ -3667,7 +3678,7 @@
         <!-- ====================================================== -->
         <!-- === Tableau Séances d'entraînement (data scientifique) -->
         <!-- ====================================================== -->
-        <article class="card" style="padding:16px; margin-top:16px;">
+        <article class="card" style="padding:16px; margin-top:16px;" data-db-cat="training">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
             <h3 style="margin:0;"><span class="icon-bg violet">🏃</span>Séances d'entraînement</h3>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -3687,7 +3698,7 @@
         <!-- ============================================================ -->
         <!-- === Tableau SF-36 (data scientifique, format wide)        === -->
         <!-- ============================================================ -->
-        <article class="card" style="padding:16px; margin-top:16px;">
+        <article class="card" style="padding:16px; margin-top:16px;" data-db-cat="sf36">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
             <h3 style="margin:0;"><span class="icon-bg violet">📋</span>Questionnaires SF-36 (qualité de vie)</h3>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -3707,7 +3718,7 @@
         <!-- ============================================================ -->
         <!-- === Tableau GPAQ (data scientifique, format wide)         === -->
         <!-- ============================================================ -->
-        <article class="card" style="padding:16px; margin-top:16px;">
+        <article class="card" style="padding:16px; margin-top:16px;" data-db-cat="gpaq">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
             <h3 style="margin:0;"><span class="icon-bg emerald">🏃</span>Questionnaires GPAQ (activité physique OMS)</h3>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -11856,6 +11867,31 @@
     }
 
     // ====================================================================
+    // === STAFF — Sélecteur de catégorie BDD (Tout / Évaluations / Training / SF-36 / GPAQ)
+    // ====================================================================
+    function wireDbCategoryFilter(role) {
+      if (role !== 'principal_admin' && role !== 'investigator') return;
+      const buttons = document.querySelectorAll('.apiDbCatBtn');
+      if (!buttons.length) return;
+      function applyFilter(cat) {
+        // Cache/affiche les cartes selon leur data-db-cat
+        document.querySelectorAll('#database [data-db-cat]').forEach(el => {
+          el.style.display = (cat === 'all' || el.dataset.dbCat === cat) ? '' : 'none';
+        });
+        // Style actif sur le bouton
+        buttons.forEach(b => {
+          const active = b.dataset.cat === cat;
+          b.style.background = active ? '#0b1530' : 'white';
+          b.style.color = active ? 'white' : '#0b1530';
+          b.style.border = active ? 'none' : '1px solid #d8dde7';
+          b.style.fontWeight = active ? '700' : '600';
+        });
+      }
+      buttons.forEach(b => b.onclick = () => applyFilter(b.dataset.cat));
+      applyFilter('all'); // état initial
+    }
+
+    // ====================================================================
     // === STAFF — Tableaux WIDE des questionnaires dans BDD investigateur
     // ====================================================================
     async function loadQuestionnaireTablesInBDD(role) {
@@ -12223,6 +12259,7 @@
       if (role === 'patient') setTimeout(renderPatientSF36Table, 600);
       if (role === 'principal_admin' || role === 'investigator') {
         setTimeout(() => loadQuestionnaireTablesInBDD(role), 600);
+        setTimeout(() => wireDbCategoryFilter(role), 700);
       }
     }
 
