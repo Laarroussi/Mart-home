@@ -12,9 +12,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase9e-cat"></script>
+  <script src="api-client.js?v=phase9f-dropdown"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase9e"></script>
+  <script src="questionnaires-defs.js?v=phase9f"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3635,14 +3635,29 @@
         </header>
 
         <!-- ============================================================ -->
-        <!-- === Sélecteur de catégorie BDD === -->
+        <!-- === Sélecteur de catégorie BDD (menu déroulant hiérarchique) === -->
         <!-- ============================================================ -->
-        <div id="apiDbCatFilter" style="display:flex; gap:8px; flex-wrap:wrap; padding:10px; background:#f3f6fb; border-radius:10px; margin-bottom:14px;">
-          <button data-cat="all"      class="apiDbCatBtn" style="padding:8px 16px; border:none; border-radius:99px; background:#0b1530; color:white; font-weight:700; font-size:12px; cursor:pointer;">🔎 Tout</button>
-          <button data-cat="evals"    class="apiDbCatBtn" style="padding:8px 16px; border:1px solid #d8dde7; border-radius:99px; background:white; color:#0b1530; font-weight:600; font-size:12px; cursor:pointer;">🩺 Évaluations à l'effort</button>
-          <button data-cat="training" class="apiDbCatBtn" style="padding:8px 16px; border:1px solid #d8dde7; border-radius:99px; background:white; color:#0b1530; font-weight:600; font-size:12px; cursor:pointer;">🏃 Entraînement</button>
-          <button data-cat="sf36"     class="apiDbCatBtn" style="padding:8px 16px; border:1px solid #d8dde7; border-radius:99px; background:white; color:#0b1530; font-weight:600; font-size:12px; cursor:pointer;">📋 SF-36 (qualité de vie)</button>
-          <button data-cat="gpaq"     class="apiDbCatBtn" style="padding:8px 16px; border:1px solid #d8dde7; border-radius:99px; background:white; color:#0b1530; font-weight:600; font-size:12px; cursor:pointer;">🏃 GPAQ (activité physique)</button>
+        <div style="display:flex; align-items:center; gap:12px; padding:14px; background:#f3f6fb; border-radius:10px; margin-bottom:14px; flex-wrap:wrap;">
+          <label for="apiDbCatSelect" style="font-size:12px; font-weight:700; color:#0b1530;">🔎 Filtrer la base par :</label>
+          <select id="apiDbCatSelect" style="flex:1; min-width:280px; padding:10px 14px; border:1.5px solid #0b1530; border-radius:9px; background:white; color:#0b1530; font-weight:600; font-size:13px; cursor:pointer;">
+            <option value="all">Tout afficher</option>
+            <optgroup label="📊 Évaluations à l'effort">
+              <option value="eval-cpet">Test CPET (VO₂, Watts, FC)</option>
+              <option value="eval-efr">EFR — épreuve fonctionnelle respiratoire</option>
+              <option value="eval-echo">Échocardiographie (aorte, FE)</option>
+              <option value="eval-pwv">Analyse onde de pouls (VOP)</option>
+              <option value="eval-pa-iso">Test PA en isométrie</option>
+              <option value="evals">→ Toutes les évaluations (vue large)</option>
+            </optgroup>
+            <optgroup label="🏃 Entraînement">
+              <option value="training">Séances d'entraînement (FC, PA, énergie, Borg)</option>
+            </optgroup>
+            <optgroup label="📋 Questionnaires">
+              <option value="sf36">SF-36 — Qualité de vie (8 dimensions)</option>
+              <option value="gpaq">GPAQ — Activité physique OMS</option>
+            </optgroup>
+          </select>
+          <span id="apiDbCatHint" style="font-size:11px; color:#6b7390; font-style:italic;"></span>
         </div>
 
         <div class="db-grid" data-db-cat="evals">
@@ -11871,24 +11886,35 @@
     // ====================================================================
     function wireDbCategoryFilter(role) {
       if (role !== 'principal_admin' && role !== 'investigator') return;
-      const buttons = document.querySelectorAll('.apiDbCatBtn');
-      if (!buttons.length) return;
-      function applyFilter(cat) {
-        // Cache/affiche les cartes selon leur data-db-cat
+      const select = document.getElementById('apiDbCatSelect');
+      const hint = document.getElementById('apiDbCatHint');
+      if (!select) return;
+
+      // Map de chaque option vers la (les) catégorie(s) de carte affichée(s) et une note explicative
+      const CAT_MAP = {
+        'all':         { cats: null,                  hint: 'Toutes les sections sont visibles.' },
+        // Sous-types évaluations à l'effort → affichent la grande table d'évaluations
+        'eval-cpet':   { cats: ['evals'],             hint: 'Test CPET — colonnes pertinentes : VO₂ pic, Watts, FC, validation. Dates en V1_DATE / V2_DATE / etc.' },
+        'eval-efr':    { cats: ['evals'],             hint: 'EFR — à venir (à intégrer dans les évaluations longitudinales).' },
+        'eval-echo':   { cats: ['evals'],             hint: 'Échocardiographie — colonne aorte (mm) + dates par visite.' },
+        'eval-pwv':    { cats: ['evals'],             hint: 'Analyse de l\'onde de pouls (VOP) — à venir.' },
+        'eval-pa-iso': { cats: ['evals'],             hint: 'Test de pression artérielle en isométrie — à venir.' },
+        'evals':       { cats: ['evals'],             hint: 'Vue large : 1 patient × N visites avec toutes les variables physio.' },
+        'training':    { cats: ['training'],          hint: 'Séances d\'entraînement (FC, PA estimée, énergie, RPE Borg).' },
+        'sf36':        { cats: ['sf36'],              hint: 'Questionnaire SF-36 — 8 dimensions (PF, RP, BP, GH, VT, SF, RE, MH) sur 100.' },
+        'gpaq':        { cats: ['gpaq'],              hint: 'Questionnaire GPAQ — MET-min/semaine + niveau d\'activité OMS.' }
+      };
+
+      function applyFilter(value) {
+        const conf = CAT_MAP[value] || CAT_MAP.all;
+        const cats = conf.cats;
         document.querySelectorAll('#database [data-db-cat]').forEach(el => {
-          el.style.display = (cat === 'all' || el.dataset.dbCat === cat) ? '' : 'none';
+          el.style.display = (cats === null || cats.includes(el.dataset.dbCat)) ? '' : 'none';
         });
-        // Style actif sur le bouton
-        buttons.forEach(b => {
-          const active = b.dataset.cat === cat;
-          b.style.background = active ? '#0b1530' : 'white';
-          b.style.color = active ? 'white' : '#0b1530';
-          b.style.border = active ? 'none' : '1px solid #d8dde7';
-          b.style.fontWeight = active ? '700' : '600';
-        });
+        if (hint) hint.textContent = conf.hint || '';
       }
-      buttons.forEach(b => b.onclick = () => applyFilter(b.dataset.cat));
-      applyFilter('all'); // état initial
+      select.onchange = () => applyFilter(select.value);
+      applyFilter('all');
     }
 
     // ====================================================================
