@@ -205,6 +205,24 @@
       list:          (filters = {}) => request('GET', '/medical-exams?' + new URLSearchParams(filters).toString())
     },
 
+    /** ===== Dossier médical structuré (8 sections + import PDF) ===== */
+    medicalRecords: {
+      get:            (patientId) => request('GET', `/medical-records/${patientId}`),
+      patchSection:   (patientId, section, data, source, sourceDocId, comment) =>
+                        request('PATCH', `/medical-records/${patientId}/${section}`,
+                                { data, source, source_doc_id: sourceDocId, comment }),
+      listDocuments:  (patientId) => request('GET', `/medical-records/${patientId}/documents`),
+      uploadDocument: (patientId, data) => request('POST', `/medical-records/${patientId}/documents`, data),
+      getDocument:    (patientId, id, withRaw) =>
+                        request('GET', `/medical-records/${patientId}/documents/${id}${withRaw ? '?withRaw=true' : ''}`),
+      integrate:      (patientId, id, sectionsToIntegrate, comment) =>
+                        request('POST', `/medical-records/${patientId}/documents/${id}/integrate`,
+                                { sections_to_integrate: sectionsToIntegrate, comment }),
+      reject:         (patientId, id, notes) =>
+                        request('POST', `/medical-records/${patientId}/documents/${id}/reject`, { notes }),
+      removeDocument: (patientId, id) => request('DELETE', `/medical-records/${patientId}/documents/${id}`)
+    },
+
     /** ===== Questionnaires validés (SF-36, GPAQ) ===== */
     questionnaires: {
       mine:    ()             => request('GET',  '/questionnaires/mine'),
