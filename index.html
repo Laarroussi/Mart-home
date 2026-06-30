@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-1b"></script>
+  <script src="api-client.js?v=phase12-1c"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-1b"></script>
+  <script src="questionnaires-defs.js?v=phase12-1c"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-1b"></script>
+  <script src="medical-parsers.js?v=phase12-1c"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-1b"></script>
+  <script src="cpet-graph-preview.js?v=phase12-1c"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-1b"></script>
-  <script src="medical-record-ui.js?v=phase12-1b"></script>
+  <script src="pdf-extractor.js?v=phase12-1c"></script>
+  <script src="medical-record-ui.js?v=phase12-1c"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2763,7 +2763,8 @@
           <div class="actions">
             <button class="btn-secondary" onclick="resetCreationForm()">Réinitialiser</button>
             <button class="btn-secondary" onclick="switchMainTab('accueil')">← Annuler</button>
-            <button class="btn-gradient" onclick="createPatientFromForm()">✓ Créer le patient</button>
+            <button class="btn-secondary" id="cf_pdfBtnTop" onclick="generatePatientPdfFromForm()" style="display:none;">📄 Générer PDF</button>
+            <button class="btn-gradient" onclick="createPatientFromForm()">✓ Valider et enregistrer</button>
           </div>
         </header>
 
@@ -2925,55 +2926,10 @@
           </div>
         </section>
 
-        <!-- Section 4 : Évaluation Baseline -->
-        <section class="card" style="padding:20px; margin-bottom:16px;">
-          <h3 style="font-size:17px; font-weight:800; display:flex; align-items:center; gap:9px; margin-bottom:6px;">
-            <span class="icon-bg emerald"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
-            Première évaluation (Baseline)
-          </h3>
-          <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Résultats des tests initiaux. Vous pourrez ajouter T1, T2, T3 ou des évaluations datées plus tard depuis le dossier patient.</p>
-          <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px;">
-            <div>
-              <div class="control-label">Libellé évaluation</div>
-              <input type="text" id="cf_evLabel" value="Baseline" />
-            </div>
-            <div>
-              <div class="control-label">Date de l'évaluation *</div>
-              <input type="date" id="cf_evDate" />
-            </div>
-            <div>
-              <div class="control-label">VO₂ pic (mL/kg/min)</div>
-              <input type="number" id="cf_vo2" step="0.1" placeholder="25.4" />
-            </div>
-            <div>
-              <div class="control-label">Force musculaire (kg)</div>
-              <input type="number" id="cf_force" step="0.1" placeholder="62" />
-            </div>
-            <div>
-              <div class="control-label">Diamètre aortique (mm) *</div>
-              <input type="number" id="cf_aorta" step="0.1" placeholder="39" />
-            </div>
-            <div>
-              <div class="control-label">SF-36 score total (/100)</div>
-              <input type="number" id="cf_sf36" min="0" max="100" placeholder="60" />
-            </div>
-            <div>
-              <div class="control-label">GPAQ (MET-min/sem)</div>
-              <input type="number" id="cf_gpaq" step="10" placeholder="780" />
-            </div>
-            <div>
-              <div class="control-label">Statut de validation</div>
-              <select id="cf_validated">
-                <option value="true">✔ Validée</option>
-                <option value="false">⚠ À vérifier</option>
-              </select>
-            </div>
-            <div style="grid-column: 1 / -1;">
-              <div class="control-label">Notes sur l'évaluation</div>
-              <textarea id="cf_evNote" rows="2" placeholder="Observations, contexte, incidents..."></textarea>
-            </div>
-          </div>
-        </section>
+        <!-- Section 4 : Évaluation Baseline — RETIRÉE (Phase 12.1.6) -->
+        <!-- Les évaluations cliniques (VO2, force, aorta, SF-36, GPAQ, ...) sont désormais -->
+        <!-- alimentées depuis l'import de fichiers (CPET CSV, Pulse Wave, questionnaires) -->
+        <!-- dans le Dossier patient. Pas de saisie manuelle au moment de la création. -->
 
         <!-- Section 5 : Notes investigateur -->
         <section class="card" style="padding:20px; margin-bottom:16px;">
@@ -3002,14 +2958,10 @@
           </div>
         </section>
 
-        <!-- ============================== -->
-        <!-- Dossier médical structuré — mode brouillon (Phase 12.1.5) -->
-        <!-- ============================== -->
-        <div id="apiMedicalRecordMountCreation" style="margin-top:14px;"></div>
-
         <div class="actions" style="justify-content:flex-end; gap:10px;">
           <button class="btn-secondary" onclick="resetCreationForm()">Réinitialiser</button>
-          <button class="btn-gradient" onclick="createPatientFromForm()">✓ Créer le patient et enregistrer la baseline</button>
+          <button class="btn-secondary" id="cf_pdfBtn" onclick="generatePatientPdfFromForm()" style="display:none;">📄 Générer le PDF du dossier</button>
+          <button class="btn-gradient" onclick="createPatientFromForm()">✓ Valider et enregistrer le patient</button>
         </div>
       </section>
 
@@ -6370,36 +6322,29 @@
   }
 
   function initCreationForm() {
-    // Pré-remplit le code patient suggéré et la date du jour pour l'évaluation
+    // Pré-remplit le code patient suggéré et la date d'inclusion
     if ($('cf_code') && !$('cf_code').value) $('cf_code').value = nextPatientCode();
-    if ($('cf_evDate') && !$('cf_evDate').value) $('cf_evDate').value = new Date().toISOString().slice(0, 10);
     if ($('cf_inclusionDate') && !$('cf_inclusionDate').value) $('cf_inclusionDate').value = new Date().toISOString().slice(0, 10);
     const fb = $('creationFeedback');
     if (fb) fb.style.display = 'none';
-    // Phase 12.1.5 : monte le Dossier médical en mode brouillon
-    try {
-      if (window.MedicalRecordUI && document.getElementById('apiMedicalRecordMountCreation')) {
-        window.MedicalRecordUI.mountDraft('apiMedicalRecordMountCreation');
-      }
-    } catch (e) { console.warn('[medrec draft] mount failed', e); }
+    // Masque le bouton PDF tant que le patient n'est pas créé
+    const pdfBtn = $('cf_pdfBtn'); if (pdfBtn) pdfBtn.style.display = 'none';
+    const pdfBtnTop = $('cf_pdfBtnTop'); if (pdfBtnTop) pdfBtnTop.style.display = 'none';
   }
 
   function resetCreationForm() {
     const ids = ['cf_code','cf_sex','cf_dob','cf_age','cf_initials','cf_email','cf_phone','cf_doctor','cf_address',
                  'cf_gene','cf_dxDate','cf_variant','cf_history','cf_treatments','cf_allergies','cf_smoking','cf_baselinePA',
                  'cf_status','cf_riskFactor','cf_adherence','cf_riskComment','cf_alterations','cf_incidents',
-                 'cf_evLabel','cf_evDate','cf_vo2','cf_force','cf_aorta','cf_sf36','cf_gpaq','cf_validated','cf_evNote',
                  'cf_inclusionDate','cf_consent','cf_notes'];
     ids.forEach(id => { if ($(id)) $(id).value = ''; });
     // Defaults
-    if ($('cf_evLabel')) $('cf_evLabel').value = 'Baseline';
     if ($('cf_smoking')) $('cf_smoking').value = 'non';
     if ($('cf_baselinePA')) $('cf_baselinePA').value = 'modere';
     if ($('cf_status')) $('cf_status').value = 'Stable';
     if ($('cf_adherence')) $('cf_adherence').value = '75';
-    if ($('cf_validated')) $('cf_validated').value = 'true';
     if ($('cf_consent')) $('cf_consent').value = 'oui';
-    // Phase 12.1.5 : efface aussi le brouillon du dossier médical
+    // Phase 12.1.5 : efface aussi le brouillon du dossier médical (si existant)
     try { if (window.MedicalRecordUI) window.MedicalRecordUI.clearDraftStorage(); } catch (_) {}
     initCreationForm();
   }
@@ -6637,16 +6582,15 @@
     const sex = $('cf_sex').value;
     const age = parseInt($('cf_age').value, 10);
     const gene = $('cf_gene').value;
-    const evDate = $('cf_evDate').value;
-    const aorta = parseFloat($('cf_aorta').value);
+    // Phase 12.1.6 : plus de Baseline saisie ici, on défaut la date du jour et 0 pour aorta
+    const evDate = ($('cf_evDate') && $('cf_evDate').value) || new Date().toISOString().slice(0, 10);
+    const aorta = ($('cf_aorta') && parseFloat($('cf_aorta').value)) || 0;
 
-    // Validation des champs obligatoires
+    // Validation des champs obligatoires (uniquement civil + médical)
     if (!code) { showCreationFeedback('Code patient requis.', 'error'); return; }
     if (!sex) { showCreationFeedback('Sexe requis.', 'error'); return; }
     if (!age || isNaN(age)) { showCreationFeedback('Âge requis.', 'error'); return; }
     if (!gene) { showCreationFeedback('Gène muté requis.', 'error'); return; }
-    if (!evDate) { showCreationFeedback('Date de l\'évaluation Baseline requise.', 'error'); return; }
-    if (isNaN(aorta)) { showCreationFeedback('Diamètre aortique requis.', 'error'); return; }
     if (patients.some(p => p.id === code)) { showCreationFeedback('Ce code patient existe déjà : ' + code, 'error'); return; }
 
     const statusVal = $('cf_status').value || 'Stable';
@@ -6693,18 +6637,9 @@
         consent: $('cf_consent').value,
         notes: $('cf_notes').value
       },
-      evaluations: [{
-        id: 1,
-        label: $('cf_evLabel').value || 'Baseline',
-        date: evDate,
-        vo2: parseFloat($('cf_vo2').value) || 0,
-        force: parseFloat($('cf_force').value) || 0,
-        aorta: aorta,
-        sf36: parseFloat($('cf_sf36').value) || 0,
-        gpaq: parseFloat($('cf_gpaq').value) || 0,
-        validated: $('cf_validated').value === 'true',
-        note: $('cf_evNote').value || ''
-      }]
+      // Phase 12.1.6 : tableau d'évaluations vide à la création ; les évaluations seront
+      // alimentées automatiquement par les imports CPET/Pulse Wave depuis le Dossier patient.
+      evaluations: []
     };
 
     // Initialisation des notifications obligatoires à l'inclusion
@@ -6727,18 +6662,123 @@
     if (typeof renderDbTable === 'function') renderDbTable('');
 
     // Feedback enrichi : indique que les notifications sont parties
-    showCreationFeedback(`✅ Patient <strong>${code}</strong> créé (${patients.length} patients au total). 📨 Notifications envoyées au patient : <strong>SF-36</strong> + <strong>GPAQ</strong> obligatoires (réponses intégrées automatiquement au dossier dès complétion).`, 'success');
+    showCreationFeedback(`✅ Patient <strong>${code}</strong> créé (${patients.length} patients au total). 📨 Notifications envoyées au patient : <strong>SF-36</strong> + <strong>GPAQ</strong> obligatoires (réponses intégrées automatiquement au dossier dès complétion). <br>📄 Cliquez sur <strong>Générer le PDF du dossier</strong> pour télécharger une copie papier du dossier.`, 'success');
 
     // Optionnel : sélectionner ce patient et ouvrir son dossier
     if (typeof setSelectedPatient === 'function') {
       setSelectedPatient(code);
     }
 
-    // Réinitialiser le formulaire pour une nouvelle création
-    setTimeout(() => {
-      resetCreationForm();
-      $('cf_code').value = nextPatientCode();
-    }, 400);
+    // Phase 12.1.6 : révèle le bouton de génération PDF + mémorise le code créé
+    window._lastCreatedPatientCode = code;
+    const pdfBtn = $('cf_pdfBtn'); if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+    const pdfBtnTop = $('cf_pdfBtnTop'); if (pdfBtnTop) pdfBtnTop.style.display = 'inline-flex';
+
+    // Le formulaire est conservé tel quel — l'utilisateur peut générer le PDF
+    // ou cliquer manuellement sur "Réinitialiser" pour créer un autre patient.
+  }
+
+  // ============================================================
+  // === Phase 12.1.6 — Génération PDF du dossier patient ======
+  // ============================================================
+  // Ouvre une fenêtre HTML mise en page pour impression PDF (Cmd+P / Save as PDF)
+  // Utilise les valeurs courantes du formulaire de création OU du dernier patient créé.
+  function generatePatientPdfFromForm() {
+    const fv = id => ($(id) ? $(id).value : '') || '';
+    const code = fv('cf_code') || window._lastCreatedPatientCode || 'PATIENT';
+    const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+
+    const sectionRow = (label, val) => val ? `<tr><td style="padding:5px 8px; color:#475569; width:42%;">${label}</td><td style="padding:5px 8px; font-weight:600; color:#0b1530;">${val}</td></tr>` : '';
+
+    const html = `<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<title>Dossier patient ${code} — ${today}</title>
+<style>
+  @page { size: A4; margin: 18mm; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; color: #0b1530; line-height:1.4; margin:0; padding:0; font-size:11pt; }
+  .header { padding-bottom:14px; border-bottom:2px solid #0891b2; margin-bottom:18px; }
+  .header h1 { font-size:20pt; margin:0 0 4px; color:#0b1530; }
+  .header .sub { color:#64748b; font-size:10pt; }
+  .header .code { background:#0891b2; color:white; padding:4px 10px; border-radius:6px; display:inline-block; font-weight:700; font-size:10pt; }
+  h2 { font-size:13pt; color:#0891b2; border-bottom:1px solid #e2e8f0; padding-bottom:4px; margin:20px 0 8px; }
+  table { width:100%; border-collapse:collapse; font-size:10.5pt; }
+  table tr { border-bottom:1px dashed #eef0f5; }
+  .footer { position:fixed; bottom:8mm; left:18mm; right:18mm; font-size:9pt; color:#94a3b8; text-align:center; border-top:1px solid #e2e8f0; padding-top:6px; }
+  .actions { margin:18px 0; padding:12px; background:#f8fafc; border-radius:8px; text-align:center; }
+  .actions button { padding:10px 22px; border:none; background:#0891b2; color:white; border-radius:7px; cursor:pointer; font-weight:700; font-size:11pt; margin:0 4px; }
+  .actions button.alt { background:white; color:#0b1530; border:1px solid #cbd5e1; }
+  @media print { .actions { display:none !important; } }
+</style></head>
+<body>
+  <div class="header">
+    <h1>Dossier patient <span class="code">${code}</span></h1>
+    <div class="sub">Cohorte Marfan APA · Espace investigateur · édité le ${today}</div>
+  </div>
+
+  <div class="actions">
+    <button onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
+    <button class="alt" onclick="window.close()">Fermer</button>
+  </div>
+
+  <h2>👤 Identité civile</h2>
+  <table>
+    ${sectionRow('Code patient', code)}
+    ${sectionRow('Initiales', fv('cf_initials'))}
+    ${sectionRow('Sexe', fv('cf_sex'))}
+    ${sectionRow('Date de naissance', fv('cf_dob'))}
+    ${sectionRow('Âge', fv('cf_age') ? fv('cf_age') + ' ans' : '')}
+    ${sectionRow('Téléphone', fv('cf_phone'))}
+    ${sectionRow('Email', fv('cf_email'))}
+    ${sectionRow('Adresse', fv('cf_address'))}
+    ${sectionRow('Médecin référent', fv('cf_doctor'))}
+  </table>
+
+  <h2>🧬 Informations médicales</h2>
+  <table>
+    ${sectionRow('Gène muté', fv('cf_gene'))}
+    ${sectionRow('Date du diagnostic', fv('cf_dxDate'))}
+    ${sectionRow('Variant pathogène', fv('cf_variant'))}
+    ${sectionRow('Antécédents médicaux & chirurgicaux', fv('cf_history'))}
+    ${sectionRow('Traitements en cours', fv('cf_treatments'))}
+    ${sectionRow('Allergies', fv('cf_allergies'))}
+    ${sectionRow('Tabac', fv('cf_smoking'))}
+    ${sectionRow('PA initiale', fv('cf_baselinePA'))}
+  </table>
+
+  <h2>⚠️ Statut clinique & vigilance APA</h2>
+  <table>
+    ${sectionRow('Statut clinique', fv('cf_status'))}
+    ${sectionRow('Facteur de risque principal', fv('cf_riskFactor'))}
+    ${sectionRow('Adhérence prévisionnelle', fv('cf_adherence') ? fv('cf_adherence') + ' %' : '')}
+    ${sectionRow('Commentaire / point prioritaire', fv('cf_riskComment'))}
+    ${sectionRow('Altérations principales', fv('cf_alterations'))}
+    ${sectionRow('Incidents / précautions APA', fv('cf_incidents'))}
+  </table>
+
+  <h2>📝 Notes investigateur</h2>
+  <table>
+    ${sectionRow('Date d\\'inclusion dans l\\'étude', fv('cf_inclusionDate'))}
+    ${sectionRow('Consentement signé', fv('cf_consent'))}
+    ${sectionRow('Notes libres', fv('cf_notes'))}
+  </table>
+
+  <h2>📋 Suivi du dossier</h2>
+  <p style="font-size:10pt; color:#475569; margin:6px 0;">
+    Les évaluations cliniques (CPET, onde de pouls, échocardiographie, biologie, questionnaires SF-36 / GPAQ)
+    seront alimentées au fur et à mesure depuis l'onglet <strong>Dossier patient</strong>, soit par
+    import de fichiers, soit par saisie manuelle. Les modifications sont tracées avec horodatage et identité du validateur.
+  </p>
+
+  <div class="footer">
+    Marfan APA — Document confidentiel généré le ${today} · ${code}
+  </div>
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=1100');
+    if (!w) { alert('Impossible d\\'ouvrir la fenêtre PDF — vérifiez que les pop-ups sont autorisés.'); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
   }
 
   function openAddEvaluation() {
@@ -13148,18 +13188,9 @@
         // Si un patient a été ajouté localement et que l'API est dispo, on persiste
         if (after > before && window.MarfanAPI && window.MarfanAPI.isAuthenticated()) {
           const newPatient = window.patients[window.patients.length - 1];
-          window.MarfanAPI.patients.create(newPatient).then(async saved => {
+          window.MarfanAPI.patients.create(newPatient).then(saved => {
             console.log('[MarfanAPI] Patient ' + newPatient.id + ' persisté en BDD ✓');
             newPatient._fromApi = true;
-            // Phase 12.1.5 : flush le brouillon du dossier médical sur ce patient
-            try {
-              if (window.MedicalRecordUI && typeof window.MedicalRecordUI.flushDraftToPatient === 'function') {
-                const r = await window.MedicalRecordUI.flushDraftToPatient(newPatient.id);
-                if (r.sections_pushed > 0) {
-                  console.log('[MedicalRecord] ' + r.sections_pushed + ' section(s) du brouillon poussée(s) sur ' + newPatient.id);
-                }
-              }
-            } catch (e) { console.warn('[MedicalRecord] flush draft failed', e); }
           }).catch(err => {
             console.warn('[MarfanAPI] Persistance échouée pour ' + newPatient.id + ' :', err.message);
           });
