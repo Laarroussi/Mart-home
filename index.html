@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-1"></script>
+  <script src="api-client.js?v=phase12-1b"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-1"></script>
+  <script src="questionnaires-defs.js?v=phase12-1b"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-1"></script>
+  <script src="medical-parsers.js?v=phase12-1b"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-1"></script>
+  <script src="cpet-graph-preview.js?v=phase12-1b"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-1"></script>
-  <script src="medical-record-ui.js?v=phase12-1"></script>
+  <script src="pdf-extractor.js?v=phase12-1b"></script>
+  <script src="medical-record-ui.js?v=phase12-1b"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3001,6 +3001,11 @@
             </div>
           </div>
         </section>
+
+        <!-- ============================== -->
+        <!-- Dossier médical structuré — mode brouillon (Phase 12.1.5) -->
+        <!-- ============================== -->
+        <div id="apiMedicalRecordMountCreation" style="margin-top:14px;"></div>
 
         <div class="actions" style="justify-content:flex-end; gap:10px;">
           <button class="btn-secondary" onclick="resetCreationForm()">Réinitialiser</button>
@@ -6371,6 +6376,12 @@
     if ($('cf_inclusionDate') && !$('cf_inclusionDate').value) $('cf_inclusionDate').value = new Date().toISOString().slice(0, 10);
     const fb = $('creationFeedback');
     if (fb) fb.style.display = 'none';
+    // Phase 12.1.5 : monte le Dossier médical en mode brouillon
+    try {
+      if (window.MedicalRecordUI && document.getElementById('apiMedicalRecordMountCreation')) {
+        window.MedicalRecordUI.mountDraft('apiMedicalRecordMountCreation');
+      }
+    } catch (e) { console.warn('[medrec draft] mount failed', e); }
   }
 
   function resetCreationForm() {
@@ -6388,6 +6399,8 @@
     if ($('cf_adherence')) $('cf_adherence').value = '75';
     if ($('cf_validated')) $('cf_validated').value = 'true';
     if ($('cf_consent')) $('cf_consent').value = 'oui';
+    // Phase 12.1.5 : efface aussi le brouillon du dossier médical
+    try { if (window.MedicalRecordUI) window.MedicalRecordUI.clearDraftStorage(); } catch (_) {}
     initCreationForm();
   }
 
@@ -13135,9 +13148,18 @@
         // Si un patient a été ajouté localement et que l'API est dispo, on persiste
         if (after > before && window.MarfanAPI && window.MarfanAPI.isAuthenticated()) {
           const newPatient = window.patients[window.patients.length - 1];
-          window.MarfanAPI.patients.create(newPatient).then(saved => {
+          window.MarfanAPI.patients.create(newPatient).then(async saved => {
             console.log('[MarfanAPI] Patient ' + newPatient.id + ' persisté en BDD ✓');
             newPatient._fromApi = true;
+            // Phase 12.1.5 : flush le brouillon du dossier médical sur ce patient
+            try {
+              if (window.MedicalRecordUI && typeof window.MedicalRecordUI.flushDraftToPatient === 'function') {
+                const r = await window.MedicalRecordUI.flushDraftToPatient(newPatient.id);
+                if (r.sections_pushed > 0) {
+                  console.log('[MedicalRecord] ' + r.sections_pushed + ' section(s) du brouillon poussée(s) sur ' + newPatient.id);
+                }
+              }
+            } catch (e) { console.warn('[MedicalRecord] flush draft failed', e); }
           }).catch(err => {
             console.warn('[MarfanAPI] Persistance échouée pour ' + newPatient.id + ' :', err.message);
           });

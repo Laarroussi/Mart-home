@@ -106,19 +106,64 @@
     ] }
   ];
 
-  let _state = { patientId: null, record: null, docs: [], activeTab: 'synthese', activeSection: 'identity', extractPreview: null };
+  let _state = { patientId: null, record: null, docs: [], activeTab: 'synthese', activeSection: 'identity', extractPreview: null, isDraft: false };
+
+  // === DRAFT MODE ===
+  // En mode draft (création de patient), il n'y a pas encore de patient_id.
+  // Les données sont stockées localement dans _state.record et seront poussées
+  // en BDD via flushDraftToPatient(patientId) après création du patient.
+  const DRAFT_STORAGE_KEY = 'marfan_medrec_draft';
+
+  function loadDraftFromStorage() {
+    try {
+      const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!raw) return {};
+      return JSON.parse(raw);
+    } catch (_) { return {}; }
+  }
+  function saveDraftToStorage(record) {
+    try { sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(record)); } catch (_) {}
+  }
+  function clearDraftStorage() {
+    try { sessionStorage.removeItem(DRAFT_STORAGE_KEY); } catch (_) {}
+  }
+
+  // Pousse le draft (8 sections) sur l'API pour un patient_id donné après création
+  async function flushDraftToPatient(patientId) {
+    const draft = loadDraftFromStorage();
+    if (!draft || !Object.keys(draft).length) return { sections_pushed: 0 };
+    let pushed = 0;
+    for (const sec of SECTIONS.map(s => s.key)) {
+      const data = draft[sec];
+      if (!data || !Object.keys(data).length) continue;
+      try {
+        await window.MarfanAPI.medicalRecords.patchSection(patientId, sec, data, 'manual', null, 'Renseigné à la création du patient');
+        pushed++;
+      } catch (e) { console.warn('[medrec.flush]', sec, e.message); }
+    }
+    clearDraftStorage();
+    return { sections_pushed: pushed };
+  }
 
   // =============================================================
   // === API + montage ===========================================
   // =============================================================
   async function load(patientId) {
     _state.patientId = patientId;
+    _state.isDraft = false;
     const r = await window.MarfanAPI.medicalRecords.get(patientId);
     _state.record = r.record || {};
     try {
       const d = await window.MarfanAPI.medicalRecords.listDocuments(patientId);
       _state.docs = d.documents || [];
     } catch (e) { _state.docs = []; }
+  }
+
+  function loadDraft() {
+    _state.patientId = null;
+    _state.isDraft = true;
+    _state.record = loadDraftFromStorage();
+    _state.docs = [];
   }
 
   async function mount(containerId, patientId) {
@@ -132,6 +177,15 @@
     } catch (e) {
       el.innerHTML = `<div style="padding:14px; color:#dc2626;">Erreur de chargement : ${e.message}</div>`;
     }
+  }
+
+  // Mount en mode DRAFT (avant que le patient existe en BDD)
+  function mountDraft(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    loadDraft();
+    el.innerHTML = renderRoot();
+    bindHandlers(el);
   }
 
   async function refresh() {
@@ -179,11 +233,16 @@
   }
 
   function renderInner() {
+    const draftBanner = _state.isDraft ? `
+      <div style="padding:8px 22px; background:#fef3c7; color:#92400e; font-size:12px; font-weight:600; border-bottom:1px solid #fde68a;">
+        📝 Mode brouillon — Les sections seront sauvegardées en base après la création du patient. L'import PDF est désactivé tant que le patient n'existe pas.
+      </div>` : '';
     return `
       <div style="padding:18px 22px; background:linear-gradient(135deg,#0891b2,#06b6d4); color:white;">
-        <h3 style="margin:0; color:white; font-size:17px;">📑 Dossier médical structuré</h3>
+        <h3 style="margin:0; color:white; font-size:17px;">📑 Dossier médical structuré ${_state.isDraft ? '· brouillon' : ''}</h3>
         <p style="margin:4px 0 0; font-size:12px;">Données identitaires, antécédents, objectifs, points clés et synthèse — saisie manuelle ou import PDF avec extraction automatique.</p>
       </div>
+      ${draftBanner}
 
       <!-- Sub-tabs principaux -->
       <div style="padding:12px 22px; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; gap:8px; flex-wrap:wrap;">
@@ -264,6 +323,16 @@
   // === Sub-tab : Import PDF ====================================
   // =============================================================
   function renderImport() {
+    if (_state.isDraft) {
+      return `
+        <div class="mr-card" style="background:#fef3c7; border-color:#fde68a;">
+          <h4 style="margin:0 0 6px; font-size:13px; color:#92400e;">⏳ Import PDF désactivé en mode brouillon</h4>
+          <p style="font-size:12px; color:#92400e; margin:0;">Le PDF ne peut pas être stocké tant que le patient n'a pas été créé en base.<br>
+          <strong>1.</strong> Remplissez les informations dans l'onglet "✏️ Édition" (sauvegardées localement)<br>
+          <strong>2.</strong> Cliquez sur "✓ Créer le patient" en haut de la page<br>
+          <strong>3.</strong> Vous serez redirigé vers le Dossier patient où vous pourrez importer le PDF</p>
+        </div>`;
+    }
     const recentDocs = _state.docs.slice(0, 6);
     return `
       <div class="mr-card" style="margin-bottom:14px;">
@@ -435,6 +504,17 @@
         SECTIONS.find(s => s.key === sectionKey).fields.forEach(([key, _, type]) => {
           if (type === 'number' && data[key]) data[key] = parseFloat(data[key]);
         });
+        // === MODE DRAFT : on stocke localement ===
+        if (_state.isDraft) {
+          const draft = loadDraftFromStorage();
+          draft[sectionKey] = { ...(draft[sectionKey] || {}), ...data };
+          saveDraftToStorage(draft);
+          _state.record = draft;
+          // Petit toast en haut de la carte au lieu d'un alert bloquant
+          showInlineToast('✓ Section "' + sectionKey + '" enregistrée en brouillon. Elle sera persistée à la création du patient.');
+          return;
+        }
+        // === MODE NORMAL : appel API ===
         try {
           await window.MarfanAPI.medicalRecords.patchSection(_state.patientId, sectionKey, data, 'manual', null, null);
           alert('✓ Section "' + sectionKey + '" enregistrée.');
@@ -610,9 +690,20 @@
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
   }
 
+  // Petit toast flottant en haut à droite (3s, sans bloquer)
+  function showInlineToast(msg, kind = 'success') {
+    const bg = kind === 'error' ? '#dc2626' : (kind === 'warn' ? '#d97706' : '#059669');
+    const t = document.createElement('div');
+    t.style.cssText = `position:fixed; top:18px; right:18px; z-index:10020; padding:10px 16px; background:${bg}; color:white; border-radius:8px; font-size:12.5px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,0.25); opacity:0; transition:opacity 0.2s;`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.style.opacity = '1', 10);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 250); }, 3000);
+  }
+
   // =============================================================
   // === Exports =================================================
   // =============================================================
-  window.MedicalRecordUI = { mount, refresh, SECTIONS };
+  window.MedicalRecordUI = { mount, mountDraft, refresh, flushDraftToPatient, clearDraftStorage, SECTIONS };
 
 })();
