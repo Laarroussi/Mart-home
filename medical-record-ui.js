@@ -238,9 +238,14 @@
         📝 Mode brouillon — Les sections seront sauvegardées en base après la création du patient. L'import PDF est désactivé tant que le patient n'existe pas.
       </div>` : '';
     return `
-      <div style="padding:18px 22px; background:linear-gradient(135deg,#0891b2,#06b6d4); color:white;">
-        <h3 style="margin:0; color:white; font-size:17px;">📑 Dossier médical structuré ${_state.isDraft ? '· brouillon' : ''}</h3>
-        <p style="margin:4px 0 0; font-size:12px;">Données identitaires, antécédents, objectifs, points clés et synthèse — saisie manuelle ou import PDF avec extraction automatique.</p>
+      <div style="padding:18px 22px; background:linear-gradient(135deg,#0891b2,#06b6d4); color:white; display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+        <div>
+          <h3 style="margin:0; color:white; font-size:17px;">📑 Dossier médical structuré ${_state.isDraft ? '· brouillon' : ''}</h3>
+          <p style="margin:4px 0 0; font-size:12px;">Données identitaires, antécédents, objectifs, points clés et synthèse — saisie manuelle ou import PDF avec extraction automatique.</p>
+        </div>
+        ${_state.isDraft ? '' : `
+          <button data-mr-action="pdf" style="padding:8px 14px; background:white; color:#0891b2; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:12.5px; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,0.15);">📄 Générer PDF</button>
+        `}
       </div>
       ${draftBanner}
 
@@ -493,6 +498,9 @@
     rootEl.querySelectorAll('[data-mr-section]').forEach(b => {
       b.addEventListener('click', () => { _state.activeSection = b.dataset.mrSection; rerenderInner(); });
     });
+    // Phase 12.1.8 : bouton Générer PDF dans l'en-tête
+    const pdfBtn = rootEl.querySelector('[data-mr-action="pdf"]');
+    if (pdfBtn) pdfBtn.addEventListener('click', generateMedicalRecordPdf);
     // Formulaire édition
     rootEl.querySelectorAll('[data-mr-form]').forEach(form => {
       const sectionKey = form.dataset.mrForm;
@@ -688,6 +696,82 @@
   // =============================================================
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+  }
+
+  // =============================================================
+  // === Phase 12.1.8 : Génération PDF du dossier médical ========
+  // =============================================================
+  function generateMedicalRecordPdf() {
+    const rec = _state.record || {};
+    const pid = _state.patientId || 'PATIENT';
+    const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+    const now = new Date().toLocaleString('fr-FR');
+
+    const rowHtml = (label, val) => {
+      if (val == null || val === '') return '';
+      const display = typeof val === 'string' && val.length > 500 ? val.substring(0, 500) + '…' : val;
+      return '<tr><td style="padding:5px 8px; color:#475569; width:40%; vertical-align:top;">' +
+             escapeHtml(label) +
+             '</td><td style="padding:5px 8px; font-weight:600; color:#0b1530;">' +
+             escapeHtml(String(display)).replace(/\n/g, '<br>') +
+             '</td></tr>';
+    };
+
+    const sectionHtml = (sec) => {
+      const data = rec[sec.key] || {};
+      const rows = sec.fields.map(([key, label]) => {
+        if (key === '_text' || key === '_text_full_length' || key === '_text_from_pdf') return '';
+        return rowHtml(label, data[key]);
+      }).filter(Boolean).join('');
+      if (!rows) {
+        return '<h2>' + sec.label + '</h2><p style="color:#94a3b8; font-style:italic; margin:6px 0 14px;">— Aucune information renseignée —</p>';
+      }
+      return '<h2>' + sec.label + '</h2><table style="width:100%; border-collapse:collapse; margin-bottom:14px; font-size:10.5pt;">' + rows + '</table>';
+    };
+
+    const modifsHtml = (rec.modifications || []).length
+      ? '<p style="font-size:9pt; color:#64748b; margin-top:14px;">📜 Ce dossier a fait l’objet de <strong>' + rec.modifications.length + '</strong> modification(s) enregistrée(s) avec traçabilité complète (consultable dans l’onglet Historique).</p>'
+      : '';
+
+    const html = '<!doctype html>\n<html lang="fr"><head><meta charset="utf-8">\n' +
+      '<title>Dossier médical ' + escapeHtml(pid) + ' — ' + today + '</title>\n' +
+      '<style>\n' +
+      '  @page { size: A4; margin: 18mm; }\n' +
+      '  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: #0b1530; line-height:1.45; margin:0; padding:0; font-size:11pt; }\n' +
+      '  .header { padding-bottom:14px; border-bottom:2px solid #0891b2; margin-bottom:20px; }\n' +
+      '  .header h1 { font-size:20pt; margin:0 0 4px; color:#0b1530; }\n' +
+      '  .header .sub { color:#64748b; font-size:10pt; }\n' +
+      '  .header .code { background:#0891b2; color:white; padding:4px 12px; border-radius:6px; display:inline-block; font-weight:700; font-size:11pt; }\n' +
+      '  h2 { font-size:13pt; color:#0891b2; border-bottom:1px solid #e2e8f0; padding-bottom:4px; margin:18px 0 6px; page-break-after:avoid; }\n' +
+      '  table { width:100%; border-collapse:collapse; font-size:10.5pt; }\n' +
+      '  table tr { border-bottom:1px dashed #eef0f5; page-break-inside:avoid; }\n' +
+      '  .footer { font-size:8.5pt; color:#94a3b8; text-align:center; margin-top:24px; border-top:1px solid #e2e8f0; padding-top:8px; }\n' +
+      '  .actions { margin:20px 0; padding:12px; background:#f8fafc; border-radius:8px; text-align:center; }\n' +
+      '  .actions button { padding:10px 22px; border:none; background:#0891b2; color:white; border-radius:7px; cursor:pointer; font-weight:700; font-size:11pt; margin:0 4px; }\n' +
+      '  .actions button.alt { background:white; color:#0b1530; border:1px solid #cbd5e1; }\n' +
+      '  @media print { .actions { display:none !important; } }\n' +
+      '</style></head>\n<body>\n' +
+      '<div class="header">\n' +
+      '  <h1>Dossier médical structuré <span class="code">' + escapeHtml(pid) + '</span></h1>\n' +
+      '  <div class="sub">Cohorte Marfan APA · Espace investigateur · édité le ' + today + ' à ' + now.split(' ')[1] + '</div>\n' +
+      '</div>\n' +
+      '<div class="actions">\n' +
+      '  <button onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>\n' +
+      '  <button class="alt" onclick="window.close()">Fermer</button>\n' +
+      '</div>\n' +
+      SECTIONS.map(sectionHtml).join('\n') +
+      modifsHtml +
+      '<div class="footer">Marfan APA — Document confidentiel généré le ' + now + ' · ' + escapeHtml(pid) + '</div>\n' +
+      '</body></html>';
+
+    const w = window.open('', '_blank', 'width=900,height=1100');
+    if (!w) {
+      alert("Impossible d'ouvrir la fenêtre PDF — vérifiez que les pop-ups sont autorisés pour ce site.");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
   }
 
   // Petit toast flottant en haut à droite (3s, sans bloquer)
