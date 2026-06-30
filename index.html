@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-1c"></script>
+  <script src="api-client.js?v=phase12-1d-fix"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-1c"></script>
+  <script src="questionnaires-defs.js?v=phase12-1d-fix"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-1c"></script>
+  <script src="medical-parsers.js?v=phase12-1d-fix"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-1c"></script>
+  <script src="cpet-graph-preview.js?v=phase12-1d-fix"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-1c"></script>
-  <script src="medical-record-ui.js?v=phase12-1c"></script>
+  <script src="pdf-extractor.js?v=phase12-1d-fix"></script>
+  <script src="medical-record-ui.js?v=phase12-1d-fix"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -6757,7 +6757,7 @@
 
   <h2>📝 Notes investigateur</h2>
   <table>
-    ${sectionRow('Date d\\'inclusion dans l\\'étude', fv('cf_inclusionDate'))}
+    ${sectionRow("Date d'inclusion dans l'étude", fv('cf_inclusionDate'))}
     ${sectionRow('Consentement signé', fv('cf_consent'))}
     ${sectionRow('Notes libres', fv('cf_notes'))}
   </table>
@@ -6775,7 +6775,7 @@
 </body></html>`;
 
     const w = window.open('', '_blank', 'width=900,height=1100');
-    if (!w) { alert('Impossible d\\'ouvrir la fenêtre PDF — vérifiez que les pop-ups sont autorisés.'); return; }
+    if (!w) { alert("Impossible d'ouvrir la fenêtre PDF — vérifiez que les pop-ups sont autorisés."); return; }
     w.document.open();
     w.document.write(html);
     w.document.close();
