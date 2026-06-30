@@ -11932,8 +11932,9 @@
 
       const html = `
         <div id="apiMedExModal" style="position:fixed; inset:0; background:rgba(11,21,48,0.75); z-index:10001; display:flex; align-items:center; justify-content:center; padding:20px;">
-          <div style="background:white; border-radius:14px; padding:24px 28px; width:560px; max-width:96vw; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div style="background:white; border-radius:14px; width:560px; max-width:96vw; max-height:92vh; box-shadow:0 20px 60px rgba(0,0,0,0.25); display:flex; flex-direction:column; overflow:hidden;">
+            <!-- Header (fixe) -->
+            <div style="padding:18px 24px 12px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eef0f5; flex-shrink:0;">
               <div>
                 <h3 style="margin:0;">📥 Importer un examen pour ${pid}</h3>
                 <p style="font-size:11.5px; color:var(--muted); margin:4px 0 0;">Le fichier est parsé localement puis envoyé en base avec une synthèse extraite.</p>
@@ -11941,27 +11942,33 @@
               <button id="medExClose" style="border:none; background:#f3f6fb; color:#5a6280; padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer;">Fermer</button>
             </div>
 
-            <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Type d'examen</label>
-            <select id="medExType" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:12px;">
-              <option value="auto">Auto-détection (recommandé)</option>
-              <option value="cpet">🫁 CPET — Test d'effort cardio-pulmonaire (.xlsx)</option>
-              <option value="pulse_wave">💗 Onde de pouls / VOP (.csv)</option>
-              <option value="other">📄 Autre (stockage brut)</option>
-            </select>
+            <!-- Body (scrollable) -->
+            <div style="padding:16px 24px; overflow-y:auto; flex:1;">
+              <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Type d'examen</label>
+              <select id="medExType" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:12px;">
+                <option value="auto">Auto-détection (recommandé)</option>
+                <option value="cpet">🫁 CPET — Test d'effort cardio-pulmonaire (.xlsx)</option>
+                <option value="pulse_wave">💗 Onde de pouls / VOP (.csv)</option>
+                <option value="other">📄 Autre (stockage brut)</option>
+              </select>
 
-            <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Date de l'examen (optionnel)</label>
-            <input id="medExDate" type="date" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:12px;">
+              <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Date de l'examen (optionnel)</label>
+              <input id="medExDate" type="date" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:12px;">
 
-            <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Fichier (CSV ou XLSX, max 10 MB)</label>
-            <input id="medExFile" type="file" accept=".csv,.xlsx,.xls,.txt" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:14px;">
+              <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Fichier (CSV ou XLSX, max 10 MB)</label>
+              <input id="medExFile" type="file" accept=".csv,.xlsx,.xls,.txt" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:14px;">
 
-            <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Notes (optionnel)</label>
-            <textarea id="medExNotes" rows="2" placeholder="Commentaires sur les conditions d'examen…" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; font-family:inherit; resize:vertical; margin-bottom:14px;"></textarea>
+              <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Notes (optionnel)</label>
+              <textarea id="medExNotes" rows="2" placeholder="Commentaires sur les conditions d'examen…" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; font-family:inherit; resize:vertical; margin-bottom:14px;"></textarea>
 
-            <div id="medExPreview" style="display:none; padding:12px; background:#f3f6fb; border-radius:8px; margin-bottom:14px; font-size:12px;"></div>
-            <div id="medExStatus" style="display:none; padding:8px 10px; border-radius:7px; font-size:11.5px; margin-bottom:12px;"></div>
+              <div id="medExPreview" style="display:none; padding:12px; background:#f3f6fb; border-radius:8px; margin-bottom:14px; font-size:12px;"></div>
+              <div id="medExStatus" style="display:none; padding:8px 10px; border-radius:7px; font-size:11.5px; margin-bottom:6px;"></div>
+            </div>
 
-            <button id="medExUpload" disabled style="width:100%; padding:11px; border:none; background:#94a3b8; color:white; border-radius:9px; font-weight:700; font-size:13.5px; cursor:pointer;">📤 Parser et importer</button>
+            <!-- Footer (fixe — bouton toujours visible) -->
+            <div style="padding:12px 24px 18px; border-top:1px solid #eef0f5; background:white; flex-shrink:0;">
+              <button id="medExUpload" disabled style="width:100%; padding:12px; border:none; background:#94a3b8; color:white; border-radius:9px; font-weight:700; font-size:13.5px; cursor:pointer;">📤 Parser et importer</button>
+            </div>
           </div>
         </div>`;
       document.body.insertAdjacentHTML('beforeend', html);
@@ -12055,25 +12062,27 @@
         ? `<div style="background:#fef3c7; color:#92400e; padding:6px 9px; border-radius:6px; margin-top:6px; font-size:11px;">⚠ ${result.errors.join(' · ')}</div>`
         : '';
       let html = '<strong>Aperçu de la synthèse extraite :</strong>';
+      const tdL = 'padding:3px 6px; color:#475569; line-height:1.3;';
+      const tdR = 'padding:3px 6px; text-align:right; font-weight:600; color:#0b1530; line-height:1.3;';
       if (type === 'cpet') {
-        html += `<table style="width:100%; margin-top:8px; font-size:11.5px;">
-          <tr><td>VO₂ max</td><td style="text-align:right; font-weight:700;">${s.vo2_max_ml_kg_min != null ? Math.round(s.vo2_max_ml_kg_min*10)/10 + ' ml/kg/min' : '—'}</td></tr>
-          <tr><td>VO₂ max (ml/min)</td><td style="text-align:right;">${s.vo2_max_ml_min != null ? Math.round(s.vo2_max_ml_min) : '—'}</td></tr>
-          <tr><td>FC max</td><td style="text-align:right;">${s.hr_max != null ? Math.round(s.hr_max) + ' bpm' : '—'}</td></tr>
-          <tr><td>Puissance max</td><td style="text-align:right;">${s.power_max != null ? Math.round(s.power_max) + ' W' : '—'}</td></tr>
-          <tr><td>RER max</td><td style="text-align:right;">${s.rer_max != null ? Math.round(s.rer_max*100)/100 : '—'}</td></tr>
-          <tr><td>SV1 (VO₂)</td><td style="text-align:right;">${s.sv1_vo2 != null ? Math.round(s.sv1_vo2) : '—'}</td></tr>
-          <tr><td>SV2 (VO₂)</td><td style="text-align:right;">${s.sv2_vo2 != null ? Math.round(s.sv2_vo2) : '—'}</td></tr>
-          <tr><td>Protocole</td><td style="text-align:right;">${s.protocol || '—'}</td></tr>
+        html += `<table style="width:100%; margin-top:6px; font-size:11.5px; border-collapse:collapse;">
+          <tr><td style="${tdL}">VO₂ max</td><td style="${tdR}; font-weight:700;">${s.vo2_max_ml_kg_min != null ? Math.round(s.vo2_max_ml_kg_min*10)/10 + ' ml/kg/min' : '—'}</td></tr>
+          <tr><td style="${tdL}">VO₂ max (ml/min)</td><td style="${tdR}">${s.vo2_max_ml_min != null ? Math.round(s.vo2_max_ml_min) : '—'}</td></tr>
+          <tr><td style="${tdL}">FC max</td><td style="${tdR}">${s.hr_max != null ? Math.round(s.hr_max) + ' bpm' : '—'}</td></tr>
+          <tr><td style="${tdL}">Puissance max</td><td style="${tdR}">${s.power_max != null ? Math.round(s.power_max) + ' W' : '—'}</td></tr>
+          <tr><td style="${tdL}">RER max</td><td style="${tdR}">${s.rer_max != null ? Math.round(s.rer_max*100)/100 : '—'}</td></tr>
+          <tr><td style="${tdL}">SV1 (VO₂)</td><td style="${tdR}">${s.sv1_vo2 != null ? Math.round(s.sv1_vo2) : '—'}</td></tr>
+          <tr><td style="${tdL}">SV2 (VO₂)</td><td style="${tdR}">${s.sv2_vo2 != null ? Math.round(s.sv2_vo2) : '—'}</td></tr>
+          <tr><td style="${tdL}">Protocole</td><td style="${tdR}">${s.protocol || '—'}</td></tr>
         </table>`;
       } else if (type === 'pulse_wave') {
-        html += `<table style="width:100%; margin-top:8px; font-size:11.5px;">
-          <tr><td>VOP (FTPWV)</td><td style="text-align:right; font-weight:700;">${s.ftpwv != null ? s.ftpwv + ' m/s' : '—'}</td></tr>
-          <tr><td>Stiffness Index</td><td style="text-align:right;">${s.si != null ? s.si : '—'}</td></tr>
-          <tr><td>PA brachiale (SBP/DBP)</td><td style="text-align:right;">${s.sbp != null ? s.sbp + '/' + s.dbp + ' mmHg' : '—'}</td></tr>
-          <tr><td>PA centrale (CSP/CDP)</td><td style="text-align:right;">${s.csp != null ? s.csp + '/' + s.cdp + ' mmHg' : '—'}</td></tr>
-          <tr><td>FC</td><td style="text-align:right;">${s.heart_rate != null ? s.heart_rate + ' bpm' : '—'}</td></tr>
-          <tr><td>Échantillonnage</td><td style="text-align:right;">${s.sample_rate_hz || '—'} Hz</td></tr>
+        html += `<table style="width:100%; margin-top:6px; font-size:11.5px; border-collapse:collapse;">
+          <tr><td style="${tdL}">VOP (FTPWV)</td><td style="${tdR}; font-weight:700;">${s.ftpwv != null ? s.ftpwv + ' m/s' : '—'}</td></tr>
+          <tr><td style="${tdL}">Stiffness Index</td><td style="${tdR}">${s.si != null ? s.si : '—'}</td></tr>
+          <tr><td style="${tdL}">PA brachiale (SBP/DBP)</td><td style="${tdR}">${s.sbp != null ? s.sbp + '/' + s.dbp + ' mmHg' : '—'}</td></tr>
+          <tr><td style="${tdL}">PA centrale (CSP/CDP)</td><td style="${tdR}">${s.csp != null ? s.csp + '/' + s.cdp + ' mmHg' : '—'}</td></tr>
+          <tr><td style="${tdL}">FC</td><td style="${tdR}">${s.heart_rate != null ? s.heart_rate + ' bpm' : '—'}</td></tr>
+          <tr><td style="${tdL}">Échantillonnage</td><td style="${tdR}">${s.sample_rate_hz || '—'} Hz</td></tr>
         </table>`;
       } else {
         html += '<div style="color:var(--muted); font-style:italic; margin-top:6px;">Type non standardisé — fichier stocké en brut.</div>';
