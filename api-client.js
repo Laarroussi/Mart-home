@@ -198,6 +198,9 @@
       get:           (id, withRaw)  => request('GET', `/medical-exams/${id}${withRaw ? '?withRaw=true' : ''}`),
       validate:      (id, validatedData, notes) => request('POST', `/medical-exams/${id}/validate`,
                                                             { validated_data: validatedData, notes }),
+      saveGraphConfig: (id, graphConfig, validatedData, validate, notes) =>
+        request('POST', `/medical-exams/${id}/graph-config`,
+                { graph_config: graphConfig, validated_data: validatedData, validate: !!validate, notes }),
       remove:        (id)           => request('DELETE', `/medical-exams/${id}`),
       list:          (filters = {}) => request('GET', '/medical-exams?' + new URLSearchParams(filters).toString())
     },

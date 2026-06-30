@@ -149,6 +149,72 @@ router.post('/:id/validate', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE
 });
 
 // ============================================================
+// POST /api/medical-exams/:id/graph-config — Sauvegarde curseurs + recalcul
+// Body : {
+//   graph_config (objet : positions curseurs, zones, choix manuel),
+//   validated_data (optionnel : valeurs recalculées),
+//   validate (bool : si true → status='validated' et validated_by/at remplis),
+//   notes (optionnel)
+// }
+// ============================================================
+router.post('/:id/graph-config', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR), async (req, res, next) => {
+  try {
+    const { graph_config, validated_data, validate, notes } = req.body || {};
+    if (!graph_config) return res.status(400).json({ error: 'graph_config requis' });
+
+    // Récupère l'ancien état pour historique
+    const r0 = await query('SELECT graph_config, validated_data, status FROM medical_exams WHERE id = $1', [req.params.id]);
+    if (!r0.rows.length) return res.status(404).json({ error: 'Introuvable' });
+    const oldGraph = r0.rows[0].graph_config || {};
+    const oldData = r0.rows[0].validated_data || {};
+
+    // Diffs pour traçabilité
+    const diffs = [];
+    Object.keys(graph_config).forEach(k => {
+      if (JSON.stringify(oldGraph[k]) !== JSON.stringify(graph_config[k])) {
+        diffs.push({ scope: 'graph_config', field: k, old: oldGraph[k], new: graph_config[k], by: req.user.id, at: new Date().toISOString() });
+      }
+    });
+    if (validated_data) {
+      Object.keys(validated_data).forEach(k => {
+        if (oldData[k] !== validated_data[k]) {
+          diffs.push({ scope: 'validated_data', field: k, old: oldData[k], new: validated_data[k], by: req.user.id, at: new Date().toISOString() });
+        }
+      });
+    }
+
+    let newStatus;
+    if (validate) {
+      const isFirst = r0.rows[0].status !== 'validated' && r0.rows[0].status !== 'modified_after_validation';
+      newStatus = isFirst ? 'validated' : 'modified_after_validation';
+    } else {
+      newStatus = r0.rows[0].status; // garde le statut actuel
+    }
+
+    const { rows } = await query(
+      `UPDATE medical_exams
+          SET graph_config = $1,
+              validated_data = COALESCE($2, validated_data),
+              modifications = COALESCE(modifications, '[]'::jsonb) || $3::jsonb,
+              status = $4,
+              validated_by = CASE WHEN $5 THEN $6 ELSE validated_by END,
+              validated_at = CASE WHEN $5 THEN COALESCE(validated_at, NOW()) ELSE validated_at END,
+              notes = COALESCE($7, notes)
+        WHERE id = $8
+        RETURNING id, status, validated_at, validated_by, validated_data, graph_config, modifications`,
+      [JSON.stringify(graph_config),
+       validated_data ? JSON.stringify(validated_data) : null,
+       JSON.stringify(diffs),
+       newStatus,
+       !!validate, req.user.id,
+       notes || null,
+       req.params.id]
+    );
+    res.json({ exam: rows[0] });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
 // DELETE /api/medical-exams/:id — Supprimer (principal_admin uniquement)
 // ============================================================
 router.delete('/:id', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN), async (req, res, next) => {
