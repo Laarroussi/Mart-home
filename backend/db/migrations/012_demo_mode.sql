@@ -10,9 +10,11 @@
 -- (puisqu'ils viennent du seed initial).
 --
 -- IDEMPOTENT.
+-- NOTE : pas de BEGIN;/COMMIT; car phpPgAdmin ne les supporte pas
+--        dans son éditeur SQL (il enveloppe la requête dans un SELECT COUNT).
+--        PostgreSQL exécute chaque instruction en autocommit par défaut,
+--        les IF NOT EXISTS assurent l'idempotence.
 -- ============================================================
-
-BEGIN;
 
 -- Ajout de la colonne is_demo (défaut FALSE pour tous les futurs patients)
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT FALSE;
@@ -30,6 +32,4 @@ SELECT 'OK migration 012 — is_demo colonne ajoutée' AS msg,
        COUNT(*) FILTER (WHERE is_demo) AS nb_demo,
        COUNT(*) FILTER (WHERE NOT is_demo) AS nb_reels
   FROM patients;
-
-COMMIT;
 -- Fin migration 012
