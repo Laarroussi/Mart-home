@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-2"></script>
+  <script src="api-client.js?v=phase12-2b"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-2"></script>
+  <script src="questionnaires-defs.js?v=phase12-2b"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-2"></script>
+  <script src="medical-parsers.js?v=phase12-2b"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-2"></script>
+  <script src="cpet-graph-preview.js?v=phase12-2b"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-2"></script>
-  <script src="medical-record-ui.js?v=phase12-2"></script>
+  <script src="pdf-extractor.js?v=phase12-2b"></script>
+  <script src="medical-record-ui.js?v=phase12-2b"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13484,16 +13484,29 @@
     function initModes() {
       const btnDemo = document.getElementById('btnDemoMode');
       const btnPseudo = document.getElementById('btnPseudoMode');
-      // Afficher les toggles seulement pour investigator + principal_admin
-      const role = window.currentUser && (window.currentUser.role || '').toLowerCase();
-      const canSeeToggles = role === 'principal_admin' || role === 'investigator';
-      if (btnDemo) btnDemo.style.display = canSeeToggles ? 'inline-block' : 'none';
-      if (btnPseudo) btnPseudo.style.display = canSeeToggles ? 'inline-block' : 'none';
+      if (!btnDemo || !btnPseudo) return false;
+      // Cache uniquement pour le rôle patient. Pour tous les autres (ou si user pas
+      // encore chargé mais badge visible → probablement staff), on montre.
+      const badge = document.getElementById('apiUserBadge');
+      const isLoggedIn = badge && badge.style.display !== 'none';
+      if (!isLoggedIn) return false;
+      const roleStr = window.currentUser && String(window.currentUser.role || '').toLowerCase();
+      const isPatient = roleStr === 'patient';
+      const show = !isPatient;
+      btnDemo.style.display = show ? 'inline-block' : 'none';
+      btnPseudo.style.display = show ? 'inline-block' : 'none';
       updateModeUI();
+      console.log('[modes] initModes OK. role=', roleStr, 'show=', show);
+      return true;
     }
     window.initModes = initModes;
-    // Appel initial après un léger délai pour laisser le login se compléter
-    setTimeout(initModes, 800);
+    // Retry pour le cas où le login API n'est pas encore terminé au 1er appel
+    function retryInitModes(attempt) {
+      if (initModes()) return;
+      if (attempt >= 20) { console.warn('[modes] initModes abandon après 20 tentatives'); return; }
+      setTimeout(() => retryInitModes(attempt + 1), 500);
+    }
+    setTimeout(() => retryInitModes(0), 300);
 
     // Hook sur createPatientFromForm pour POST l'API après le push local
     function installCreatePatientHook() {
