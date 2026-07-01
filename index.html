@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-2b"></script>
+  <script src="api-client.js?v=phase12-2c"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-2b"></script>
+  <script src="questionnaires-defs.js?v=phase12-2c"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-2b"></script>
+  <script src="medical-parsers.js?v=phase12-2c"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-2b"></script>
+  <script src="cpet-graph-preview.js?v=phase12-2c"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-2b"></script>
-  <script src="medical-record-ui.js?v=phase12-2b"></script>
+  <script src="pdf-extractor.js?v=phase12-2c"></script>
+  <script src="medical-record-ui.js?v=phase12-2c"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -9890,25 +9890,36 @@
         const demoParam = (window.AppModes && window.AppModes.demoMode) ? 'true' : 'false';
         const rlist = await window.MarfanAPI.patients.list({ demo: demoParam });
         const apiPatients = (rlist && rlist.patients) ? rlist.patients : rlist;
-        if (!Array.isArray(apiPatients) || apiPatients.length === 0) return 0;
-        const existingIds = new Set(window.patients ? window.patients.map(p => p.id) : []);
-        let added = 0;
-        apiPatients.forEach(p => {
-          const adapted = adaptApiPatient(p);
-          if (!existingIds.has(adapted.id)) {
-            if (window.patients) window.patients.push(adapted);
-            added++;
-          }
-        });
+        if (!Array.isArray(apiPatients)) return 0; // erreur API : on garde le seed
+        // Phase 12.2 : REMPLACE window.patients par ce que renvoie l'API filtré.
+        // Ne pas conserver les 20 patients seed hardcodés en JS quand l'API répond.
+        // Sinon, avec demo=false, le seed reste visible.
+        const adapted = apiPatients.map(p => adaptApiPatient(p));
+        // On mute le tableau existant en place pour préserver la référence const patients
+        if (Array.isArray(window.patients)) {
+          window.patients.length = 0;
+          adapted.forEach(p => window.patients.push(p));
+        } else {
+          window.patients = adapted;
+        }
+        // Applique la pseudonymisation si active
+        if (typeof window.applyPseudonymization === 'function') {
+          const masked = window.applyPseudonymization(window.patients);
+          window.patients.length = 0;
+          masked.forEach(p => window.patients.push(p));
+        }
+        window.patients._fromApi = true;
+        console.log('[patients] chargés depuis API : ', adapted.length, '(demo=' + demoParam + ')');
         // Re-render
         try {
           if (typeof initKpis === 'function') initKpis();
+          if (typeof initQuickSelect === 'function') initQuickSelect();
           if (typeof renderPatientList === 'function') renderPatientList('');
           if (typeof renderCohortOverview === 'function') renderCohortOverview();
           if (typeof renderPatientTable === 'function') renderPatientTable('');
           if (typeof renderDbTable === 'function') renderDbTable('');
         } catch (e) { console.warn('Re-render après chargement API :', e); }
-        return added;
+        return adapted.length;
       } catch (e) {
         console.warn('Chargement patients API échoué :', e.message);
         return 0;
