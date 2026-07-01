@@ -17,10 +17,19 @@ router.get('/', requireAuth, async (req, res, next) => {
         (SELECT json_agg(e ORDER BY e.eval_id) FROM evaluations e WHERE e.patient_id = p.id) AS evaluations
       FROM patients p`;
     const params = [];
+    const conds = [];
     if (req.user.role === 'patient' && req.user.patient_id) {
       params.push(req.user.patient_id);
-      sql += ` WHERE p.id = $1`;
+      conds.push(`p.id = $${params.length}`);
     }
+    // Phase 12.2 : filtre ?demo=true | false | all (défaut : all)
+    const demoFilter = (req.query.demo || 'all').toLowerCase();
+    if (demoFilter === 'true') {
+      conds.push('p.is_demo = TRUE');
+    } else if (demoFilter === 'false') {
+      conds.push('p.is_demo = FALSE');
+    }
+    if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
     sql += ' ORDER BY p.id';
     const { rows } = await query(sql, params);
     res.json({ patients: rows });
@@ -64,14 +73,14 @@ router.post('/', requireAuth, requireRole('principal_admin', 'investigator'), as
       // 1. Crée la fiche patient
       await client.query(
         `INSERT INTO patients (id, sex, age, gene, aorta, status, status_class, progress, connected,
-                               risk_factor, risk_comment, alterations, incidents, civil, medical, study, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+                               risk_factor, risk_comment, alterations, incidents, civil, medical, study, created_by, is_demo)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
         [p.id, p.sex, p.age, p.gene, p.aorta || null,
          p.status || 'Stable', p.statusClass || 'ok', p.progress || 75, p.connected || false,
          p.riskFactor || '', p.riskComment || '',
          p.alterations || [], p.incidents || [],
          JSON.stringify(p.civil || {}), JSON.stringify(p.medical || {}), JSON.stringify(p.study || {}),
-         req.user.id]
+         req.user.id, p.is_demo === true /* défaut : FALSE = vrai patient */]
       );
       // 2. Crée la première évaluation (Baseline)
       if (p.evaluations && p.evaluations.length) {

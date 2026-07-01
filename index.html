@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-1f"></script>
+  <script src="api-client.js?v=phase12-2"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-1f"></script>
+  <script src="questionnaires-defs.js?v=phase12-2"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-1f"></script>
+  <script src="medical-parsers.js?v=phase12-2"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-1f"></script>
+  <script src="cpet-graph-preview.js?v=phase12-2"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-1f"></script>
-  <script src="medical-record-ui.js?v=phase12-1f"></script>
+  <script src="pdf-extractor.js?v=phase12-2"></script>
+  <script src="medical-record-ui.js?v=phase12-2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -9793,11 +9793,16 @@
     ⚠ Mode démo (données en mémoire uniquement) — l'API PostgreSQL n'est pas joignable.
   </div>
 
-  <!-- Bouton déconnexion (visible après login API) -->
-  <div id="apiUserBadge" style="display:none; position:fixed; top:10px; right:14px; z-index:9991; background:rgba(255,255,255,0.96); border:1px solid #e3e7ef; border-radius:999px; padding:6px 12px 6px 14px; font-size:11.5px; color:#0b1530; box-shadow:0 6px 18px rgba(0,0,0,0.08); display:none; gap:10px; align-items:center;">
+  <!-- Bouton déconnexion + toggles Démo/Pseudonymisation (Phase 12.2) -->
+  <div id="apiUserBadge" style="display:none; position:fixed; top:10px; right:14px; z-index:9991; background:rgba(255,255,255,0.96); border:1px solid #e3e7ef; border-radius:999px; padding:6px 8px 6px 14px; font-size:11.5px; color:#0b1530; box-shadow:0 6px 18px rgba(0,0,0,0.08); display:none; gap:8px; align-items:center;">
     <span id="apiUserName" style="font-weight:700;"></span>
+    <button id="btnDemoMode" title="Basculer entre patients réels et patients de démonstration" style="border:1px solid #e2e8f0; background:white; color:#64748b; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:600; cursor:pointer; display:none;">🎭 Démo : off</button>
+    <button id="btnPseudoMode" title="Masquer les identités (nom, email, téléphone) pour présentation" style="border:1px solid #e2e8f0; background:white; color:#64748b; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:600; cursor:pointer; display:none;">🔒 Pseudo : off</button>
     <button id="apiLogoutBtn" style="border:none; background:#f3f6fb; color:#5a6280; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:600; cursor:pointer;">Déconnexion</button>
   </div>
+
+  <!-- Bandeau d'alerte quand un mode est actif (Phase 12.2) -->
+  <div id="modeBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9990; padding:8px 22px; text-align:center; font-size:12.5px; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,0.1);"></div>
 
   <!-- Overlay bloquant : changement de mot de passe obligatoire à la 1re connexion -->
   <div id="apiChangePwdOverlay" style="display:none; position:fixed; inset:0; background:rgba(11,21,48,0.85); backdrop-filter:blur(8px); z-index:10000; align-items:center; justify-content:center;">
@@ -9881,7 +9886,10 @@
 
     async function loadPatientsFromApi() {
       try {
-        const apiPatients = await window.MarfanAPI.patients.list();
+        // Phase 12.2 : filtre selon le mode Démo
+        const demoParam = (window.AppModes && window.AppModes.demoMode) ? 'true' : 'false';
+        const rlist = await window.MarfanAPI.patients.list({ demo: demoParam });
+        const apiPatients = (rlist && rlist.patients) ? rlist.patients : rlist;
         if (!Array.isArray(apiPatients) || apiPatients.length === 0) return 0;
         const existingIds = new Set(window.patients ? window.patients.map(p => p.id) : []);
         let added = 0;
@@ -13334,6 +13342,158 @@
       hideUserBadge();
       window.location.reload();
     });
+
+    // ============================================================
+    // === Phase 12.2 — Mode Démo + Mode Pseudonymisation ========
+    // ============================================================
+    // État global (persisté en localStorage par utilisateur)
+    window.AppModes = {
+      demoMode: (localStorage.getItem('marfan_demoMode') === 'true'),   // false par défaut (production)
+      pseudoMode: (localStorage.getItem('marfan_pseudoMode') === 'true')
+    };
+
+    function saveModes() {
+      localStorage.setItem('marfan_demoMode', String(window.AppModes.demoMode));
+      localStorage.setItem('marfan_pseudoMode', String(window.AppModes.pseudoMode));
+    }
+
+    // Applique la classe visuelle + label des boutons + bandeau
+    function updateModeUI() {
+      const btnDemo = document.getElementById('btnDemoMode');
+      const btnPseudo = document.getElementById('btnPseudoMode');
+      const banner = document.getElementById('modeBanner');
+      if (btnDemo) {
+        btnDemo.textContent = '🎭 Démo : ' + (window.AppModes.demoMode ? 'on' : 'off');
+        btnDemo.style.background = window.AppModes.demoMode ? '#fef3c7' : 'white';
+        btnDemo.style.borderColor = window.AppModes.demoMode ? '#f59e0b' : '#e2e8f0';
+        btnDemo.style.color = window.AppModes.demoMode ? '#92400e' : '#64748b';
+      }
+      if (btnPseudo) {
+        btnPseudo.textContent = '🔒 Pseudo : ' + (window.AppModes.pseudoMode ? 'on' : 'off');
+        btnPseudo.style.background = window.AppModes.pseudoMode ? '#ede9fe' : 'white';
+        btnPseudo.style.borderColor = window.AppModes.pseudoMode ? '#7c3aed' : '#e2e8f0';
+        btnPseudo.style.color = window.AppModes.pseudoMode ? '#5b21b6' : '#64748b';
+      }
+      if (banner) {
+        const parts = [];
+        if (window.AppModes.demoMode) parts.push('🎭 MODE DÉMONSTRATION — Vous voyez uniquement les patients fictifs');
+        if (window.AppModes.pseudoMode) parts.push('🔒 PSEUDONYMISATION ACTIVE — Les identités sont masquées');
+        if (parts.length) {
+          banner.style.display = 'block';
+          banner.innerHTML = parts.join(' &nbsp;·&nbsp; ');
+          if (window.AppModes.demoMode && window.AppModes.pseudoMode) {
+            banner.style.background = 'linear-gradient(90deg,#fef3c7,#ede9fe)';
+            banner.style.color = '#0b1530';
+          } else if (window.AppModes.demoMode) {
+            banner.style.background = '#fef3c7'; banner.style.color = '#92400e';
+          } else {
+            banner.style.background = '#ede9fe'; banner.style.color = '#5b21b6';
+          }
+        } else {
+          banner.style.display = 'none';
+        }
+      }
+    }
+
+    // Masque les identifiants personnels d'un patient si pseudoMode actif
+    window.applyPseudonymization = function (patients) {
+      if (!window.AppModes.pseudoMode) return patients;
+      const MASK = '••••••';
+      return (patients || []).map(p => {
+        const c = p.civil || {};
+        return Object.assign({}, p, {
+          civil: Object.assign({}, c, {
+            name: c.name ? MASK : c.name,
+            lastName: c.lastName ? MASK : c.lastName,
+            firstName: c.firstName ? MASK : c.firstName,
+            initials: c.initials ? '•.•.' : c.initials,
+            email: c.email ? MASK : c.email,
+            phone: c.phone ? MASK : c.phone,
+            address: c.address ? MASK : c.address,
+            dob: c.dob ? MASK : c.dob,
+            doctor: c.doctor ? MASK : c.doctor
+          })
+        });
+      });
+    };
+
+    // Rechargement de la cohorte selon le mode démo + application du pseudo
+    async function reloadPatientsByMode() {
+      if (!window.MarfanAPI || !window.MarfanAPI.isAuthenticated()) return;
+      try {
+        const demoParam = window.AppModes.demoMode ? 'true' : 'false';
+        const r = await window.MarfanAPI.patients.list({ demo: demoParam });
+        const arr = r && r.patients ? r.patients : (Array.isArray(r) ? r : []);
+        const adapted = arr.map(p => (typeof adaptApiPatient === 'function') ? adaptApiPatient(p) : p);
+        window.patients = window.applyPseudonymization(adapted);
+        window.patients._fromApi = true;
+        // Reset selected patient si absent
+        if (typeof selectedPatient !== 'undefined' && (!selectedPatient || !window.patients.some(x => x.id === selectedPatient.id))) {
+          if (window.patients.length) selectedPatient = window.patients[0];
+        }
+        // Refresh UI
+        if (typeof initKpis === 'function') initKpis();
+        if (typeof initQuickSelect === 'function') initQuickSelect();
+        if (typeof renderPatientList === 'function') renderPatientList('');
+        if (typeof renderCohortOverview === 'function') renderCohortOverview();
+        if (typeof renderPatientTable === 'function') renderPatientTable('');
+        if (typeof renderDbTable === 'function') renderDbTable('');
+        if (typeof renderPatientFile === 'function') renderPatientFile();
+      } catch (e) { console.warn('[modes] reload patients échoué :', e.message); }
+    }
+
+    // Bouton Démo
+    const btnDemoEl = document.getElementById('btnDemoMode');
+    if (btnDemoEl) {
+      btnDemoEl.addEventListener('click', async () => {
+        window.AppModes.demoMode = !window.AppModes.demoMode;
+        saveModes();
+        updateModeUI();
+        await reloadPatientsByMode();
+      });
+    }
+
+    // Bouton Pseudonymisation
+    const btnPseudoEl = document.getElementById('btnPseudoMode');
+    if (btnPseudoEl) {
+      btnPseudoEl.addEventListener('click', () => {
+        window.AppModes.pseudoMode = !window.AppModes.pseudoMode;
+        saveModes();
+        updateModeUI();
+        // Re-render UI courante avec masquage
+        if (typeof renderPatientList === 'function') renderPatientList('');
+        if (typeof renderPatientFile === 'function') renderPatientFile();
+        if (typeof renderCohortOverview === 'function') renderCohortOverview();
+        if (typeof renderDbTable === 'function') renderDbTable('');
+      });
+    }
+
+    // Fonction utilitaire globale de pseudonymisation
+    // Retourne l'affichage d'un champ selon le mode courant
+    window.pseudoValue = function (rawValue, kind) {
+      if (!window.AppModes.pseudoMode) return rawValue;
+      // Champs à masquer complètement
+      if (['name', 'lastName', 'firstName', 'email', 'phone', 'address', 'dob', 'birth_date', 'initials'].includes(kind)) {
+        return '••••••';
+      }
+      // Sinon on garde tel quel (code MRF, âge, sexe, chiffres cliniques...)
+      return rawValue;
+    };
+
+    // Init au démarrage : affiche l'état correct et charge la bonne cohorte
+    function initModes() {
+      const btnDemo = document.getElementById('btnDemoMode');
+      const btnPseudo = document.getElementById('btnPseudoMode');
+      // Afficher les toggles seulement pour investigator + principal_admin
+      const role = window.currentUser && (window.currentUser.role || '').toLowerCase();
+      const canSeeToggles = role === 'principal_admin' || role === 'investigator';
+      if (btnDemo) btnDemo.style.display = canSeeToggles ? 'inline-block' : 'none';
+      if (btnPseudo) btnPseudo.style.display = canSeeToggles ? 'inline-block' : 'none';
+      updateModeUI();
+    }
+    window.initModes = initModes;
+    // Appel initial après un léger délai pour laisser le login se compléter
+    setTimeout(initModes, 800);
 
     // Hook sur createPatientFromForm pour POST l'API après le push local
     function installCreatePatientHook() {

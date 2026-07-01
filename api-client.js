@@ -112,7 +112,12 @@
 
     /** ===== Patients ===== */
     patients: {
-      list:   () => request('GET', '/patients'),
+      list:   (filters = {}) => {
+        const qs = Object.keys(filters).length
+          ? '?' + new URLSearchParams(filters).toString()
+          : '';
+        return request('GET', '/patients' + qs);
+      },
       get:    (id) => request('GET', `/patients/${id}`),
       create: (data) => request('POST', '/patients', data),
       update: (id, data) => request('PATCH', `/patients/${id}`, data)
