@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-2c"></script>
+  <script src="api-client.js?v=phase12-2d"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-2c"></script>
+  <script src="questionnaires-defs.js?v=phase12-2d"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-2c"></script>
+  <script src="medical-parsers.js?v=phase12-2d"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-2c"></script>
+  <script src="cpet-graph-preview.js?v=phase12-2d"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-2c"></script>
-  <script src="medical-record-ui.js?v=phase12-2c"></script>
+  <script src="pdf-extractor.js?v=phase12-2d"></script>
+  <script src="medical-record-ui.js?v=phase12-2d"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -5341,7 +5341,9 @@
 
   function calcStats(values) {
     const vals = (values || []).map(v => toNumber(v, NaN)).filter(v => Number.isFinite(v));
-    if (!vals.length) return null;
+    // Retourne un objet neutre (au lieu de null) pour éviter les crashes .mean/.sd/…
+    // quand la cohorte est vide (0 patient — cas Mode Démo OFF).
+    if (!vals.length) return { n: 0, mean: 0, sd: 0, min: 0, max: 0 };
     const n = vals.length;
     const mean = vals.reduce((a, b) => a + b, 0) / n;
     const variance = vals.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(1, n - 1);
@@ -5488,15 +5490,28 @@
   function renderCohortSnapshotCards() {
     const wrap = $('cohortSnapshotCards');
     if (!wrap) return;
+    // Cas cohorte vide (mode Démo OFF sans vrai patient encore créé)
+    if (!Array.isArray(patients) || patients.length === 0) {
+      wrap.innerHTML = `
+        <article class="cohort-snapshot-card" style="grid-column:1/-1; text-align:center; padding:32px;">
+          <h4 style="justify-content:center;"><span class="icon-bg cyan">∅</span>Aucun patient dans la cohorte</h4>
+          <p style="color:var(--muted); margin-top:8px;">
+            Aucun patient réel n'a encore été inclus.<br>
+            Activez le <strong>🎭 Mode Démo</strong> en haut à droite pour voir la cohorte de démonstration,
+            ou créez un nouveau patient depuis <strong>Création fiche patient</strong>.
+          </p>
+        </article>`;
+      return;
+    }
     const ageStats = calcStats(patients.map(p => p.age));
-    const evalStats = calcStats(patients.map(p => p.evaluations.length));
+    const evalStats = calcStats(patients.map(p => p.evaluations ? p.evaluations.length : 0));
     const adherenceStats = calcStats(patients.map(p => p.progress));
     const sex = countBy(patients, p => p.sex);
     const genes = Object.entries(countBy(patients, p => p.gene)).sort((a, b) => b[1] - a[1]);
     const status = countBy(patients, p => p.statusClass);
-    const totalValidated = patients.reduce((sum, p) => sum + p.evaluations.filter(ev => ev.validated).length, 0);
-    const totalEvals = patients.reduce((sum, p) => sum + p.evaluations.length, 0);
-    const latestDates = patients.map(p => last(p.evaluations).date).sort();
+    const totalValidated = patients.reduce((sum, p) => sum + (p.evaluations || []).filter(ev => ev.validated).length, 0);
+    const totalEvals = patients.reduce((sum, p) => sum + (p.evaluations ? p.evaluations.length : 0), 0);
+    const latestDates = patients.map(p => { const l = last(p.evaluations || []); return l ? l.date : null; }).filter(Boolean).sort();
 
     wrap.innerHTML = `
       <article class="cohort-snapshot-card">
