@@ -114,7 +114,7 @@
       <article class="ac-card">
         <div class="ac-head" style="background:linear-gradient(135deg,#dc2626,#f43f5e); color:white;">
           <div>
-            <h3 style="margin:0; color:white; font-size:15px;">🫀 Suivi de la dilatation aortique</h3>
+            <h3 style="margin:0; color:white; font-size:15px;">🫀 Suivi de la dilatation aortique <span style="font-weight:600; opacity:0.9;">— ${esc(_patientId || '?')}</span></h3>
             <p style="margin:3px 0 0; font-size:11.5px; opacity:0.92;">Racine aortique / sinus de Valsalva — diagnostic initial Marfan vs évaluation actuelle</p>
           </div>
           <button data-ac="edit-aortic" style="padding:7px 13px; border:1px solid rgba(255,255,255,0.35); background:rgba(255,255,255,0.15); color:white; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px; white-space:nowrap;">✏️ Modifier</button>
@@ -162,7 +162,7 @@
       <article class="ac-card">
         <div class="ac-head" style="background:linear-gradient(135deg,#7c3aed,#a855f7); color:white;">
           <div>
-            <h3 style="margin:0; color:white; font-size:15px;">🗓️ Consultations</h3>
+            <h3 style="margin:0; color:white; font-size:15px;">🗓️ Consultations <span style="font-weight:600; opacity:0.9;">— ${esc(_patientId || '?')}</span></h3>
             <p style="margin:3px 0 0; font-size:11.5px; opacity:0.92;">Historique chronologique — ${_consultations.length} consultation(s)</p>
           </div>
           <button data-ac="new-consult" style="padding:8px 15px; border:none; background:white; color:#7c3aed; border-radius:8px; font-weight:700; cursor:pointer; font-size:12.5px; white-space:nowrap;">+ Consultation du jour</button>
