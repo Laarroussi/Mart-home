@@ -1,6 +1,9 @@
 name: Deploy to o2switch
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -290,6 +293,46 @@ jobs:
             ./ "$O2_USER@$O2_HOST:$O2_PATH/"
 
           echo "Déploiement terminé."
+
+      - name: Restart Node.js application (Passenger)
+        env:
+          O2_HOST: ${{ secrets.O2_HOST }}
+          O2_USER: ${{ secrets.O2_USER }}
+          O2_PORT: ${{ secrets.O2_PORT }}
+          O2_PATH: ${{ secrets.O2_PATH }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          # Sans ce redémarrage, Passenger continue d'exécuter l'ANCIEN code backend
+          # déjà chargé en mémoire : les fichiers sont à jour sur le disque mais les
+          # corrections des routes ne prennent jamais effet.
+          echo "Redémarrage de l'application Node.js via le fichier Passenger restart.txt..."
+
+          ssh \
+            -i ~/.ssh/o2switch_key \
+            -p "$O2_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=yes \
+            "$O2_USER@$O2_HOST" \
+            "mkdir -p '$O2_PATH/backend/tmp' && touch '$O2_PATH/backend/tmp/restart.txt' && ls -l '$O2_PATH/backend/tmp/restart.txt'"
+
+          echo "Attente de 8 secondes le temps que l'application redémarre..."
+          sleep 8
+
+          echo "Vérification de l'état de l'API..."
+          HTTP_CODE="$(curl -s -o /tmp/health.json -w '%{http_code}' --max-time 30 https://marfan-sport-sante.fr/api/health || echo '000')"
+          echo "Code HTTP /api/health : $HTTP_CODE"
+          cat /tmp/health.json 2>/dev/null || true
+          echo ""
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::warning::L'API n'a pas répondu 200 après le redémarrage (code $HTTP_CODE). Vérifiez cPanel → Setup Node.js App."
+          else
+            echo "API opérationnelle après redémarrage."
+          fi
 
       - name: Remove temporary runner IP from o2switch whitelist
         if: always()
