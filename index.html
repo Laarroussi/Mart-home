@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase13-10"></script>
+  <script src="api-client.js?v=phase13-11"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase13-10"></script>
+  <script src="questionnaires-defs.js?v=phase13-11"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase13-10"></script>
+  <script src="medical-parsers.js?v=phase13-11"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase13-10"></script>
+  <script src="cpet-graph-preview.js?v=phase13-11"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase13-10"></script>
-  <script src="medical-record-ui.js?v=phase13-10"></script>
+  <script src="pdf-extractor.js?v=phase13-11"></script>
+  <script src="medical-record-ui.js?v=phase13-11"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase13-10"></script>
+  <script src="aortic-consultations.js?v=phase13-11"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13587,7 +13587,7 @@
       { id:'sf36',      label:'SF-36 (qualité de vie)',     color:'#7c3aed', short:'SF36' },
       { id:'gpaq',      label:'GPAQ (activité physique)',   color:'#10b981', short:'GPAQ' }
     ];
-    const _dbCache = { training: null, sf36: null, gpaq: null };
+    const _dbCache = { training: null, sf36: null, gpaq: null, aortic: null, consult: null };
 
     async function preloadDbApiData() {
       try {
@@ -13602,6 +13602,27 @@
         const r = await window.MarfanAPI.questionnaires.list({ type:'gpaq', status:'completed' });
         _dbCache.gpaq = (r && r.responses) || [];
       } catch { _dbCache.gpaq = []; }
+
+      // Phase 13.11 : suivi aortique + consultations, pour la section Échocardiographie
+      // (auparavant absents du tableau unifié : les diamètres et dates n'y figuraient pas)
+      _dbCache.aortic = {};
+      _dbCache.consult = {};
+      const ids = (window.patients || []).map(p => p.id);
+      await Promise.all(ids.map(async (pid) => {
+        try {
+          const a = await window.MarfanAPI.consultations.getAortic(pid);
+          if (a && a.aortic && Object.keys(a.aortic).length) _dbCache.aortic[pid] = a.aortic;
+        } catch (_) { /* patient sans suivi aortique */ }
+        try {
+          const c = await window.MarfanAPI.consultations.list(pid);
+          const arr = (c && c.consultations) || [];
+          if (arr.length) {
+            // Tri chronologique croissant : C1 = la plus ancienne
+            _dbCache.consult[pid] = arr.slice().sort(
+              (x, y) => new Date(x.consultation_date) - new Date(y.consultation_date));
+          }
+        } catch (_) { /* patient sans consultation */ }
+      }));
     }
 
     function getSelectedSections() {
@@ -13644,6 +13665,52 @@
           cols.push({ key:'aorta_baseline', label:'AORTE_BASELINE', section:sec, get: p => p.aorta != null ? p.aorta : '—' });
         }
         else if (sec.id === 'cpet' || sec.id === 'echo' || sec.id === 'force') {
+          // Phase 13.11 — Section Échocardiographie : suivi aortique structuré
+          // (diagnostic initial Marfan, évaluation actuelle, delta) + une série de
+          // colonnes par consultation. Ces données étaient totalement absentes du
+          // tableau unifié : seules les anciennes évaluations y figuraient.
+          if (sec.id === 'echo') {
+            const num = v => (v == null || v === '') ? null : parseFloat(v);
+            cols.push({ key:'AO_DIAG_DATE', label:'AORTE_DIAG_DATE', section:sec,
+              get: p => fmtVisit(p._aortic && p._aortic.first_diagnosis_date, '—') || '—' });
+            cols.push({ key:'AO_DIAG_MM', label:'AORTE_DIAG_mm', section:sec,
+              get: p => { const v = num(p._aortic && p._aortic.first_value_mm); return v != null ? v.toFixed(1) : '—'; } });
+            cols.push({ key:'AO_DIAG_SITE', label:'AORTE_DIAG_SITE', section:sec,
+              get: p => (p._aortic && p._aortic.first_site) || '—' });
+            cols.push({ key:'AO_ACT_DATE', label:'AORTE_ACTUEL_DATE', section:sec,
+              get: p => fmtVisit(p._aortic && p._aortic.current_date, '—') || '—' });
+            cols.push({ key:'AO_ACT_MM', label:'AORTE_ACTUEL_mm', section:sec,
+              get: p => { const v = num(p._aortic && p._aortic.current_value_mm); return v != null ? v.toFixed(1) : '—'; } });
+            cols.push({ key:'AO_ACT_SITE', label:'AORTE_ACTUEL_SITE', section:sec,
+              get: p => (p._aortic && p._aortic.current_site) || '—' });
+            cols.push({ key:'AO_DELTA', label:'AORTE_DELTA_mm', section:sec, get: p => {
+              const f = num(p._aortic && p._aortic.first_value_mm);
+              const c = num(p._aortic && p._aortic.current_value_mm);
+              if (f == null || c == null) return '—';
+              const d = c - f; return (d > 0 ? '+' : '') + d.toFixed(1);
+            }});
+            cols.push({ key:'AO_ALERTE', label:'AORTE_ALERTE', section:sec, get: p => {
+              const c = num(p._aortic && p._aortic.current_value_mm);
+              if (c == null) return '—';
+              return c >= 45 ? 'Seuil >= 45 mm' : (c >= 42 ? 'Surveillance rapprochee' : 'Sous seuil');
+            }});
+            // Une série de colonnes par consultation enregistrée
+            const maxC = maxByPatient.consult || 0;
+            for (let i = 1; i <= maxC; i++) {
+              cols.push({ key:'C'+i+'_DATE', label:'C'+i+'_DATE', section:sec,
+                get: p => fmtVisit((p._consult||[])[i-1] && p._consult[i-1].consultation_date, '—') || '—' });
+              cols.push({ key:'C'+i+'_AORTE', label:'C'+i+'_AORTE_mm', section:sec,
+                get: p => { const c = (p._consult||[])[i-1]; const v = c && c.aortic_value_mm != null ? parseFloat(c.aortic_value_mm) : null; return v != null ? v.toFixed(1) : '—'; } });
+              cols.push({ key:'C'+i+'_SITE', label:'C'+i+'_SITE', section:sec,
+                get: p => ((p._consult||[])[i-1] || {}).aortic_site || '—' });
+              cols.push({ key:'C'+i+'_METHODE', label:'C'+i+'_METHODE', section:sec,
+                get: p => ((p._consult||[])[i-1] || {}).aortic_method || '—' });
+              cols.push({ key:'C'+i+'_EVOL', label:'C'+i+'_EVOLUTION', section:sec,
+                get: p => ((p._consult||[])[i-1] || {}).evolution || '—' });
+              cols.push({ key:'C'+i+'_APA', label:'C'+i+'_ADAPTATION_APA', section:sec,
+                get: p => ((p._consult||[])[i-1] || {}).apa_adaptation || '—' });
+            }
+          }
           // Ces sections viennent des évaluations cliniques en mémoire (basePatients.evaluations[])
           const maxN = maxByPatient.eval || 0;
           for (let i = 1; i <= maxN; i++) {
@@ -13719,7 +13786,9 @@
       const enriched = allPatients.map(p => Object.assign({}, p, {
         _train: tIdx[p.id] || [],
         _sf36:  sIdx[p.id] || [],
-        _gpaq:  gIdx[p.id] || []
+        _gpaq:  gIdx[p.id] || [],
+        _aortic:  (_dbCache.aortic  && _dbCache.aortic[p.id])  || {},
+        _consult: (_dbCache.consult && _dbCache.consult[p.id]) || []
       }));
       // Filtre
       const f = (filterText || '').toLowerCase().trim();
@@ -13729,7 +13798,8 @@
         eval:     Math.max(0, ...filtered.map(p => (p.evaluations || []).length)),
         training: Math.max(0, ...filtered.map(p => p._train.length)),
         sf36:     Math.max(0, ...filtered.map(p => p._sf36.length)),
-        gpaq:     Math.max(0, ...filtered.map(p => p._gpaq.length))
+        gpaq:     Math.max(0, ...filtered.map(p => p._gpaq.length)),
+        consult:  Math.max(0, ...filtered.map(p => p._consult.length))
       };
       return { patients: filtered, maxByPatient };
     }
