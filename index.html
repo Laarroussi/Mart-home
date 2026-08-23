@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase13-2"></script>
+  <script src="api-client.js?v=phase13-3"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase13-2"></script>
+  <script src="questionnaires-defs.js?v=phase13-3"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase13-2"></script>
+  <script src="medical-parsers.js?v=phase13-3"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase13-2"></script>
+  <script src="cpet-graph-preview.js?v=phase13-3"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase13-2"></script>
-  <script src="medical-record-ui.js?v=phase13-2"></script>
+  <script src="pdf-extractor.js?v=phase13-3"></script>
+  <script src="medical-record-ui.js?v=phase13-3"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase13-2"></script>
+  <script src="aortic-consultations.js?v=phase13-3"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3226,17 +3226,17 @@
             </div>
           </div>
           <div style="margin:18px 0 10px; padding-top:14px; border-top:1px dashed #e2e8f0;">
-            <h4 style="margin:0 0 3px; font-size:13.5px; font-weight:800; color:#991b1b; display:flex; align-items:center; gap:6px;">🫀 Suivi de la dilatation aortique — première constatation</h4>
-            <p style="color:var(--muted); font-size:12px; margin-bottom:12px;">Sinus de Valsalva / racine aortique. Facultatif si non encore connu — pourra être complété plus tard dans le dossier.</p>
+            <h4 style="margin:0 0 3px; font-size:13.5px; font-weight:800; color:#991b1b; display:flex; align-items:center; gap:6px;">🫀 Diagnostic initial Marfan — dilatation aortique</h4>
+            <p style="color:var(--muted); font-size:12px; margin-bottom:12px;">Sinus de Valsalva / racine aortique, à la date du diagnostic ou de la première constatation connue. Laisser vide si non connu — ce champ n'est jamais rempli automatiquement avec la date du jour.</p>
           </div>
           <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
             <div>
-              <div class="control-label">Date première constatation / diagnostic</div>
+              <div class="control-label">Date du diagnostic / première constatation</div>
               <input type="date" id="cf_aorticFirstDate" />
             </div>
             <div>
-              <div class="control-label">Valeur mesurée (mm)</div>
-              <input type="number" step="0.1" id="cf_aorticFirstValue" placeholder="ex. 38.5" />
+              <div class="control-label">Diamètre à cette date (mm)</div>
+              <input type="number" step="0.1" id="cf_aorticFirstValue" placeholder="ex. 38.5 — si connu" />
             </div>
             <div>
               <div class="control-label">Site mesuré</div>
@@ -3249,6 +3249,10 @@
                 <option value="Crosse aortique">Crosse aortique</option>
                 <option value="Aorte descendante">Aorte descendante</option>
               </select>
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <div class="control-label">Commentaire (facultatif)</div>
+              <input type="text" id="cf_aorticFirstComment" placeholder="ex. Mesure issue du compte-rendu du CHU de..., à confirmer" />
             </div>
           </div>
           <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; margin-top:12px;">
@@ -6971,7 +6975,7 @@
     const ids = ['cf_code','cf_lastName','cf_firstName','cf_ipp','cf_center',
                  'cf_sex','cf_dob','cf_age','cf_initials','cf_email','cf_phone','cf_doctor','cf_address',
                  'cf_gene','cf_dxDate','cf_variant',
-                 'cf_aorticFirstDate','cf_aorticFirstValue','cf_aorticFirstSite',
+                 'cf_aorticFirstDate','cf_aorticFirstValue','cf_aorticFirstSite','cf_aorticFirstComment',
                  'cf_history','cf_treatments','cf_allergies','cf_smoking','cf_baselinePA',
                  'cf_status','cf_riskFactor','cf_adherence','cf_riskComment','cf_alterations','cf_incidents',
                  'cf_inclusionDate','cf_consent','cf_notes'];
@@ -7389,11 +7393,13 @@
       const aFirstDate = ($('cf_aorticFirstDate') && $('cf_aorticFirstDate').value) || '';
       const aFirstValueRaw = ($('cf_aorticFirstValue') && $('cf_aorticFirstValue').value) || '';
       const aFirstSite = ($('cf_aorticFirstSite') && $('cf_aorticFirstSite').value) || '';
-      if ((aFirstDate || aFirstValueRaw || aFirstSite) && window.MarfanAPI && window.MarfanAPI.consultations) {
+      const aFirstComment = ($('cf_aorticFirstComment') && $('cf_aorticFirstComment').value) || '';
+      if ((aFirstDate || aFirstValueRaw || aFirstSite || aFirstComment) && window.MarfanAPI && window.MarfanAPI.consultations) {
         window.MarfanAPI.consultations.patchAortic(code, {
           first_diagnosis_date: aFirstDate || null,
           first_value_mm: aFirstValueRaw ? parseFloat(aFirstValueRaw) : null,
-          first_site: aFirstSite || null
+          first_site: aFirstSite || null,
+          first_comment: aFirstComment || null
         }).catch(e => console.warn('[aortic] enregistrement première constatation échoué', e));
       }
     } catch (e) { console.warn('[aortic] échec', e); }
@@ -7469,6 +7475,7 @@
             if ($('cf_aorticFirstDate') && a.first_diagnosis_date) $('cf_aorticFirstDate').value = a.first_diagnosis_date.slice(0, 10);
             if ($('cf_aorticFirstValue') && a.first_value_mm != null) $('cf_aorticFirstValue').value = a.first_value_mm;
             if ($('cf_aorticFirstSite') && a.first_site) $('cf_aorticFirstSite').value = a.first_site;
+            if ($('cf_aorticFirstComment') && a.first_comment) $('cf_aorticFirstComment').value = a.first_comment;
           }).catch(e => console.warn('[aortic] chargement pré-remplissage échoué', e));
         }
       } catch (e) { console.warn('[aortic] échec', e); }

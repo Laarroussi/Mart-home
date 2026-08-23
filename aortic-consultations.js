@@ -115,7 +115,7 @@
         <div class="ac-head" style="background:linear-gradient(135deg,#dc2626,#f43f5e); color:white;">
           <div>
             <h3 style="margin:0; color:white; font-size:15px;">🫀 Suivi de la dilatation aortique</h3>
-            <p style="margin:3px 0 0; font-size:11.5px; opacity:0.92;">Racine aortique / sinus de Valsalva — évolution depuis le diagnostic initial</p>
+            <p style="margin:3px 0 0; font-size:11.5px; opacity:0.92;">Racine aortique / sinus de Valsalva — diagnostic initial Marfan vs évaluation actuelle</p>
           </div>
           <button data-ac="edit-aortic" style="padding:7px 13px; border:1px solid rgba(255,255,255,0.35); background:rgba(255,255,255,0.15); color:white; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px; white-space:nowrap;">✏️ Modifier</button>
         </div>
@@ -123,12 +123,13 @@
           <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px;">
             <!-- Valeur initiale -->
             <div style="padding:12px 14px; background:#f8fafc; border-radius:10px; border-left:3px solid #94a3b8;">
-              <div style="font-size:10.5px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">Première constatation</div>
+              <div style="font-size:10.5px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">Diagnostic initial Marfan</div>
               <div style="font-size:22px; font-weight:800; color:#0b1530; margin-top:4px;">${first != null ? first.toFixed(1) + ' <span style="font-size:13px; font-weight:600;">mm</span>' : '<span style="font-size:14px; color:#94a3b8;">Non renseigné</span>'}</div>
               <div style="font-size:11.5px; color:#64748b; margin-top:3px;">
-                ${a.first_diagnosis_date ? '📅 ' + fmtDate(a.first_diagnosis_date) : '—'}
+                ${a.first_diagnosis_date ? '📅 ' + fmtDate(a.first_diagnosis_date) : '📅 Date non renseignée'}
                 ${a.first_site ? '<br>📍 ' + esc(a.first_site) : ''}
               </div>
+              ${a.first_comment ? `<div style="margin-top:6px; font-size:11.5px; color:#475569; font-style:italic;">📝 ${esc(a.first_comment)}</div>` : ''}
             </div>
             <!-- Valeur actuelle -->
             <div style="padding:12px 14px; background:${alert ? '#fee2e2' : (warn ? '#fef3c7' : '#eff6ff')}; border-radius:10px; border-left:3px solid ${alert ? '#dc2626' : (warn ? '#f59e0b' : '#3b82f6')};">
@@ -359,20 +360,23 @@
         <div style="background:white; border-radius:16px; width:560px; max-width:96vw; max-height:92vh; overflow-y:auto; box-shadow:0 28px 70px rgba(0,0,0,0.30);">
           <div style="padding:18px 24px; background:linear-gradient(135deg,#dc2626,#f43f5e); color:white;">
             <h3 style="margin:0; color:white; font-size:16px;">🫀 Suivi de la dilatation aortique</h3>
-            <p style="margin:3px 0 0; font-size:12px; opacity:0.92;">Renseignez la mesure initiale et la mesure actuelle.</p>
+            <p style="margin:3px 0 0; font-size:12px; opacity:0.92;">Renseignez le diagnostic initial Marfan et l'évaluation actuelle.</p>
           </div>
           <div style="padding:20px 24px;">
-            <h4 style="margin:0 0 10px; font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Première constatation</h4>
+            <h4 style="margin:0 0 4px; font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Diagnostic initial Marfan</h4>
+            <p style="margin:0 0 10px; font-size:11.5px; color:#94a3b8;">Laisser vide si non connu — jamais rempli automatiquement avec la date du jour.</p>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
-              <div><label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Date du diagnostic</label>
+              <div><label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Date du diagnostic / première constatation</label>
                 <input type="date" id="ao_firstDate" value="${(a.first_diagnosis_date || '').slice(0,10)}" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box;"></div>
-              <div><label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Valeur (mm)</label>
-                <input type="number" step="0.1" id="ao_firstValue" value="${a.first_value_mm != null ? a.first_value_mm : ''}" placeholder="ex. 38.5" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box;"></div>
+              <div><label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Diamètre à cette date (mm)</label>
+                <input type="number" step="0.1" id="ao_firstValue" value="${a.first_value_mm != null ? a.first_value_mm : ''}" placeholder="ex. 38.5 — si connu" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box;"></div>
               <div style="grid-column:1/-1;"><label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Site</label>
                 <select id="ao_firstSite" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box;">
                   <option value="">— Non précisé —</option>
                   ${SITES.map(s => `<option value="${s}" ${a.first_site === s ? 'selected' : ''}>${s}</option>`).join('')}
                 </select></div>
+              <div style="grid-column:1/-1;"><label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Commentaire (facultatif)</label>
+                <input type="text" id="ao_firstComment" value="${esc(a.first_comment || '')}" placeholder="ex. Mesure issue du compte-rendu du CHU de..." style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box;"></div>
             </div>
 
             <h4 style="margin:0 0 10px; font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Évaluation actuelle</h4>
@@ -388,7 +392,7 @@
                 </select></div>
             </div>
 
-            <div><label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Notes</label>
+            <div><label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Notes sur l'évaluation actuelle</label>
               <textarea id="ao_notes" placeholder="Contexte, traitement, surveillance prévue…" style="width:100%; min-height:60px; padding:9px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; font-family:inherit; resize:vertical; box-sizing:border-box;">${esc(a.notes || '')}</textarea></div>
           </div>
           <div style="padding:14px 24px 20px; display:flex; gap:8px; justify-content:flex-end;">
@@ -406,6 +410,7 @@
       first_diagnosis_date: v('ao_firstDate') || null,
       first_value_mm:       v('ao_firstValue') ? parseFloat(v('ao_firstValue')) : null,
       first_site:           v('ao_firstSite') || null,
+      first_comment:        v('ao_firstComment') || null,
       current_date:         v('ao_currDate') || null,
       current_value_mm:     v('ao_currValue') ? parseFloat(v('ao_currValue')) : null,
       current_site:         v('ao_currSite') || null,
