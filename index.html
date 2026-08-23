@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-2d"></script>
+  <script src="api-client.js?v=phase12-3"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-2d"></script>
+  <script src="questionnaires-defs.js?v=phase12-3"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-2d"></script>
+  <script src="medical-parsers.js?v=phase12-3"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-2d"></script>
+  <script src="cpet-graph-preview.js?v=phase12-3"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-2d"></script>
-  <script src="medical-record-ui.js?v=phase12-2d"></script>
+  <script src="pdf-extractor.js?v=phase12-3"></script>
+  <script src="medical-record-ui.js?v=phase12-3"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2242,9 +2242,202 @@
 
     /* Bouton actif participants (patient) */
     .pat-btn-light.active { background: var(--gradient-cool); color: white; border-color: transparent; }
+
+    /* ============================================================ */
+    /* === Phase 12.3 — Responsive mobile & tablette ============= */
+    /* ============================================================ */
+
+    /* Bouton hamburger — visible uniquement sur petit écran */
+    #mobileMenuBtn {
+      display: none;
+      position: fixed;
+      top: 10px;
+      left: 12px;
+      z-index: 9995;
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 12px;
+      background: rgba(11, 21, 48, 0.92);
+      color: white;
+      font-size: 22px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    }
+    #mobileMenuBtn:active { transform: scale(0.95); }
+
+    /* Overlay sombre derrière la sidebar mobile */
+    #mobileSidebarOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 21, 48, 0.55);
+      z-index: 9993;
+    }
+
+    /* ============================================================ */
+    /* TABLETTES et téléphones (≤ 900px) */
+    /* ============================================================ */
+    @media (max-width: 900px) {
+      /* --- Layout global : sidebar en drawer, main pleine largeur --- */
+      body.mode-landing, body { overflow-x: hidden; }
+      .app { grid-template-columns: 1fr !important; display: block !important; }
+      .sidebar {
+        position: fixed !important;
+        top: 0; left: 0;
+        width: 82vw; max-width: 320px;
+        height: 100vh;
+        z-index: 9994;
+        transform: translateX(-100%);
+        transition: transform 0.28s ease-out;
+        padding-top: 60px;
+      }
+      .sidebar.open { transform: translateX(0); box-shadow: 8px 0 32px rgba(0,0,0,0.35); }
+      .main {
+        padding: 68px 12px 24px !important;
+        min-height: 100vh;
+      }
+      #mobileMenuBtn { display: flex; align-items: center; justify-content: center; }
+      #mobileSidebarOverlay.open { display: block; }
+
+      /* --- User badge en haut : plus compact, sous le hamburger si besoin --- */
+      #apiUserBadge {
+        top: 10px !important;
+        right: 10px !important;
+        padding: 4px 6px 4px 10px !important;
+        font-size: 10.5px !important;
+        flex-wrap: wrap;
+        max-width: calc(100vw - 76px);
+      }
+      #apiUserBadge button { padding: 3px 8px !important; font-size: 10px !important; }
+      #modeBanner { top: 60px !important; font-size: 11px !important; padding: 6px 12px !important; }
+
+      /* --- Cartes et grilles : tout en colonne unique --- */
+      .card, .panel, .kpi-card, .cohort-snapshot-card, .participant-card { padding: 14px !important; }
+      .kpi-grid, .chart-grid, .info-grid, .medical-grid, .edu-grid, .chart-controls,
+      .library-filters, .coach-panel, .graph-toolbar, .mini-chart-grid, .modal-row,
+      .hero-stats, .participant-grid, .cohort-snapshot-grid, .actions,
+      [style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+      }
+      .actions { flex-wrap: wrap; }
+
+      /* --- Titres et texte : lisibilité --- */
+      h1, .hero h2 { font-size: 22px !important; }
+      h2, .page-header h2 { font-size: 18px !important; }
+      h3 { font-size: 15px !important; }
+      p, li, td, th, label, .control-label { font-size: 13px !important; }
+      .top-shell h2 { font-size: 17px !important; }
+      .top-shell p { font-size: 12px !important; }
+
+      /* --- Formulaires : full-width + touch targets --- */
+      input, select, textarea, button {
+        font-size: 16px !important; /* évite le zoom auto sur iPhone */
+        min-height: 44px;
+      }
+      textarea { min-height: 80px !important; }
+      button, .btn-secondary, .btn-gradient, .btn-primary { padding: 12px 16px !important; }
+
+      /* --- Tables : scroll horizontal --- */
+      .db-table-wrap, .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      table { min-width: 600px; }
+
+      /* --- Modales : plein écran --- */
+      [id$="Modal"], [id$="modal"],
+      [style*="position:fixed"][style*="inset:0"] > div,
+      [style*="position: fixed"][style*="inset: 0"] > div {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+      }
+
+      /* --- Boutons flottants en bas (Prescrire séance / Livrets training / etc.) --- */
+      [style*="+ Planifier visio"],
+      [style*="+ Ajouter vidéo YouTube"] {
+        display: none !important; /* on cache les grands boutons flottants sur mobile — pas assez de place */
+      }
+
+      /* --- Aperçu graphique CPET : empile les charts --- */
+      #cpetGraphPreviewModal > div[style*="grid-template-columns"] {
+        display: flex !important;
+        flex-direction: column !important;
+      }
+      #cpetGraphArea { padding: 10px !important; }
+      .cpetGraphTab { padding: 6px 10px !important; font-size: 11px !important; }
+    }
+
+    /* ============================================================ */
+    /* Téléphones (≤ 500px) : ajustements supplémentaires */
+    /* ============================================================ */
+    @media (max-width: 500px) {
+      /* --- Espacements plus serrés --- */
+      .main { padding: 60px 8px 16px !important; }
+      .card, .panel { padding: 12px !important; }
+      h1, .hero h2 { font-size: 20px !important; }
+
+      /* --- Questionnaires (SF-36, GPAQ) : radios lisibles --- */
+      [class*="questionnaire"] label,
+      [class*="qResponse"] label,
+      .radio-row label {
+        display: block !important;
+        padding: 10px 12px !important;
+        margin-bottom: 6px !important;
+        min-height: 44px;
+      }
+      .radio-row {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 4px;
+      }
+
+      /* --- Boutons apparaissant en absolue (Bluetooth, ceinture cardio) : plus visibles --- */
+      button[id*="HeartRate"], button[id*="Belt"], button[id*="Bluetooth"],
+      button[id*="apiBelt"] {
+        width: 100% !important;
+        padding: 14px !important;
+        font-size: 15px !important;
+      }
+
+      /* --- Visio iframe : plus grande --- */
+      iframe[src*="jitsi"], iframe[src*="meet"] {
+        height: 55vh !important;
+        min-height: 350px;
+      }
+
+      /* --- KPI cards : chiffres plus visibles --- */
+      .kpi-card .big-value, .big-value { font-size: 26px !important; }
+
+      /* --- Sidebar : items de navigation plus grands (touch) --- */
+      .sidebar .tab-button {
+        padding: 14px 12px !important;
+        font-size: 14px !important;
+        min-height: 48px;
+      }
+    }
+
+    /* ============================================================ */
+    /* Impression PDF : masque les éléments interactifs */
+    /* ============================================================ */
+    @media print {
+      .sidebar, #mobileMenuBtn, #mobileSidebarOverlay, #apiUserBadge,
+      #modeBanner, .actions, button {
+        display: none !important;
+      }
+      .main { padding: 0 !important; }
+    }
   </style>
 </head>
 <body class="mode-landing">
+
+  <!-- Phase 12.3 : Menu hamburger mobile (visible < 900px) -->
+  <button id="mobileMenuBtn" aria-label="Ouvrir le menu">☰</button>
+  <div id="mobileSidebarOverlay"></div>
 
   <!-- ============================================================
        PAGE D'ACCUEIL — épurée, 2 portails uniquement
@@ -13368,6 +13561,48 @@
       hideUserBadge();
       window.location.reload();
     });
+
+    // ============================================================
+    // === Phase 12.3 — Sidebar mobile (hamburger) ===============
+    // ============================================================
+    (function initMobileSidebar() {
+      const btn = document.getElementById('mobileMenuBtn');
+      const overlay = document.getElementById('mobileSidebarOverlay');
+      const sidebar = document.querySelector('aside.sidebar');
+      if (!btn || !overlay || !sidebar) return;
+      function open() {
+        sidebar.classList.add('open');
+        overlay.classList.add('open');
+        btn.innerHTML = '✕';
+      }
+      function close() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
+        btn.innerHTML = '☰';
+      }
+      btn.addEventListener('click', () => {
+        if (sidebar.classList.contains('open')) close();
+        else open();
+      });
+      overlay.addEventListener('click', close);
+      // Ferme la sidebar quand on clique sur un onglet (navigation)
+      sidebar.querySelectorAll('.tab-button').forEach(b => {
+        b.addEventListener('click', () => {
+          if (window.innerWidth <= 900) close();
+        });
+      });
+      // Cache le hamburger si on est sur la landing page (pas encore loggé)
+      const landing = document.getElementById('appLanding');
+      const app = document.getElementById('appMain') || document.querySelector('.app');
+      function updateHamburgerVisibility() {
+        const showApp = app && app.style.display !== 'none' && !document.body.classList.contains('mode-landing');
+        btn.style.display = showApp && window.innerWidth <= 900 ? 'flex' : '';
+      }
+      // Observer les changements de la landing/app
+      new MutationObserver(updateHamburgerVisibility).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      window.addEventListener('resize', updateHamburgerVisibility);
+      setTimeout(updateHamburgerVisibility, 500);
+    })();
 
     // ============================================================
     // === Phase 12.2 — Mode Démo + Mode Pseudonymisation ========
