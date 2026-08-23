@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase13-4"></script>
+  <script src="api-client.js?v=phase13-5"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase13-4"></script>
+  <script src="questionnaires-defs.js?v=phase13-5"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase13-4"></script>
+  <script src="medical-parsers.js?v=phase13-5"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase13-4"></script>
+  <script src="cpet-graph-preview.js?v=phase13-5"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase13-4"></script>
-  <script src="medical-record-ui.js?v=phase13-4"></script>
+  <script src="pdf-extractor.js?v=phase13-5"></script>
+  <script src="medical-record-ui.js?v=phase13-5"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase13-4"></script>
+  <script src="aortic-consultations.js?v=phase13-5"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -7403,50 +7403,63 @@
       showCreationFeedback('✅ Patient <strong>' + code + '</strong> enregistré. Cliquez sur Réinitialiser pour créer un autre patient.', 'success');
     }
 
-    // Phase 12.4b : RESET AUTOMATIQUE du formulaire (l'utilisateur voit tout de suite
-    // un formulaire vierge prêt pour le patient suivant, avec un nouveau code suggéré)
-    setTimeout(() => {
+    // ==========================================================
+    // Phase 13.5 : séquence ordonnée de fin d'enregistrement
+    //   1) On LIT les champs aortiques (avant tout reset)
+    //   2) On VIDE le formulaire tout de suite (synchrone)
+    //   3) On ENVOIE les données aortiques au serveur, on ATTEND la réponse
+    //   4) SEULEMENT ENSUITE on sélectionne le patient (le dossier lit alors
+    //      des données déjà écrites en base — sinon la carte s'affichait vide)
+    // ==========================================================
+    const _val = id => { const el = $(id); return el ? (el.value || '').trim() : ''; };
+    const aortic = {
+      firstDate:    _val('cf_aorticFirstDate'),
+      firstValue:   _val('cf_aorticFirstValue'),
+      firstSite:    _val('cf_aorticFirstSite'),
+      firstComment: _val('cf_aorticFirstComment'),
+      todayValue:   _val('cf_aorticTodayValue'),
+      todayDate:    _val('cf_aorticTodayDate') || new Date().toISOString().slice(0, 10),
+      todaySite:    _val('cf_aorticTodaySite')
+    };
+
+    // 2) Reset immédiat et synchrone du formulaire (prêt pour le patient suivant)
+    try {
+      window._editingPatientId = null;
+      resetCreationForm();
+      if ($('cf_code')) $('cf_code').value = (typeof nextPatientCode === 'function') ? nextPatientCode() : '';
+    } catch (e) { console.warn('[creation] reset auto échoué', e); }
+
+    // 3) + 4) Enregistrement aortique puis sélection du patient
+    (async () => {
+      const api = window.MarfanAPI && window.MarfanAPI.consultations;
       try {
-        resetCreationForm();
-        if ($('cf_code')) $('cf_code').value = (typeof nextPatientCode === 'function') ? nextPatientCode() : '';
-      } catch (e) { console.warn('[creation] reset auto échoué', e); }
-    }, 200);
+        if (api && (aortic.firstDate || aortic.firstValue || aortic.firstSite || aortic.firstComment)) {
+          await api.patchAortic(code, {
+            first_diagnosis_date: aortic.firstDate || null,
+            first_value_mm: aortic.firstValue ? parseFloat(aortic.firstValue) : null,
+            first_site: aortic.firstSite || null,
+            first_comment: aortic.firstComment || null
+          });
+        }
+      } catch (e) { console.warn('[aortic] diagnostic initial non enregistré :', e && e.message); }
 
-    // Sélectionne ce patient en interne (après la modale, et sans bloquer si ça plante)
-    try {
-      if (typeof setSelectedPatient === 'function') setSelectedPatient(code);
-    } catch (e) { console.warn('[creation] setSelectedPatient échoué', e); }
+      try {
+        if (api && aortic.todayValue) {
+          // Consultation datée du jour : le backend met aussi à jour "Évaluation actuelle"
+          await api.create(code, {
+            consultation_date: aortic.todayDate,
+            aortic_value_mm: parseFloat(aortic.todayValue),
+            aortic_site: aortic.todaySite || null,
+            comment: 'Consultation initiale — création du dossier'
+          });
+        }
+      } catch (e) { console.warn('[aortic] évaluation du jour non enregistrée :', e && e.message); }
 
-    // Phase 13.1 : enregistre la première constatation de dilatation aortique (si renseignée)
-    try {
-      const aFirstDate = ($('cf_aorticFirstDate') && $('cf_aorticFirstDate').value) || '';
-      const aFirstValueRaw = ($('cf_aorticFirstValue') && $('cf_aorticFirstValue').value) || '';
-      const aFirstSite = ($('cf_aorticFirstSite') && $('cf_aorticFirstSite').value) || '';
-      const aFirstComment = ($('cf_aorticFirstComment') && $('cf_aorticFirstComment').value) || '';
-      if ((aFirstDate || aFirstValueRaw || aFirstSite || aFirstComment) && window.MarfanAPI && window.MarfanAPI.consultations) {
-        window.MarfanAPI.consultations.patchAortic(code, {
-          first_diagnosis_date: aFirstDate || null,
-          first_value_mm: aFirstValueRaw ? parseFloat(aFirstValueRaw) : null,
-          first_site: aFirstSite || null,
-          first_comment: aFirstComment || null
-        }).catch(e => console.warn('[aortic] enregistrement première constatation échoué', e));
-      }
-
-      // Phase 13.4 : 2e ligne — évaluation du jour = consultation initiale (jour de création)
-      const aTodayValueRaw = ($('cf_aorticTodayValue') && $('cf_aorticTodayValue').value) || '';
-      const aTodayDate = ($('cf_aorticTodayDate') && $('cf_aorticTodayDate').value) || new Date().toISOString().slice(0, 10);
-      const aTodaySite = ($('cf_aorticTodaySite') && $('cf_aorticTodaySite').value) || '';
-      if (aTodayValueRaw && window.MarfanAPI && window.MarfanAPI.consultations) {
-        // Crée une consultation datée du jour : le backend met à jour "Évaluation actuelle"
-        // automatiquement (sans toucher au Diagnostic initial ci-dessus).
-        window.MarfanAPI.consultations.create(code, {
-          consultation_date: aTodayDate,
-          aortic_value_mm: parseFloat(aTodayValueRaw),
-          aortic_site: aTodaySite || null,
-          comment: 'Consultation initiale — création du dossier'
-        }).catch(e => console.warn('[aortic] enregistrement évaluation du jour échoué', e));
-      }
-    } catch (e) { console.warn('[aortic] échec', e); }
+      // Sélection du patient une fois les données écrites en base
+      try {
+        if (typeof setSelectedPatient === 'function') setSelectedPatient(code);
+      } catch (e) { console.warn('[creation] setSelectedPatient échoué', e); }
+    })();
   }
 
   // Modale post-création patient : confirme + propose 3 actions (Nouveau / Ouvrir dossier / PDF)
@@ -7570,6 +7583,15 @@
     const m = document.getElementById('patientCreatedModal'); if (m) m.remove();
     if (typeof setSelectedPatient === 'function') setSelectedPatient(code);
     if (typeof switchMainTab === 'function') switchMainTab('dossier');
+    // Phase 13.5 : force le rechargement du suivi aortique depuis l'API
+    // (les données viennent peut-être tout juste d'être écrites en base)
+    setTimeout(() => {
+      try {
+        if (window.AorticConsultUI && document.getElementById('aorticConsultMount')) {
+          window.AorticConsultUI.mount('aorticConsultMount', code);
+        }
+      } catch (e) { console.warn('[aortic] remount échoué', e); }
+    }, 400);
   };
 
   // ============================================================
