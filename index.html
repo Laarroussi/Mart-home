@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase13-9"></script>
+  <script src="api-client.js?v=phase13-10"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase13-9"></script>
+  <script src="questionnaires-defs.js?v=phase13-10"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase13-9"></script>
+  <script src="medical-parsers.js?v=phase13-10"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase13-9"></script>
+  <script src="cpet-graph-preview.js?v=phase13-10"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase13-9"></script>
-  <script src="medical-record-ui.js?v=phase13-9"></script>
+  <script src="pdf-extractor.js?v=phase13-10"></script>
+  <script src="medical-record-ui.js?v=phase13-10"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase13-9"></script>
+  <script src="aortic-consultations.js?v=phase13-10"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -6081,8 +6081,8 @@
     $('evalCountLabel').textContent = `· ${evals.length} évaluation${evals.length > 1 ? 's' : ''}`;
 
     // Phase 12.4 : injecte la carte d'identité + timeline actes en haut du dossier
-    renderPatientIdentityCard();
-    renderPatientTimelineActs();
+    try { renderPatientIdentityCard(); } catch (e) { console.warn('[dossier] carte identité', e); }
+    try { renderPatientTimelineActs(); } catch (e) { console.warn('[dossier] timeline actes', e); }
 
     // Phase 13 : suivi aortique + consultations chronologiques
     try {
@@ -7398,26 +7398,29 @@
       patients.push(newPatient);
     }
 
-    // Refresh global UI
-    initKpis();
-    initQuickSelect();
-    renderPatientList && renderPatientList('');
-    if (typeof renderCohortOverview === 'function') renderCohortOverview();
-    if (typeof renderPatientTable === 'function') renderPatientTable('');
-    if (typeof renderDbTable === 'function') renderDbTable('');
+    // ==========================================================
+    // Phase 13.10 — CAUSE RACINE CORRIGÉE
+    // Les fonctions de rendu (initKpis, renderDbTable, renderCohortOverview…)
+    // étaient appelées ICI, sans protection, AVANT la modale et l'enregistrement.
+    // Dès que l'une d'elles levait une exception (cas fréquent avec un patient
+    // sans évaluation), TOUTE la fonction s'interrompait : pas de fenêtre de
+    // confirmation, pas de vidage du formulaire, et surtout aucun envoi en base.
+    // → Le rendu est désormais déplacé APRÈS, et chaque appel est isolé.
+    // ==========================================================
 
     // Phase 12.1.6 : révèle le bouton de génération PDF + mémorise le code créé
     window._lastCreatedPatientCode = code;
-    const pdfBtn = $('cf_pdfBtn'); if (pdfBtn) pdfBtn.style.display = 'inline-flex';
-    const pdfBtnTop = $('cf_pdfBtnTop'); if (pdfBtnTop) pdfBtnTop.style.display = 'inline-flex';
+    try {
+      const pdfBtn = $('cf_pdfBtn'); if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+      const pdfBtnTop = $('cf_pdfBtnTop'); if (pdfBtnTop) pdfBtnTop.style.display = 'inline-flex';
+    } catch (e) { console.warn('[creation] boutons PDF', e); }
 
-    // Phase 12.4 : Modale de confirmation AVANT toute autre opération
-    // (si setSelectedPatient plantait, la modale ne s'affichait jamais)
+    // 1) Fenêtre de confirmation — en premier, plus rien ne peut l'empêcher
     try {
       openPatientCreatedModal(code, firstName, lastName, isEditing);
     } catch (e) {
       console.error('[creation] modale échouée', e);
-      showCreationFeedback('✅ Patient <strong>' + code + '</strong> enregistré. Cliquez sur Réinitialiser pour créer un autre patient.', 'success');
+      showCreationFeedback('✅ Patient <strong>' + code + '</strong> enregistré.', 'success');
     }
 
     // ==========================================================
@@ -7523,6 +7526,18 @@
       try {
         if (typeof setSelectedPatient === 'function') setSelectedPatient(code);
       } catch (e) { console.warn('[creation] setSelectedPatient échoué', e); }
+
+      // --- 5) Rafraîchissement de l'affichage EN DERNIER, chaque appel isolé ---
+      // Une erreur de rendu ne doit JAMAIS empêcher l'enregistrement ni la confirmation.
+      [['initKpis', () => initKpis()],
+       ['initQuickSelect', () => initQuickSelect()],
+       ['renderPatientList', () => renderPatientList && renderPatientList('')],
+       ['renderCohortOverview', () => typeof renderCohortOverview === 'function' && renderCohortOverview()],
+       ['renderPatientTable', () => typeof renderPatientTable === 'function' && renderPatientTable('')],
+       ['renderDbTable', () => typeof renderDbTable === 'function' && renderDbTable('')]
+      ].forEach(([nom, fn]) => {
+        try { fn(); } catch (e) { console.warn('[creation] rendu ' + nom + ' échoué :', e && e.message); }
+      });
     })();
   }
 
