@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-3e"></script>
+  <script src="api-client.js?v=phase12-3f"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-3e"></script>
+  <script src="questionnaires-defs.js?v=phase12-3f"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-3e"></script>
+  <script src="medical-parsers.js?v=phase12-3f"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-3e"></script>
+  <script src="cpet-graph-preview.js?v=phase12-3f"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-3e"></script>
-  <script src="medical-record-ui.js?v=phase12-3e"></script>
+  <script src="pdf-extractor.js?v=phase12-3f"></script>
+  <script src="medical-record-ui.js?v=phase12-3f"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -10179,8 +10179,12 @@
 
     async function loadPatientsFromApi() {
       try {
-        // Phase 12.2 : filtre selon le mode Démo
-        const demoParam = (window.AppModes && window.AppModes.demoMode) ? 'true' : 'false';
+        // Phase 12.2 : filtre selon le mode Démo. Si AppModes pas encore init (timing race),
+        // on lit directement localStorage pour ne pas rater le mode démo au 1er chargement.
+        const demoOn = (window.AppModes && typeof window.AppModes.demoMode !== 'undefined')
+          ? window.AppModes.demoMode
+          : (localStorage.getItem('marfan_demoMode') === 'true');
+        const demoParam = demoOn ? 'true' : 'false';
         const rlist = await window.MarfanAPI.patients.list({ demo: demoParam });
         const apiPatients = (rlist && rlist.patients) ? rlist.patients : rlist;
         if (!Array.isArray(apiPatients)) return 0; // erreur API : on garde le seed
@@ -13767,7 +13771,10 @@
     async function reloadPatientsByMode() {
       if (!window.MarfanAPI || !window.MarfanAPI.isAuthenticated()) return;
       try {
-        const demoParam = window.AppModes.demoMode ? 'true' : 'false';
+        const demoOn = (window.AppModes && typeof window.AppModes.demoMode !== 'undefined')
+          ? window.AppModes.demoMode
+          : (localStorage.getItem('marfan_demoMode') === 'true');
+        const demoParam = demoOn ? 'true' : 'false';
         const r = await window.MarfanAPI.patients.list({ demo: demoParam });
         const arr = r && r.patients ? r.patients : (Array.isArray(r) ? r : []);
         const adapted = arr.map(p => (typeof adaptApiPatient === 'function') ? adaptApiPatient(p) : p);
@@ -13786,14 +13793,15 @@
         if (typeof selectedPatient !== 'undefined' && (!selectedPatient || !window.patients.some(x => x.id === selectedPatient.id))) {
           if (window.patients.length) selectedPatient = window.patients[0];
         }
-        // Refresh UI
+        // Refresh UI COMPLET : Home + Cohorte + toutes les vues
         if (typeof initKpis === 'function') initKpis();
         if (typeof initQuickSelect === 'function') initQuickSelect();
+        if (typeof renderHome === 'function') renderHome();          // ← inclut renderHomeCompat + renderCohortOverview
         if (typeof renderPatientList === 'function') renderPatientList('');
-        if (typeof renderCohortOverview === 'function') renderCohortOverview();
         if (typeof renderPatientTable === 'function') renderPatientTable('');
         if (typeof renderDbTable === 'function') renderDbTable('');
         if (typeof renderPatientFile === 'function') renderPatientFile();
+        if (typeof renderCohortRecentEvaluations === 'function') renderCohortRecentEvaluations();
       } catch (e) { console.warn('[modes] reload patients échoué :', e.message); }
     }
 
