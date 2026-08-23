@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-4c"></script>
+  <script src="api-client.js?v=phase12-4d"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-4c"></script>
+  <script src="questionnaires-defs.js?v=phase12-4d"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-4c"></script>
+  <script src="medical-parsers.js?v=phase12-4d"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-4c"></script>
+  <script src="cpet-graph-preview.js?v=phase12-4d"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-4c"></script>
-  <script src="medical-record-ui.js?v=phase12-4c"></script>
+  <script src="pdf-extractor.js?v=phase12-4d"></script>
+  <script src="medical-record-ui.js?v=phase12-4d"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -6057,6 +6057,7 @@
                 <strong>${p.id || '—'}</strong> · ${p.sex || '?'} · ${p.age || '?'} ans · ${p.gene || '—'}
               </div>
             </div>
+            <button onclick="window.__editPatientFile('${p.id}')" style="padding:9px 16px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.12); color:white; border-radius:9px; font-weight:600; cursor:pointer; font-size:12.5px; white-space:nowrap;">✏️ Modifier la fiche</button>
           </div>
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0; padding:0;">
@@ -6183,7 +6184,22 @@
   // ============================================================
   // === CHARTS DYNAMIQUES
   // ============================================================
+  // Phase 12.4 : vide un SVG et affiche un message centré (patient sans évaluations)
+  function clearChartWithMessage(chartId, msg) {
+    const el = $(chartId);
+    if (!el) return;
+    el.innerHTML = `<text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle"
+      fill="#94a3b8" font-size="13" font-family="system-ui" font-style="italic">${msg}</text>`;
+  }
+
   function renderDynamicCharts() {
+    // Phase 12.4 : si le patient n'a AUCUNE évaluation, on vide tous les graphiques
+    // (sinon l'ancien SVG du patient précédent reste affiché → données trompeuses)
+    if (!selectedPatient || !selectedPatient.evaluations || selectedPatient.evaluations.length === 0) {
+      ['vo2Chart','forceChart','aortaChart','sf36Chart','gpaqChart','riskChart','globalChart']
+        .forEach(id => clearChartWithMessage(id, 'Aucune évaluation enregistrée'));
+      return;
+    }
     const labels = labelsFor(selectedPatient);
     drawLineChart('vo2Chart', seriesFor(selectedPatient, 'vo2'), groupSeries('vo2', labels.length), labels, 'VO₂', 'group', chartDetailOptions('VO₂ — vue detaillee', 'vo2'));
     drawLineChart('forceChart', seriesFor(selectedPatient, 'force'), null, labels, 'Force', null, chartDetailOptions('Force — evaluation associee', 'force'));
@@ -6263,6 +6279,16 @@
 
   function renderGraphBoard() {
     if (!$('graphVo2Chart')) return;
+    // Phase 12.4 : patient sans évaluations → vide les 4 graphiques + légendes + tableaux
+    if (!selectedPatient || !selectedPatient.evaluations || selectedPatient.evaluations.length === 0) {
+      ['graphVo2Chart','graphForceChart','graphGpaqChart','graphSf36Chart']
+        .forEach(id => clearChartWithMessage(id, 'Aucune évaluation enregistrée pour ce patient'));
+      ['legend-vo2','legend-force','legend-gpaq','legend-sf36']
+        .forEach(id => { const el = $(id); if (el) el.innerHTML = ''; });
+      ['stats-vo2','stats-force','stats-gpaq','stats-sf36']
+        .forEach(id => { const el = $(id); if (el) el.innerHTML = ''; });
+      return;
+    }
     syncGraphSelectors();
     renderCardChart('vo2');
     renderCardChart('force');
@@ -7127,6 +7153,8 @@
     if (!fb) return;
     const colors = type === 'success'
       ? { bg: 'var(--emerald-soft)', border: '#a7f3d0', text: '#065f46', icon: '✓' }
+      : type === 'info'
+      ? { bg: '#dbeafe', border: '#93c5fd', text: '#1e40af', icon: '' }
       : { bg: 'var(--rose-soft)', border: '#fecaca', text: '#9f1239', icon: '⚠' };
     fb.style.display = 'block';
     fb.style.cssText = `display:block; padding:14px 18px; margin-bottom:16px; border-radius:14px; background:${colors.bg}; border:1px solid ${colors.border}; color:${colors.text}; font-weight:700; font-size:14px;`;
@@ -7211,16 +7239,33 @@
       evaluations: []
     };
 
-    // Initialisation des notifications obligatoires à l'inclusion
+    // Phase 12.4b : notifications SF-36/GPAQ envoyées UNIQUEMENT à la première création,
+    // pas lors d'une modification de fiche existante.
+    const _isEdit = window._editingPatientId === code;
     const today = new Date().toISOString().slice(0, 10);
-    newPatient.notifications = [
-      { id: 'n-' + code + '-sf36-incl', type:'sf36', label:'Questionnaire SF-36 (qualité de vie)', source:'inclusion', status:'pending', sentDate: today, completedDate: null, reminders: 0 },
-      { id: 'n-' + code + '-gpaq-incl', type:'gpaq', label:'Questionnaire GPAQ (activité physique)', source:'inclusion', status:'pending', sentDate: today, completedDate: null, reminders: 0 }
-    ];
-    logNotification({ patientId: code, action: 'inclusion-auto', items:['sf36','gpaq'], note:'Envoi automatique à la création du dossier' });
+    if (!_isEdit) {
+      newPatient.notifications = [
+        { id: 'n-' + code + '-sf36-incl', type:'sf36', label:'Questionnaire SF-36 (qualité de vie)', source:'inclusion', status:'pending', sentDate: today, completedDate: null, reminders: 0 },
+        { id: 'n-' + code + '-gpaq-incl', type:'gpaq', label:'Questionnaire GPAQ (activité physique)', source:'inclusion', status:'pending', sentDate: today, completedDate: null, reminders: 0 }
+      ];
+      logNotification({ patientId: code, action: 'inclusion-auto', items:['sf36','gpaq'], note:'Envoi automatique à la création du dossier' });
+    }
 
-    // Ajout à la cohorte
-    patients.push(newPatient);
+    // Phase 12.4b : mode ÉDITION (mise à jour d'une fiche existante) vs CRÉATION
+    const isEditing = window._editingPatientId === code;
+    if (isEditing) {
+      const idx = patients.findIndex(x => x.id === code);
+      if (idx >= 0) {
+        // Conserve les évaluations et notifications existantes, remplace le reste
+        newPatient.evaluations = patients[idx].evaluations || [];
+        newPatient.notifications = patients[idx].notifications || [];
+        patients[idx] = newPatient;
+      }
+      window._editingPatientId = null;
+    } else {
+      // Ajout à la cohorte
+      patients.push(newPatient);
+    }
 
     // Refresh global UI
     initKpis();
@@ -7238,11 +7283,20 @@
     // Phase 12.4 : Modale de confirmation AVANT toute autre opération
     // (si setSelectedPatient plantait, la modale ne s'affichait jamais)
     try {
-      openPatientCreatedModal(code, firstName, lastName);
+      openPatientCreatedModal(code, firstName, lastName, isEditing);
     } catch (e) {
       console.error('[creation] modale échouée', e);
       showCreationFeedback('✅ Patient <strong>' + code + '</strong> enregistré. Cliquez sur Réinitialiser pour créer un autre patient.', 'success');
     }
+
+    // Phase 12.4b : RESET AUTOMATIQUE du formulaire (l'utilisateur voit tout de suite
+    // un formulaire vierge prêt pour le patient suivant, avec un nouveau code suggéré)
+    setTimeout(() => {
+      try {
+        resetCreationForm();
+        if ($('cf_code')) $('cf_code').value = (typeof nextPatientCode === 'function') ? nextPatientCode() : '';
+      } catch (e) { console.warn('[creation] reset auto échoué', e); }
+    }, 200);
 
     // Sélectionne ce patient en interne (après la modale, et sans bloquer si ça plante)
     try {
@@ -7251,21 +7305,27 @@
   }
 
   // Modale post-création patient : confirme + propose 3 actions (Nouveau / Ouvrir dossier / PDF)
-  function openPatientCreatedModal(code, firstName, lastName) {
+  function openPatientCreatedModal(code, firstName, lastName, wasEditing) {
     // Retire une éventuelle modale précédente
     const old = document.getElementById('patientCreatedModal');
     if (old) old.remove();
+    const titre = wasEditing ? 'Fiche patient mise à jour' : 'Patient enregistré avec succès';
+    const icone = wasEditing ? '✏️' : '✅';
+    const grad = wasEditing ? 'linear-gradient(135deg,#0891b2,#06b6d4)' : 'linear-gradient(135deg,#10b981,#059669)';
+    const bodyMsg = wasEditing
+      ? '<p style="margin:0 0 10px;">Les informations de la fiche ont été mises à jour. Les évaluations et l\'historique du patient sont conservés.</p>'
+      : '<p style="margin:0 0 10px;">📨 Notifications <strong>SF-36</strong> + <strong>GPAQ</strong> envoyées automatiquement au patient (réponses intégrées au dossier dès complétion).</p>';
     const html = `
       <div id="patientCreatedModal" style="position:fixed; inset:0; background:rgba(11,21,48,0.72); z-index:10020; display:flex; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(4px);">
         <div style="background:white; border-radius:18px; width:520px; max-width:96vw; box-shadow:0 30px 80px rgba(0,0,0,0.30); overflow:hidden;">
-          <div style="padding:22px 26px; background:linear-gradient(135deg,#10b981,#059669); color:white; text-align:center;">
-            <div style="font-size:36px; margin-bottom:4px;">✅</div>
-            <h3 style="margin:0; color:white; font-size:19px;">Patient enregistré avec succès</h3>
+          <div style="padding:22px 26px; background:${grad}; color:white; text-align:center;">
+            <div style="font-size:36px; margin-bottom:4px;">${icone}</div>
+            <h3 style="margin:0; color:white; font-size:19px;">${titre}</h3>
             <p style="margin:6px 0 0; font-size:13px; opacity:0.95;">${firstName} ${lastName.toUpperCase()} — <strong>${code}</strong></p>
           </div>
           <div style="padding:20px 26px; font-size:13px; color:#0b1530; line-height:1.5;">
-            <p style="margin:0 0 10px;">📨 Notifications <strong>SF-36</strong> + <strong>GPAQ</strong> envoyées automatiquement au patient (réponses intégrées au dossier dès complétion).</p>
-            <p style="margin:0 0 0; color:#64748b; font-size:12px;">Vous pouvez maintenant créer un nouveau patient, consulter le dossier, ou télécharger un PDF de la fiche créée.</p>
+            ${bodyMsg}
+            <p style="margin:0 0 0; color:#64748b; font-size:12px;">Vous pouvez maintenant créer un nouveau patient, consulter le dossier, ou télécharger un PDF de la fiche.</p>
           </div>
           <div style="padding:14px 26px 22px; display:flex; flex-direction:column; gap:8px;">
             <button onclick="window.__createAnotherPatient()" style="padding:12px 18px; border:none; background:linear-gradient(135deg,#0891b2,#06b6d4); color:white; border-radius:10px; font-weight:700; cursor:pointer; font-size:13.5px; width:100%;">+ Créer un autre patient</button>
@@ -7277,6 +7337,67 @@
       </div>`;
     document.body.insertAdjacentHTML('beforeend', html);
   }
+
+  // Phase 12.4b : Édition d'une fiche patient existante
+  // Bascule vers le formulaire de création pré-rempli, en mode "modification"
+  window.__editPatientFile = function (patientId) {
+    const p = (window.patients || []).find(x => x.id === patientId);
+    if (!p) { alert('Patient introuvable : ' + patientId); return; }
+    const civil = p.civil || {}, medical = p.medical || {}, study = p.study || {};
+    // Bascule sur l'onglet Création
+    if (typeof switchMainTab === 'function') switchMainTab('creation');
+    // Pré-remplit tous les champs après un court délai (le temps que l'onglet s'affiche)
+    setTimeout(() => {
+      const set = (id, val) => { const el = $(id); if (el && val != null) el.value = val; };
+      set('cf_code', p.id);
+      set('cf_ipp', civil.ipp);
+      set('cf_lastName', civil.lastName);
+      set('cf_firstName', civil.firstName);
+      set('cf_sex', p.sex);
+      set('cf_dob', civil.dob);
+      set('cf_age', p.age);
+      set('cf_initials', civil.initials);
+      set('cf_email', civil.email);
+      set('cf_phone', civil.phone);
+      set('cf_doctor', civil.doctor);
+      set('cf_center', civil.center);
+      set('cf_address', civil.address);
+      set('cf_gene', p.gene);
+      set('cf_dxDate', medical.dxDate);
+      set('cf_variant', medical.variant);
+      set('cf_history', medical.history);
+      set('cf_treatments', medical.treatments);
+      set('cf_allergies', medical.allergies);
+      set('cf_smoking', medical.smoking);
+      set('cf_baselinePA', medical.baselinePA);
+      set('cf_status', p.status);
+      set('cf_riskFactor', p.riskFactor);
+      set('cf_adherence', p.progress);
+      set('cf_riskComment', p.riskComment);
+      set('cf_alterations', (p.alterations || []).join(', '));
+      set('cf_incidents', (p.incidents || []).join(', '));
+      set('cf_inclusionDate', study.inclusionDate);
+      set('cf_consent', study.consent);
+      set('cf_notes', study.notes);
+      // Mémorise qu'on est en mode édition
+      window._editingPatientId = patientId;
+      // Bandeau d'information visible
+      showCreationFeedback(
+        `✏️ <strong>Mode modification</strong> — Fiche de ${civil.firstName || ''} ${(civil.lastName || '').toUpperCase()} (<strong>${patientId}</strong>). ` +
+        `Modifiez les champs puis cliquez sur <strong>Valider et enregistrer</strong> pour mettre à jour. ` +
+        `<button onclick="window.__cancelEditPatient()" style="margin-left:10px; padding:4px 10px; border:1px solid currentColor; background:transparent; color:inherit; border-radius:6px; font-size:11.5px; cursor:pointer; font-weight:600;">Annuler la modification</button>`,
+        'info'
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 150);
+  };
+
+  window.__cancelEditPatient = function () {
+    window._editingPatientId = null;
+    resetCreationForm();
+    if ($('cf_code')) $('cf_code').value = (typeof nextPatientCode === 'function') ? nextPatientCode() : '';
+    const fb = $('creationFeedback'); if (fb) fb.style.display = 'none';
+  };
 
   // Actions de la modale
   window.__createAnotherPatient = function () {
