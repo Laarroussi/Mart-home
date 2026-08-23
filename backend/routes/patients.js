@@ -96,27 +96,38 @@ router.post('/', requireAuth, requireRole('principal_admin', 'investigator'), as
       const userId = 'u-pat-' + p.id;
       const defaultPwd = (p.id + '!Marfan').toLowerCase();
       const hash = await bcrypt.hash(defaultPwd, parseInt(process.env.BCRYPT_ROUNDS, 10) || 10);
+      // FIX : l'email du patient peut déjà exister (contrainte UNIQUE) — par ex. si
+      // l'investigateur saisit sa propre adresse. Sans ce garde-fou, la violation de
+      // contrainte annulait TOUTE la transaction et le patient n'était jamais créé.
+      let patientEmail = (p.civil && p.civil.email) || (p.id.toLowerCase() + '@example.fr');
+      const emailTaken = await client.query('SELECT id FROM users WHERE email = $1', [patientEmail]);
+      if (emailTaken.rows.length) {
+        patientEmail = p.id.toLowerCase() + '.' + Date.now() + '@marfan-apa.local';
+      }
       await client.query(
         `INSERT INTO users (id, role, name, email, password_hash, patient_id, created_by)
          VALUES ($1, 'patient', $2, $3, $4, $5, $6)
-         ON CONFLICT (id) DO NOTHING`,
+         ON CONFLICT DO NOTHING`,
         [userId,
          (p.civil && p.civil.initials) || p.id,
-         (p.civil && p.civil.email) || (p.id.toLowerCase() + '@example.fr'),
+         patientEmail,
          hash, p.id, req.user.id]
       );
       // 4. Notifications obligatoires SF-36 + GPAQ
+      // FIX : ces requêtes étaient lancées dans un forEach(async) NON attendu, donc
+      // exécutées après la fin de la transaction (client déjà relâché) → erreurs.
       const today = new Date().toISOString().slice(0, 10);
-      ['sf36', 'gpaq'].forEach(async (type) => {
+      for (const type of ['sf36', 'gpaq']) {
         await client.query(
           `INSERT INTO notifications (id, patient_id, type, label, source, sent_date)
-           VALUES ($1,$2,$3,$4,'inclusion',$5)`,
+           VALUES ($1,$2,$3,$4,'inclusion',$5)
+           ON CONFLICT (id) DO NOTHING`,
           ['n-' + p.id + '-' + type + '-incl',
            p.id, type,
            type === 'sf36' ? 'Questionnaire SF-36 (qualité de vie)' : 'Questionnaire GPAQ (activité physique)',
            today]
         );
-      });
+      }
       // 5. Log
       await client.query(
         `INSERT INTO notification_log (user_id, patient_id, action, details, ip_address)
