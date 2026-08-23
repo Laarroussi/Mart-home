@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-3"></script>
+  <script src="api-client.js?v=phase12-3c"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-3"></script>
+  <script src="questionnaires-defs.js?v=phase12-3c"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-3"></script>
+  <script src="medical-parsers.js?v=phase12-3c"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-3"></script>
+  <script src="cpet-graph-preview.js?v=phase12-3c"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-3"></script>
-  <script src="medical-record-ui.js?v=phase12-3"></script>
+  <script src="pdf-extractor.js?v=phase12-3c"></script>
+  <script src="medical-record-ui.js?v=phase12-3c"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2276,79 +2276,103 @@
     }
 
     /* ============================================================ */
-    /* TABLETTES et téléphones (≤ 900px) */
+    /* TABLETTES et téléphones (≤ 900px) — TOUT en !important       */
     /* ============================================================ */
     @media (max-width: 900px) {
       /* --- Layout global : sidebar en drawer, main pleine largeur --- */
-      body.mode-landing, body { overflow-x: hidden; }
-      .app { grid-template-columns: 1fr !important; display: block !important; }
-      .sidebar {
-        position: fixed !important;
-        top: 0; left: 0;
-        width: 82vw; max-width: 320px;
-        height: 100vh;
-        z-index: 9994;
-        transform: translateX(-100%);
-        transition: transform 0.28s ease-out;
-        padding-top: 60px;
+      html, body { overflow-x: hidden !important; }
+      body.mode-landing #mobileMenuBtn { display: none !important; }
+      .app {
+        grid-template-columns: 1fr !important;
+        display: block !important;
       }
-      .sidebar.open { transform: translateX(0); box-shadow: 8px 0 32px rgba(0,0,0,0.35); }
+      aside.sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 82vw !important;
+        max-width: 320px !important;
+        height: 100vh !important;
+        z-index: 9994 !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.28s ease-out !important;
+        padding-top: 60px !important;
+        margin: 0 !important;
+      }
+      aside.sidebar.open {
+        transform: translateX(0) !important;
+        box-shadow: 8px 0 32px rgba(0,0,0,0.35) !important;
+      }
       .main {
         padding: 68px 12px 24px !important;
-        min-height: 100vh;
+        min-height: 100vh !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
       }
-      #mobileMenuBtn { display: flex; align-items: center; justify-content: center; }
-      #mobileSidebarOverlay.open { display: block; }
+      #mobileMenuBtn {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+      }
+      #mobileSidebarOverlay.open { display: block !important; }
 
-      /* --- User badge en haut : plus compact, sous le hamburger si besoin --- */
+      /* --- User badge en haut : plus compact --- */
       #apiUserBadge {
         top: 10px !important;
         right: 10px !important;
         padding: 4px 6px 4px 10px !important;
         font-size: 10.5px !important;
-        flex-wrap: wrap;
-        max-width: calc(100vw - 76px);
+        flex-wrap: wrap !important;
+        max-width: calc(100vw - 72px) !important;
       }
-      #apiUserBadge button { padding: 3px 8px !important; font-size: 10px !important; }
+      #apiUserBadge button { padding: 3px 8px !important; font-size: 10px !important; min-height: auto !important; }
       #modeBanner { top: 60px !important; font-size: 11px !important; padding: 6px 12px !important; }
 
       /* --- Cartes et grilles : tout en colonne unique --- */
       .card, .panel, .kpi-card, .cohort-snapshot-card, .participant-card { padding: 14px !important; }
       .kpi-grid, .chart-grid, .info-grid, .medical-grid, .edu-grid, .chart-controls,
       .library-filters, .coach-panel, .graph-toolbar, .mini-chart-grid, .modal-row,
-      .hero-stats, .participant-grid, .cohort-snapshot-grid, .actions,
-      [style*="grid-template-columns"] {
+      .hero-stats, .participant-grid, .cohort-snapshot-grid {
         grid-template-columns: 1fr !important;
         display: flex !important;
         flex-direction: column !important;
         gap: 10px !important;
       }
-      .actions { flex-wrap: wrap; }
+      .actions {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+      }
 
       /* --- Titres et texte : lisibilité --- */
       h1, .hero h2 { font-size: 22px !important; }
-      h2, .page-header h2 { font-size: 18px !important; }
+      h2, .page-header h2 { font-size: 18px !important; line-height: 1.2 !important; }
       h3 { font-size: 15px !important; }
       p, li, td, th, label, .control-label { font-size: 13px !important; }
       .top-shell h2 { font-size: 17px !important; }
       .top-shell p { font-size: 12px !important; }
 
       /* --- Formulaires : full-width + touch targets --- */
-      input, select, textarea, button {
+      input, select, textarea {
         font-size: 16px !important; /* évite le zoom auto sur iPhone */
-        min-height: 44px;
+        min-height: 44px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      button:not(#mobileMenuBtn) {
+        font-size: 14px !important;
+        min-height: 44px !important;
       }
       textarea { min-height: 80px !important; }
-      button, .btn-secondary, .btn-gradient, .btn-primary { padding: 12px 16px !important; }
+      .btn-secondary, .btn-gradient, .btn-primary { padding: 12px 16px !important; width: auto !important; }
 
       /* --- Tables : scroll horizontal --- */
-      .db-table-wrap, .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      table { min-width: 600px; }
+      .db-table-wrap, .table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
 
       /* --- Modales : plein écran --- */
-      [id$="Modal"], [id$="modal"],
-      [style*="position:fixed"][style*="inset:0"] > div,
-      [style*="position: fixed"][style*="inset: 0"] > div {
+      [id$="Modal"], [id$="modal"] {
+        padding: 0 !important;
+      }
+      [id$="Modal"] > div, [id$="modal"] > div {
         width: 100vw !important;
         max-width: 100vw !important;
         height: 100vh !important;
@@ -2357,10 +2381,11 @@
         margin: 0 !important;
       }
 
-      /* --- Boutons flottants en bas (Prescrire séance / Livrets training / etc.) --- */
-      [style*="+ Planifier visio"],
-      [style*="+ Ajouter vidéo YouTube"] {
-        display: none !important; /* on cache les grands boutons flottants sur mobile — pas assez de place */
+      /* --- Boutons flottants (position:fixed bottom:18px) : TOUS cachés sur mobile --- */
+      /* Ces boutons prennent trop de place et écrasent le contenu */
+      [style*="position:fixed"][style*="bottom:18px"],
+      [style*="position: fixed"][style*="bottom: 18px"] {
+        display: none !important;
       }
 
       /* --- Aperçu graphique CPET : empile les charts --- */
@@ -2370,6 +2395,49 @@
       }
       #cpetGraphArea { padding: 10px !important; }
       .cpetGraphTab { padding: 6px 10px !important; font-size: 11px !important; }
+
+      /* --- Empêcher landing screen d'être poussé par la sidebar --- */
+      #appLanding, .landing-shell {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        padding: 16px !important;
+        margin: 0 !important;
+      }
+
+      /* --- Protection : pastilles de légende doivent rester petites --- */
+      .card-legend, .card-legend .legend-item, .legend, .legend .legend-item {
+        display: inline-flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: auto !important;
+      }
+      .card-legend .legend-dot, .legend .dot, .legend-dot {
+        display: inline-block !important;
+        width: 14px !important;
+        height: 3px !important;
+        min-height: 3px !important;
+        max-height: 3px !important;
+        max-width: 14px !important;
+        flex-shrink: 0 !important;
+        flex-grow: 0 !important;
+      }
+      .legend .dot {
+        width: 12px !important;
+        height: 12px !important;
+        max-height: 12px !important;
+        border-radius: 50% !important;
+      }
+
+      /* --- Protection : SVG et icônes inline ne doivent pas être étirés --- */
+      .icon-bg svg, .brand svg, .tab-button svg, button svg {
+        width: 14px !important;
+        height: 14px !important;
+        max-width: 14px !important;
+        max-height: 14px !important;
+        flex-shrink: 0 !important;
+      }
     }
 
     /* ============================================================ */
