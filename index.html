@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-4"></script>
+  <script src="api-client.js?v=phase12-4b"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-4"></script>
+  <script src="questionnaires-defs.js?v=phase12-4b"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-4"></script>
+  <script src="medical-parsers.js?v=phase12-4b"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-4"></script>
+  <script src="cpet-graph-preview.js?v=phase12-4b"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-4"></script>
-  <script src="medical-record-ui.js?v=phase12-4"></script>
+  <script src="pdf-extractor.js?v=phase12-4b"></script>
+  <script src="medical-record-ui.js?v=phase12-4b"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3343,6 +3343,12 @@
           </div>
         </header>
 
+        <!-- Phase 12.4 : Carte d'identité enrichie -->
+        <div id="patientIdentityCardMount"></div>
+
+        <!-- Phase 12.4 : Chronologie des actes réalisés -->
+        <div id="patientActsTimelineMount"></div>
+
         <!-- ============================================================ -->
         <!-- === Dossier médical structuré (Phase 12.1) === -->
         <!-- === Identité, antécédents, objectifs, points clés, import PDF === -->
@@ -5949,26 +5955,143 @@
   // === DOSSIER + TIMELINE
   // ============================================================
   function renderPatientFile() {
-    const evals = selectedPatient.evaluations;
-    const lastEv = last(evals);
+    const evals = selectedPatient.evaluations || [];
+    const lastEv = evals.length ? last(evals) : null;
 
     $('dossierSubtitle').textContent = `Résultats détaillés de ${selectedPatient.id} (${evals.length} évaluation${evals.length > 1 ? 's' : ''}).`;
     $('dossierAvatar').style.background = gradientFor(selectedPatient.id);
     $('dossierAvatar').textContent = initials(selectedPatient.id);
     $('dossierPatientTitle').textContent = selectedPatient.id;
-    $('dossierPatientMeta').textContent = `${selectedPatient.sex} · ${selectedPatient.age} ans · ${selectedPatient.gene} · ${selectedPatient.status}`;
-    $('dossierRiskFactor').textContent = selectedPatient.riskFactor;
-    $('dossierRiskComment').textContent = selectedPatient.riskComment;
-    $('dossierAorta').textContent = lastEv.aorta + ' mm';
-    $('dossierVo2').textContent = lastEv.vo2;
-    $('dossierForce').textContent = lastEv.force + ' kg';
-    $('dossierSf36').textContent = lastEv.sf36 + '/100';
+    $('dossierPatientMeta').textContent = `${selectedPatient.sex || '?'} · ${selectedPatient.age || '?'} ans · ${selectedPatient.gene || '—'} · ${selectedPatient.status || 'Stable'}`;
+    $('dossierRiskFactor').textContent = selectedPatient.riskFactor || '—';
+    $('dossierRiskComment').textContent = selectedPatient.riskComment || '';
+    // Phase 12.4 : afficher "—" si pas d'évaluations (au lieu de crash sur undefined)
+    $('dossierAorta').textContent = lastEv ? (lastEv.aorta + ' mm') : '— mm';
+    $('dossierVo2').textContent   = lastEv ? lastEv.vo2 : '—';
+    $('dossierForce').textContent = lastEv ? (lastEv.force + ' kg') : '— kg';
+    $('dossierSf36').textContent  = lastEv ? (lastEv.sf36 + '/100') : '—/100';
     $('evalCountLabel').textContent = `· ${evals.length} évaluation${evals.length > 1 ? 's' : ''}`;
+
+    // Phase 12.4 : injecte la carte d'identité + timeline actes en haut du dossier
+    renderPatientIdentityCard();
+    renderPatientTimelineActs();
 
     renderTimeline();
     syncGraphSelectors();
     renderDynamicCharts();
     renderGraphBoard();
+  }
+
+  // Phase 12.4 : Carte d'identité enrichie en haut du dossier patient
+  function renderPatientIdentityCard() {
+    const mount = document.getElementById('patientIdentityCardMount');
+    if (!mount) return;
+    const p = selectedPatient || {};
+    const civil = p.civil || {};
+    const medical = p.medical || {};
+    const study = p.study || {};
+    const pseudo = window.AppModes && window.AppModes.pseudoMode;
+    const mask = (v) => pseudo && v ? '••••••' : v;
+    const fullName = (civil.firstName || civil.lastName)
+      ? ((mask(civil.firstName) || '') + ' ' + (mask(civil.lastName) || '').toUpperCase()).trim()
+      : (mask(civil.initials) || 'Identité non renseignée');
+    const row = (label, value) => value
+      ? `<div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed #eef0f5; font-size:12.5px;">
+           <span style="color:#64748b;">${label}</span>
+           <span style="font-weight:600; color:#0b1530;">${value}</span>
+         </div>` : '';
+    mount.innerHTML = `
+      <article class="card" style="padding:0; margin-bottom:14px; overflow:hidden;">
+        <div style="padding:16px 22px; background:linear-gradient(135deg,#0b1530,#1e3a8a); color:white;">
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div style="width:56px; height:56px; border-radius:16px; background:${gradientFor(p.id || '')}; display:flex; align-items:center; justify-content:center; font-weight:800; color:white; font-size:18px;">${initials(p.id || '?')}</div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; opacity:0.7;">Fiche patient</div>
+              <h3 style="margin:2px 0 0; color:white; font-size:18px;">${fullName}</h3>
+              <div style="font-size:12.5px; opacity:0.9; margin-top:2px;">
+                <strong>${p.id || '—'}</strong> · ${p.sex || '?'} · ${p.age || '?'} ans · ${p.gene || '—'}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0; padding:0;">
+          <div style="padding:14px 20px; border-right:1px solid #eef0f5;">
+            <h4 style="margin:0 0 8px; font-size:12px; color:#0891b2; text-transform:uppercase; letter-spacing:0.5px;">Identité</h4>
+            ${row('IPP', mask(civil.ipp))}
+            ${row('Date de naissance', mask(civil.dob))}
+            ${row('Email', mask(civil.email))}
+            ${row('Téléphone', mask(civil.phone))}
+            ${row('Adresse', mask(civil.address))}
+            ${row('Médecin référent', mask(civil.doctor))}
+            ${row('Centre de référence', civil.center)}
+          </div>
+          <div style="padding:14px 20px;">
+            <h4 style="margin:0 0 8px; font-size:12px; color:#7c3aed; text-transform:uppercase; letter-spacing:0.5px;">Contexte médical</h4>
+            ${row('Gène muté', p.gene)}
+            ${row('Diagnostic', medical.dxDate)}
+            ${row('Variant', medical.variant)}
+            ${row('Statut', p.status)}
+            ${row('Facteur de risque', p.riskFactor)}
+            ${row('Consentement', study.consent)}
+            ${row('Date d\'inclusion', study.inclusionDate)}
+          </div>
+        </div>
+      </article>`;
+  }
+
+  // Phase 12.4 : Timeline chronologique des actes réalisés (évaluations, imports, séances, questionnaires)
+  function renderPatientTimelineActs() {
+    const mount = document.getElementById('patientActsTimelineMount');
+    if (!mount) return;
+    const p = selectedPatient || {};
+    const acts = [];
+    // Évaluations
+    (p.evaluations || []).forEach(ev => {
+      acts.push({
+        date: ev.date, type: 'eval',
+        icon: '📊', color: '#0891b2',
+        label: 'Évaluation ' + (ev.label || '?'),
+        detail: `VO₂ ${ev.vo2 || '—'} · Force ${ev.force || '—'} kg · Aorte ${ev.aorta || '—'} mm`,
+        validated: ev.validated
+      });
+    });
+    // Notifications (questionnaires envoyés)
+    (p.notifications || []).forEach(n => {
+      if (n.completedDate) {
+        acts.push({
+          date: n.completedDate, type: 'q',
+          icon: '📝', color: '#10b981',
+          label: (n.type === 'sf36' ? 'SF-36 complété' : 'GPAQ complété'),
+          detail: 'Questionnaire validé par le patient'
+        });
+      }
+    });
+    // Trie chronologique décroissante (plus récent en haut)
+    acts.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    const rows = acts.length
+      ? acts.map(a => `
+          <div style="display:flex; gap:12px; padding:10px 0; border-bottom:1px dashed #eef0f5;">
+            <div style="width:36px; height:36px; border-radius:10px; background:${a.color}20; color:${a.color}; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">${a.icon}</div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:600; font-size:13px; color:#0b1530;">${a.label} ${a.validated ? '<span style="color:#16a34a; font-size:11px;">✓ validé</span>' : ''}</div>
+              <div style="font-size:12px; color:#64748b; margin-top:1px;">${a.detail || ''}</div>
+            </div>
+            <div style="font-size:11.5px; color:#94a3b8; white-space:nowrap;">${formatDate(a.date)}</div>
+          </div>`).join('')
+      : `<div style="text-align:center; padding:20px; color:#94a3b8; font-style:italic; font-size:13px;">
+          Aucun acte enregistré pour ce patient.<br>
+          <span style="font-size:11.5px;">Les évaluations, questionnaires complétés et séances apparaîtront ici au fur et à mesure.</span>
+        </div>`;
+    mount.innerHTML = `
+      <article class="card" style="padding:16px 20px; margin-bottom:14px;">
+        <h4 style="margin:0 0 10px; font-size:13px; display:flex; align-items:center; gap:8px;">
+          <span style="width:24px; height:24px; border-radius:7px; background:#dcfce7; color:#166534; display:flex; align-items:center; justify-content:center;">📅</span>
+          Chronologie des actes réalisés
+          <span style="font-weight:400; color:#94a3b8; font-size:11.5px; margin-left:auto;">${acts.length} acte(s)</span>
+        </h4>
+        <div>${rows}</div>
+      </article>`;
   }
 
   function renderTimeline() {
@@ -7062,22 +7185,60 @@
     if (typeof renderPatientTable === 'function') renderPatientTable('');
     if (typeof renderDbTable === 'function') renderDbTable('');
 
-    // Feedback enrichi : indique que les notifications sont parties
-    showCreationFeedback(`✅ Patient <strong>${code}</strong> créé (${patients.length} patients au total). 📨 Notifications envoyées au patient : <strong>SF-36</strong> + <strong>GPAQ</strong> obligatoires (réponses intégrées automatiquement au dossier dès complétion). <br>📄 Cliquez sur <strong>Générer le PDF du dossier</strong> pour télécharger une copie papier du dossier.`, 'success');
-
-    // Optionnel : sélectionner ce patient et ouvrir son dossier
-    if (typeof setSelectedPatient === 'function') {
-      setSelectedPatient(code);
-    }
-
     // Phase 12.1.6 : révèle le bouton de génération PDF + mémorise le code créé
     window._lastCreatedPatientCode = code;
     const pdfBtn = $('cf_pdfBtn'); if (pdfBtn) pdfBtn.style.display = 'inline-flex';
     const pdfBtnTop = $('cf_pdfBtnTop'); if (pdfBtnTop) pdfBtnTop.style.display = 'inline-flex';
 
-    // Le formulaire est conservé tel quel — l'utilisateur peut générer le PDF
-    // ou cliquer manuellement sur "Réinitialiser" pour créer un autre patient.
+    // Sélectionne ce patient en interne (pas de switchTab automatique)
+    if (typeof setSelectedPatient === 'function') setSelectedPatient(code);
+
+    // Phase 12.4 : Modale de confirmation avec choix d'action
+    openPatientCreatedModal(code, firstName, lastName);
   }
+
+  // Modale post-création patient : confirme + propose 3 actions (Nouveau / Ouvrir dossier / PDF)
+  function openPatientCreatedModal(code, firstName, lastName) {
+    // Retire une éventuelle modale précédente
+    const old = document.getElementById('patientCreatedModal');
+    if (old) old.remove();
+    const html = `
+      <div id="patientCreatedModal" style="position:fixed; inset:0; background:rgba(11,21,48,0.72); z-index:10020; display:flex; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(4px);">
+        <div style="background:white; border-radius:18px; width:520px; max-width:96vw; box-shadow:0 30px 80px rgba(0,0,0,0.30); overflow:hidden;">
+          <div style="padding:22px 26px; background:linear-gradient(135deg,#10b981,#059669); color:white; text-align:center;">
+            <div style="font-size:36px; margin-bottom:4px;">✅</div>
+            <h3 style="margin:0; color:white; font-size:19px;">Patient enregistré avec succès</h3>
+            <p style="margin:6px 0 0; font-size:13px; opacity:0.95;">${firstName} ${lastName.toUpperCase()} — <strong>${code}</strong></p>
+          </div>
+          <div style="padding:20px 26px; font-size:13px; color:#0b1530; line-height:1.5;">
+            <p style="margin:0 0 10px;">📨 Notifications <strong>SF-36</strong> + <strong>GPAQ</strong> envoyées automatiquement au patient (réponses intégrées au dossier dès complétion).</p>
+            <p style="margin:0 0 0; color:#64748b; font-size:12px;">Vous pouvez maintenant créer un nouveau patient, consulter le dossier, ou télécharger un PDF de la fiche créée.</p>
+          </div>
+          <div style="padding:14px 26px 22px; display:flex; flex-direction:column; gap:8px;">
+            <button onclick="window.__createAnotherPatient()" style="padding:12px 18px; border:none; background:linear-gradient(135deg,#0891b2,#06b6d4); color:white; border-radius:10px; font-weight:700; cursor:pointer; font-size:13.5px; width:100%;">+ Créer un autre patient</button>
+            <button onclick="window.__openCreatedPatientFile('${code}')" style="padding:12px 18px; border:1px solid #cbd5e1; background:white; color:#0b1530; border-radius:10px; font-weight:600; cursor:pointer; font-size:13px; width:100%;">📋 Ouvrir la consultation du dossier</button>
+            <button onclick="generatePatientPdfFromForm()" style="padding:12px 18px; border:1px solid #cbd5e1; background:white; color:#0b1530; border-radius:10px; font-weight:600; cursor:pointer; font-size:13px; width:100%;">📄 Générer le PDF de la fiche</button>
+            <button onclick="document.getElementById('patientCreatedModal').remove()" style="padding:9px; border:none; background:transparent; color:#94a3b8; font-size:12px; cursor:pointer; text-decoration:underline; margin-top:4px;">Fermer</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+  }
+
+  // Actions de la modale
+  window.__createAnotherPatient = function () {
+    const m = document.getElementById('patientCreatedModal'); if (m) m.remove();
+    if (typeof resetCreationForm === 'function') resetCreationForm();
+    if ($('cf_code')) $('cf_code').value = (typeof nextPatientCode === 'function') ? nextPatientCode() : '';
+    // Scroll en haut du formulaire
+    if ($('cf_lastName')) $('cf_lastName').focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  window.__openCreatedPatientFile = function (code) {
+    const m = document.getElementById('patientCreatedModal'); if (m) m.remove();
+    if (typeof setSelectedPatient === 'function') setSelectedPatient(code);
+    if (typeof switchMainTab === 'function') switchMainTab('dossier');
+  };
 
   // ============================================================
   // === Phase 12.1.7 — Création compte investigateur ==========
@@ -10196,11 +10357,10 @@
         civil: p.civil || {},
         medical: p.medical || {},
         study: p.study || {},
-        evaluations: (p.evaluations && p.evaluations.length) ? p.evaluations : [{
-          id: 1, label: 'Baseline', date: new Date().toISOString().slice(0,10),
-          vo2: 0, force: 0, aorta: p.aorta || 0, sf36: 0, gpaq: 0,
-          validated: false, note: 'Patient importé depuis l\'API.'
-        }],
+        // Phase 12.4 : plus de "Baseline" fictive auto-générée. Un patient sans évaluations
+        // affiche un tableau vide et un message "Aucune évaluation enregistrée pour ce patient
+        // — importez un CPET/onde de pouls ou remplissez un questionnaire".
+        evaluations: (p.evaluations && p.evaluations.length) ? p.evaluations : [],
         notifications: p.notifications || [],
         _fromApi: true
       };
