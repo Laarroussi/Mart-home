@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase13-8"></script>
+  <script src="api-client.js?v=phase13-9"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase13-8"></script>
+  <script src="questionnaires-defs.js?v=phase13-9"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase13-8"></script>
+  <script src="medical-parsers.js?v=phase13-9"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase13-8"></script>
+  <script src="cpet-graph-preview.js?v=phase13-9"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase13-8"></script>
-  <script src="medical-record-ui.js?v=phase13-8"></script>
+  <script src="pdf-extractor.js?v=phase13-9"></script>
+  <script src="medical-record-ui.js?v=phase13-9"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase13-8"></script>
+  <script src="aortic-consultations.js?v=phase13-9"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -7274,6 +7274,23 @@
   }
 
   function createPatientFromForm() {
+    // ==========================================================
+    // Phase 13.9 — GARDE-FOU : refuse la création si la session serveur
+    // n'est pas active (ex. « Continuer en mode démo », ou token expiré).
+    // Sans ce contrôle, la fiche était créée uniquement dans le navigateur :
+    // elle s'affichait normalement mais n'atteignait jamais la base de données,
+    // et disparaissait au rechargement — sans le moindre message d'erreur.
+    // ==========================================================
+    if (!(window.MarfanAPI && window.MarfanAPI.isAuthenticated && window.MarfanAPI.isAuthenticated())) {
+      showCreationFeedback(
+        '🔒 <strong>Enregistrement impossible : vous n\'êtes pas connecté au serveur.</strong><br>' +
+        'Vous êtes en mode démonstration — les fiches créées resteraient dans ce navigateur et ne seraient PAS enregistrées en base de données.<br>' +
+        '<span style="font-weight:600;">Cliquez sur « Déconnexion » en haut à droite, puis reconnectez-vous avec votre identifiant et mot de passe.</span>',
+        'error');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     const code = ($('cf_code').value || '').trim();
     // Phase 13.2 : normalise la casse à l'enregistrement (nom = MAJUSCULE, prénom = Première lettre)
     const lastName = normalizeLastName($('cf_lastName') && $('cf_lastName').value);
@@ -10675,8 +10692,9 @@
   </div>
 
   <!-- Bandeau "mode démo" si API down -->
-  <div id="apiDemoBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9990; background:#fef3c7; color:#92400e; padding:7px 16px; font-size:12px; font-weight:600; text-align:center; border-bottom:1px solid #fde68a;">
-    ⚠ Mode démo (données en mémoire uniquement) — l'API PostgreSQL n'est pas joignable.
+  <div id="apiDemoBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9990; background:#dc2626; color:white; padding:10px 16px; font-size:13px; font-weight:700; text-align:center; border-bottom:2px solid #991b1b; box-shadow:0 3px 12px rgba(0,0,0,0.2);">
+    ⚠ MODE DÉMONSTRATION — rien n'est enregistré en base de données. Toute fiche créée sera perdue au rechargement.
+    <button onclick="window.location.reload()" style="margin-left:12px; padding:4px 12px; border:1px solid rgba(255,255,255,0.5); background:rgba(255,255,255,0.15); color:white; border-radius:7px; font-weight:700; font-size:12px; cursor:pointer;">Se connecter</button>
   </div>
 
   <!-- Bouton déconnexion + toggles Démo/Pseudonymisation (Phase 12.2) -->
@@ -14234,6 +14252,14 @@
     });
 
     document.getElementById('apiLoginDemo').addEventListener('click', function () {
+      // Phase 13.9 : confirmation explicite — ce mode n'enregistre RIEN en base
+      const ok = confirm(
+        'MODE DÉMONSTRATION\n\n' +
+        'Aucune donnée ne sera enregistrée en base : les fiches patients, consultations et mesures ' +
+        'créées resteront uniquement dans ce navigateur et seront perdues au rechargement.\n\n' +
+        'Pour un usage réel, annulez et connectez-vous avec vos identifiants.\n\n' +
+        'Continuer quand même en démonstration ?');
+      if (!ok) return;
       hideOverlay(); showDemoBanner();
     });
 
