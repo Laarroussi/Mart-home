@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase13-5"></script>
+  <script src="api-client.js?v=phase13-6"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase13-5"></script>
+  <script src="questionnaires-defs.js?v=phase13-6"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase13-5"></script>
+  <script src="medical-parsers.js?v=phase13-6"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase13-5"></script>
+  <script src="cpet-graph-preview.js?v=phase13-6"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase13-5"></script>
-  <script src="medical-record-ui.js?v=phase13-5"></script>
+  <script src="pdf-extractor.js?v=phase13-6"></script>
+  <script src="medical-record-ui.js?v=phase13-6"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase13-5"></script>
+  <script src="aortic-consultations.js?v=phase13-6"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -14421,17 +14421,41 @@
       const original = window.createPatientFromForm;
       window.createPatientFromForm = function () {
         const before = (window.patients || []).length;
+        // Mémorise si on était en mode "modification" AVANT que la fonction ne le remette à null
+        const wasEditingId = window._editingPatientId || null;
         const result = original.apply(this, arguments);
         const after = (window.patients || []).length;
-        // Si un patient a été ajouté localement et que l'API est dispo, on persiste
-        if (after > before && window.MarfanAPI && window.MarfanAPI.isAuthenticated()) {
+
+        if (!(window.MarfanAPI && window.MarfanAPI.isAuthenticated())) return result;
+
+        const notifyErr = (action, id, msg) => {
+          console.warn('[MarfanAPI] ' + action + ' échouée pour ' + id + ' :', msg);
+          if (typeof toast === 'function') {
+            toast('⚠ Enregistrement en base échoué pour <strong>' + id + '</strong> : ' + msg, 'error', 9000);
+          }
+        };
+
+        if (after > before) {
+          // === CRÉATION : POST ===
           const newPatient = window.patients[window.patients.length - 1];
-          window.MarfanAPI.patients.create(newPatient).then(saved => {
+          window.MarfanAPI.patients.create(newPatient).then(() => {
             console.log('[MarfanAPI] Patient ' + newPatient.id + ' persisté en BDD ✓');
             newPatient._fromApi = true;
-          }).catch(err => {
-            console.warn('[MarfanAPI] Persistance échouée pour ' + newPatient.id + ' :', err.message);
-          });
+          }).catch(err => notifyErr('Création', newPatient.id, err.message));
+        } else if (wasEditingId) {
+          // === MODIFICATION : PATCH (n'existait pas — rien n'était sauvegardé en base) ===
+          const p = (window.patients || []).find(x => x.id === wasEditingId);
+          if (p) {
+            window.MarfanAPI.patients.update(p.id, {
+              sex: p.sex, age: p.age, gene: p.gene, aorta: p.aorta,
+              status: p.status, status_class: p.statusClass, progress: p.progress,
+              risk_factor: p.riskFactor, risk_comment: p.riskComment,
+              alterations: p.alterations, incidents: p.incidents,
+              civil: p.civil, medical: p.medical, study: p.study
+            }).then(() => {
+              console.log('[MarfanAPI] Patient ' + p.id + ' mis à jour en BDD ✓');
+            }).catch(err => notifyErr('Mise à jour', p.id, err.message));
+          }
         }
         return result;
       };
