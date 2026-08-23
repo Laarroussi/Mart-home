@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase13-1"></script>
+  <script src="api-client.js?v=phase13-2"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase13-1"></script>
+  <script src="questionnaires-defs.js?v=phase13-2"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase13-1"></script>
+  <script src="medical-parsers.js?v=phase13-2"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase13-1"></script>
+  <script src="cpet-graph-preview.js?v=phase13-2"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase13-1"></script>
-  <script src="medical-record-ui.js?v=phase13-1"></script>
+  <script src="pdf-extractor.js?v=phase13-2"></script>
+  <script src="medical-record-ui.js?v=phase13-2"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase13-1"></script>
+  <script src="aortic-consultations.js?v=phase13-2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3142,11 +3142,11 @@
             </div>
             <div>
               <div class="control-label">Nom *</div>
-              <input type="text" id="cf_lastName" placeholder="ex. DUPONT" />
+              <input type="text" id="cf_lastName" placeholder="ex. DUPONT" oninput="updateSuggestedInitials()" onblur="this.value = normalizeLastName(this.value); updateSuggestedInitials();" />
             </div>
             <div>
               <div class="control-label">Prénom *</div>
-              <input type="text" id="cf_firstName" placeholder="ex. Marie" />
+              <input type="text" id="cf_firstName" placeholder="ex. Marie" oninput="updateSuggestedInitials()" onblur="this.value = normalizeFirstName(this.value); updateSuggestedInitials();" />
             </div>
             <div>
               <div class="control-label">Sexe *</div>
@@ -3166,8 +3166,8 @@
               <input type="number" id="cf_age" min="0" max="120" placeholder="35" />
             </div>
             <div>
-              <div class="control-label">Initiales (optionnel)</div>
-              <input type="text" id="cf_initials" placeholder="ex. J.D." maxlength="6" />
+              <div class="control-label">Initiales (optionnel — auto-générées)</div>
+              <input type="text" id="cf_initials" placeholder="ex. J.D." maxlength="6" oninput="this.dataset.manual='true';" />
             </div>
             <div>
               <div class="control-label">Email</div>
@@ -6984,6 +6984,8 @@
     if ($('cf_consent')) $('cf_consent').value = 'oui';
     // Phase 12.1.5 : efface aussi le brouillon du dossier médical (si existant)
     try { if (window.MedicalRecordUI) window.MedicalRecordUI.clearDraftStorage(); } catch (_) {}
+    // Phase 13.2 : réinitialise le mode "initiales manuelles" pour le patient suivant
+    if ($('cf_initials')) delete $('cf_initials').dataset.manual;
     initCreationForm();
   }
 
@@ -7217,10 +7219,34 @@
     if (type === 'success') setTimeout(() => { fb.style.display = 'none'; }, 5500);
   }
 
+  // Phase 13.2 : Normalisation des noms/prénoms
+  // Nom de famille → TOUT EN MAJUSCULE ; Prénom → Première lettre en majuscule, le reste en minuscule
+  // (gère les prénoms/noms composés avec espace, tiret ou apostrophe : "jean-pierre" -> "Jean-Pierre")
+  function normalizeLastName(s) {
+    return (s || '').trim().toUpperCase();
+  }
+  function normalizeFirstName(s) {
+    return (s || '').trim().toLowerCase().replace(/(^|[\s'-])([a-zà-öø-ÿ])/g, (m, sep, c) => sep + c.toUpperCase());
+  }
+  // Phase 13.2 : suggère automatiquement les initiales à partir du nom/prénom saisis
+  // (ne remplace pas si l'utilisateur a modifié manuellement le champ Initiales)
+  function updateSuggestedInitials() {
+    const initialsEl = $('cf_initials');
+    if (!initialsEl || initialsEl.dataset.manual === 'true') return;
+    const fn = normalizeFirstName($('cf_firstName') ? $('cf_firstName').value : '');
+    const ln = normalizeLastName($('cf_lastName') ? $('cf_lastName').value : '');
+    const fi = fn ? fn.charAt(0).toUpperCase() : '';
+    const li = ln ? ln.charAt(0).toUpperCase() : '';
+    initialsEl.value = (fi && li) ? (fi + '.' + li + '.') : '';
+  }
+
   function createPatientFromForm() {
     const code = ($('cf_code').value || '').trim();
-    const lastName = ($('cf_lastName') && $('cf_lastName').value || '').trim();
-    const firstName = ($('cf_firstName') && $('cf_firstName').value || '').trim();
+    // Phase 13.2 : normalise la casse à l'enregistrement (nom = MAJUSCULE, prénom = Première lettre)
+    const lastName = normalizeLastName($('cf_lastName') && $('cf_lastName').value);
+    const firstName = normalizeFirstName($('cf_firstName') && $('cf_firstName').value);
+    if ($('cf_lastName')) $('cf_lastName').value = lastName;
+    if ($('cf_firstName')) $('cf_firstName').value = firstName;
     const ipp = ($('cf_ipp') && $('cf_ipp').value || '').trim();
     const center = ($('cf_center') && $('cf_center').value || '').trim();
     const sex = $('cf_sex').value;
@@ -7420,12 +7446,13 @@
       const set = (id, val) => { const el = $(id); if (el && val != null) el.value = val; };
       set('cf_code', p.id);
       set('cf_ipp', civil.ipp);
-      set('cf_lastName', civil.lastName);
-      set('cf_firstName', civil.firstName);
+      set('cf_lastName', normalizeLastName(civil.lastName));
+      set('cf_firstName', normalizeFirstName(civil.firstName));
       set('cf_sex', p.sex);
       set('cf_dob', civil.dob);
       set('cf_age', p.age);
       set('cf_initials', civil.initials);
+      if (civil.initials && $('cf_initials')) $('cf_initials').dataset.manual = 'true';
       set('cf_email', civil.email);
       set('cf_phone', civil.phone);
       set('cf_doctor', civil.doctor);
