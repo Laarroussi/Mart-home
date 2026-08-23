@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase13-11"></script>
+  <script src="api-client.js?v=phase13-12"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase13-11"></script>
+  <script src="questionnaires-defs.js?v=phase13-12"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase13-11"></script>
+  <script src="medical-parsers.js?v=phase13-12"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase13-11"></script>
+  <script src="cpet-graph-preview.js?v=phase13-12"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase13-11"></script>
-  <script src="medical-record-ui.js?v=phase13-11"></script>
+  <script src="pdf-extractor.js?v=phase13-12"></script>
+  <script src="medical-record-ui.js?v=phase13-12"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase13-11"></script>
+  <script src="aortic-consultations.js?v=phase13-12"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -7527,6 +7527,12 @@
         if (typeof setSelectedPatient === 'function') setSelectedPatient(code);
       } catch (e) { console.warn('[creation] setSelectedPatient échoué', e); }
 
+      // Phase 13.12 : recharge le suivi aortique du tableau « Base de données »
+      // pour que les diamètres saisis apparaissent sans recharger la page
+      try {
+        if (typeof window.refreshDbAorticCache === 'function') await window.refreshDbAorticCache();
+      } catch (e) { console.warn('[bdd] rafraîchissement aortique', e); }
+
       // --- 5) Rafraîchissement de l'affichage EN DERNIER, chaque appel isolé ---
       // Une erreur de rendu ne doit JAMAIS empêcher l'enregistrement ni la confirmation.
       [['initKpis', () => initKpis()],
@@ -13604,11 +13610,25 @@
       } catch { _dbCache.gpaq = []; }
 
       // Phase 13.11 : suivi aortique + consultations, pour la section Échocardiographie
-      // (auparavant absents du tableau unifié : les diamètres et dates n'y figuraient pas)
       _dbCache.aortic = {};
       _dbCache.consult = {};
-      const ids = (window.patients || []).map(p => p.id);
-      await Promise.all(ids.map(async (pid) => {
+      _dbCache.aorticFetched = new Set();
+      await loadAorticFor((window.patients || []).map(p => p.id));
+    }
+
+    // Phase 13.12 — Chargement du suivi aortique pour une liste de patients.
+    // Auparavant, ces données n'étaient récupérées QU'UNE FOIS à la connexion :
+    // tout patient créé ensuite affichait « — » dans le tableau tant que la page
+    // n'était pas rechargée. On mémorise les patients déjà interrogés pour ne
+    // jamais refaire deux fois le même appel.
+    async function loadAorticFor(ids) {
+      if (!_dbCache.aortic)  _dbCache.aortic = {};
+      if (!_dbCache.consult) _dbCache.consult = {};
+      if (!_dbCache.aorticFetched) _dbCache.aorticFetched = new Set();
+      const todo = (ids || []).filter(id => id && !_dbCache.aorticFetched.has(id));
+      if (!todo.length) return 0;
+      await Promise.all(todo.map(async (pid) => {
+        _dbCache.aorticFetched.add(pid);
         try {
           const a = await window.MarfanAPI.consultations.getAortic(pid);
           if (a && a.aortic && Object.keys(a.aortic).length) _dbCache.aortic[pid] = a.aortic;
@@ -13623,7 +13643,15 @@
           }
         } catch (_) { /* patient sans consultation */ }
       }));
+      return todo.length;
     }
+
+    // Force la relecture complète (après création/modification d'un patient)
+    window.refreshDbAorticCache = async function () {
+      _dbCache.aortic = {}; _dbCache.consult = {}; _dbCache.aorticFetched = new Set();
+      await loadAorticFor((window.patients || []).map(p => p.id));
+      try { if (typeof renderUnifiedTable === 'function') renderUnifiedTable(); } catch (_) {}
+    };
 
     function getSelectedSections() {
       return UNIFIED_SECTIONS.filter(s => {
@@ -13662,7 +13690,21 @@
           cols.push({ key:'age', label:'AGE', section:sec, get: p => p.age != null ? p.age : '—' });
           cols.push({ key:'gene', label:'GÈNE', section:sec, get: p => p.gene || '—' });
           cols.push({ key:'status', label:'STATUT', section:sec, get: p => p.status || '—' });
-          cols.push({ key:'aorta_baseline', label:'AORTE_BASELINE', section:sec, get: p => p.aorta != null ? p.aorta : '—' });
+          // Phase 13.11 : l'ancienne colonne AORTE_BASELINE lisait un champ hérité
+          // toujours vide (affichait « 0 »). Remplacée par les mesures réelles du
+          // suivi aortique, visibles dès la section « Données cliniques ».
+          cols.push({ key:'aorte_diag_mm', label:'AORTE_DIAG_mm', section:sec, get: p => {
+            const v = p._aortic && p._aortic.first_value_mm;
+            return (v == null || v === '') ? '—' : parseFloat(v).toFixed(1);
+          }});
+          cols.push({ key:'aorte_diag_date', label:'AORTE_DIAG_DATE', section:sec,
+            get: p => fmtVisit(p._aortic && p._aortic.first_diagnosis_date, '—') || '—' });
+          cols.push({ key:'aorte_actuel_mm', label:'AORTE_ACTUEL_mm', section:sec, get: p => {
+            const v = p._aortic && p._aortic.current_value_mm;
+            return (v == null || v === '') ? '—' : parseFloat(v).toFixed(1);
+          }});
+          cols.push({ key:'aorte_actuel_date', label:'AORTE_ACTUEL_DATE', section:sec,
+            get: p => fmtVisit(p._aortic && p._aortic.current_date, '—') || '—' });
         }
         else if (sec.id === 'cpet' || sec.id === 'echo' || sec.id === 'force') {
           // Phase 13.11 — Section Échocardiographie : suivi aortique structuré
@@ -13769,6 +13811,24 @@
     function buildEnrichedPatients(filterText) {
       // Patients de window.patients (en mémoire) + données API agrégées
       const allPatients = (window.patients || []).slice();
+
+      // Phase 13.12 : récupération à la volée du suivi aortique des patients
+      // pas encore interrogés (typiquement ceux créés depuis la connexion),
+      // puis re-rendu automatique une fois les données arrivées.
+      try {
+        const manquants = allPatients
+          .map(p => p.id)
+          .filter(id => id && !(_dbCache.aorticFetched && _dbCache.aorticFetched.has(id)));
+        if (manquants.length && window.MarfanAPI && window.MarfanAPI.isAuthenticated()) {
+          loadAorticFor(manquants).then(n => {
+            if (n > 0 && !_dbCache._rerendering) {
+              _dbCache._rerendering = true;
+              try { renderUnifiedTable(); } finally { _dbCache._rerendering = false; }
+            }
+          }).catch(() => {});
+        }
+      } catch (_) { /* non bloquant */ }
+
       // Index training/sf36/gpaq par patient_id, triés chronologiquement
       function indexByPatient(arr, dateKey) {
         const m = {};
