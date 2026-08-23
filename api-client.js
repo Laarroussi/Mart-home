@@ -228,6 +228,16 @@
       removeDocument: (patientId, id) => request('DELETE', `/medical-records/${patientId}/documents/${id}`)
     },
 
+    /** ===== Consultations chronologiques + suivi aortique ===== */
+    consultations: {
+      list:        (patientId)             => request('GET',   `/consultations/${patientId}`),
+      create:      (patientId, data)       => request('POST',  `/consultations/${patientId}`, data),
+      update:      (patientId, id, data)   => request('PATCH', `/consultations/${patientId}/${id}`, data),
+      remove:      (patientId, id)         => request('DELETE',`/consultations/${patientId}/${id}`),
+      getAortic:   (patientId)             => request('GET',   `/consultations/${patientId}/aortic`),
+      patchAortic: (patientId, data)       => request('PATCH', `/consultations/${patientId}/aortic`, data)
+    },
+
     /** ===== Questionnaires validés (SF-36, GPAQ) ===== */
     questionnaires: {
       mine:    ()             => request('GET',  '/questionnaires/mine'),

@@ -12,17 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-4d"></script>
+  <script src="api-client.js?v=phase13"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-4d"></script>
+  <script src="questionnaires-defs.js?v=phase13"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-4d"></script>
+  <script src="medical-parsers.js?v=phase13"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-4d"></script>
+  <script src="cpet-graph-preview.js?v=phase13"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-4d"></script>
-  <script src="medical-record-ui.js?v=phase12-4d"></script>
+  <script src="pdf-extractor.js?v=phase13"></script>
+  <script src="medical-record-ui.js?v=phase13"></script>
+  <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
+  <script src="aortic-consultations.js?v=phase13"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3346,6 +3348,9 @@
         <!-- Phase 12.4 : Carte d'identité enrichie -->
         <div id="patientIdentityCardMount"></div>
 
+        <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
+        <div id="aorticConsultMount"></div>
+
         <!-- Phase 12.4 : Chronologie des actes réalisés -->
         <div id="patientActsTimelineMount"></div>
 
@@ -6021,6 +6026,13 @@
     renderPatientIdentityCard();
     renderPatientTimelineActs();
 
+    // Phase 13 : suivi aortique + consultations chronologiques
+    try {
+      if (window.AorticConsultUI && document.getElementById('aorticConsultMount')) {
+        window.AorticConsultUI.mount('aorticConsultMount', selectedPatient.id);
+      }
+    } catch (e) { console.warn('[aortic] mount échoué', e); }
+
     renderTimeline();
     syncGraphSelectors();
     renderDynamicCharts();
@@ -6086,6 +6098,8 @@
   }
 
   // Phase 12.4 : Timeline chronologique des actes réalisés (évaluations, imports, séances, questionnaires)
+  // Exposée globalement pour être rappelée par AorticConsultUI après chargement des consultations
+  window.renderPatientTimelineActs = renderPatientTimelineActs;
   function renderPatientTimelineActs() {
     const mount = document.getElementById('patientActsTimelineMount');
     if (!mount) return;
@@ -6111,6 +6125,17 @@
           detail: 'Questionnaire validé par le patient'
         });
       }
+    });
+    // Phase 13 : consultations (chargées de façon asynchrone par AorticConsultUI)
+    (window._patientConsultations || []).forEach(c => {
+      acts.push({
+        date: c.consultation_date, type: 'consult',
+        icon: '🗓️', color: '#7c3aed',
+        label: 'Consultation',
+        detail: [c.aortic_value_mm ? 'Aorte ' + parseFloat(c.aortic_value_mm).toFixed(1) + ' mm' : null,
+                 c.evolution ? ({stable:'stable', amelioration:'amélioration', aggravation:'aggravation', non_evaluable:'non évaluable'}[c.evolution]) : null,
+                 c.comment ? c.comment.substring(0, 60) : null].filter(Boolean).join(' · ')
+      });
     });
     // Trie chronologique décroissante (plus récent en haut)
     acts.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
