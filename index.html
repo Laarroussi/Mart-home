@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-4b"></script>
+  <script src="api-client.js?v=phase12-4c"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-4b"></script>
+  <script src="questionnaires-defs.js?v=phase12-4c"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-4b"></script>
+  <script src="medical-parsers.js?v=phase12-4c"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-4b"></script>
+  <script src="cpet-graph-preview.js?v=phase12-4c"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-4b"></script>
-  <script src="medical-record-ui.js?v=phase12-4b"></script>
+  <script src="pdf-extractor.js?v=phase12-4c"></script>
+  <script src="medical-record-ui.js?v=phase12-4c"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -5365,11 +5365,21 @@
   }
 
   function setSelectedPatient(patientId) {
+    // Phase 12.4 : garde-fou cohorte vide
+    if (!Array.isArray(patients) || patients.length === 0) {
+      selectedPatient = null;
+      const sel = $('quickPatientSelect');
+      if (sel) { sel.innerHTML = '<option value="">— Aucun patient —</option>'; sel.value = ''; }
+      const st = $('quickStatus'); if (st) { st.textContent = '—'; st.className = 'status'; }
+      return;
+    }
     selectedPatient = patients.find(p => p.id === patientId) || patients[0];
-    $('quickPatientSelect').value = selectedPatient.id;
-    $('quickStatus').textContent = selectedPatient.status;
-    $('quickStatus').className = 'status ' + selectedPatient.statusClass;
-    renderPatientList($('patientSearch').value);
+    const sel = $('quickPatientSelect');
+    if (sel) sel.value = selectedPatient.id;
+    const st = $('quickStatus');
+    if (st) { st.textContent = selectedPatient.status || '—'; st.className = 'status ' + (selectedPatient.statusClass || 'ok'); }
+    const search = $('patientSearch');
+    renderPatientList(search ? search.value : '');
     renderHome();
     renderPatientFile();
     // Recharge les dossiers médicaux importés (API) pour ce patient
@@ -5378,8 +5388,25 @@
 
   function initQuickSelect() {
     const select = $('quickPatientSelect');
-    select.innerHTML = patients.map(p => `<option value="${p.id}">${p.id} · ${p.sex} · ${p.gene}</option>`).join('');
-    select.addEventListener('change', e => setSelectedPatient(e.target.value));
+    if (!select) return;
+    // Phase 12.4 : cohorte vide → placeholder
+    if (!Array.isArray(patients) || patients.length === 0) {
+      select.innerHTML = '<option value="">— Aucun patient —</option>';
+      selectedPatient = null;
+      return;
+    }
+    select.innerHTML = patients.map(p => `<option value="${p.id}">${p.id} · ${p.sex || '?'} · ${p.gene || '—'}</option>`).join('');
+    // Phase 12.4 : n'ajoute le listener QU'UNE SEULE FOIS (sinon empilement après chaque reload)
+    if (!select._changeWired) {
+      select.addEventListener('change', e => setSelectedPatient(e.target.value));
+      select._changeWired = true;
+    }
+    // Phase 12.4 : resynchronise selectedPatient sur un objet du tableau COURANT.
+    // Sinon selectedPatient pointe sur un ancien objet (ex: seed MRF-001) qui n'existe plus
+    // → l'UI affiche les données d'un patient différent de celui du sélecteur.
+    const wantedId = (selectedPatient && selectedPatient.id) || null;
+    const found = wantedId ? patients.find(p => p.id === wantedId) : null;
+    selectedPatient = found || patients[0];
     select.value = selectedPatient.id;
   }
 
@@ -5955,6 +5982,24 @@
   // === DOSSIER + TIMELINE
   // ============================================================
   function renderPatientFile() {
+    // Phase 12.4 : garde-fou cohorte vide / patient non sélectionné
+    if (!selectedPatient) {
+      const sub = $('dossierSubtitle');
+      if (sub) sub.textContent = 'Aucun patient sélectionné.';
+      const idMount = document.getElementById('patientIdentityCardMount');
+      if (idMount) idMount.innerHTML = `
+        <article class="card" style="padding:32px; text-align:center; margin-bottom:14px;">
+          <div style="font-size:36px; margin-bottom:8px;">👤</div>
+          <h3 style="margin:0 0 6px; font-size:16px;">Aucun patient dans la cohorte</h3>
+          <p style="color:var(--muted); font-size:13px; margin:0;">
+            Activez le <strong>🎭 Mode Démo</strong> pour voir la cohorte de démonstration,<br>
+            ou créez un patient depuis <strong>Création fiche patient</strong>.
+          </p>
+        </article>`;
+      const actsMount = document.getElementById('patientActsTimelineMount');
+      if (actsMount) actsMount.innerHTML = '';
+      return;
+    }
     const evals = selectedPatient.evaluations || [];
     const lastEv = evals.length ? last(evals) : null;
 
@@ -7190,11 +7235,19 @@
     const pdfBtn = $('cf_pdfBtn'); if (pdfBtn) pdfBtn.style.display = 'inline-flex';
     const pdfBtnTop = $('cf_pdfBtnTop'); if (pdfBtnTop) pdfBtnTop.style.display = 'inline-flex';
 
-    // Sélectionne ce patient en interne (pas de switchTab automatique)
-    if (typeof setSelectedPatient === 'function') setSelectedPatient(code);
+    // Phase 12.4 : Modale de confirmation AVANT toute autre opération
+    // (si setSelectedPatient plantait, la modale ne s'affichait jamais)
+    try {
+      openPatientCreatedModal(code, firstName, lastName);
+    } catch (e) {
+      console.error('[creation] modale échouée', e);
+      showCreationFeedback('✅ Patient <strong>' + code + '</strong> enregistré. Cliquez sur Réinitialiser pour créer un autre patient.', 'success');
+    }
 
-    // Phase 12.4 : Modale de confirmation avec choix d'action
-    openPatientCreatedModal(code, firstName, lastName);
+    // Sélectionne ce patient en interne (après la modale, et sans bloquer si ça plante)
+    try {
+      if (typeof setSelectedPatient === 'function') setSelectedPatient(code);
+    } catch (e) { console.warn('[creation] setSelectedPatient échoué', e); }
   }
 
   // Modale post-création patient : confirme + propose 3 actions (Nouveau / Ouvrir dossier / PDF)
