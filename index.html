@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase13"></script>
+  <script src="api-client.js?v=phase13-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase13"></script>
+  <script src="questionnaires-defs.js?v=phase13-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase13"></script>
+  <script src="medical-parsers.js?v=phase13-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase13"></script>
+  <script src="cpet-graph-preview.js?v=phase13-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase13"></script>
-  <script src="medical-record-ui.js?v=phase13"></script>
+  <script src="pdf-extractor.js?v=phase13-1"></script>
+  <script src="medical-record-ui.js?v=phase13-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase13"></script>
+  <script src="aortic-consultations.js?v=phase13-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3224,6 +3224,34 @@
               <div class="control-label">Variant pathogène</div>
               <input type="text" id="cf_variant" placeholder="ex. c.1234C>T (p.Arg412Cys)" />
             </div>
+          </div>
+          <div style="margin:18px 0 10px; padding-top:14px; border-top:1px dashed #e2e8f0;">
+            <h4 style="margin:0 0 3px; font-size:13.5px; font-weight:800; color:#991b1b; display:flex; align-items:center; gap:6px;">🫀 Suivi de la dilatation aortique — première constatation</h4>
+            <p style="color:var(--muted); font-size:12px; margin-bottom:12px;">Sinus de Valsalva / racine aortique. Facultatif si non encore connu — pourra être complété plus tard dans le dossier.</p>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
+            <div>
+              <div class="control-label">Date première constatation / diagnostic</div>
+              <input type="date" id="cf_aorticFirstDate" />
+            </div>
+            <div>
+              <div class="control-label">Valeur mesurée (mm)</div>
+              <input type="number" step="0.1" id="cf_aorticFirstValue" placeholder="ex. 38.5" />
+            </div>
+            <div>
+              <div class="control-label">Site mesuré</div>
+              <select id="cf_aorticFirstSite">
+                <option value="">— Non précisé —</option>
+                <option value="Sinus de Valsalva">Sinus de Valsalva</option>
+                <option value="Anneau aortique">Anneau aortique</option>
+                <option value="Jonction sino-tubulaire">Jonction sino-tubulaire</option>
+                <option value="Aorte ascendante">Aorte ascendante</option>
+                <option value="Crosse aortique">Crosse aortique</option>
+                <option value="Aorte descendante">Aorte descendante</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; margin-top:12px;">
             <div style="grid-column: 1 / -1;">
               <div class="control-label">Antécédents médicaux & chirurgicaux</div>
               <textarea id="cf_history" rows="2" placeholder="ex. Chirurgie aorte ascendante 2019, scoliose corrigée 2010..."></textarea>
@@ -6942,7 +6970,9 @@
   function resetCreationForm() {
     const ids = ['cf_code','cf_lastName','cf_firstName','cf_ipp','cf_center',
                  'cf_sex','cf_dob','cf_age','cf_initials','cf_email','cf_phone','cf_doctor','cf_address',
-                 'cf_gene','cf_dxDate','cf_variant','cf_history','cf_treatments','cf_allergies','cf_smoking','cf_baselinePA',
+                 'cf_gene','cf_dxDate','cf_variant',
+                 'cf_aorticFirstDate','cf_aorticFirstValue','cf_aorticFirstSite',
+                 'cf_history','cf_treatments','cf_allergies','cf_smoking','cf_baselinePA',
                  'cf_status','cf_riskFactor','cf_adherence','cf_riskComment','cf_alterations','cf_incidents',
                  'cf_inclusionDate','cf_consent','cf_notes'];
     ids.forEach(id => { if ($(id)) $(id).value = ''; });
@@ -7327,6 +7357,20 @@
     try {
       if (typeof setSelectedPatient === 'function') setSelectedPatient(code);
     } catch (e) { console.warn('[creation] setSelectedPatient échoué', e); }
+
+    // Phase 13.1 : enregistre la première constatation de dilatation aortique (si renseignée)
+    try {
+      const aFirstDate = ($('cf_aorticFirstDate') && $('cf_aorticFirstDate').value) || '';
+      const aFirstValueRaw = ($('cf_aorticFirstValue') && $('cf_aorticFirstValue').value) || '';
+      const aFirstSite = ($('cf_aorticFirstSite') && $('cf_aorticFirstSite').value) || '';
+      if ((aFirstDate || aFirstValueRaw || aFirstSite) && window.MarfanAPI && window.MarfanAPI.consultations) {
+        window.MarfanAPI.consultations.patchAortic(code, {
+          first_diagnosis_date: aFirstDate || null,
+          first_value_mm: aFirstValueRaw ? parseFloat(aFirstValueRaw) : null,
+          first_site: aFirstSite || null
+        }).catch(e => console.warn('[aortic] enregistrement première constatation échoué', e));
+      }
+    } catch (e) { console.warn('[aortic] échec', e); }
   }
 
   // Modale post-création patient : confirme + propose 3 actions (Nouveau / Ouvrir dossier / PDF)
@@ -7390,6 +7434,17 @@
       set('cf_gene', p.gene);
       set('cf_dxDate', medical.dxDate);
       set('cf_variant', medical.variant);
+      // Phase 13.1 : pré-remplit la première constatation aortique depuis l'API
+      try {
+        if (window.MarfanAPI && window.MarfanAPI.consultations) {
+          window.MarfanAPI.consultations.getAortic(patientId).then(r => {
+            const a = (r && r.aortic) || {};
+            if ($('cf_aorticFirstDate') && a.first_diagnosis_date) $('cf_aorticFirstDate').value = a.first_diagnosis_date.slice(0, 10);
+            if ($('cf_aorticFirstValue') && a.first_value_mm != null) $('cf_aorticFirstValue').value = a.first_value_mm;
+            if ($('cf_aorticFirstSite') && a.first_site) $('cf_aorticFirstSite').value = a.first_site;
+          }).catch(e => console.warn('[aortic] chargement pré-remplissage échoué', e));
+        }
+      } catch (e) { console.warn('[aortic] échec', e); }
       set('cf_history', medical.history);
       set('cf_treatments', medical.treatments);
       set('cf_allergies', medical.allergies);
