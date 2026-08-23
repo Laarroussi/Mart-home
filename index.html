@@ -12,17 +12,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase12-3f"></script>
+  <script src="api-client.js?v=phase12-4"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase12-3f"></script>
+  <script src="questionnaires-defs.js?v=phase12-4"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase12-3f"></script>
+  <script src="medical-parsers.js?v=phase12-4"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase12-3f"></script>
+  <script src="cpet-graph-preview.js?v=phase12-4"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase12-3f"></script>
-  <script src="medical-record-ui.js?v=phase12-3f"></script>
+  <script src="pdf-extractor.js?v=phase12-4"></script>
+  <script src="medical-record-ui.js?v=phase12-4"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2825,7 +2825,7 @@
         </button>
         <button class="tab-button" data-tab="dossier">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
-          Dossier patient
+          Consultation dossier patient
         </button>
         <button class="tab-button" data-tab="database">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
@@ -3131,8 +3131,20 @@
           <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Code patient anonymisé suggéré automatiquement. Modifiable.</p>
           <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px;">
             <div>
-              <div class="control-label">Code patient *</div>
+              <div class="control-label">Code patient anonymisé *</div>
               <input type="text" id="cf_code" placeholder="MRF-XXX" />
+            </div>
+            <div>
+              <div class="control-label">IPP (Identifiant Permanent Patient)</div>
+              <input type="text" id="cf_ipp" placeholder="ex. 12345678" />
+            </div>
+            <div>
+              <div class="control-label">Nom *</div>
+              <input type="text" id="cf_lastName" placeholder="ex. DUPONT" />
+            </div>
+            <div>
+              <div class="control-label">Prénom *</div>
+              <input type="text" id="cf_firstName" placeholder="ex. Marie" />
             </div>
             <div>
               <div class="control-label">Sexe *</div>
@@ -3166,6 +3178,10 @@
             <div>
               <div class="control-label">Médecin référent</div>
               <input type="text" id="cf_doctor" placeholder="Dr Nom" />
+            </div>
+            <div>
+              <div class="control-label">Centre de référence</div>
+              <input type="text" id="cf_center" placeholder="ex. CHU Toulouse — Cardiologie" />
             </div>
             <div style="grid-column: 1 / -1;">
               <div class="control-label">Adresse (optionnel)</div>
@@ -3319,7 +3335,7 @@
       <!-- ============================== DOSSIER ============================== -->
       <section id="dossier" class="tab-panel hidden">
         <header class="page-header">
-          <div><h2>Dossier patient</h2><p id="dossierSubtitle">Évaluations longitudinales illimitées, comparaisons ouvertes, exports adaptables.</p></div>
+          <div><h2>Consultation dossier patient</h2><p id="dossierSubtitle">Évaluations longitudinales illimitées, comparaisons ouvertes, exports adaptables.</p></div>
           <div class="actions">
             <button class="btn-secondary" onclick="switchMainTab('accueil')">← Accueil</button>
             <button class="btn-violet" onclick="openAddEvaluation()">+ Évaluation</button>
@@ -5318,7 +5334,7 @@
       accounts: ['Gestion des comptes', 'Création et suivi des comptes Administrateur, Investigateur principal, Investigateur et Patient.'],
       creation: ['Création fiche patient', 'Identité civile, informations médicales et première évaluation.'],
       'invest-account': ['Création compte investigateur', 'Création d\'un compte avec rôle Investigateur — réservé à l\'Administrateur principal.'],
-      dossier: ['Dossier patient', 'Évaluations longitudinales et comparaisons ouvertes.'],
+      dossier: ['Consultation dossier patient', 'Évaluations longitudinales et comparaisons ouvertes.'],
       database: ['Base de données', 'Vue longitudinale ou large, structure dynamique.'],
       training: ['Entraînement + Visio', 'Vidéo de séance, partage écran et participants visibles.'],
       visio: ['Salle visio', 'Gestion simple de la visioconférence.'],
@@ -6705,7 +6721,8 @@
   }
 
   function resetCreationForm() {
-    const ids = ['cf_code','cf_sex','cf_dob','cf_age','cf_initials','cf_email','cf_phone','cf_doctor','cf_address',
+    const ids = ['cf_code','cf_lastName','cf_firstName','cf_ipp','cf_center',
+                 'cf_sex','cf_dob','cf_age','cf_initials','cf_email','cf_phone','cf_doctor','cf_address',
                  'cf_gene','cf_dxDate','cf_variant','cf_history','cf_treatments','cf_allergies','cf_smoking','cf_baselinePA',
                  'cf_status','cf_riskFactor','cf_adherence','cf_riskComment','cf_alterations','cf_incidents',
                  'cf_inclusionDate','cf_consent','cf_notes'];
@@ -6951,6 +6968,10 @@
 
   function createPatientFromForm() {
     const code = ($('cf_code').value || '').trim();
+    const lastName = ($('cf_lastName') && $('cf_lastName').value || '').trim();
+    const firstName = ($('cf_firstName') && $('cf_firstName').value || '').trim();
+    const ipp = ($('cf_ipp') && $('cf_ipp').value || '').trim();
+    const center = ($('cf_center') && $('cf_center').value || '').trim();
     const sex = $('cf_sex').value;
     const age = parseInt($('cf_age').value, 10);
     const gene = $('cf_gene').value;
@@ -6958,12 +6979,16 @@
     const evDate = ($('cf_evDate') && $('cf_evDate').value) || new Date().toISOString().slice(0, 10);
     const aorta = ($('cf_aorta') && parseFloat($('cf_aorta').value)) || 0;
 
-    // Validation des champs obligatoires (uniquement civil + médical)
+    // Validation des champs obligatoires (civil + médical)
     if (!code) { showCreationFeedback('Code patient requis.', 'error'); return; }
+    if (!lastName) { showCreationFeedback('Nom requis.', 'error'); return; }
+    if (!firstName) { showCreationFeedback('Prénom requis.', 'error'); return; }
     if (!sex) { showCreationFeedback('Sexe requis.', 'error'); return; }
     if (!age || isNaN(age)) { showCreationFeedback('Âge requis.', 'error'); return; }
     if (!gene) { showCreationFeedback('Gène muté requis.', 'error'); return; }
-    if (patients.some(p => p.id === code)) { showCreationFeedback('Ce code patient existe déjà : ' + code, 'error'); return; }
+    // Phase 12.4 : check unicité DÉPLACÉ côté serveur (l'API renvoie 409 si déjà existant).
+    // Le check client-side créait des faux positifs quand la liste locale était désynchronisée
+    // du serveur (patients ajoutés localement mais push API échoué, ou seed pas encore nettoyé).
 
     const statusVal = $('cf_status').value || 'Stable';
     const statusClassMap = { 'Stable':'ok', 'Surveillance':'watch', 'Alerte':'alert' };
@@ -6988,7 +7013,11 @@
       incidents: incidents.length ? incidents : ['À documenter'],
       // Informations civiles & médicales étendues
       civil: {
-        initials: $('cf_initials').value,
+        lastName: lastName,
+        firstName: firstName,
+        ipp: ipp,
+        center: center,
+        initials: $('cf_initials').value || ((firstName[0]||'') + '.' + (lastName[0]||'') + '.'),
         dob: $('cf_dob').value,
         email: $('cf_email').value,
         phone: $('cf_phone').value,
