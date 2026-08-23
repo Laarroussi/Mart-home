@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase13-3"></script>
+  <script src="api-client.js?v=phase13-4"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase13-3"></script>
+  <script src="questionnaires-defs.js?v=phase13-4"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase13-3"></script>
+  <script src="medical-parsers.js?v=phase13-4"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase13-3"></script>
+  <script src="cpet-graph-preview.js?v=phase13-4"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase13-3"></script>
-  <script src="medical-record-ui.js?v=phase13-3"></script>
+  <script src="pdf-extractor.js?v=phase13-4"></script>
+  <script src="medical-record-ui.js?v=phase13-4"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase13-3"></script>
+  <script src="aortic-consultations.js?v=phase13-4"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3253,6 +3253,32 @@
             <div style="grid-column: 1 / -1;">
               <div class="control-label">Commentaire (facultatif)</div>
               <input type="text" id="cf_aorticFirstComment" placeholder="ex. Mesure issue du compte-rendu du CHU de..., à confirmer" />
+            </div>
+          </div>
+          <div style="margin:16px 0 10px; padding-top:14px; border-top:1px dashed #e2e8f0;">
+            <h4 style="margin:0 0 3px; font-size:13.5px; font-weight:800; color:#7c3aed;">📅 Évaluation du jour — consultation initiale</h4>
+            <p style="color:var(--muted); font-size:12px; margin-bottom:12px;">Si un diamètre est mesuré aujourd'hui (jour de création du dossier), il devient l'« Évaluation actuelle » et apparaît comme première consultation dans l'historique — en plus de la ligne « Diagnostic initial » ci-dessus.</p>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
+            <div>
+              <div class="control-label">Date (aujourd'hui)</div>
+              <input type="date" id="cf_aorticTodayDate" readonly style="background:#f1f5f9; color:#64748b;" />
+            </div>
+            <div>
+              <div class="control-label">Diamètre du jour (mm)</div>
+              <input type="number" step="0.1" id="cf_aorticTodayValue" placeholder="ex. 39 — si mesuré aujourd'hui" />
+            </div>
+            <div>
+              <div class="control-label">Site mesuré</div>
+              <select id="cf_aorticTodaySite">
+                <option value="">— Non précisé —</option>
+                <option value="Sinus de Valsalva">Sinus de Valsalva</option>
+                <option value="Anneau aortique">Anneau aortique</option>
+                <option value="Jonction sino-tubulaire">Jonction sino-tubulaire</option>
+                <option value="Aorte ascendante">Aorte ascendante</option>
+                <option value="Crosse aortique">Crosse aortique</option>
+                <option value="Aorte descendante">Aorte descendante</option>
+              </select>
             </div>
           </div>
           <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; margin-top:12px;">
@@ -6964,6 +6990,8 @@
     // Pré-remplit le code patient suggéré et la date d'inclusion
     if ($('cf_code') && !$('cf_code').value) $('cf_code').value = nextPatientCode();
     if ($('cf_inclusionDate') && !$('cf_inclusionDate').value) $('cf_inclusionDate').value = new Date().toISOString().slice(0, 10);
+    // Phase 13.4 : date de l'évaluation du jour toujours = aujourd'hui (lecture seule)
+    if ($('cf_aorticTodayDate')) $('cf_aorticTodayDate').value = new Date().toISOString().slice(0, 10);
     const fb = $('creationFeedback');
     if (fb) fb.style.display = 'none';
     // Masque le bouton PDF tant que le patient n'est pas créé
@@ -6976,6 +7004,7 @@
                  'cf_sex','cf_dob','cf_age','cf_initials','cf_email','cf_phone','cf_doctor','cf_address',
                  'cf_gene','cf_dxDate','cf_variant',
                  'cf_aorticFirstDate','cf_aorticFirstValue','cf_aorticFirstSite','cf_aorticFirstComment',
+                 'cf_aorticTodayValue','cf_aorticTodaySite',
                  'cf_history','cf_treatments','cf_allergies','cf_smoking','cf_baselinePA',
                  'cf_status','cf_riskFactor','cf_adherence','cf_riskComment','cf_alterations','cf_incidents',
                  'cf_inclusionDate','cf_consent','cf_notes'];
@@ -7401,6 +7430,21 @@
           first_site: aFirstSite || null,
           first_comment: aFirstComment || null
         }).catch(e => console.warn('[aortic] enregistrement première constatation échoué', e));
+      }
+
+      // Phase 13.4 : 2e ligne — évaluation du jour = consultation initiale (jour de création)
+      const aTodayValueRaw = ($('cf_aorticTodayValue') && $('cf_aorticTodayValue').value) || '';
+      const aTodayDate = ($('cf_aorticTodayDate') && $('cf_aorticTodayDate').value) || new Date().toISOString().slice(0, 10);
+      const aTodaySite = ($('cf_aorticTodaySite') && $('cf_aorticTodaySite').value) || '';
+      if (aTodayValueRaw && window.MarfanAPI && window.MarfanAPI.consultations) {
+        // Crée une consultation datée du jour : le backend met à jour "Évaluation actuelle"
+        // automatiquement (sans toucher au Diagnostic initial ci-dessus).
+        window.MarfanAPI.consultations.create(code, {
+          consultation_date: aTodayDate,
+          aortic_value_mm: parseFloat(aTodayValueRaw),
+          aortic_site: aTodaySite || null,
+          comment: 'Consultation initiale — création du dossier'
+        }).catch(e => console.warn('[aortic] enregistrement évaluation du jour échoué', e));
       }
     } catch (e) { console.warn('[aortic] échec', e); }
   }
