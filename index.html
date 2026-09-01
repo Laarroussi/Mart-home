@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase13-12"></script>
+  <script src="api-client.js?v=phase14c"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase13-12"></script>
+  <script src="questionnaires-defs.js?v=phase14c"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase13-12"></script>
+  <script src="medical-parsers.js?v=phase14c"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase13-12"></script>
+  <script src="cpet-graph-preview.js?v=phase14c"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase13-12"></script>
-  <script src="medical-record-ui.js?v=phase13-12"></script>
+  <script src="pdf-extractor.js?v=phase14c"></script>
+  <script src="medical-record-ui.js?v=phase14c"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase13-12"></script>
+  <script src="aortic-consultations.js?v=phase14c"></script>
   <script src="activation-ui.js?v=phase14b"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -10375,16 +10375,56 @@
   let patHrConnected = false;
 
   function setPatientUser(idx) {
+    // Sécurité : un patient connecté ne peut pas changer de dossier
+    try {
+      const u = window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser();
+      if (u && u.role === 'patient') { initPatientPortal(); return; }
+    } catch (_) {}
     patientUserIdx = parseInt(idx, 10) || 0;
     initPatientPortal();
   }
 
   function initPatientPortal() {
+    // ==========================================================
+    // CONFIDENTIALITÉ (Phase 14c) — un patient connecté ne doit voir QUE
+    // son propre dossier. Auparavant, l'espace affichait patients[0] :
+    // le patient voyait le dossier d'un autre (souvent MRF-001, un patient
+    // de démonstration) et pouvait même en changer via le menu déroulant.
+    // ==========================================================
+    let monId = null;
+    try {
+      const u = window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser();
+      if (u && u.role === 'patient') monId = u.patient_id || u.patientId || null;
+    } catch (_) {}
+
+    if (monId) {
+      const i = patients.findIndex(x => x.id === monId);
+      if (i >= 0) {
+        patientUserIdx = i;
+      } else {
+        // Son dossier n'est pas chargé : on n'affiche AUCUNE donnée d'un autre patient
+        if ($('patAvatar')) $('patAvatar').textContent = String(monId).split('-').pop() || '?';
+        if ($('patName')) $('patName').textContent = 'Patient ' + monId;
+        if ($('patSub'))  $('patSub').textContent = 'Dossier en cours de chargement…';
+        const swv = $('patSwitcher'); if (swv) swv.style.display = 'none';
+        return;
+      }
+    }
+
     const p = patients[patientUserIdx] || patients[0];
-    // Switcher
+    if (!p) return;
+
+    // Switcher : réservé à la prévisualisation par le personnel soignant.
+    // Masqué dès qu'un patient est réellement connecté.
     const sw = $('patSwitcher');
     if (sw) {
-      sw.innerHTML = patients.map((pp, i) => `<option value="${i}" ${i===patientUserIdx?'selected':''}>${pp.id} · ${pp.sex} · ${pp.age} ans</option>`).join('');
+      if (monId) {
+        sw.style.display = 'none';
+        sw.innerHTML = '';
+      } else {
+        sw.style.display = '';
+        sw.innerHTML = patients.map((pp, i) => `<option value="${i}" ${i===patientUserIdx?'selected':''}>${pp.id} · ${pp.sex} · ${pp.age} ans</option>`).join('');
+      }
     }
     // Identité
     if ($('patAvatar')) { $('patAvatar').textContent = p.id.split('-')[1]; $('patAvatar').style.background = gradientFor(p.id); }
