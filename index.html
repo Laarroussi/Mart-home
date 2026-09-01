@@ -14399,6 +14399,8 @@
         return; // bloque tant que le changement n'est pas fait
       }
       showUserBadge(user);
+      // Phase 14b : cet onglet fait foi à partir de maintenant
+      try { if (typeof window.__memoriserSession === 'function') window.__memoriserSession(); } catch (_) {}
       const role = syncApiUserToCurrentUser(user);
       const n = await loadPatientsFromApi();
       const v = await loadVideosFromApi(role);
@@ -14463,6 +14465,55 @@
       hideUserBadge();
       window.location.reload();
     });
+
+    // ============================================================
+    // Phase 14b — Détection d'un changement de session dans un autre onglet
+    // ------------------------------------------------------------
+    // Les onglets partagent le même stockage de session. Si l'on se connecte
+    // avec un autre compte ailleurs (ex. le compte patient pour tester
+    // l'activation), cet onglet continue d'afficher l'ancienne interface alors
+    // que ses appels partent avec la nouvelle identité → erreurs « Rôle requis ».
+    // On avertit clairement au lieu de laisser l'utilisateur dans le flou.
+    // ============================================================
+    (function surveillerChangementDeSession() {
+      const lireUser = () => {
+        try { return JSON.parse(localStorage.getItem('marfan.user') || 'null'); }
+        catch (_) { return null; }
+      };
+      let userInitial = lireUser();
+
+      function avertir(nouveau) {
+        if (document.getElementById('sessionChangedBanner')) return;
+        const qui = nouveau ? (nouveau.name || nouveau.email || 'un autre compte') : 'aucun compte';
+        const html = `
+          <div id="sessionChangedBanner" style="position:fixed; top:0; left:0; right:0; z-index:99999; background:#b45309; color:#fff; padding:11px 16px; font-size:13px; font-weight:600; text-align:center; box-shadow:0 3px 12px rgba(0,0,0,.25);">
+            ⚠ La session a changé dans un autre onglet (${qui}). Cette page affiche encore l'ancienne interface.
+            <button onclick="window.location.reload()" style="margin-left:12px; padding:5px 14px; border:1px solid rgba(255,255,255,.55); background:rgba(255,255,255,.18); color:#fff; border-radius:7px; font-weight:700; font-size:12.5px; cursor:pointer;">Recharger</button>
+          </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+      }
+
+      // Changement provoqué par un AUTRE onglet
+      window.addEventListener('storage', e => {
+        if (e.key !== 'marfan.user' && e.key !== 'marfan.token') return;
+        const maintenant = lireUser();
+        const avantId = userInitial && userInitial.id;
+        const apresId = maintenant && maintenant.id;
+        if (avantId !== apresId) avertir(maintenant);
+      });
+
+      // Vérification au retour sur l'onglet (couvre les cas non notifiés)
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) return;
+        const maintenant = lireUser();
+        const avantId = userInitial && userInitial.id;
+        const apresId = maintenant && maintenant.id;
+        if (avantId && avantId !== apresId) avertir(maintenant);
+      });
+
+      // Mémorise l'identité au moment où cet onglet se connecte
+      window.__memoriserSession = () => { userInitial = lireUser(); };
+    })();
 
     // ============================================================
     // === Phase 12.3 — Sidebar mobile (hamburger) ===============
