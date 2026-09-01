@@ -121,7 +121,7 @@ router.post('/send/:patient_id', requireAuth,
 router.get('/verify/:token', async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT a.token, a.email, a.expires_at, a.used_at, u.name, u.username, u.patient_id
+      `SELECT a.token, a.email, a.expires_at, a.used_at, u.name, u.patient_id
          FROM activation_tokens a JOIN users u ON u.id = a.user_id
         WHERE a.token = $1`, [req.params.token]);
     if (!rows.length) return res.status(404).json({ valid: false, reason: 'inconnu' });
@@ -132,7 +132,11 @@ router.get('/verify/:token', async (req, res, next) => {
     res.json({
       valid: true,
       email_masque: maskEmail(t.email),
-      identifiant: t.username || t.patient_id,
+      // La connexion se fait par ADRESSE E-MAIL (et non par code patient).
+      // On renvoie celle qui a reçu le lien : le porteur du jeton possède
+      // déjà cette boîte, aucune information n'est divulguée.
+      identifiant: t.email,
+      code_patient: t.patient_id || null,
       nom: t.name || null,
       min_password: MIN_PWD
     });
@@ -150,7 +154,8 @@ router.post('/complete', async (req, res, next) => {
       return res.status(400).json({ error: `Le mot de passe doit contenir au moins ${MIN_PWD} caractères` });
     }
     const { rows } = await query(
-      `SELECT user_id, patient_id, expires_at, used_at FROM activation_tokens WHERE token = $1`, [token]);
+      `SELECT user_id, patient_id, email, expires_at, used_at
+         FROM activation_tokens WHERE token = $1`, [token]);
     if (!rows.length) return res.status(404).json({ error: 'Lien invalide' });
     const t = rows[0];
     if (t.used_at) return res.status(410).json({ error: 'Ce lien a déjà été utilisé' });
@@ -162,6 +167,17 @@ router.post('/complete', async (req, res, next) => {
     await query(
       `UPDATE users SET password_hash = $1, must_change_password = FALSE WHERE id = $2`,
       [hash, t.user_id]);
+
+    // La connexion se fait par adresse e-mail. On aligne l'identifiant du compte
+    // sur l'adresse qui a reçu le lien : sinon, en cas d'adresse de repli générée
+    // à la création (collision d'e-mail), le patient n'aurait pas pu se connecter.
+    try {
+      const dispo = await query(
+        'SELECT id FROM users WHERE email = $1 AND id <> $2', [t.email, t.user_id]);
+      if (!dispo.rows.length) {
+        await query('UPDATE users SET email = $1 WHERE id = $2', [t.email, t.user_id]);
+      }
+    } catch (e) { console.warn('[activation] alignement e-mail :', e.message); }
     await query('UPDATE activation_tokens SET used_at = NOW() WHERE token = $1', [token]);
     await query(
       `INSERT INTO activation_log (user_id, patient_id, action, detail)

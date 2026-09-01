@@ -25,6 +25,18 @@
   const TOKEN = getToken();
   if (!TOKEN) return; // page normale, on ne fait rien
 
+  // Le lien d'activation est destiné au PATIENT. Si une session est déjà ouverte
+  // dans ce navigateur (typiquement celle de l'investigateur qui vient de créer
+  // la fiche), on la ferme : sans cela, le patient était reconnecté automatiquement
+  // sur l'espace de la session en cours au lieu du sien.
+  function fermerSessionExistante() {
+    try {
+      localStorage.removeItem('marfan.token');
+      localStorage.removeItem('marfan.user');
+    } catch (_) { /* stockage indisponible */ }
+  }
+  fermerSessionExistante();
+
   const esc = s => String(s == null ? '' : s)
     .replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
@@ -75,8 +87,9 @@
       </p>
 
       <div style="padding:11px 13px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:9px; margin-bottom:18px; font-size:12.5px; color:#475569;">
-        <div>Identifiant : <strong style="color:#0b1530;">${esc(info.identifiant || '—')}</strong></div>
-        <div style="margin-top:3px;">Adresse : <strong style="color:#0b1530;">${esc(info.email_masque || '—')}</strong></div>
+        <div>Vous vous connecterez avec votre adresse e-mail :</div>
+        <div style="margin-top:3px; color:#0b1530; font-weight:700; font-size:13.5px;">${esc(info.identifiant || info.email_masque || '—')}</div>
+        ${info.code_patient ? `<div style="margin-top:6px; font-size:11.5px;">Code de suivi : <strong style="color:#0b1530;">${esc(info.code_patient)}</strong></div>` : ''}
       </div>
 
       <label style="display:block; font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px;">Nouveau mot de passe</label>
@@ -99,15 +112,19 @@
       </p>`;
   }
 
-  function succes() {
+  function succes(info) {
+    const ident = esc((info && info.identifiant) || '');
     return `
       <div style="text-align:center; padding:8px 0 4px;">
         <div style="font-size:44px; margin-bottom:8px;">✅</div>
         <h3 style="margin:0 0 8px; font-size:18px; color:#065f46;">Votre espace est activé</h3>
-        <p style="margin:0 0 20px; font-size:13.5px; color:#475569; line-height:1.55;">
-          Votre mot de passe a bien été enregistré. Vous pouvez maintenant vous connecter à votre espace.
+        <p style="margin:0 0 16px; font-size:13.5px; color:#475569; line-height:1.55;">
+          Votre mot de passe a bien été enregistré.
         </p>
-        <a href="/" style="display:inline-block; padding:13px 26px; background:linear-gradient(135deg,#10b981,#059669); color:#fff; text-decoration:none; border-radius:10px; font-weight:700; font-size:14px;">Me connecter</a>
+        ${ident ? `<div style="padding:11px 13px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:9px; margin-bottom:18px; font-size:12.5px; color:#475569;">
+          Connectez-vous avec votre adresse e-mail<br><strong style="color:#0b1530; font-size:14px;">${ident}</strong>
+        </div>` : ''}
+        <a href="/" onclick="try{localStorage.removeItem('marfan.token');localStorage.removeItem('marfan.user');}catch(e){}" style="display:inline-block; padding:13px 26px; background:linear-gradient(135deg,#10b981,#059669); color:#fff; text-decoration:none; border-radius:10px; font-weight:700; font-size:14px;">Me connecter</a>
       </div>`;
   }
 
@@ -150,7 +167,8 @@
       btn.disabled = true; btn.textContent = 'Activation en cours…';
       try {
         await window.MarfanAPI.activation.complete(TOKEN, a);
-        mount(succes());
+        fermerSessionExistante();
+        mount(succes(info));
       } catch (e) {
         btn.disabled = false; btn.textContent = 'Activer mon espace';
         erreur(esc((e && e.message) || "L'activation a échoué. Réessayez."));
