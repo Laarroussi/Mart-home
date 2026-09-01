@@ -125,7 +125,10 @@ router.post('/sessions/:id/samples', requireAuth, async (req, res, next) => {
 // ============================================================
 router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
   try {
-    const { borg_cr10, content, patient_comment, status, notes } = req.body || {};
+    // duration_s : durée DÉCLARÉE par le patient (séance réalisée sans ceinture
+    // cardio, saisie a posteriori depuis sa séance prescrite). Prioritaire sur
+    // la durée calculée, qui n'a pas de sens dans ce cas.
+    const { borg_cr10, content, patient_comment, status, notes, duration_s } = req.body || {};
     if (borg_cr10 == null || borg_cr10 < 0 || borg_cr10 > 10) {
       return res.status(400).json({ error: 'borg_cr10 entre 0 et 10 requis' });
     }
@@ -166,7 +169,9 @@ router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
         WHERE id = $14
         RETURNING *`,
       [
-        a.max_t || null,
+        (duration_s != null && Number.isFinite(parseInt(duration_s, 10)) && parseInt(duration_s, 10) > 0)
+          ? parseInt(duration_s, 10)
+          : (a.max_t || null),
         finalStatus,
         parseInt(borg_cr10, 10),
         a.hr_min, a.hr_avg, a.hr_max,

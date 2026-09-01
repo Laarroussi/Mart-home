@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase14f"></script>
+  <script src="api-client.js?v=phase15"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase14f"></script>
+  <script src="questionnaires-defs.js?v=phase15"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase14f"></script>
+  <script src="medical-parsers.js?v=phase15"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase14f"></script>
+  <script src="cpet-graph-preview.js?v=phase15"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase14f"></script>
-  <script src="medical-record-ui.js?v=phase14f"></script>
+  <script src="pdf-extractor.js?v=phase15"></script>
+  <script src="medical-record-ui.js?v=phase15"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase14f"></script>
+  <script src="aortic-consultations.js?v=phase15"></script>
   <script src="activation-ui.js?v=phase14b"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -11228,8 +11228,186 @@
           vidCard.onclick = () => playPatientVideo(yid, v.title);
           grid.appendChild(vidCard);
         });
+
+        // Phase 15 : bloc de fin de séance — échelle de ressenti CR10 + durée
+        const finBloc = document.createElement('div');
+        finBloc.style.cssText = 'margin-top:16px; padding-top:14px; border-top:1px dashed #e2e8f0;';
+        finBloc.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+              <strong style="font-size:13px; color:#0b1530; display:block;">Séance terminée ?</strong>
+              <span style="font-size:12px; color:var(--muted);">Indiquez votre ressenti d'effort et la durée réalisée.</span>
+            </div>
+            <button data-cr10-program="${p.id}" data-cr10-titre="${(p.title || '').replace(/"/g, '&quot;')}"
+              style="padding:12px 20px; border:none; border-radius:10px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap;">
+              📊 Remplir l'échelle CR10
+            </button>
+          </div>
+          <div data-cr10-done="${p.id}" style="display:none; margin-top:10px; padding:10px 12px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; font-size:12.5px; color:#065f46; font-weight:600;"></div>`;
+        body.appendChild(finBloc);
+        const btnCr10 = finBloc.querySelector('[data-cr10-program]');
+        if (btnCr10) btnCr10.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          openCr10Modal(p.id, p.title);
+        });
+
         list.appendChild(item);
       });
+    }
+
+    // ============================================================
+    // Phase 15 — Échelle de ressenti d'effort CR10 (fin de séance prescrite)
+    // ------------------------------------------------------------
+    // Le patient déclare : sa perception de l'effort (0 à 10), la durée
+    // réellement réalisée, et un commentaire libre. La date est celle du jour,
+    // renseignée automatiquement et non modifiable.
+    // Enregistrement : création d'une séance rattachée au programme prescrit,
+    // puis clôture immédiate avec la durée déclarée.
+    // ============================================================
+    const CR10_NIVEAUX = [
+      { v: 0,  l: 'Aucun effort',        d: 'Au repos complet',                       c: '#94a3b8' },
+      { v: 1,  l: 'Très très léger',     d: 'À peine perceptible',                    c: '#38bdf8' },
+      { v: 2,  l: 'Léger',               d: 'Confortable, respiration normale',       c: '#22d3ee' },
+      { v: 3,  l: 'Modéré',              d: 'Effort net mais aisé, parler facilement', c: '#34d399' },
+      { v: 4,  l: 'Un peu difficile',    d: 'Respiration plus marquée',               c: '#4ade80' },
+      { v: 5,  l: 'Difficile',           d: 'Parler devient moins facile',            c: '#a3e635' },
+      { v: 6,  l: 'Difficile +',         d: 'Effort soutenu',                         c: '#facc15' },
+      { v: 7,  l: 'Très difficile',      d: 'Phrases courtes seulement',              c: '#fb923c' },
+      { v: 8,  l: 'Très difficile +',    d: 'Très éprouvant',                         c: '#f87171' },
+      { v: 9,  l: 'Extrêmement difficile', d: 'Presque le maximum',                   c: '#ef4444' },
+      { v: 10, l: 'Effort maximal',      d: 'Impossible de continuer',                c: '#b91c1c' }
+    ];
+
+    function openCr10Modal(programId, programTitle) {
+      const old = document.getElementById('cr10Backdrop');
+      if (old) old.remove();
+      const auj = new Date();
+      const dateIso = auj.toISOString().slice(0, 10);
+      const dateLisible = auj.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+
+      const html = `
+        <div id="cr10Backdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.85); z-index:10050; display:flex; align-items:center; justify-content:center; padding:16px; overflow-y:auto;">
+          <div style="background:white; border-radius:16px; width:560px; max-width:96vw; max-height:94vh; overflow-y:auto; box-shadow:0 26px 70px rgba(0,0,0,0.35);">
+            <div style="padding:20px 24px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white;">
+              <div style="font-size:11.5px; letter-spacing:1.2px; text-transform:uppercase; opacity:.92;">Fin de séance</div>
+              <h3 style="margin:3px 0 0; color:white; font-size:18px;">Échelle de ressenti d'effort (CR10)</h3>
+              <p style="margin:4px 0 0; font-size:12.5px; opacity:.95;">${escCr10(programTitle || 'Séance prescrite')}</p>
+            </div>
+
+            <div style="padding:20px 24px;">
+              <div style="display:flex; gap:12px; margin-bottom:18px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:170px; padding:11px 13px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:9px;">
+                  <div style="font-size:10.5px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.4px;">Date de la séance</div>
+                  <div style="font-size:13.5px; font-weight:700; color:#0b1530; margin-top:3px;">${dateLisible}</div>
+                  <div style="font-size:11px; color:#94a3b8; margin-top:2px;">Renseignée automatiquement</div>
+                </div>
+                <div style="flex:1; min-width:170px;">
+                  <label style="display:block; font-size:10.5px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px;">Durée réalisée (minutes) *</label>
+                  <input type="number" id="cr10Duree" min="1" max="300" step="1" placeholder="ex. 10"
+                    style="width:100%; padding:11px; border:1px solid #cbd5e1; border-radius:9px; font-size:16px; font-weight:700; box-sizing:border-box;">
+                </div>
+              </div>
+
+              <label style="display:block; font-size:12.5px; font-weight:700; color:#0b1530; margin-bottom:3px;">Quel effort avez-vous ressenti ? *</label>
+              <p style="font-size:11.5px; color:#6b7390; margin:0 0 10px;">Cochez la case qui correspond le mieux à votre ressenti pendant la séance.</p>
+              <div id="cr10Liste" style="display:flex; flex-direction:column; gap:5px; margin-bottom:16px;"></div>
+
+              <label style="display:block; font-size:12px; font-weight:700; color:#0b1530; margin-bottom:5px;">Commentaire <span style="font-weight:400; color:#94a3b8;">(facultatif)</span></label>
+              <textarea id="cr10Comment" rows="2" placeholder="Sensations, douleurs, fatigue, difficulté particulière…"
+                style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit; resize:vertical; box-sizing:border-box; margin-bottom:14px;"></textarea>
+
+              <div id="cr10Err" style="display:none; padding:10px 12px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; border-radius:9px; font-size:12.5px; margin-bottom:12px;"></div>
+            </div>
+
+            <div style="padding:0 24px 22px; display:flex; gap:9px;">
+              <button onclick="document.getElementById('cr10Backdrop').remove()"
+                style="flex:0 0 auto; padding:13px 20px; border:1px solid #cbd5e1; background:white; color:#475569; border-radius:10px; font-weight:600; font-size:13.5px; cursor:pointer;">Annuler</button>
+              <button id="cr10Valider" disabled
+                style="flex:1; padding:13px; border:none; border-radius:10px; background:#94a3b8; color:white; font-weight:700; font-size:14px; cursor:pointer;">Enregistrer ma séance</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+
+      let choix = null;
+      const liste = document.getElementById('cr10Liste');
+      CR10_NIVEAUX.forEach(n => {
+        const ligne = document.createElement('button');
+        ligne.type = 'button';
+        ligne.dataset.val = n.v;
+        ligne.style.cssText = 'display:flex; align-items:center; gap:11px; width:100%; padding:9px 12px; border:1.5px solid #e2e8f0; background:white; border-radius:9px; cursor:pointer; text-align:left; font-family:inherit;';
+        ligne.innerHTML = `
+          <span class="cr10Case" style="flex:0 0 auto; width:19px; height:19px; border:2px solid #cbd5e1; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:12px; color:white; font-weight:900;"></span>
+          <span style="flex:0 0 auto; width:30px; height:30px; border-radius:8px; background:${n.c}; color:white; font-weight:900; font-size:14px; display:flex; align-items:center; justify-content:center;">${n.v}</span>
+          <span style="flex:1; min-width:0;">
+            <span style="display:block; font-size:13px; font-weight:700; color:#0b1530;">${n.l}</span>
+            <span style="display:block; font-size:11.5px; color:#64748b;">${n.d}</span>
+          </span>`;
+        ligne.addEventListener('click', () => {
+          choix = n.v;
+          Array.from(liste.children).forEach(el => {
+            const actif = el === ligne;
+            el.style.borderColor = actif ? '#f97316' : '#e2e8f0';
+            el.style.background = actif ? '#fff7ed' : 'white';
+            const cse = el.querySelector('.cr10Case');
+            cse.style.background = actif ? '#f97316' : 'white';
+            cse.style.borderColor = actif ? '#f97316' : '#cbd5e1';
+            cse.textContent = actif ? '✓' : '';
+          });
+          majEtatCr10();
+        });
+        liste.appendChild(ligne);
+      });
+
+      const dureeEl = document.getElementById('cr10Duree');
+      const btnOk = document.getElementById('cr10Valider');
+      function majEtatCr10() {
+        const d = parseInt(dureeEl.value, 10);
+        const ok = (choix != null) && Number.isFinite(d) && d > 0;
+        btnOk.disabled = !ok;
+        btnOk.style.background = ok ? 'linear-gradient(135deg,#f59e0b,#f97316)' : '#94a3b8';
+        btnOk.style.cursor = ok ? 'pointer' : 'not-allowed';
+      }
+      dureeEl.addEventListener('input', majEtatCr10);
+
+      btnOk.addEventListener('click', async function () {
+        const minutes = parseInt(dureeEl.value, 10);
+        const commentaire = document.getElementById('cr10Comment').value.trim() || null;
+        const err = document.getElementById('cr10Err');
+        err.style.display = 'none';
+        this.disabled = true; this.textContent = 'Enregistrement…';
+        try {
+          const dep = await window.MarfanAPI.training.start({
+            session_type: 'video',
+            training_program_id: programId,
+            content: 'Séance prescrite : ' + (programTitle || '') + ' — ' + minutes + ' min'
+          });
+          const sid = dep && dep.session && dep.session.id;
+          await window.MarfanAPI.training.end(sid, choix, {
+            duration_s: minutes * 60,
+            content: 'Séance prescrite : ' + (programTitle || '') + ' — ' + minutes + ' min',
+            patient_comment: commentaire
+          });
+          const bd = document.getElementById('cr10Backdrop'); if (bd) bd.remove();
+          const zone = document.querySelector('[data-cr10-done="' + programId + '"]');
+          if (zone) {
+            const niv = CR10_NIVEAUX.find(x => x.v === choix);
+            zone.style.display = 'block';
+            zone.innerHTML = '✓ Séance enregistrée le ' + new Date(dateIso).toLocaleDateString('fr-FR') +
+              ' — ' + minutes + ' min · ressenti <strong>' + choix + '/10</strong> (' + (niv ? niv.l : '') + ')';
+          }
+          try { await loadTrainingHistory('patient'); } catch (_) {}
+        } catch (e) {
+          err.textContent = (e && e.message) || "L'enregistrement a échoué. Réessayez.";
+          err.style.display = 'block';
+          this.disabled = false; this.textContent = 'Enregistrer ma séance';
+        }
+      });
+    }
+
+    function escCr10(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g,
+        c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
     }
 
     function playPatientVideo(youtubeId, title) {
