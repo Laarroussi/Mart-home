@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase15"></script>
+  <script src="api-client.js?v=phase15-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase15"></script>
+  <script src="questionnaires-defs.js?v=phase15-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase15"></script>
+  <script src="medical-parsers.js?v=phase15-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase15"></script>
+  <script src="cpet-graph-preview.js?v=phase15-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase15"></script>
-  <script src="medical-record-ui.js?v=phase15"></script>
+  <script src="pdf-extractor.js?v=phase15-1"></script>
+  <script src="medical-record-ui.js?v=phase15-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase15"></script>
+  <script src="aortic-consultations.js?v=phase15-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -11140,7 +11140,12 @@
       try {
         const r = await window.MarfanAPI.trainingPrograms.mine();
         const programs = (r && r.programs) || [];
-        renderPatientPrograms(programs);
+        // Phase 15.1 : on croise avec les séances déjà réalisées pour marquer
+        // visuellement celles que le patient a terminées (persiste au rechargement).
+        let realisees = {};
+        try { realisees = await chargerSeancesRealisees(); }
+        catch (e) { console.warn('[programs] séances réalisées :', e && e.message); }
+        renderPatientPrograms(programs, realisees);
         return programs.length;
       } catch (e) {
         console.warn('[programs] mine échoué :', e.message);
@@ -11148,7 +11153,66 @@
       }
     }
 
-    function renderPatientPrograms(programs) {
+    // Retourne { [programId] : { date, minutes, borg } } — la séance la plus récente
+    async function chargerSeancesRealisees() {
+      const r = await window.MarfanAPI.training.mine();
+      const sessions = (r && r.sessions) || [];
+      const map = {};
+      sessions
+        .filter(s => s.training_program_id && s.status === 'completed' && s.borg_cr10 != null)
+        .forEach(s => {
+          const pid = s.training_program_id;
+          const quand = s.ended_at || s.started_at;
+          if (!map[pid] || new Date(quand) > new Date(map[pid].quand)) {
+            map[pid] = {
+              quand,
+              date: quand ? new Date(quand).toLocaleDateString('fr-FR') : '',
+              minutes: s.duration_s ? Math.round(s.duration_s / 60) : null,
+              borg: s.borg_cr10
+            };
+          }
+        });
+      return map;
+    }
+
+    // Applique l'état « réalisée » sur le bandeau d'une séance (couleur + résumé)
+    function marquerSeanceRealisee(programId, info) {
+      const entete = document.querySelector('[data-program-header="' + programId + '"]');
+      if (!entete) return;
+      const niv = CR10_NIVEAUX.find(x => x.v === info.borg);
+      entete.style.background = 'linear-gradient(135deg,#ecfdf5,#d1fae5)';
+      const etiquette = entete.querySelector('[data-program-tag]');
+      if (etiquette) {
+        etiquette.style.color = '#065f46';
+        etiquette.textContent = '✓ Séance réalisée' + (info.date ? ' · ' + info.date : '');
+      }
+      const resume = entete.querySelector('[data-program-resume]');
+      if (resume) {
+        resume.style.display = 'block';
+        resume.innerHTML =
+          '<span style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;">' +
+          (info.minutes ? '<span style="background:#059669; color:white; padding:2px 9px; border-radius:99px; font-size:11px; font-weight:700;">⏱ ' + info.minutes + ' min</span>' : '') +
+          '<span style="background:' + (niv ? niv.c : '#64748b') + '; color:white; padding:2px 9px; border-radius:99px; font-size:11px; font-weight:700;">Ressenti ' + info.borg + '/10</span>' +
+          (niv ? '<span style="color:#047857; font-size:11.5px; font-weight:600;">' + niv.l + '</span>' : '') +
+          '</span>';
+      }
+      const pastille = entete.querySelector('[data-program-badge]');
+      if (pastille) {
+        pastille.style.background = '#059669';
+        pastille.style.color = 'white';
+      }
+      // Le bouton CR10 devient secondaire : la séance peut être refaite
+      const btn = document.querySelector('[data-cr10-program="' + programId + '"]');
+      if (btn) {
+        btn.style.background = 'white';
+        btn.style.color = '#059669';
+        btn.style.border = '1.5px solid #a7f3d0';
+        btn.textContent = '↻ Refaire cette séance';
+      }
+    }
+
+    function renderPatientPrograms(programs, realisees) {
+      realisees = realisees || {};
       // On injecte une section AU-DESSUS de la grille de vidéos individuelles
       const panel = document.getElementById('pat-training');
       if (!panel) return;
@@ -11180,16 +11244,17 @@
         item.style.cssText = 'border:1px solid var(--line); border-radius:12px; overflow:hidden; background:white;';
         const date = p.assigned_at ? new Date(p.assigned_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' }) : '';
         item.innerHTML = `
-          <div class="apiProgramHeader" style="padding:14px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg,#fff7ed,#ffedd5); border-bottom:1px solid var(--line);">
+          <div class="apiProgramHeader" data-program-header="${p.id}" style="padding:14px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg,#fff7ed,#ffedd5); border-bottom:1px solid var(--line);">
             <div style="flex:1;">
               <div style="display:flex; align-items:center; gap:8px; margin-bottom:3px;">
-                <span style="font-size:11px; font-weight:800; color:#9a3412; text-transform:uppercase; letter-spacing:0.4px;">Séance prescrite${date ? ' · ' + date : ''}</span>
+                <span data-program-tag style="font-size:11px; font-weight:800; color:#9a3412; text-transform:uppercase; letter-spacing:0.4px;">Séance prescrite${date ? ' · ' + date : ''}</span>
               </div>
               <strong style="font-size:15px; color:#0b1530; display:block; margin-bottom:3px;">${p.title}</strong>
               ${p.description ? `<div style="font-size:12px; color:#6b7390;">${p.description}</div>` : ''}
+              <div data-program-resume style="display:none; margin-top:6px;"></div>
             </div>
             <div style="text-align:right; margin-left:14px;">
-              <span style="background:white; color:#9a3412; padding:4px 10px; border-radius:99px; font-size:11px; font-weight:700;">${(p.videos || []).length} vidéo(s)</span>
+              <span data-program-badge style="background:white; color:#9a3412; padding:4px 10px; border-radius:99px; font-size:11px; font-weight:700;">${(p.videos || []).length} vidéo(s)</span>
               <div class="apiProgramChevron" style="margin-top:6px; color:#9a3412; font-size:18px; transition:transform 0.2s;">▼</div>
             </div>
           </div>
@@ -11252,6 +11317,11 @@
         });
 
         list.appendChild(item);
+
+        // Phase 15.1 : si la séance a déjà été réalisée, on l'affiche comme telle
+        if (realisees[p.id]) {
+          try { marquerSeanceRealisee(p.id, realisees[p.id]); } catch (_) {}
+        }
       });
     }
 
@@ -11389,13 +11459,21 @@
             patient_comment: commentaire
           });
           const bd = document.getElementById('cr10Backdrop'); if (bd) bd.remove();
+          const niv = CR10_NIVEAUX.find(x => x.v === choix);
           const zone = document.querySelector('[data-cr10-done="' + programId + '"]');
           if (zone) {
-            const niv = CR10_NIVEAUX.find(x => x.v === choix);
             zone.style.display = 'block';
             zone.innerHTML = '✓ Séance enregistrée le ' + new Date(dateIso).toLocaleDateString('fr-FR') +
               ' — ' + minutes + ' min · ressenti <strong>' + choix + '/10</strong> (' + (niv ? niv.l : '') + ')';
           }
+          // Phase 15.1 : le bandeau passe au vert avec le résumé, immédiatement
+          try {
+            marquerSeanceRealisee(programId, {
+              date: new Date(dateIso).toLocaleDateString('fr-FR'),
+              minutes: minutes,
+              borg: choix
+            });
+          } catch (_) {}
           try { await loadTrainingHistory('patient'); } catch (_) {}
         } catch (e) {
           err.textContent = (e && e.message) || "L'enregistrement a échoué. Réessayez.";
