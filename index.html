@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase14c"></script>
+  <script src="api-client.js?v=phase14d"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase14c"></script>
+  <script src="questionnaires-defs.js?v=phase14d"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase14c"></script>
+  <script src="medical-parsers.js?v=phase14d"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase14c"></script>
+  <script src="cpet-graph-preview.js?v=phase14d"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase14c"></script>
-  <script src="medical-record-ui.js?v=phase14c"></script>
+  <script src="pdf-extractor.js?v=phase14d"></script>
+  <script src="medical-record-ui.js?v=phase14d"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase14c"></script>
+  <script src="aortic-consultations.js?v=phase14d"></script>
   <script src="activation-ui.js?v=phase14b"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -6062,6 +6062,10 @@
         </article>`;
       const actsMount = document.getElementById('patientActsTimelineMount');
       if (actsMount) actsMount.innerHTML = '';
+      // Phase 14d : vider aussi la carte aortique — elle restait affichée avec
+      // les données du patient précédent, ce qui prêtait fortement à confusion.
+      const aoMount = document.getElementById('aorticConsultMount');
+      if (aoMount) aoMount.innerHTML = '';
       return;
     }
     const evals = selectedPatient.evaluations || [];
@@ -10929,14 +10933,21 @@
         window.patients._fromApi = true;
         console.log('[patients] chargés depuis API : ', adapted.length, '(demo=' + demoParam + ')');
         // Re-render
-        try {
-          if (typeof initKpis === 'function') initKpis();
-          if (typeof initQuickSelect === 'function') initQuickSelect();
-          if (typeof renderPatientList === 'function') renderPatientList('');
-          if (typeof renderCohortOverview === 'function') renderCohortOverview();
-          if (typeof renderPatientTable === 'function') renderPatientTable('');
-          if (typeof renderDbTable === 'function') renderDbTable('');
-        } catch (e) { console.warn('Re-render après chargement API :', e); }
+        // Phase 14d : chaque rendu est isolé — une erreur sur l'un ne doit pas
+        // empêcher les suivants (c'est ce qui laissait le dossier patient figé
+        // sur « Aucun patient » alors que la liste était bien chargée).
+        [['initKpis', () => initKpis()],
+         ['initQuickSelect', () => initQuickSelect()],
+         ['renderPatientList', () => renderPatientList && renderPatientList('')],
+         ['renderCohortOverview', () => typeof renderCohortOverview === 'function' && renderCohortOverview()],
+         ['renderPatientTable', () => typeof renderPatientTable === 'function' && renderPatientTable('')],
+         ['renderDbTable', () => typeof renderDbTable === 'function' && renderDbTable('')],
+         // Manquait : sans lui, la vue « Consultation dossier patient » gardait
+         // l'affichage d'avant le chargement (état vide + carte du patient précédent).
+         ['renderPatientFile', () => typeof renderPatientFile === 'function' && renderPatientFile()]
+        ].forEach(([nom, fn]) => {
+          try { fn(); } catch (e) { console.warn('[api] rendu ' + nom + ' échoué :', e && e.message); }
+        });
         return adapted.length;
       } catch (e) {
         console.warn('Chargement patients API échoué :', e.message);
