@@ -238,6 +238,16 @@
       patchAortic: (patientId, data)       => request('PATCH', `/consultations/${patientId}/aortic`, data)
     },
 
+    /** ===== Activation de compte patient (lien e-mail à usage unique) ===== */
+    activation: {
+      // Public — le jeton du lien fait foi, aucune session requise
+      verify:   (token)            => request('GET',  `/activation/verify/${token}`),
+      complete: (token, password)  => request('POST', '/activation/complete', { token, password }),
+      // Staff
+      send:     (patientId, data)  => request('POST', `/activation/send/${patientId}`, data || {}),
+      status:   ()                 => request('GET',  '/activation/status')
+    },
+
     /** ===== Questionnaires validés (SF-36, GPAQ) ===== */
     questionnaires: {
       mine:    ()             => request('GET',  '/questionnaires/mine'),

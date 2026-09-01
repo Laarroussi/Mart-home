@@ -104,9 +104,13 @@ router.post('/', requireAuth, requireRole('principal_admin', 'investigator'), as
       if (emailTaken.rows.length) {
         patientEmail = p.id.toLowerCase() + '.' + Date.now() + '@marfan-apa.local';
       }
+      // must_change_password = TRUE : le compte n'était pas marqué comme
+      // « à activer », le patient n'était donc jamais invité à définir son
+      // propre mot de passe (contrairement aux comptes investigateurs).
       await client.query(
-        `INSERT INTO users (id, role, name, email, password_hash, patient_id, created_by)
-         VALUES ($1, 'patient', $2, $3, $4, $5, $6)
+        `INSERT INTO users (id, role, name, email, password_hash, patient_id, created_by,
+                            must_change_password)
+         VALUES ($1, 'patient', $2, $3, $4, $5, $6, TRUE)
          ON CONFLICT DO NOTHING`,
         [userId,
          (p.civil && p.civil.initials) || p.id,
@@ -134,13 +138,37 @@ router.post('/', requireAuth, requireRole('principal_admin', 'investigator'), as
          VALUES ($1, $2, 'create-patient', $3, $4)`,
         [req.user.id, p.id, JSON.stringify({ defaultPassword: defaultPwd }), req.ip]
       );
-      return { id: p.id, userId, defaultPassword: defaultPwd };
+      return { id: p.id, userId, email: patientEmail, defaultPassword: defaultPwd };
     });
+
+    // Envoi du lien d'activation (hors transaction : un échec d'e-mail ne doit
+    // jamais annuler la création du patient, déjà validée en base).
+    let activation = { ok: false, error: 'non tenté' };
+    try {
+      const { creerEtEnvoyerLien } = require('./activation');
+      const vraieAdresse = p.civil && p.civil.email;
+      if (vraieAdresse) {
+        activation = await creerEtEnvoyerLien({
+          userId: result.userId,
+          patientId: p.id,
+          email: vraieAdresse,
+          prenom: (p.civil && p.civil.firstName) || null,
+          createdBy: req.user.id
+        });
+      } else {
+        activation = { ok: false, error: "Aucune adresse e-mail renseignée pour ce patient" };
+      }
+    } catch (e) {
+      activation = { ok: false, error: e.message };
+    }
 
     res.status(201).json({
       success: true,
       patient: result,
-      message: `Patient créé. Compte associé : ${result.userId}. Mot de passe initial communiqué (à changer dès la 1ʳᵉ connexion).`
+      activation,
+      message: activation.ok
+        ? `Patient créé. Un lien d'activation a été envoyé à ${activation.email_masque}.`
+        : `Patient créé. Lien d'activation NON envoyé : ${activation.error}`
     });
   } catch (err) { next(err); }
 });

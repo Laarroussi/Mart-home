@@ -25,6 +25,7 @@
   <script src="medical-record-ui.js?v=phase13-12"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
   <script src="aortic-consultations.js?v=phase13-12"></script>
+  <script src="activation-ui.js?v=phase14"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -6127,7 +6128,10 @@
                 <strong>${p.id || '—'}</strong> · ${p.sex || '?'} · ${p.age || '?'} ans · ${p.gene || '—'}
               </div>
             </div>
-            <button onclick="window.__editPatientFile('${p.id}')" style="padding:9px 16px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.12); color:white; border-radius:9px; font-weight:600; cursor:pointer; font-size:12.5px; white-space:nowrap;">✏️ Modifier la fiche</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+              <button onclick="window.__renvoyerActivation('${p.id}')" title="Envoyer au patient un lien pour créer son mot de passe" style="padding:9px 16px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.12); color:white; border-radius:9px; font-weight:600; cursor:pointer; font-size:12.5px; white-space:nowrap;">✉️ Lien d'activation</button>
+              <button onclick="window.__editPatientFile('${p.id}')" style="padding:9px 16px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.12); color:white; border-radius:9px; font-weight:600; cursor:pointer; font-size:12.5px; white-space:nowrap;">✏️ Modifier la fiche</button>
+            </div>
           </div>
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0; padding:0;">
@@ -7480,10 +7484,23 @@
               civil: target.civil, medical: target.medical, study: target.study
             });
           } else {
-            await API.patients.create(target);
+            const rep = await API.patients.create(target);
+            // Phase 14 : résultat de l'envoi du lien d'activation au patient
+            const act = rep && rep.activation;
+            if (act && act.ok) {
+              window._dernierActivation = '✉️ Lien d\'activation envoyé à <strong>' + (act.email_masque || 'l\'adresse du patient') + '</strong>';
+            } else if (act) {
+              window._dernierActivation = '⚠ Lien d\'activation non envoyé : ' + (act.error || 'raison inconnue') +
+                '<br><span style="font-weight:500;">Utilisez le bouton « ✉️ Lien d\'activation » dans son dossier pour réessayer.</span>';
+            } else {
+              window._dernierActivation = null;
+            }
           }
           target._fromApi = true;
-          setModalStatus('💾 Enregistré en base de données ✓', true);
+          const compl = window._dernierActivation
+            ? '<br>' + window._dernierActivation
+            : '';
+          setModalStatus('💾 Enregistré en base de données ✓' + compl, true);
         } catch (e) {
           const msg = (e && e.message) || 'erreur inconnue';
           console.error('[MarfanAPI] persistance patient échouée :', msg);
@@ -7648,6 +7665,39 @@
       );
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 150);
+  };
+
+  // Phase 14 : (ré)envoi du lien d'activation au patient
+  window.__renvoyerActivation = async function (patientId) {
+    const p = (window.patients || []).find(x => x.id === patientId);
+    const civil = (p && p.civil) || {};
+    const emailActuel = civil.email || '';
+    const saisi = prompt(
+      "Envoyer à ce patient un lien pour créer son mot de passe.\n\n" +
+      "Le mot de passe n'est jamais envoyé par e-mail : le patient le choisit lui-même.\n" +
+      "Le lien est personnel, à usage unique, valable 72 h.\n\n" +
+      "Adresse e-mail du destinataire :", emailActuel);
+    if (saisi === null) return;
+    const email = saisi.trim();
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      alert('Adresse e-mail invalide.'); return;
+    }
+    try {
+      const r = await window.MarfanAPI.activation.send(patientId, {
+        email, prenom: civil.firstName || null
+      });
+      if (typeof toast === 'function') {
+        toast(`✉️ Lien d'activation envoyé à <strong>${r.email_masque || email}</strong> (valable ${r.validite_heures || 72} h).`, 'success', 7000);
+      } else {
+        alert("Lien d'activation envoyé à " + email);
+      }
+      // Mémorise l'adresse dans la fiche locale
+      if (p) { p.civil = p.civil || {}; p.civil.email = email; }
+    } catch (e) {
+      const secours = e && e.data && e.data.lien_secours;
+      alert("L'e-mail n'a pas pu être envoyé.\n\nRaison : " + ((e && e.message) || 'inconnue') +
+            (secours ? "\n\nLe lien reste valable, vous pouvez le transmettre autrement :\n" + secours : ''));
+    }
   };
 
   window.__cancelEditPatient = function () {
