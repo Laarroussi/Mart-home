@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase15-1"></script>
+  <script src="api-client.js?v=phase16"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase15-1"></script>
+  <script src="questionnaires-defs.js?v=phase16"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase15-1"></script>
+  <script src="medical-parsers.js?v=phase16"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase15-1"></script>
+  <script src="cpet-graph-preview.js?v=phase16"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase15-1"></script>
-  <script src="medical-record-ui.js?v=phase15-1"></script>
+  <script src="pdf-extractor.js?v=phase16"></script>
+  <script src="medical-record-ui.js?v=phase16"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase15-1"></script>
+  <script src="aortic-consultations.js?v=phase16"></script>
   <script src="activation-ui.js?v=phase14b"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -11867,6 +11867,159 @@
       document.body.appendChild(btn);
     }
 
+    // ====================================================================
+    // === Phase 16 — STAFF : Envoyer les questionnaires SF-36 / GPAQ
+    // Même logique que « Prescrire séance » : sélection des questionnaires,
+    // sélection des patients, envoi en une fois. Les questionnaires marqués
+    // obligatoires s'ouvrent en plein écran à la connexion du patient.
+    // ====================================================================
+    function injectQuestionnaireStaffControls(role) {
+      if (role !== 'principal_admin' && role !== 'investigator') return;
+      if (document.getElementById('apiSendQuestBtn')) return;
+      const btn = document.createElement('button');
+      btn.id = 'apiSendQuestBtn';
+      btn.innerHTML = '📨 Envoyer questionnaires';
+      btn.title = 'Envoyer SF-36 et/ou GPAQ à un ou plusieurs patients';
+      btn.style.cssText = 'position:fixed; bottom:18px; right:940px; z-index:9990; padding:10px 16px; border:none; border-radius:999px; background:linear-gradient(135deg,#7c3aed,#a855f7); color:white; font-weight:700; font-size:12.5px; cursor:pointer; box-shadow:0 10px 24px rgba(0,0,0,0.18);';
+      btn.addEventListener('click', openSendQuestionnairesModal);
+      document.body.appendChild(btn);
+    }
+
+    function openSendQuestionnairesModal() {
+      const old = document.getElementById('apiQuestBackdrop');
+      if (old) old.remove();
+      const liste = (window.patients || []);
+      const dansUnMois = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+
+      const html = `
+        <div id="apiQuestBackdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.85); z-index:10040; display:flex; align-items:center; justify-content:center; padding:18px; overflow-y:auto;">
+          <div style="background:white; border-radius:16px; width:820px; max-width:97vw; max-height:94vh; overflow-y:auto; box-shadow:0 26px 70px rgba(0,0,0,0.35);">
+            <div style="padding:20px 26px; display:flex; justify-content:space-between; align-items:start; gap:14px; border-bottom:1px solid #e2e8f0;">
+              <div>
+                <h3 style="margin:0; font-size:18px; color:#0b1530;">📨 Envoyer des questionnaires</h3>
+                <p style="margin:4px 0 0; font-size:12.5px; color:#6b7390;">Choisissez les questionnaires et les patients destinataires. Ils apparaîtront dans l'espace du patient.</p>
+              </div>
+              <button onclick="document.getElementById('apiQuestBackdrop').remove()" style="padding:7px 14px; border:1px solid #cbd5e1; background:white; color:#475569; border-radius:8px; font-weight:600; font-size:12.5px; cursor:pointer;">Fermer</button>
+            </div>
+
+            <div style="padding:20px 26px;">
+              <label style="display:block; font-size:12.5px; font-weight:700; color:#0b1530; margin-bottom:8px;">1. Questionnaires à envoyer *</label>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
+                <label style="display:flex; align-items:start; gap:10px; padding:14px; border:1.5px solid #d8dde7; border-left:4px solid #7c3aed; border-radius:10px; cursor:pointer;">
+                  <input type="checkbox" id="qSelSf36" checked style="width:18px; height:18px; margin-top:2px; cursor:pointer; accent-color:#7c3aed;">
+                  <span>
+                    <strong style="display:block; font-size:13.5px; color:#0b1530;">SF-36</strong>
+                    <span style="font-size:11.5px; color:#6b7390;">Qualité de vie — 36 questions, 8 dimensions</span>
+                  </span>
+                </label>
+                <label style="display:flex; align-items:start; gap:10px; padding:14px; border:1.5px solid #d8dde7; border-left:4px solid #10b981; border-radius:10px; cursor:pointer;">
+                  <input type="checkbox" id="qSelGpaq" checked style="width:18px; height:18px; margin-top:2px; cursor:pointer; accent-color:#10b981;">
+                  <span>
+                    <strong style="display:block; font-size:13.5px; color:#0b1530;">GPAQ</strong>
+                    <span style="font-size:11.5px; color:#6b7390;">Activité physique — travail, déplacements, loisirs</span>
+                  </span>
+                </label>
+              </div>
+
+              <div style="display:flex; gap:14px; margin-bottom:20px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:200px;">
+                  <label style="display:block; font-size:12.5px; font-weight:700; color:#0b1530; margin-bottom:6px;">2. Date limite <span style="font-weight:400; color:#94a3b8;">(facultatif)</span></label>
+                  <input type="date" id="qDueDate" value="${dansUnMois}" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box;">
+                </div>
+                <div style="flex:1; min-width:240px;">
+                  <label style="display:block; font-size:12.5px; font-weight:700; color:#0b1530; margin-bottom:6px;">3. Caractère obligatoire</label>
+                  <label style="display:flex; align-items:center; gap:9px; padding:10px 12px; background:#fef3c7; border:1px solid #fde68a; border-radius:8px; cursor:pointer;">
+                    <input type="checkbox" id="qMandatory" checked style="width:17px; height:17px; cursor:pointer; accent-color:#f59e0b;">
+                    <span style="font-size:12px; color:#92400e; font-weight:600;">Affichage plein écran obligatoire à la connexion du patient</span>
+                  </label>
+                </div>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <label style="font-size:12.5px; font-weight:700; color:#0b1530;">4. Patients destinataires *</label>
+                <div style="display:flex; gap:6px;">
+                  <button id="qSelAll" style="padding:5px 12px; border:1px solid #cbd5e1; background:white; border-radius:7px; font-size:11.5px; font-weight:600; cursor:pointer;">Tout</button>
+                  <button id="qSelNone" style="padding:5px 12px; border:1px solid #cbd5e1; background:white; border-radius:7px; font-size:11.5px; font-weight:600; cursor:pointer;">Aucun</button>
+                </div>
+              </div>
+              <div id="qPatientList" style="border:1px solid #e2e8f0; border-radius:10px; max-height:230px; overflow-y:auto; padding:8px;"></div>
+
+              <div id="qStatus" style="display:none; margin-top:14px; padding:11px 13px; border-radius:9px; font-size:12.5px; font-weight:600;"></div>
+            </div>
+
+            <div style="padding:0 26px 22px; display:flex; gap:9px; justify-content:flex-end;">
+              <button onclick="document.getElementById('apiQuestBackdrop').remove()" style="padding:12px 20px; border:1px solid #cbd5e1; background:white; color:#475569; border-radius:10px; font-weight:600; font-size:13.5px; cursor:pointer;">Annuler</button>
+              <button id="qEnvoyer" style="padding:12px 26px; border:none; border-radius:10px; background:linear-gradient(135deg,#7c3aed,#a855f7); color:white; font-weight:700; font-size:13.5px; cursor:pointer;">📨 Envoyer</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+
+      // Liste des patients avec cases à cocher
+      const zone = document.getElementById('qPatientList');
+      if (!liste.length) {
+        zone.innerHTML = '<div style="padding:18px; text-align:center; color:#94a3b8; font-size:12.5px; font-style:italic;">Aucun patient dans la cohorte.</div>';
+      } else {
+        zone.innerHTML = liste.map(p => `
+          <label style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:7px; cursor:pointer;">
+            <input type="checkbox" class="qPatCb" value="${p.id}" style="width:17px; height:17px; cursor:pointer; accent-color:#7c3aed;">
+            <strong style="font-size:13px; color:#0b1530;">${p.id}</strong>
+            <span style="font-size:12px; color:#6b7390;">${(p.civil && p.civil.initials) || ''} ${p.sex || ''} ${p.age ? '· ' + p.age + ' ans' : ''}</span>
+          </label>`).join('');
+      }
+      const cases = () => Array.from(document.querySelectorAll('.qPatCb'));
+      document.getElementById('qSelAll').onclick = () => cases().forEach(c => c.checked = true);
+      document.getElementById('qSelNone').onclick = () => cases().forEach(c => c.checked = false);
+
+      document.getElementById('qEnvoyer').onclick = async function () {
+        const types = [];
+        if (document.getElementById('qSelSf36').checked) types.push('sf36');
+        if (document.getElementById('qSelGpaq').checked) types.push('gpaq');
+        const ids = cases().filter(c => c.checked).map(c => c.value);
+        const statut = document.getElementById('qStatus');
+        const afficher = (msg, ok) => {
+          statut.style.display = 'block';
+          statut.style.background = ok ? '#ecfdf5' : '#fef2f2';
+          statut.style.border = '1px solid ' + (ok ? '#a7f3d0' : '#fecaca');
+          statut.style.color = ok ? '#065f46' : '#991b1b';
+          statut.innerHTML = msg;
+        };
+        if (!types.length) return afficher('Sélectionnez au moins un questionnaire.', false);
+        if (!ids.length)   return afficher('Sélectionnez au moins un patient.', false);
+
+        const due = document.getElementById('qDueDate').value || null;
+        const obligatoire = document.getElementById('qMandatory').checked;
+        this.disabled = true; this.textContent = 'Envoi en cours…';
+        afficher('Envoi en cours…', true);
+
+        let envoyes = 0;
+        const echecs = [];
+        for (const pid of ids) {
+          for (const t of types) {
+            try {
+              await window.MarfanAPI.questionnaires.send({
+                patient_id: pid, questionnaire_type: t,
+                due_date: due, mandatory: obligatoire
+              });
+              envoyes++;
+            } catch (e) {
+              echecs.push(pid + '/' + t.toUpperCase() + ' : ' + ((e && e.message) || 'erreur'));
+            }
+          }
+        }
+        if (echecs.length) {
+          afficher('⚠ ' + envoyes + ' envoi(s) réussi(s), ' + echecs.length + ' échec(s) :<br>' +
+                   echecs.slice(0, 5).join('<br>'), false);
+          this.disabled = false; this.textContent = '📨 Envoyer';
+        } else {
+          afficher('✓ ' + envoyes + ' questionnaire(s) envoyé(s) à ' + ids.length + ' patient(s)' +
+                   (obligatoire ? ' — affichage obligatoire à leur prochaine connexion.' : '.'), true);
+          this.textContent = '✓ Envoyé';
+          setTimeout(() => { const b = document.getElementById('apiQuestBackdrop'); if (b) b.remove(); }, 2400);
+        }
+      };
+    }
+
     async function openAssignVideosModal() {
       // 1. Charge la liste des vidéos disponibles
       let videos = [];
@@ -13874,23 +14027,38 @@
           ${s.items.map(it => renderItem(it, s.commonOptions)).join('')}`;
       }
 
+      // Phase 16 : un questionnaire OBLIGATOIRE s'ouvre en plein écran, sans
+      // possibilité de le fermer — le patient doit le remplir avant d'accéder
+      // au reste de son espace. Les envois facultatifs gardent la fenêtre classique.
+      const plein = !!item.mandatory;
+      const styleFond = plein
+        ? 'position:fixed; inset:0; background:#0b1530; z-index:10002; display:block; overflow-y:auto; padding:0;'
+        : 'position:fixed; inset:0; background:rgba(11,21,48,0.88); z-index:10002; display:flex; align-items:center; justify-content:center; padding:20px;';
+      const styleBoite = plein
+        ? 'background:white; border-radius:0; padding:26px clamp(16px, 6vw, 90px) 60px; width:100%; min-height:100vh; box-sizing:border-box;'
+        : 'background:white; border-radius:14px; padding:24px 28px; width:760px; max-width:96vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+
       const html = `
-        <div id="apiQModal" style="position:fixed; inset:0; background:rgba(11,21,48,0.88); z-index:10002; display:flex; align-items:center; justify-content:center; padding:20px;">
-          <div style="background:white; border-radius:14px; padding:24px 28px; width:760px; max-width:96vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:14px;">
+        <div id="apiQModal" style="${styleFond}">
+          <div style="${styleBoite}">
+            ${plein ? `<div style="max-width:900px; margin:0 auto 18px; padding:13px 16px; background:#fef3c7; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:10px;">
+              <strong style="display:block; font-size:13px; color:#92400e; margin-bottom:2px;">Questionnaire obligatoire</strong>
+              <span style="font-size:12.5px; color:#92400e;">Merci de le remplir pour accéder à votre espace. Vos réponses sont enregistrées dans votre dossier et consultées par votre équipe médicale.</span>
+            </div>` : ''}
+            <div style="${plein ? 'max-width:900px; margin:0 auto 14px;' : ''} display:flex; justify-content:space-between; align-items:start; margin-bottom:14px;">
               <div>
-                <div style="font-size:17px; font-weight:800; color:#0b1530;">📋 ${def.title}</div>
-                <p style="font-size:12px; color:#6b7390; margin-top:4px;">${def.description} · ~${def.estimatedMinutes} min</p>
+                <div style="font-size:${plein ? '22px' : '17px'}; font-weight:800; color:#0b1530;">📋 ${def.title}</div>
+                <p style="font-size:${plein ? '13px' : '12px'}; color:#6b7390; margin-top:4px;">${def.description} · ~${def.estimatedMinutes} min</p>
                 ${item.mandatory ? '<span style="display:inline-block; margin-top:6px; background:#fee2e2; color:#991b1b; padding:3px 9px; border-radius:99px; font-size:10.5px; font-weight:700;">OBLIGATOIRE</span>' : ''}
               </div>
               ${item.mandatory ? '' : '<button id="apiQClose" style="border:none; background:#f3f6fb; color:#5a6280; padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer;">Plus tard</button>'}
             </div>
-            <div id="apiQSection" style="margin-bottom:14px;">${renderSection(0)}</div>
-            <div style="display:flex; justify-content:space-between; gap:10px;">
-              <button id="apiQPrev" style="padding:10px 18px; border:1px solid #d8dde7; background:white; color:#5a6280; border-radius:9px; font-weight:600; font-size:13px; cursor:pointer; visibility:hidden;">← Précédent</button>
-              <button id="apiQNext" style="padding:10px 18px; border:none; background:linear-gradient(135deg,#4f8cff,#7c5cff); color:white; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer;">Suivant →</button>
+            <div id="apiQSection" style="${plein ? 'max-width:900px; margin:0 auto 14px;' : ''} margin-bottom:14px;">${renderSection(0)}</div>
+            <div style="${plein ? 'max-width:900px; margin:0 auto;' : ''} display:flex; justify-content:space-between; gap:10px;">
+              <button id="apiQPrev" style="padding:${plein ? '13px 24px' : '10px 18px'}; border:1px solid #d8dde7; background:white; color:#5a6280; border-radius:9px; font-weight:600; font-size:13px; cursor:pointer; visibility:hidden;">← Précédent</button>
+              <button id="apiQNext" style="padding:${plein ? '13px 28px' : '10px 18px'}; border:none; background:linear-gradient(135deg,#4f8cff,#7c5cff); color:white; border-radius:9px; font-weight:700; font-size:${plein ? '14px' : '13px'}; cursor:pointer;">Suivant →</button>
             </div>
-            <div id="apiQErr" style="display:none; margin-top:10px; padding:8px 10px; background:#fee2e2; color:#991b1b; border-radius:7px; font-size:11.5px;"></div>
+            <div id="apiQErr" style="${plein ? 'max-width:900px; margin-left:auto; margin-right:auto;' : ''} display:none; margin-top:10px; padding:8px 10px; background:#fee2e2; color:#991b1b; border-radius:7px; font-size:11.5px;"></div>
           </div>
         </div>`;
       document.body.insertAdjacentHTML('beforeend', html);
@@ -14733,6 +14901,7 @@
       injectBackupAdminControls(role);
       injectTrainingHistoryStaffControls(role);
       injectAssignVideosControls(role);
+      injectQuestionnaireStaffControls(role);   // Phase 16 : envoi SF-36 / GPAQ
       // === Injecte le dispositif dans les onglets "Entraînement avec vidéo"
       //     et "Entraînement libre" — appelé INCONDITIONNELLEMENT (pas dépendant des visios) ===
       if (role === 'patient') {
