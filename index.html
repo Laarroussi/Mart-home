@@ -12,19 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase14d"></script>
+  <script src="api-client.js?v=phase14e"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase14d"></script>
+  <script src="questionnaires-defs.js?v=phase14e"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase14d"></script>
+  <script src="medical-parsers.js?v=phase14e"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase14d"></script>
+  <script src="cpet-graph-preview.js?v=phase14e"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase14d"></script>
-  <script src="medical-record-ui.js?v=phase14d"></script>
+  <script src="pdf-extractor.js?v=phase14e"></script>
+  <script src="medical-record-ui.js?v=phase14e"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase14d"></script>
+  <script src="aortic-consultations.js?v=phase14e"></script>
   <script src="activation-ui.js?v=phase14b"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -5742,10 +5742,19 @@
     return { n, mean, sd, min: Math.min(...vals), max: Math.max(...vals) };
   }
 
+  // Phase 14e : renvoie toujours un objet exploitable.
+  // Auparavant, cette fonction renvoyait null quand aucun patient n'avait
+  // d'évaluation ; les appelants faisant « .deltaMean » directement levaient
+  // alors une exception qui interrompait tout le rendu de la page d'accueil.
+  const _statsVides = { baselineMean: null, baselineSd: null, finalMean: null,
+                        finalSd: null, deltaMean: null, deltaSd: null, deltaPct: null, n: 0 };
+
   function calcBaselineLastStats(key) {
+    if (!Array.isArray(patients) || !patients.length) return _statsVides;
     const pairs = patients.map(p => {
-      const firstEv = p.evaluations[0];
-      const lastEv = last(p.evaluations);
+      const evs = (p && p.evaluations) || [];
+      const firstEv = evs[0];
+      const lastEv = evs.length ? last(evs) : null;
       if (!firstEv || !lastEv) return null;
       const baseline = toNumber(firstEv[key], NaN);
       const finalValue = toNumber(lastEv[key], NaN);
@@ -5753,7 +5762,7 @@
       return { baseline, finalValue, delta: finalValue - baseline };
     }).filter(Boolean);
 
-    if (!pairs.length) return null;
+    if (!pairs.length) return _statsVides;
     const baselineStats = calcStats(pairs.map(p => p.baseline));
     const finalStats = calcStats(pairs.map(p => p.finalValue));
     const deltaStats = calcStats(pairs.map(p => p.delta));
@@ -6027,19 +6036,26 @@
   }
 
   function renderHomeCompat() {
-    // Mise à jour des éléments cachés (compatibilité dossier patient)
-    const evals = selectedPatient.evaluations;
-    const lastEv = last(evals);
+    // Phase 14e — CAUSE RACINE : cette fonction supposait qu'un patient a
+    // toujours au moins une évaluation. Avec un patient fraîchement créé
+    // (0 évaluation), « lastEv.aorta » levait une exception qui interrompait
+    // renderHome, donc setSelectedPatient, donc TOUT le rendu qui suit :
+    // la liste et le dossier restaient vides alors que les données étaient
+    // bien chargées. On affiche « — » au lieu de planter.
+    if (!selectedPatient) return;
+    const evals = (selectedPatient.evaluations && selectedPatient.evaluations.length)
+      ? selectedPatient.evaluations : [];
+    const lastEv = evals.length ? last(evals) : null;
     if ($('summaryAvatar')) {
       $('summaryAvatar').style.background = gradientFor(selectedPatient.id);
       $('summaryAvatar').textContent = initials(selectedPatient.id);
     }
     if ($('patientTitle')) $('patientTitle').textContent = selectedPatient.id;
-    if ($('patientSubtitle')) $('patientSubtitle').textContent = `${selectedPatient.sex} · ${selectedPatient.age} ans · ${selectedPatient.gene}`;
-    if ($('aortaValue')) $('aortaValue').textContent = lastEv.aorta + ' mm';
-    if ($('vo2Value')) $('vo2Value').textContent = lastEv.vo2;
-    if ($('geneValue')) $('geneValue').textContent = selectedPatient.gene;
-    if ($('adherenceValue')) $('adherenceValue').textContent = selectedPatient.progress + '%';
+    if ($('patientSubtitle')) $('patientSubtitle').textContent = `${selectedPatient.sex || '?'} · ${selectedPatient.age || '?'} ans · ${selectedPatient.gene || '—'}`;
+    if ($('aortaValue')) $('aortaValue').textContent = (lastEv && lastEv.aorta != null) ? (lastEv.aorta + ' mm') : '—';
+    if ($('vo2Value')) $('vo2Value').textContent = (lastEv && lastEv.vo2 != null) ? lastEv.vo2 : '—';
+    if ($('geneValue')) $('geneValue').textContent = selectedPatient.gene || '—';
+    if ($('adherenceValue')) $('adherenceValue').textContent = (selectedPatient.progress != null ? selectedPatient.progress : 0) + '%';
   }
 
   // ============================================================
@@ -14709,14 +14725,20 @@
           if (window.patients.length) selectedPatient = window.patients[0];
         }
         // Refresh UI COMPLET : Home + Cohorte + toutes les vues
-        if (typeof initKpis === 'function') initKpis();
-        if (typeof initQuickSelect === 'function') initQuickSelect();
-        if (typeof renderHome === 'function') renderHome();          // ← inclut renderHomeCompat + renderCohortOverview
-        if (typeof renderPatientList === 'function') renderPatientList('');
-        if (typeof renderPatientTable === 'function') renderPatientTable('');
-        if (typeof renderDbTable === 'function') renderDbTable('');
-        if (typeof renderPatientFile === 'function') renderPatientFile();
-        if (typeof renderCohortRecentEvaluations === 'function') renderCohortRecentEvaluations();
+        // Phase 14e : chaque rendu isolé. renderHome() levait une exception
+        // (patient sans évaluation) et TOUT ce qui suivait était abandonné :
+        // la liste, le tableau et le dossier restaient vides.
+        [['initKpis', () => initKpis()],
+         ['initQuickSelect', () => initQuickSelect()],
+         ['renderHome', () => typeof renderHome === 'function' && renderHome()],
+         ['renderPatientList', () => typeof renderPatientList === 'function' && renderPatientList('')],
+         ['renderPatientTable', () => typeof renderPatientTable === 'function' && renderPatientTable('')],
+         ['renderDbTable', () => typeof renderDbTable === 'function' && renderDbTable('')],
+         ['renderPatientFile', () => typeof renderPatientFile === 'function' && renderPatientFile()],
+         ['renderCohortRecentEvaluations', () => typeof renderCohortRecentEvaluations === 'function' && renderCohortRecentEvaluations()]
+        ].forEach(([nom, fn]) => {
+          try { fn(); } catch (e) { console.warn('[modes] rendu ' + nom + ' échoué :', e && e.message); }
+        });
       } catch (e) { console.warn('[modes] reload patients échoué :', e.message); }
     }
 
