@@ -238,6 +238,16 @@
       patchAortic: (patientId, data)       => request('PATCH', `/consultations/${patientId}/aortic`, data)
     },
 
+    /** ===== Chronologie médicale extraite des documents (IA) ===== */
+    timeline: {
+      list:     (patientId)              => request('GET',   `/timeline/${patientId}`),
+      analyser: (patientId, texte, docId)=> request('POST',  `/timeline/${patientId}/analyser`, { texte, doc_id: docId }),
+      save:     (patientId, faits, docId)=> request('POST',  `/timeline/${patientId}`, { faits, doc_id: docId }),
+      update:   (patientId, id, data)    => request('PATCH', `/timeline/${patientId}/${id}`, data),
+      remove:   (patientId, id)          => request('DELETE',`/timeline/${patientId}/${id}`),
+      statutIA: ()                       => request('GET',   '/timeline/statut/ia')
+    },
+
     /** ===== Activation de compte patient (lien e-mail à usage unique) ===== */
     activation: {
       // Public — le jeton du lien fait foi, aucune session requise

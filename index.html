@@ -12,20 +12,21 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase16-1"></script>
+  <script src="api-client.js?v=phase17"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase16-1"></script>
+  <script src="questionnaires-defs.js?v=phase17"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase16-1"></script>
+  <script src="medical-parsers.js?v=phase17"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase16-1"></script>
+  <script src="cpet-graph-preview.js?v=phase17"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase16-1"></script>
-  <script src="medical-record-ui.js?v=phase16-1"></script>
+  <script src="pdf-extractor.js?v=phase17"></script>
+  <script src="medical-record-ui.js?v=phase17"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase16-1"></script>
+  <script src="aortic-consultations.js?v=phase17"></script>
   <script src="activation-ui.js?v=phase14b"></script>
+  <script src="document-import.js?v=phase17"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3131,7 +3132,20 @@
             <span class="icon-bg cyan"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
             Identité civile
           </h3>
-          <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Code patient anonymisé suggéré automatiquement. Modifiable.</p>
+          <p style="color:var(--muted); font-size:13px; margin-bottom:12px;">Code patient anonymisé suggéré automatiquement. Modifiable.</p>
+
+          <!-- Phase 17 : pré-remplissage à partir d'un compte-rendu -->
+          <div style="margin-bottom:16px; padding:12px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid #3b82f6; border-radius:10px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:230px;">
+              <strong style="font-size:13px; color:#1e40af; display:block;">Gagner du temps : partir d'un compte-rendu</strong>
+              <span style="font-size:12px; color:#3b5a8f;">Versez un document médical : les dates, mesures et traitements sont lus automatiquement et le formulaire est pré-rempli. Vous n'avez plus qu'à vérifier.</span>
+            </div>
+            <input type="file" id="cf_docImport" style="display:none"
+              accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,application/pdf,text/*">
+            <button type="button" onclick="document.getElementById('cf_docImport').click()"
+              style="padding:10px 18px; border:none; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white; border-radius:9px; font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap;">⬆️ Verser un document</button>
+          </div>
+          <div id="cf_docStatut" style="display:none; margin-bottom:14px; padding:11px 13px; border-radius:9px; font-size:12.5px; font-weight:600;"></div>
           <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px;">
             <div>
               <div class="control-label">Code patient anonymisé *</div>
@@ -3409,6 +3423,8 @@
 
         <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
         <div id="aorticConsultMount"></div>
+        <!-- Phase 17 : versement de pièces + chronologie extraite par IA -->
+        <div id="docImportMount"></div>
 
         <!-- Phase 12.4 : Chronologie des actes réalisés -->
         <div id="patientActsTimelineMount"></div>
@@ -6082,6 +6098,8 @@
       // les données du patient précédent, ce qui prêtait fortement à confusion.
       const aoMount = document.getElementById('aorticConsultMount');
       if (aoMount) aoMount.innerHTML = '';
+      const diMount = document.getElementById('docImportMount');
+      if (diMount) diMount.innerHTML = '';
       return;
     }
     const evals = selectedPatient.evaluations || [];
@@ -6111,6 +6129,13 @@
         window.AorticConsultUI.mount('aorticConsultMount', selectedPatient.id);
       }
     } catch (e) { console.warn('[aortic] mount échoué', e); }
+
+    // Phase 17 : pièces du dossier médical + chronologie extraite
+    try {
+      if (window.DocImport && document.getElementById('docImportMount')) {
+        window.DocImport.mount('docImportMount', selectedPatient.id);
+      }
+    } catch (e) { console.warn('[docimport] mount échoué', e); }
 
     renderTimeline();
     syncGraphSelectors();
@@ -7564,6 +7589,17 @@
         if (typeof setSelectedPatient === 'function') setSelectedPatient(code);
       } catch (e) { console.warn('[creation] setSelectedPatient échoué', e); }
 
+      // Phase 17 : rattache au dossier les faits extraits du document versé
+      try {
+        const aImporter = window._faitsAImporter;
+        if (aImporter && aImporter.code === code && aImporter.faits && aImporter.faits.length) {
+          await window.MarfanAPI.timeline.save(code, aImporter.faits, null);
+          console.log('[timeline] ' + aImporter.faits.length + ' fait(s) rattachés à ' + code);
+          window._faitsAImporter = null;
+          try { if (typeof window.refreshDbTimelineCache === 'function') await window.refreshDbTimelineCache(); } catch (_) {}
+        }
+      } catch (e) { console.warn('[timeline] rattachement échoué :', e && e.message); }
+
       // Phase 13.12 : recharge le suivi aortique du tableau « Base de données »
       // pour que les diamètres saisis apparaissent sans recharger la page
       try {
@@ -7686,6 +7722,109 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 150);
   };
+
+  // ============================================================
+  // Phase 17 — Pré-remplissage du formulaire depuis un document
+  // ------------------------------------------------------------
+  // Le document est lu dans le navigateur, envoyé au serveur qui le
+  // pseudonymise puis le fait analyser. Les faits datés remontés sont
+  // utilisés pour proposer une valeur aux champs encore vides. Aucun
+  // champ déjà rempli par l'utilisateur n'est écrasé.
+  // ============================================================
+  (function initImportCreation() {
+    const input = document.getElementById('cf_docImport');
+    if (!input) return;
+    const statut = (msg, type) => {
+      const el = $('cf_docStatut');
+      if (!el) return;
+      const couleurs = type === 'ok'
+        ? 'background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46;'
+        : type === 'err'
+        ? 'background:#fef2f2; border:1px solid #fecaca; color:#991b1b;'
+        : 'background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af;';
+      el.style.cssText = 'display:block; margin-bottom:14px; padding:11px 13px; border-radius:9px; font-size:12.5px; font-weight:600; ' + couleurs;
+      el.innerHTML = msg;
+    };
+
+    input.addEventListener('change', async () => {
+      const f = input.files && input.files[0];
+      input.value = '';
+      if (!f) return;
+      if (!window.DocImport) { statut('Module de lecture indisponible. Rechargez la page.', 'err'); return; }
+      if (!(window.MarfanAPI && window.MarfanAPI.isAuthenticated())) {
+        statut('Vous devez être connecté au serveur pour utiliser cette fonction.', 'err'); return;
+      }
+      const code = ($('cf_code') && $('cf_code').value || '').trim();
+      if (!code) { statut('Renseignez d\'abord le code patient.', 'err'); return; }
+
+      statut('📄 Lecture de « ' + f.name + ' »…', 'info');
+      let texte = '';
+      try {
+        const r = await window.DocImport.lireTexte(f);
+        texte = (r.texte || '').trim();
+        if (texte.length < 20) throw new Error("Aucun texte exploitable (document scanné ?).");
+      } catch (e) { statut('❌ ' + ((e && e.message) || 'Lecture impossible'), 'err'); return; }
+
+      statut('🔎 Analyse en cours — identité masquée avant envoi…', 'info');
+      let prop;
+      try {
+        prop = await window.MarfanAPI.timeline.analyser(code, texte, null);
+      } catch (e) { statut('❌ ' + ((e && e.message) || 'Analyse impossible'), 'err'); return; }
+
+      const faits = (prop && prop.faits) || [];
+      if (!faits.length) { statut('Aucune donnée exploitable trouvée dans ce document.', 'err'); return; }
+
+      // Pré-remplit uniquement les champs VIDES
+      const poser = (id, val) => {
+        const el = $(id);
+        if (el && val != null && String(val).trim() !== '' && !el.value) { el.value = val; return true; }
+        return false;
+      };
+      let n = 0;
+      const cherche = (re, cat) => faits.find(x =>
+        (!cat || x.category === cat) && re.test((x.label || '') + ' ' + (x.detail || '')));
+
+      // Diagnostic Marfan
+      const dx = cherche(/marfan|diagnostic/i, 'diagnostic');
+      if (dx && dx.event_date && poser('cf_dxDate', dx.event_date)) n++;
+
+      // Première mesure aortique : la plus ancienne
+      const aortiques = faits
+        .filter(x => /aort|valsalva|racine/i.test(x.label || '') && x.value_num != null)
+        .sort((a, b) => new Date(a.event_date || 0) - new Date(b.event_date || 0));
+      if (aortiques.length) {
+        const prem = aortiques[0], dern = aortiques[aortiques.length - 1];
+        if (poser('cf_aorticFirstValue', prem.value_num)) n++;
+        if (prem.event_date && poser('cf_aorticFirstDate', prem.event_date)) n++;
+        if (/valsalva/i.test(prem.label)) { if (poser('cf_aorticFirstSite', 'Sinus de Valsalva')) n++; }
+        if (dern !== prem && poser('cf_aorticTodayValue', dern.value_num)) n++;
+      }
+
+      // Traitements en cours
+      const traitements = faits.filter(x => x.category === 'traitement');
+      if (traitements.length) {
+        const txt = traitements.map(t =>
+          t.label + (t.value_num != null ? ' ' + t.value_num + (t.unit || '') : '') +
+          (t.detail ? ' (' + t.detail + ')' : '')).join(', ');
+        if (poser('cf_treatments', txt)) n++;
+      }
+
+      // Antécédents : opérations
+      const operations = faits.filter(x => x.category === 'operation');
+      if (operations.length) {
+        const txt = operations.map(o =>
+          o.label + (o.event_date ? ' (' + new Date(o.event_date).getFullYear() + ')' : '')).join(', ');
+        if (poser('cf_history', txt)) n++;
+      }
+
+      // Les faits restants seront rattachés au patient après validation de la fiche
+      window._faitsAImporter = { code, faits };
+
+      statut('✓ <strong>' + n + ' champ(s) pré-remplis</strong> à partir du document · ' +
+             faits.length + ' donnée(s) médicales seront rattachées au dossier après validation de la fiche.' +
+             '<br><span style="font-weight:500;">Vérifiez et corrigez les champs avant d\'enregistrer.</span>', 'ok');
+    });
+  })();
 
   // Phase 14 : (ré)envoi du lien d'activation au patient
   window.__renvoyerActivation = async function (patientId) {
@@ -14167,7 +14306,9 @@
       { id:'force',     label:'Force isométrique',          color:'#22c55e', short:'Force' },
       { id:'training',  label:'Séances d\'entraînement',   color:'#f59e0b', short:'Train' },
       { id:'sf36',      label:'SF-36 (qualité de vie)',     color:'#7c3aed', short:'SF36' },
-      { id:'gpaq',      label:'GPAQ (activité physique)',   color:'#10b981', short:'GPAQ' }
+      { id:'gpaq',      label:'GPAQ (activité physique)',   color:'#10b981', short:'GPAQ' },
+      // Phase 17 : données extraites des pièces versées, classées par date
+      { id:'timeline',  label:'Dossier médical (pièces versées)', color:'#1d4ed8', short:'Doc' }
     ];
     const _dbCache = { training: null, sf36: null, gpaq: null, aortic: null, consult: null };
 
@@ -14221,6 +14362,36 @@
       }));
       return todo.length;
     }
+
+    // Phase 17 : chronologie médicale extraite des pièces versées
+    async function loadTimelineFor(ids) {
+      if (!_dbCache.timeline) _dbCache.timeline = {};
+      if (!_dbCache.timelineFetched) _dbCache.timelineFetched = new Set();
+      const todo = (ids || []).filter(id => id && !_dbCache.timelineFetched.has(id));
+      if (!todo.length) return 0;
+      await Promise.all(todo.map(async (pid) => {
+        _dbCache.timelineFetched.add(pid);
+        try {
+          const r = await window.MarfanAPI.timeline.list(pid);
+          const arr = (r && r.faits) || [];
+          if (arr.length) {
+            // Ordre chronologique croissant : D1 = le plus ancien
+            _dbCache.timeline[pid] = arr.slice().sort((a, b) => {
+              const da = a.event_date ? new Date(a.event_date) : new Date(0);
+              const db = b.event_date ? new Date(b.event_date) : new Date(0);
+              return da - db;
+            });
+          }
+        } catch (_) { /* patient sans pièce versée */ }
+      }));
+      return todo.length;
+    }
+
+    window.refreshDbTimelineCache = async function () {
+      _dbCache.timeline = {}; _dbCache.timelineFetched = new Set();
+      await loadTimelineFor((window.patients || []).map(p => p.id));
+      try { if (typeof renderUnifiedTable === 'function') renderUnifiedTable(); } catch (_) {}
+    };
 
     // Force la relecture complète (après création/modification d'un patient)
     window.refreshDbAorticCache = async function () {
@@ -14346,6 +14517,31 @@
             }
           }
         }
+        else if (sec.id === 'timeline') {
+          // Phase 17 : une série de colonnes par donnée extraite des pièces versées,
+          // dans l'ordre chronologique (D1 = la plus ancienne).
+          const maxD = maxByPatient.timeline || 0;
+          const CAT_FR = { mesure:'Mesure', biologie:'Biologie', traitement:'Traitement',
+                           operation:'Operation', examen:'Examen', diagnostic:'Diagnostic', autre:'Autre' };
+          for (let i = 1; i <= maxD; i++) {
+            cols.push({ key:'D'+i+'_DATE', label:'D'+i+'_DATE', section:sec,
+              get: p => fmtVisit((p._timeline||[])[i-1] && p._timeline[i-1].event_date, '—') || '—' });
+            cols.push({ key:'D'+i+'_TYPE', label:'D'+i+'_TYPE', section:sec,
+              get: p => { const d = (p._timeline||[])[i-1]; return d ? (CAT_FR[d.category] || d.category) : '—'; } });
+            cols.push({ key:'D'+i+'_LIBELLE', label:'D'+i+'_LIBELLE', section:sec,
+              get: p => ((p._timeline||[])[i-1] || {}).label || '—' });
+            cols.push({ key:'D'+i+'_VALEUR', label:'D'+i+'_VALEUR', section:sec, get: p => {
+              const d = (p._timeline||[])[i-1];
+              if (!d) return '—';
+              if (d.value_num != null) return String(parseFloat(d.value_num));
+              return d.value_text || '—';
+            }});
+            cols.push({ key:'D'+i+'_UNITE', label:'D'+i+'_UNITE', section:sec,
+              get: p => ((p._timeline||[])[i-1] || {}).unit || '—' });
+            cols.push({ key:'D'+i+'_DETAIL', label:'D'+i+'_DETAIL', section:sec,
+              get: p => ((p._timeline||[])[i-1] || {}).detail || '—' });
+          }
+        }
         else if (sec.id === 'training') {
           const maxN = maxByPatient.training || 0;
           for (let i = 1; i <= maxN; i++) {
@@ -14396,6 +14592,7 @@
           .map(p => p.id)
           .filter(id => id && !(_dbCache.aorticFetched && _dbCache.aorticFetched.has(id)));
         if (manquants.length && window.MarfanAPI && window.MarfanAPI.isAuthenticated()) {
+          loadTimelineFor(manquants).catch(() => {});
           loadAorticFor(manquants).then(n => {
             if (n > 0 && !_dbCache._rerendering) {
               _dbCache._rerendering = true;
@@ -14424,7 +14621,8 @@
         _sf36:  sIdx[p.id] || [],
         _gpaq:  gIdx[p.id] || [],
         _aortic:  (_dbCache.aortic  && _dbCache.aortic[p.id])  || {},
-        _consult: (_dbCache.consult && _dbCache.consult[p.id]) || []
+        _consult: (_dbCache.consult && _dbCache.consult[p.id]) || [],
+        _timeline:(_dbCache.timeline && _dbCache.timeline[p.id]) || []
       }));
       // Filtre
       const f = (filterText || '').toLowerCase().trim();
@@ -14435,7 +14633,8 @@
         training: Math.max(0, ...filtered.map(p => p._train.length)),
         sf36:     Math.max(0, ...filtered.map(p => p._sf36.length)),
         gpaq:     Math.max(0, ...filtered.map(p => p._gpaq.length)),
-        consult:  Math.max(0, ...filtered.map(p => p._consult.length))
+        consult:  Math.max(0, ...filtered.map(p => p._consult.length)),
+        timeline: Math.max(0, ...filtered.map(p => p._timeline.length))
       };
       return { patients: filtered, maxByPatient };
     }

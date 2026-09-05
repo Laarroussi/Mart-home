@@ -86,6 +86,7 @@ function mountRoutes(prefix) {
   app.use(prefix + '/medical-records', require('./routes/medical-records'));
   app.use(prefix + '/consultations',   require('./routes/consultations'));
   app.use(prefix + '/activation',      require('./routes/activation'));
+  app.use(prefix + '/timeline',        require('./routes/timeline'));
 }
 mountRoutes('/api');   // mode local dev OU Passenger qui garde le préfixe
 mountRoutes('');       // mode Passenger qui strippe le préfixe URI
