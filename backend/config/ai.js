@@ -1,33 +1,66 @@
 /**
  * ============================================================
- * EXTRACTION IA — Marfan APA
+ * EXTRACTION IA — Marfan APA (Mistral AI)
  * ============================================================
- * Lit un texte de document médical et en extrait des faits datés
- * (mesures, biologie, traitements, opérations, examens, diagnostics).
+ * Deux capacités :
  *
- * Fournisseur : OpenAI. La clé vit UNIQUEMENT côté serveur, dans .env
- * (OPENAI_API_KEY). Elle n'est jamais transmise au navigateur.
+ *   1. OCR    — lit les documents SCANNÉS (PDF image, photo de
+ *               compte-rendu) et en restitue le texte.
+ *               Modèle : mistral-ocr-latest · 4 $ / 1000 pages
  *
- * Aucune dépendance npm : on utilise fetch, natif à partir de Node 18.
+ *   2. ANALYSE — extrait du texte les faits médicaux datés
+ *               (mesures, biologie, traitements, opérations…).
+ *               Modèle : mistral-small-latest · 0,15 $ / M tokens
  *
- * Confidentialité : le texte reçu ici est déjà pseudonymisé côté serveur
- * par pseudonymiser() avant tout envoi. Nom, prénom, IPP, date de naissance,
- * e-mail, téléphone et NIR sont remplacés par des marqueurs.
+ * Fournisseur européen : le traitement peut rester en UE, ce qui
+ * simplifie la conformité RGPD pour des données de santé françaises.
+ *
+ * La clé vit UNIQUEMENT côté serveur, dans .env (MISTRAL_API_KEY).
+ * Elle n'est jamais transmise au navigateur.
+ *
+ * Aucune dépendance npm : fetch est natif depuis Node 18.
+ *
+ * Confidentialité : pseudonymiser() masque nom, prénom, IPP, date de
+ * naissance, e-mail, téléphone et NIR avant tout envoi.
  * ============================================================
  */
 
-const MODELE = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-const URL_API = 'https://api.openai.com/v1/chat/completions';
+const BASE = (process.env.MISTRAL_BASE_URL || 'https://api.mistral.ai').replace(/\/$/, '');
+const MODELE = process.env.MISTRAL_MODEL || 'mistral-small-latest';
+const MODELE_OCR = process.env.MISTRAL_OCR_MODEL || 'mistral-ocr-latest';
 
 function cleActive() {
-  return !!(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim());
+  return !!(process.env.MISTRAL_API_KEY && process.env.MISTRAL_API_KEY.trim());
+}
+function entetes() {
+  return {
+    'Authorization': 'Bearer ' + process.env.MISTRAL_API_KEY.trim(),
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+}
+function exigerCle() {
+  if (!cleActive()) {
+    const e = new Error("Aucune clé Mistral configurée sur le serveur (MISTRAL_API_KEY absente dans .env)");
+    e.code = 'NO_KEY';
+    throw e;
+  }
 }
 
-/**
- * Retire du texte les éléments directement identifiants.
- * On travaille sur le texte brut du document : l'objectif est que le
- * prestataire d'IA ne reçoive que du contenu clinique.
- */
+/** Traduit une réponse HTTP en erreur lisible par l'utilisateur */
+async function erreurLisible(rep, quoi) {
+  let detail = '';
+  try { const j = await rep.json(); detail = (j.error && j.error.message) || j.message || ''; }
+  catch (_) {}
+  if (rep.status === 401) return new Error("Clé Mistral refusée (401). Vérifiez MISTRAL_API_KEY dans .env.");
+  if (rep.status === 402) return new Error("Crédits Mistral épuisés (402). Rechargez votre compte sur console.mistral.ai.");
+  if (rep.status === 429) return new Error("Trop de requêtes vers Mistral (429). Réessayez dans un instant.");
+  return new Error("Erreur Mistral " + rep.status + " sur " + quoi + (detail ? ' — ' + detail : ''));
+}
+
+// ============================================================
+// === Pseudonymisation =======================================
+// ============================================================
 function pseudonymiser(texte, patient) {
   if (!texte) return '';
   let t = String(texte);
@@ -47,7 +80,6 @@ function pseudonymiser(texte, patient) {
   remplacer(civil.phone,     '[TEL]');
   remplacer(civil.address,   '[ADRESSE]');
 
-  // Date de naissance, sous ses formats courants
   if (civil.dob) {
     const d = new Date(civil.dob);
     if (!isNaN(d)) {
@@ -60,15 +92,52 @@ function pseudonymiser(texte, patient) {
     }
   }
 
-  // Numéro de sécurité sociale français (15 chiffres, espaces tolérés)
   t = t.replace(/\b[12]\s?\d{2}\s?\d{2}\s?\d{2,3}\s?\d{3}\s?\d{3}\s?\d{2}\b/g, '[NIR]');
-  // Adresses e-mail et téléphones résiduels
   t = t.replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '[EMAIL]');
   t = t.replace(/\b0[1-9](?:[\s.-]?\d{2}){4}\b/g, '[TEL]');
-
   return t;
 }
 
+// ============================================================
+// === OCR : lecture des documents scannés ====================
+// ============================================================
+/**
+ * @param {string} base64 - contenu du fichier encodé en base64 (sans préfixe data:)
+ * @param {string} mime   - ex. 'application/pdf', 'image/jpeg'
+ * @returns {Promise<{texte:string, pages:number, modele:string, duree_ms:number}>}
+ */
+async function ocrDocument(base64, mime) {
+  exigerCle();
+  const debut = Date.now();
+  const estImage = String(mime || '').startsWith('image/');
+  const dataUrl = 'data:' + (mime || 'application/pdf') + ';base64,' + base64;
+
+  const document = estImage
+    ? { type: 'image_url', image_url: dataUrl }
+    : { type: 'document_url', document_url: dataUrl };
+
+  let rep;
+  try {
+    rep = await fetch(BASE + '/v1/ocr', {
+      method: 'POST',
+      headers: entetes(),
+      body: JSON.stringify({ model: MODELE_OCR, document, include_image_base64: false })
+    });
+  } catch (e) {
+    throw new Error("Service Mistral injoignable (OCR) : " + e.message);
+  }
+  if (!rep.ok) throw await erreurLisible(rep, 'OCR');
+
+  const data = await rep.json();
+  const pages = Array.isArray(data.pages) ? data.pages : [];
+  const texte = pages.map(p => p.markdown || p.text || '').join('\n\n').trim();
+
+  return { texte, pages: pages.length, modele: MODELE_OCR, duree_ms: Date.now() - debut };
+}
+
+// ============================================================
+// === Analyse : extraction des faits médicaux ================
+// ============================================================
 const CONSIGNE = `Tu es un assistant d'extraction de données médicales pour une étude clinique sur le syndrome de Marfan.
 
 On te donne le texte d'un document médical (compte-rendu hospitalier, biologie, imagerie, courrier). Tu dois en extraire TOUS les faits médicaux DATÉS et les renvoyer en JSON strict.
@@ -88,27 +157,16 @@ Exemples de "label" attendus : "Diamètre sinus de Valsalva", "Diamètre aorte a
 Réponds UNIQUEMENT avec un objet JSON de cette forme :
 {"faits":[{"event_date":"2021-05-05","date_precision":"jour","category":"mesure","label":"Diamètre sinus de Valsalva","value_num":34,"value_text":null,"unit":"mm","detail":"mesuré en ETT","source_extrait":"Sinus de Valsalva mesuré à 34 mm","confiance":0.95}]}`;
 
-/**
- * Analyse un texte et renvoie { faits: [...], modele, duree_ms }
- */
 async function analyserTexte(texte) {
-  if (!cleActive()) {
-    const e = new Error("Aucune clé OpenAI configurée sur le serveur (OPENAI_API_KEY absente dans .env)");
-    e.code = 'NO_KEY';
-    throw e;
-  }
+  exigerCle();
   const debut = Date.now();
-  // Les comptes-rendus peuvent être longs : on borne pour maîtriser le coût
   const extrait = String(texte || '').slice(0, 60000);
 
   let rep;
   try {
-    rep = await fetch(URL_API, {
+    rep = await fetch(BASE + '/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + process.env.OPENAI_API_KEY.trim(),
-        'Content-Type': 'application/json'
-      },
+      headers: entetes(),
       body: JSON.stringify({
         model: MODELE,
         temperature: 0,
@@ -120,16 +178,9 @@ async function analyserTexte(texte) {
       })
     });
   } catch (e) {
-    throw new Error("Service d'IA injoignable : " + e.message);
+    throw new Error("Service Mistral injoignable : " + e.message);
   }
-
-  if (!rep.ok) {
-    let detail = '';
-    try { const j = await rep.json(); detail = (j.error && j.error.message) || ''; } catch (_) {}
-    if (rep.status === 401) throw new Error("Clé OpenAI refusée (401). Vérifiez OPENAI_API_KEY dans .env.");
-    if (rep.status === 429) throw new Error("Quota OpenAI atteint ou trop de requêtes (429). " + detail);
-    throw new Error("Erreur OpenAI " + rep.status + (detail ? ' — ' + detail : ''));
-  }
+  if (!rep.ok) throw await erreurLisible(rep, "l'analyse");
 
   const data = await rep.json();
   const brut = data && data.choices && data.choices[0] && data.choices[0].message
@@ -162,13 +213,16 @@ async function analyserTexte(texte) {
 
 /** Diagnostic de configuration, sans jamais exposer la clé */
 function statutIA() {
-  const k = process.env.OPENAI_API_KEY || '';
+  const k = process.env.MISTRAL_API_KEY || '';
   return {
+    fournisseur: 'Mistral AI (Europe)',
     cle_configuree: cleActive(),
-    cle_apercu: k ? (k.slice(0, 7) + '…' + k.slice(-4)) : null,
-    modele: MODELE,
+    cle_apercu: k ? (k.slice(0, 5) + '…' + k.slice(-4)) : null,
+    modele_analyse: MODELE,
+    modele_ocr: MODELE_OCR,
+    endpoint: BASE,
     pseudonymisation: 'active'
   };
 }
 
-module.exports = { analyserTexte, pseudonymiser, statutIA, cleActive };
+module.exports = { analyserTexte, ocrDocument, pseudonymiser, statutIA, cleActive };

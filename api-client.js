@@ -241,7 +241,11 @@
     /** ===== Chronologie médicale extraite des documents (IA) ===== */
     timeline: {
       list:     (patientId)              => request('GET',   `/timeline/${patientId}`),
-      analyser: (patientId, texte, docId)=> request('POST',  `/timeline/${patientId}/analyser`, { texte, doc_id: docId }),
+      // texte : extrait par le navigateur. Si vide (document scanné), on transmet
+      // le fichier en base64 : le serveur le passe par l'OCR Mistral.
+      analyser: (patientId, texte, docId, fichierBase64, mime) =>
+                  request('POST', `/timeline/${patientId}/analyser`,
+                          { texte, doc_id: docId, fichier_base64: fichierBase64, mime }),
       save:     (patientId, faits, docId)=> request('POST',  `/timeline/${patientId}`, { faits, doc_id: docId }),
       update:   (patientId, id, data)    => request('PATCH', `/timeline/${patientId}/${id}`, data),
       remove:   (patientId, id)          => request('DELETE',`/timeline/${patientId}/${id}`),

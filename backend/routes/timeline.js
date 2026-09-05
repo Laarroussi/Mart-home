@@ -15,7 +15,7 @@
 const express = require('express');
 const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE } = require('../middleware/auth');
-const { analyserTexte, pseudonymiser, statutIA } = require('../config/ai');
+const { analyserTexte, ocrDocument, pseudonymiser, statutIA } = require('../config/ai');
 
 const router = express.Router();
 
@@ -62,9 +62,25 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
   const debut = Date.now();
   try {
     if (!peutEcrire(req.user)) return res.status(403).json({ error: 'Accès interdit' });
-    const { texte, doc_id } = req.body || {};
+    const { doc_id, fichier_base64, mime } = req.body || {};
+    let texte = (req.body && req.body.texte) || '';
+    let ocrInfo = null;
+
+    // Document scanné : aucun texte extractible côté navigateur.
+    // On passe alors par l'OCR de Mistral, qui lit les PDF image et les photos.
+    if ((!texte || String(texte).trim().length < 20) && fichier_base64) {
+      try {
+        const r = await ocrDocument(fichier_base64, mime || 'application/pdf');
+        texte = r.texte || '';
+        ocrInfo = { pages: r.pages, modele: r.modele, duree_ms: r.duree_ms };
+      } catch (e) {
+        const code = e.code === 'NO_KEY' ? 503 : 502;
+        return res.status(code).json({ error: "Lecture OCR impossible : " + e.message });
+      }
+    }
+
     if (!texte || String(texte).trim().length < 20) {
-      return res.status(400).json({ error: "Le document ne contient pas de texte exploitable. S'il s'agit d'un scan, l'extraction automatique n'est pas possible." });
+      return res.status(400).json({ error: "Le document ne contient aucun texte exploitable, même après lecture optique." });
     }
 
     // Récupère l'identité pour pouvoir la masquer
@@ -99,6 +115,7 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
       modele: resultat.modele,
       duree_ms: resultat.duree_ms,
       pseudonymise: true,
+      ocr: ocrInfo,                       // non nul si le document a dû être lu par OCR
       apercu_masque: texteMasque.slice(0, 600)
     });
   } catch (err) { next(err); }

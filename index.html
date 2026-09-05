@@ -12,21 +12,21 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase17"></script>
+  <script src="api-client.js?v=phase17-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase17"></script>
+  <script src="questionnaires-defs.js?v=phase17-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase17"></script>
+  <script src="medical-parsers.js?v=phase17-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase17"></script>
+  <script src="cpet-graph-preview.js?v=phase17-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase17"></script>
-  <script src="medical-record-ui.js?v=phase17"></script>
+  <script src="pdf-extractor.js?v=phase17-1"></script>
+  <script src="medical-record-ui.js?v=phase17-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase17"></script>
+  <script src="aortic-consultations.js?v=phase17-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase17"></script>
+  <script src="document-import.js?v=phase17-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3141,7 +3141,7 @@
               <span style="font-size:12px; color:#3b5a8f;">Versez un document médical : les dates, mesures et traitements sont lus automatiquement et le formulaire est pré-rempli. Vous n'avez plus qu'à vérifier.</span>
             </div>
             <input type="file" id="cf_docImport" style="display:none"
-              accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,application/pdf,text/*">
+              accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.tif,.tiff,application/pdf,text/*,image/*">
             <button type="button" onclick="document.getElementById('cf_docImport').click()"
               style="padding:10px 18px; border:none; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white; border-radius:9px; font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap;">⬆️ Verser un document</button>
           </div>
@@ -7758,17 +7758,33 @@
       if (!code) { statut('Renseignez d\'abord le code patient.', 'err'); return; }
 
       statut('📄 Lecture de « ' + f.name + ' »…', 'info');
-      let texte = '';
+      let texte = '', base64 = null;
       try {
         const r = await window.DocImport.lireTexte(f);
         texte = (r.texte || '').trim();
-        if (texte.length < 20) throw new Error("Aucun texte exploitable (document scanné ?).");
       } catch (e) { statut('❌ ' + ((e && e.message) || 'Lecture impossible'), 'err'); return; }
 
-      statut('🔎 Analyse en cours — identité masquée avant envoi…', 'info');
+      // Document scanné ou photo : lecture optique par le serveur
+      if (texte.length < 20) {
+        const ocrPossible = /\.(pdf|png|jpe?g|webp|tiff?)$/i.test(f.name || '') ||
+                            (f.type || '').startsWith('image/') || f.type === 'application/pdf';
+        if (!ocrPossible) { statut('❌ Aucun texte exploitable dans ce document.', 'err'); return; }
+        statut('📷 Document scanné détecté — lecture optique en cours, patientez…', 'info');
+        try {
+          const fr = new FileReader();
+          base64 = await new Promise((res, rej) => {
+            fr.onload = () => { const s = String(fr.result || ''); const i = s.indexOf(','); res(i >= 0 ? s.slice(i + 1) : s); };
+            fr.onerror = () => rej(new Error('Lecture du fichier impossible'));
+            fr.readAsDataURL(f);
+          });
+        } catch (e) { statut('❌ ' + e.message, 'err'); return; }
+      } else {
+        statut('🔎 Analyse en cours — identité masquée avant envoi…', 'info');
+      }
+
       let prop;
       try {
-        prop = await window.MarfanAPI.timeline.analyser(code, texte, null);
+        prop = await window.MarfanAPI.timeline.analyser(code, texte, null, base64, f.type || 'application/pdf');
       } catch (e) { statut('❌ ' + ((e && e.message) || 'Analyse impossible'), 'err'); return; }
 
       const faits = (prop && prop.faits) || [];

@@ -88,12 +88,27 @@
       return { texte: t, mode: 'word' };
     }
 
-    // Images — pas de texte extractible sans OCR
+    // Images (photo ou scan de compte-rendu) : pas de texte extractible ici,
+    // mais l'OCR du serveur sait les lire. On renvoie donc un texte vide.
     if (type.startsWith('image/')) {
-      throw new Error("Les images et documents scannés ne contiennent pas de texte lisible automatiquement. Utilisez un PDF contenant du texte, ou saisissez les données manuellement.");
+      return { texte: '', mode: 'image', ocrRequis: true };
     }
 
     throw new Error('Format non pris en charge : ' + (nom.split('.').pop() || type));
+  }
+
+  /** Convertit un fichier en base64 (sans le préfixe data:) pour l'envoi OCR */
+  function versBase64(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => {
+        const s = String(fr.result || '');
+        const i = s.indexOf(',');
+        resolve(i >= 0 ? s.slice(i + 1) : s);
+      };
+      fr.onerror = () => reject(new Error('Lecture du fichier impossible'));
+      fr.readAsDataURL(file);
+    });
   }
 
   // ============================================================
@@ -172,11 +187,11 @@
         <div style="padding:14px 20px; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
           <div>
             <h3 style="margin:0; color:white; font-size:15px;">📎 Pièces du dossier médical — ${esc(patientId)}</h3>
-            <p style="margin:3px 0 0; font-size:11.5px; opacity:.92;">Versez un document : les données datées sont extraites, relues par vous, puis classées chronologiquement.</p>
+            <p style="margin:3px 0 0; font-size:11.5px; opacity:.92;">PDF, scans, photos, Word, Excel, texte. Les données datées sont extraites, relues par vous, puis classées chronologiquement.</p>
           </div>
           <div>
             <input type="file" data-di-input style="display:none"
-              accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,.xlsm,application/pdf,text/*">
+              accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,.xlsm,.png,.jpg,.jpeg,.webp,.tif,.tiff,application/pdf,text/*,image/*">
             <button data-di-btn style="padding:10px 18px; border:none; background:white; color:#1d4ed8; border-radius:9px; font-weight:700; cursor:pointer; font-size:12.5px; white-space:nowrap;">⬆️ Verser une pièce</button>
           </div>
         </div>
@@ -203,22 +218,37 @@
     }
 
     ouvrirAttente('Lecture du document…', _docNom);
-    let texte = '';
+    let texte = '', base64 = null;
     try {
       const r = await lireTexte(file);
       texte = (r.texte || '').trim();
-      if (texte.length < 20) {
-        throw new Error("Aucun texte exploitable trouvé. S'il s'agit d'un document scanné (image), l'extraction automatique n'est pas possible.");
-      }
     } catch (e) {
       majAttente('❌ ' + ((e && e.message) || 'Lecture impossible'), true);
       return;
     }
 
-    majAttente('Analyse en cours… identité masquée avant envoi.');
+    // Document scanné ou photo : le texte est absent, on confie la lecture
+    // optique au serveur (OCR Mistral), qui sait lire les PDF image.
+    const besoinOcr = texte.length < 20;
+    if (besoinOcr) {
+      const estLisibleParOcr = /\.(pdf|png|jpe?g|webp|tiff?)$/i.test(_docNom) ||
+                               (file.type || '').startsWith('image/') ||
+                               file.type === 'application/pdf';
+      if (!estLisibleParOcr) {
+        majAttente("❌ Aucun texte exploitable dans ce document.", true);
+        return;
+      }
+      majAttente('Document scanné détecté — lecture optique en cours…\nCela peut prendre quelques secondes.');
+      try { base64 = await versBase64(file); }
+      catch (e) { majAttente('❌ ' + e.message, true); return; }
+    } else {
+      majAttente('Analyse en cours… identité masquée avant envoi.');
+    }
+
     let prop;
     try {
-      prop = await window.MarfanAPI.timeline.analyser(patientId, texte, null);
+      prop = await window.MarfanAPI.timeline.analyser(
+        patientId, texte, null, base64, file.type || 'application/pdf');
     } catch (e) {
       majAttente('❌ ' + ((e && e.message) || "L'analyse a échoué."), true);
       return;
@@ -321,7 +351,7 @@
               ⚠ ${douteuxN} donnée(s) de confiance faible sont <strong>décochées par défaut</strong> — vérifiez-les dans le document d'origine avant de les inclure.
             </div>` : ''}
             <div style="margin-top:9px; font-size:11.5px; color:#64748b;">
-              🔒 Identité masquée avant analyse (nom, prénom, IPP, date de naissance) · modèle ${esc(prop.modele || '')} · ${prop.duree_ms ? Math.round(prop.duree_ms / 100) / 10 + ' s' : ''}
+              🔒 Identité masquée avant analyse (nom, prénom, IPP, date de naissance) · 🇪🇺 Mistral AI · modèle ${esc(prop.modele || '')}${prop.ocr ? ' · lecture optique de ' + prop.ocr.pages + ' page(s)' : ''} · ${prop.duree_ms ? Math.round(prop.duree_ms / 100) / 10 + ' s' : ''}
             </div>
           </div>
 
