@@ -243,9 +243,13 @@
       list:     (patientId)              => request('GET',   `/timeline/${patientId}`),
       // texte : extrait par le navigateur. Si vide (document scanné), on transmet
       // le fichier en base64 : le serveur le passe par l'OCR Mistral.
-      analyser: (patientId, texte, docId, fichierBase64, mime) =>
+      // avecIdentite : uniquement pour pré-remplir une fiche patient encore
+      // inexistante. Dans ce cas le texte n'est pas pseudonymisé, afin que
+      // nom, prénom, IPP et date de naissance puissent être lus.
+      analyser: (patientId, texte, docId, fichierBase64, mime, avecIdentite) =>
                   request('POST', `/timeline/${patientId}/analyser`,
-                          { texte, doc_id: docId, fichier_base64: fichierBase64, mime }),
+                          { texte, doc_id: docId, fichier_base64: fichierBase64, mime,
+                            avec_identite: !!avecIdentite }),
       save:     (patientId, faits, docId)=> request('POST',  `/timeline/${patientId}`, { faits, doc_id: docId }),
       update:   (patientId, id, data)    => request('PATCH', `/timeline/${patientId}/${id}`, data),
       remove:   (patientId, id)          => request('DELETE',`/timeline/${patientId}/${id}`),

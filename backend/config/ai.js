@@ -212,6 +212,96 @@ async function analyserTexte(texte) {
 }
 
 // ============================================================
+// === Extraction de l'identité (création de fiche patient) ===
+// ============================================================
+// ⚠ Cette extraction suppose que le texte N'A PAS été pseudonymisé :
+// elle n'est utilisée que lorsqu'un soignant verse un document POUR
+// CRÉER une fiche, afin de lui éviter une double saisie. Pour un
+// patient déjà enregistré, le masquage reste appliqué.
+const CONSIGNE_IDENTITE = `Tu extrais l'en-tête administratif d'un document médical français (compte-rendu hospitalier, courrier, examen).
+
+Règles impératives :
+- N'invente RIEN. Tout champ absent du document vaut null.
+- nom : le NOM DE FAMILLE seul, en majuscules.
+- prenom : le prénom seul, première lettre majuscule.
+- Ne confonds pas le patient avec le médecin ou l'opérateur : le médecin est souvent précédé de "Dr", "Pr", "Responsable du rapport", "Médecin traitant".
+- ipp : identifiant permanent du patient (souvent "IPP", "NIP", "N° dossier", "Identifiant").
+- date_naissance et date_document au format AAAA-MM-JJ. Les dates françaises s'écrivent JJ/MM/AAAA.
+- sexe : "Homme", "Femme" ou "Autre", tel qu'indiqué.
+- taille_cm en centimètres, poids_kg en kilogrammes, surface_corporelle_m2 en m².
+- centre : l'établissement (ex. "AP-HP — Hôpital Bichat").
+- service : le service ou l'unité si mentionné.
+- medecin : le médecin responsable, sans le titre.
+
+Réponds UNIQUEMENT avec ce JSON :
+{"nom":null,"prenom":null,"ipp":null,"date_naissance":null,"sexe":null,"age":null,
+"taille_cm":null,"poids_kg":null,"surface_corporelle_m2":null,
+"centre":null,"service":null,"medecin":null,"date_document":null,"confiance":0.9}`;
+
+async function analyserIdentite(texte) {
+  exigerCle();
+  const debut = Date.now();
+  // L'en-tête se trouve toujours en début de document : on limite l'envoi
+  const extrait = String(texte || '').slice(0, 6000);
+
+  let rep;
+  try {
+    rep = await fetch(BASE + '/v1/chat/completions', {
+      method: 'POST',
+      headers: entetes(),
+      body: JSON.stringify({
+        model: MODELE,
+        temperature: 0,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: CONSIGNE_IDENTITE },
+          { role: 'user', content: "En-tête du document :\n\n" + extrait }
+        ]
+      })
+    });
+  } catch (e) {
+    throw new Error("Service Mistral injoignable : " + e.message);
+  }
+  if (!rep.ok) throw await erreurLisible(rep, "la lecture de l'identité");
+
+  const data = await rep.json();
+  const brut = data && data.choices && data.choices[0] && data.choices[0].message
+    ? data.choices[0].message.content : '{}';
+  let p;
+  try { p = JSON.parse(brut); }
+  catch (_) { throw new Error("Réponse de l'IA illisible (JSON invalide)"); }
+
+  const txt = v => (v == null || v === '') ? null : String(v).trim().slice(0, 200);
+  const num = v => (v == null || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
+  const dat = v => /^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : null;
+
+  const nom = txt(p.nom);
+  const prenom = txt(p.prenom);
+
+  return {
+    identite: {
+      nom:    nom ? nom.toUpperCase() : null,
+      prenom: prenom ? prenom.toLowerCase().replace(/(^|[\s'-])([a-zà-öø-ÿ])/g,
+                        (m, s, c) => s + c.toUpperCase()) : null,
+      ipp:    txt(p.ipp),
+      date_naissance: dat(p.date_naissance),
+      sexe:   ['Homme','Femme','Autre'].includes(txt(p.sexe)) ? txt(p.sexe) : null,
+      age:    num(p.age),
+      taille_cm: num(p.taille_cm),
+      poids_kg:  num(p.poids_kg),
+      surface_corporelle_m2: num(p.surface_corporelle_m2),
+      centre:  txt(p.centre),
+      service: txt(p.service),
+      medecin: txt(p.medecin),
+      date_document: dat(p.date_document),
+      confiance: num(p.confiance)
+    },
+    modele: MODELE,
+    duree_ms: Date.now() - debut
+  };
+}
+
+// ============================================================
 // === Extraction spécialisée : compte-rendu d'échocardiographie
 // ============================================================
 const CONSIGNE_ECHO = `Tu extrais les données d'un compte-rendu d'ÉCHOCARDIOGRAPHIE TRANSTHORACIQUE (ETT) français.
@@ -363,6 +453,7 @@ function statutIA() {
 }
 
 module.exports = {
-  analyserTexte, analyserEcho, ocrDocument, pseudonymiser, statutIA, cleActive,
+  analyserTexte, analyserEcho, analyserIdentite, ocrDocument,
+  pseudonymiser, statutIA, cleActive,
   CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO
 };

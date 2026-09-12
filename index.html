@@ -12,21 +12,21 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase18"></script>
+  <script src="api-client.js?v=phase18-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase18"></script>
+  <script src="questionnaires-defs.js?v=phase18-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase18"></script>
+  <script src="medical-parsers.js?v=phase18-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase18"></script>
+  <script src="cpet-graph-preview.js?v=phase18-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase18"></script>
-  <script src="medical-record-ui.js?v=phase18"></script>
+  <script src="pdf-extractor.js?v=phase18-1"></script>
+  <script src="medical-record-ui.js?v=phase18-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase18"></script>
+  <script src="aortic-consultations.js?v=phase18-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase18-1"></script>
+  <script src="document-import.js?v=phase18-1-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -7600,6 +7600,16 @@
         }
       } catch (e) { console.warn('[timeline] rattachement échoué :', e && e.message); }
 
+      // Phase 18 : enregistre l'échocardiographie lue lors de la création
+      try {
+        const ae = window._echoAImporter;
+        if (ae && ae.code === code && ae.echo) {
+          await window.MarfanAPI.timeline.echoSave(code, ae.echo);
+          console.log('[echo] examen rattaché à ' + code);
+          window._echoAImporter = null;
+        }
+      } catch (e) { console.warn('[echo] rattachement échoué :', e && e.message); }
+
       // Phase 13.12 : recharge le suivi aortique du tableau « Base de données »
       // pour que les diamètres saisis apparaissent sans recharger la page
       try {
@@ -7784,11 +7794,17 @@
 
       let prop;
       try {
-        prop = await window.MarfanAPI.timeline.analyser(code, texte, null, base64, f.type || 'application/pdf');
+        // true = mode création : l'identité est lue pour remplir la fiche
+        prop = await window.MarfanAPI.timeline.analyser(
+          code, texte, null, base64, f.type || 'application/pdf', true);
       } catch (e) { statut('❌ ' + ((e && e.message) || 'Analyse impossible'), 'err'); return; }
 
       const faits = (prop && prop.faits) || [];
-      if (!faits.length) { statut('Aucune donnée exploitable trouvée dans ce document.', 'err'); return; }
+      const ident = (prop && prop.identite) || null;
+      const echo = (prop && prop.echo) || null;
+      if (!faits.length && !ident && !echo) {
+        statut('Aucune donnée exploitable trouvée dans ce document.', 'err'); return;
+      }
 
       // Pré-remplit uniquement les champs VIDES
       const poser = (id, val) => {
@@ -7797,6 +7813,45 @@
         return false;
       };
       let n = 0;
+      const details = [];
+
+      // --- Identité lue dans l'en-tête du document ---
+      if (ident) {
+        if (poser('cf_lastName',  ident.nom))            { n++; details.push('nom'); }
+        if (poser('cf_firstName', ident.prenom))         { n++; details.push('prénom'); }
+        if (poser('cf_ipp',       ident.ipp))            { n++; details.push('IPP'); }
+        if (poser('cf_dob',       ident.date_naissance)) { n++; details.push('date de naissance'); }
+        if (poser('cf_sex',       ident.sexe))           { n++; details.push('sexe'); }
+        if (poser('cf_center',    ident.centre))         { n++; details.push('centre'); }
+        if (poser('cf_doctor',    ident.medecin))        { n++; details.push('médecin'); }
+        // L'âge se recalcule depuis la date de naissance si la fonction existe
+        if (ident.date_naissance && typeof updateAgeFromDob === 'function') {
+          try { updateAgeFromDob(); } catch (_) {}
+        } else if (poser('cf_age', ident.age)) { n++; details.push('âge'); }
+        // Initiales recalculées à partir du nom et du prénom
+        if (typeof updateSuggestedInitials === 'function') {
+          try { updateSuggestedInitials(); } catch (_) {}
+        }
+      }
+
+      // --- Mesures issues d'une échocardiographie ---
+      if (echo) {
+        if (echo.sinus_valsalva_mm != null) {
+          if (poser('cf_aorticTodayValue', echo.sinus_valsalva_mm)) { n++; details.push('diamètre du jour'); }
+          if (poser('cf_aorticTodaySite', 'Sinus de Valsalva')) n++;
+        }
+        if (echo.aorte_operee === true) {
+          const dejaOp = ($('cf_history') && $('cf_history').value) || '';
+          if (!dejaOp) {
+            const lib = 'Chirurgie aortique' +
+                        (echo.aorte_operee_type ? ' — ' + echo.aorte_operee_type : '') +
+                        (echo.aorte_operee_date ? ' (' + new Date(echo.aorte_operee_date).getFullYear() + ')' : '');
+            if (poser('cf_history', lib)) { n++; details.push('antécédent chirurgical'); }
+          }
+        }
+        window._echoAImporter = { code, echo };
+      }
+
       const cherche = (re, cat) => faits.find(x =>
         (!cat || x.category === cat) && re.test((x.label || '') + ' ' + (x.detail || '')));
 
@@ -7836,9 +7891,11 @@
       // Les faits restants seront rattachés au patient après validation de la fiche
       window._faitsAImporter = { code, faits };
 
-      statut('✓ <strong>' + n + ' champ(s) pré-remplis</strong> à partir du document · ' +
-             faits.length + ' donnée(s) médicales seront rattachées au dossier après validation de la fiche.' +
-             '<br><span style="font-weight:500;">Vérifiez et corrigez les champs avant d\'enregistrer.</span>', 'ok');
+      statut('✓ <strong>' + n + ' champ(s) pré-remplis</strong>' +
+             (details.length ? ' — ' + details.join(', ') : '') + '.<br>' +
+             (echo ? '🫀 Échocardiographie reconnue : les mesures complètes seront enregistrées avec la fiche.<br>' : '') +
+             (faits.length ? faits.length + ' donnée(s) médicales seront rattachées au dossier après validation.<br>' : '') +
+             '<span style="font-weight:500;">Vérifiez et corrigez les champs avant d\'enregistrer.</span>', 'ok');
     });
   })();
 

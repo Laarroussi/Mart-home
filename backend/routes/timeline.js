@@ -15,8 +15,8 @@
 const express = require('express');
 const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE } = require('../middleware/auth');
-const { analyserTexte, analyserEcho, ocrDocument, pseudonymiser, statutIA,
-        CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO } = require('../config/ai');
+const { analyserTexte, analyserEcho, analyserIdentite, ocrDocument, pseudonymiser,
+        statutIA, CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO } = require('../config/ai');
 
 const router = express.Router();
 
@@ -63,7 +63,7 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
   const debut = Date.now();
   try {
     if (!peutEcrire(req.user)) return res.status(403).json({ error: 'Accès interdit' });
-    const { doc_id, fichier_base64, mime } = req.body || {};
+    const { doc_id, fichier_base64, mime, avec_identite } = req.body || {};
     let texte = (req.body && req.body.texte) || '';
     let ocrInfo = null;
 
@@ -88,7 +88,19 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
     const p = await query('SELECT civil FROM patients WHERE id = $1', [req.params.patient_id]);
     const patient = p.rows.length ? { civil: p.rows[0].civil || {} } : { civil: {} };
 
-    const texteMasque = pseudonymiser(texte, patient);
+    // Mode « création de fiche » : l'identité doit être lue pour pré-remplir le
+    // formulaire, elle n'est donc pas masquée. Ce mode est explicitement demandé
+    // par l'appelant et réservé à un patient pas encore enregistré.
+    const modeIdentite = avec_identite === true && !p.rows.length;
+    const texteMasque = modeIdentite ? texte : pseudonymiser(texte, patient);
+
+    let identite = null;
+    if (modeIdentite) {
+      try {
+        const ri = await analyserIdentite(texte);
+        identite = ri.identite;
+      } catch (e) { console.warn('[identite] extraction échouée :', e.message); }
+    }
 
     let resultat;
     try {
@@ -125,9 +137,10 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
     res.json({
       faits: resultat.faits,
       echo,                               // non nul si compte-rendu d'ETT reconnu
+      identite,                           // non nul en mode création de fiche
       modele: resultat.modele,
       duree_ms: resultat.duree_ms,
-      pseudonymise: true,
+      pseudonymise: !modeIdentite,
       ocr: ocrInfo,                       // non nul si le document a dû être lu par OCR
       apercu_masque: texteMasque.slice(0, 600)
     });
