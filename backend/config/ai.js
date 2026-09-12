@@ -211,6 +211,143 @@ async function analyserTexte(texte) {
   return { faits: propres, modele: MODELE, duree_ms: Date.now() - debut };
 }
 
+// ============================================================
+// === Extraction spécialisée : compte-rendu d'échocardiographie
+// ============================================================
+const CONSIGNE_ECHO = `Tu extrais les données d'un compte-rendu d'ÉCHOCARDIOGRAPHIE TRANSTHORACIQUE (ETT) français.
+
+Règles impératives :
+- N'invente RIEN. Toute valeur absente du texte doit valoir null.
+- Convertis les virgules décimales en points (35,5 -> 35.5).
+- Respecte les unités indiquées dans les noms de champs. Si le document donne une valeur dans une autre unité, convertis-la (1 cm = 10 mm).
+- aorte_max_mm : le plus grand des diamètres aortiques relevés. aorte_site_max : le niveau correspondant.
+- Les marqueurs [NOM], [PRENOM], [IPP], [DATE_NAISSANCE] sont des anonymisations : ignore-les.
+- exam_date au format AAAA-MM-JJ (attention : les dates françaises s'écrivent JJ/MM/AAAA).
+
+Correspondances fréquentes dans ces comptes-rendus :
+  "sinus de Valsalva" -> sinus_valsalva_mm
+  "jonction sino-tubulaire" -> jonction_sinotub_mm
+  "aorte thoracique ascendante" / "aorte ascendante" -> aorte_ascendante_mm
+  "crosse aortique" -> crosse_aortique_mm
+  "aorte thoracique descendante" -> aorte_descendante_mm
+  "aorte abdominale" -> aorte_abdominale_mm
+  "anneau aortique" -> anneau_aortique_mm
+  DIVGd, DIVGs, SIVGd, PPVGd -> en cm
+  "FR (Teicholz)" -> fr_teicholz_pct ; "FE (Teicholz)" -> fe_teicholz_pct ; "FEVG BP" -> fevg_bp_pct
+  "MVG (ASE)" -> mvg_g ; "MVG ind" -> mvg_ind_g_m2 ; "h/R" -> h_sur_r
+  "VTD/VTS A4C, A2C, BP" -> en mL ; "ind" -> version indexée en mL/m²
+  "VE BP" -> ve_bp_ml ; "VTS OG BP" -> vts_og_bp_ml
+  "Vit pic E VM" -> vit_pic_e_vm_cm_s ; "Vit pic A VM" -> vit_pic_a_vm_cm_s ; "TD VM" -> td_vm_s
+  "Vmax VA" -> vmax_va_cm_s ; "ITV VA" -> itv_va_cm ; "Grad max VA" -> grad_max_va_mmhg
+  "Vmax IT" -> vmax_it_cm_s ; "Grad max IT" -> grad_max_it_mmhg
+  "SC" -> surface_corporelle_m2
+  "Responsable du rapport" -> operateur
+
+Réponds UNIQUEMENT avec un objet JSON contenant ces clés (null si absent) :
+{"est_echocardiographie":true,"exam_date":null,"centre":null,"operateur":null,
+"taille_cm":null,"poids_kg":null,"surface_corporelle_m2":null,
+"anneau_aortique_mm":null,"sinus_valsalva_mm":null,"jonction_sinotub_mm":null,
+"aorte_ascendante_mm":null,"crosse_aortique_mm":null,"aorte_descendante_mm":null,
+"aorte_abdominale_mm":null,"aorte_max_mm":null,"aorte_site_max":null,
+"divgd_cm":null,"divgs_cm":null,"sivgd_cm":null,"ppvgd_cm":null,
+"fr_teicholz_pct":null,"fe_teicholz_pct":null,"fevg_bp_pct":null,
+"mvg_g":null,"mvg_ind_g_m2":null,"h_sur_r":null,
+"vtd_a4c_ml":null,"vts_a4c_ml":null,"vtd_a2c_ml":null,"vts_a2c_ml":null,
+"vtd_bp_ml":null,"vts_bp_ml":null,"vtd_bp_ind_ml_m2":null,"vts_bp_ind_ml_m2":null,
+"ve_bp_ml":null,"ve_bp_ind_ml_m2":null,
+"vts_og_bp_ml":null,"vts_og_bp_ind_ml_m2":null,
+"vit_pic_e_vm_cm_s":null,"vit_pic_a_vm_cm_s":null,"td_vm_s":null,
+"vmax_va_cm_s":null,"itv_va_cm":null,"grad_max_va_mmhg":null,
+"vmax_it_cm_s":null,"grad_max_it_mmhg":null,
+"vg_texte":null,"vd_texte":null,"oreillettes_texte":null,
+"valve_mitrale_texte":null,"valve_tricuspide_texte":null,"valve_aortique_texte":null,
+"gros_vaisseaux_texte":null,"conclusion":null,
+"aorte_operee":null,"aorte_operee_date":null,"aorte_operee_type":null,
+"confiance":0.9}
+
+Si le document n'est PAS une échocardiographie, réponds {"est_echocardiographie":false}.`;
+
+const CHAMPS_NUM_ECHO = [
+  'taille_cm','poids_kg','surface_corporelle_m2',
+  'anneau_aortique_mm','sinus_valsalva_mm','jonction_sinotub_mm','aorte_ascendante_mm',
+  'crosse_aortique_mm','aorte_descendante_mm','aorte_abdominale_mm','aorte_max_mm',
+  'divgd_cm','divgs_cm','sivgd_cm','ppvgd_cm','fr_teicholz_pct','fe_teicholz_pct','fevg_bp_pct',
+  'mvg_g','mvg_ind_g_m2','h_sur_r','vtd_a4c_ml','vts_a4c_ml','vtd_a2c_ml','vts_a2c_ml',
+  'vtd_bp_ml','vts_bp_ml','vtd_bp_ind_ml_m2','vts_bp_ind_ml_m2','ve_bp_ml','ve_bp_ind_ml_m2',
+  'vts_og_bp_ml','vts_og_bp_ind_ml_m2','vit_pic_e_vm_cm_s','vit_pic_a_vm_cm_s','td_vm_s',
+  'vmax_va_cm_s','itv_va_cm','grad_max_va_mmhg','vmax_it_cm_s','grad_max_it_mmhg','confiance'
+];
+const CHAMPS_TXT_ECHO = [
+  'centre','operateur','aorte_site_max','vg_texte','vd_texte','oreillettes_texte',
+  'valve_mitrale_texte','valve_tricuspide_texte','valve_aortique_texte',
+  'gros_vaisseaux_texte','conclusion','aorte_operee_type'
+];
+
+async function analyserEcho(texte) {
+  exigerCle();
+  const debut = Date.now();
+  const extrait = String(texte || '').slice(0, 60000);
+
+  let rep;
+  try {
+    rep = await fetch(BASE + '/v1/chat/completions', {
+      method: 'POST',
+      headers: entetes(),
+      body: JSON.stringify({
+        model: MODELE,
+        temperature: 0,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: CONSIGNE_ECHO },
+          { role: 'user', content: 'Compte-rendu à analyser :\n\n' + extrait }
+        ]
+      })
+    });
+  } catch (e) {
+    throw new Error("Service Mistral injoignable : " + e.message);
+  }
+  if (!rep.ok) throw await erreurLisible(rep, "l'analyse ETT");
+
+  const data = await rep.json();
+  const brut = data && data.choices && data.choices[0] && data.choices[0].message
+    ? data.choices[0].message.content : '{}';
+  let p;
+  try { p = JSON.parse(brut); }
+  catch (_) { throw new Error("Réponse de l'IA illisible (JSON invalide)"); }
+
+  if (!p || p.est_echocardiographie === false) {
+    return { est_echo: false, echo: null, modele: MODELE, duree_ms: Date.now() - debut };
+  }
+
+  const echo = {};
+  const nombre = v => (v == null || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
+  CHAMPS_NUM_ECHO.forEach(k => { echo[k] = nombre(p[k]); });
+  CHAMPS_TXT_ECHO.forEach(k => { echo[k] = (p[k] == null || p[k] === '') ? null : String(p[k]).slice(0, 3000); });
+  echo.exam_date = /^\d{4}-\d{2}-\d{2}$/.test(p.exam_date || '') ? p.exam_date : null;
+  echo.aorte_operee = (p.aorte_operee === true || p.aorte_operee === false) ? p.aorte_operee : null;
+  echo.aorte_operee_date = /^\d{4}-\d{2}-\d{2}$/.test(p.aorte_operee_date || '') ? p.aorte_operee_date : null;
+
+  // Diamètre maximal : recalculé si l'IA ne l'a pas fourni
+  if (echo.aorte_max_mm == null) {
+    const niveaux = [
+      ['Anneau aortique', echo.anneau_aortique_mm],
+      ['Sinus de Valsalva', echo.sinus_valsalva_mm],
+      ['Jonction sino-tubulaire', echo.jonction_sinotub_mm],
+      ['Aorte ascendante', echo.aorte_ascendante_mm],
+      ['Crosse aortique', echo.crosse_aortique_mm],
+      ['Aorte descendante', echo.aorte_descendante_mm],
+      ['Aorte abdominale', echo.aorte_abdominale_mm]
+    ].filter(x => x[1] != null);
+    if (niveaux.length) {
+      const max = niveaux.reduce((a, b) => (b[1] > a[1] ? b : a));
+      echo.aorte_max_mm = max[1];
+      if (!echo.aorte_site_max) echo.aorte_site_max = max[0];
+    }
+  }
+
+  return { est_echo: true, echo, modele: MODELE, duree_ms: Date.now() - debut };
+}
+
 /** Diagnostic de configuration, sans jamais exposer la clé */
 function statutIA() {
   const k = process.env.MISTRAL_API_KEY || '';
@@ -225,4 +362,7 @@ function statutIA() {
   };
 }
 
-module.exports = { analyserTexte, ocrDocument, pseudonymiser, statutIA, cleActive };
+module.exports = {
+  analyserTexte, analyserEcho, ocrDocument, pseudonymiser, statutIA, cleActive,
+  CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO
+};

@@ -12,21 +12,21 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase17-1"></script>
+  <script src="api-client.js?v=phase18"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase17-1"></script>
+  <script src="questionnaires-defs.js?v=phase18"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase17-1"></script>
+  <script src="medical-parsers.js?v=phase18"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase17-1"></script>
+  <script src="cpet-graph-preview.js?v=phase18"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase17-1"></script>
-  <script src="medical-record-ui.js?v=phase17-1"></script>
+  <script src="pdf-extractor.js?v=phase18"></script>
+  <script src="medical-record-ui.js?v=phase18"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase17-1"></script>
+  <script src="aortic-consultations.js?v=phase18"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase17-1"></script>
+  <script src="document-import.js?v=phase18-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -14324,9 +14324,34 @@
       { id:'sf36',      label:'SF-36 (qualité de vie)',     color:'#7c3aed', short:'SF36' },
       { id:'gpaq',      label:'GPAQ (activité physique)',   color:'#10b981', short:'GPAQ' },
       // Phase 17 : données extraites des pièces versées, classées par date
-      { id:'timeline',  label:'Dossier médical (pièces versées)', color:'#1d4ed8', short:'Doc' }
+      { id:'timeline',  label:'Dossier médical (pièces versées)', color:'#1d4ed8', short:'Doc' },
+      // Phase 18 : une ligne de colonnes par examen échocardiographique
+      { id:'ett',       label:'Échocardiographie (ETT complète)', color:'#0369a1', short:'ETT' }
     ];
-    const _dbCache = { training: null, sf36: null, gpaq: null, aortic: null, consult: null };
+
+    // Colonnes d'un examen ETT, dans l'ordre de lecture du compte-rendu
+    const CHAMPS_ETT = [
+      ['exam_date','DATE'], ['operateur','OPERATEUR'],
+      ['taille_cm','TAILLE_cm'], ['poids_kg','POIDS_kg'], ['surface_corporelle_m2','SC_m2'],
+      ['anneau_aortique_mm','ANNEAU_mm'], ['sinus_valsalva_mm','VALSALVA_mm'],
+      ['jonction_sinotub_mm','JONCTION_ST_mm'], ['aorte_ascendante_mm','AO_ASC_mm'],
+      ['crosse_aortique_mm','CROSSE_mm'], ['aorte_descendante_mm','AO_DESC_mm'],
+      ['aorte_abdominale_mm','AO_ABDO_mm'], ['aorte_max_mm','AO_MAX_mm'], ['aorte_site_max','AO_SITE_MAX'],
+      ['divgd_cm','DIVGd_cm'], ['divgs_cm','DIVGs_cm'], ['sivgd_cm','SIVGd_cm'], ['ppvgd_cm','PPVGd_cm'],
+      ['fr_teicholz_pct','FR_TEICHOLZ_pct'], ['fe_teicholz_pct','FE_TEICHOLZ_pct'], ['fevg_bp_pct','FEVG_BP_pct'],
+      ['mvg_g','MVG_g'], ['mvg_ind_g_m2','MVG_IND_g_m2'], ['h_sur_r','h_R'],
+      ['vtd_a4c_ml','VTD_A4C_ml'], ['vts_a4c_ml','VTS_A4C_ml'],
+      ['vtd_a2c_ml','VTD_A2C_ml'], ['vts_a2c_ml','VTS_A2C_ml'],
+      ['vtd_bp_ml','VTD_BP_ml'], ['vts_bp_ml','VTS_BP_ml'],
+      ['vtd_bp_ind_ml_m2','VTD_BP_IND'], ['vts_bp_ind_ml_m2','VTS_BP_IND'],
+      ['ve_bp_ml','VE_BP_ml'], ['ve_bp_ind_ml_m2','VE_BP_IND'],
+      ['vts_og_bp_ml','VTS_OG_ml'], ['vts_og_bp_ind_ml_m2','VTS_OG_IND'],
+      ['vit_pic_e_vm_cm_s','E_MITRAL_cm_s'], ['vit_pic_a_vm_cm_s','A_MITRAL_cm_s'], ['td_vm_s','TD_MITRAL_s'],
+      ['vmax_va_cm_s','VMAX_AO_cm_s'], ['itv_va_cm','ITV_AO_cm'], ['grad_max_va_mmhg','GRAD_AO_mmHg'],
+      ['vmax_it_cm_s','VMAX_IT_cm_s'], ['grad_max_it_mmhg','GRAD_IT_mmHg'],
+      ['conclusion','CONCLUSION']
+    ];
+    const _dbCache = { training: null, sf36: null, gpaq: null, aortic: null, consult: null, timeline: null, ett: null };
 
     async function preloadDbApiData() {
       try {
@@ -14399,12 +14424,25 @@
             });
           }
         } catch (_) { /* patient sans pièce versée */ }
+        // Phase 18 : examens échocardiographiques structurés
+        try {
+          const r = await window.MarfanAPI.timeline.echoList(pid);
+          const arr = (r && r.examens) || [];
+          if (arr.length) {
+            if (!_dbCache.ett) _dbCache.ett = {};
+            _dbCache.ett[pid] = arr.slice().sort((a, b) => {
+              const da = a.exam_date ? new Date(a.exam_date) : new Date(0);
+              const db = b.exam_date ? new Date(b.exam_date) : new Date(0);
+              return da - db;
+            });
+          }
+        } catch (_) { /* patient sans échocardiographie */ }
       }));
       return todo.length;
     }
 
     window.refreshDbTimelineCache = async function () {
-      _dbCache.timeline = {}; _dbCache.timelineFetched = new Set();
+      _dbCache.timeline = {}; _dbCache.ett = {}; _dbCache.timelineFetched = new Set();
       await loadTimelineFor((window.patients || []).map(p => p.id));
       try { if (typeof renderUnifiedTable === 'function') renderUnifiedTable(); } catch (_) {}
     };
@@ -14558,6 +14596,24 @@
               get: p => ((p._timeline||[])[i-1] || {}).detail || '—' });
           }
         }
+        else if (sec.id === 'ett') {
+          // Phase 18 : E1_ = examen le plus ancien, E2_ le suivant, etc.
+          const maxE = maxByPatient.ett || 0;
+          for (let i = 1; i <= maxE; i++) {
+            CHAMPS_ETT.forEach(([cle, libelle]) => {
+              cols.push({ key: 'E' + i + '_' + cle, label: 'E' + i + '_' + libelle, section: sec,
+                get: p => {
+                  const ex = (p._ett || [])[i - 1];
+                  if (!ex) return '—';
+                  const v = ex[cle];
+                  if (v == null || v === '') return '—';
+                  if (cle === 'exam_date') return fmtVisit(v, '—') || '—';
+                  if (cle === 'conclusion') return String(v).replace(/\s+/g, ' ').slice(0, 160);
+                  return (typeof v === 'number' || !isNaN(Number(v))) ? String(parseFloat(v)) : String(v);
+                }});
+            });
+          }
+        }
         else if (sec.id === 'training') {
           const maxN = maxByPatient.training || 0;
           for (let i = 1; i <= maxN; i++) {
@@ -14638,7 +14694,8 @@
         _gpaq:  gIdx[p.id] || [],
         _aortic:  (_dbCache.aortic  && _dbCache.aortic[p.id])  || {},
         _consult: (_dbCache.consult && _dbCache.consult[p.id]) || [],
-        _timeline:(_dbCache.timeline && _dbCache.timeline[p.id]) || []
+        _timeline:(_dbCache.timeline && _dbCache.timeline[p.id]) || [],
+        _ett:     (_dbCache.ett && _dbCache.ett[p.id]) || []
       }));
       // Filtre
       const f = (filterText || '').toLowerCase().trim();
@@ -14650,7 +14707,8 @@
         sf36:     Math.max(0, ...filtered.map(p => p._sf36.length)),
         gpaq:     Math.max(0, ...filtered.map(p => p._gpaq.length)),
         consult:  Math.max(0, ...filtered.map(p => p._consult.length)),
-        timeline: Math.max(0, ...filtered.map(p => p._timeline.length))
+        timeline: Math.max(0, ...filtered.map(p => p._timeline.length)),
+        ett:      Math.max(0, ...filtered.map(p => p._ett.length))
       };
       return { patients: filtered, maxByPatient };
     }

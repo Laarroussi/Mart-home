@@ -249,7 +249,11 @@
       save:     (patientId, faits, docId)=> request('POST',  `/timeline/${patientId}`, { faits, doc_id: docId }),
       update:   (patientId, id, data)    => request('PATCH', `/timeline/${patientId}/${id}`, data),
       remove:   (patientId, id)          => request('DELETE',`/timeline/${patientId}/${id}`),
-      statutIA: ()                       => request('GET',   '/timeline/statut/ia')
+      statutIA: ()                       => request('GET',   '/timeline/statut/ia'),
+      // Échocardiographie : une ligne structurée par examen
+      echoList:   (patientId)            => request('GET',   `/timeline/${patientId}/echo`),
+      echoSave:   (patientId, echo)      => request('POST',  `/timeline/${patientId}/echo`, { echo }),
+      echoRemove: (patientId, id)        => request('DELETE',`/timeline/${patientId}/echo/${id}`)
     },
 
     /** ===== Activation de compte patient (lien e-mail à usage unique) ===== */

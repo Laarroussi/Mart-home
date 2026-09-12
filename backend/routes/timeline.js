@@ -15,7 +15,8 @@
 const express = require('express');
 const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE } = require('../middleware/auth');
-const { analyserTexte, ocrDocument, pseudonymiser, statutIA } = require('../config/ai');
+const { analyserTexte, analyserEcho, ocrDocument, pseudonymiser, statutIA,
+        CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO } = require('../config/ai');
 
 const router = express.Router();
 
@@ -110,8 +111,20 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
        resultat.faits.length, resultat.duree_ms, req.user.id]
     ).catch(() => {});
 
+    // Si le document ressemble à une échocardiographie, on lance en plus
+    // l'extraction structurée dédiée (une ligne de tableau par examen).
+    let echo = null;
+    const ressembleEtt = /échocardiograph|echocardiograph|\bETT\b|valsalva|FEVG|transthoracique/i.test(texte);
+    if (ressembleEtt) {
+      try {
+        const r = await analyserEcho(texteMasque);
+        if (r.est_echo) echo = r.echo;
+      } catch (e) { console.warn('[echo] extraction structurée échouée :', e.message); }
+    }
+
     res.json({
       faits: resultat.faits,
+      echo,                               // non nul si compte-rendu d'ETT reconnu
       modele: resultat.modele,
       duree_ms: resultat.duree_ms,
       pseudonymise: true,
@@ -193,6 +206,89 @@ router.delete('/:patient_id/:id', requireAuth, async (req, res, next) => {
   try {
     if (!peutEcrire(req.user)) return res.status(403).json({ error: 'Accès interdit' });
     const r = await query('DELETE FROM medical_timeline WHERE id=$1 AND patient_id=$2',
+      [req.params.id, req.params.patient_id]);
+    if (!r.rowCount) return res.status(404).json({ error: 'Introuvable' });
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// === ÉCHOCARDIOGRAPHIE : une ligne de tableau par examen ====
+// ============================================================
+
+// GET /:patient_id/echo — tous les examens du patient
+router.get('/:patient_id/echo', requireAuth, async (req, res, next) => {
+  try {
+    if (!peutLire(req.user, req.params.patient_id)) {
+      return res.status(403).json({ error: 'Accès interdit' });
+    }
+    const { rows } = await query(
+      `SELECT * FROM echo_reports WHERE patient_id = $1
+        ORDER BY exam_date DESC NULLS LAST, id DESC`,
+      [req.params.patient_id]
+    );
+    res.json({ examens: rows });
+  } catch (err) { next(err); }
+});
+
+// POST /:patient_id/echo — enregistre un examen validé par le soignant
+router.post('/:patient_id/echo', requireAuth, async (req, res, next) => {
+  try {
+    if (!peutEcrire(req.user)) return res.status(403).json({ error: 'Accès interdit' });
+    const e = req.body && req.body.echo;
+    if (!e) return res.status(400).json({ error: 'Aucune donnée à enregistrer' });
+
+    const colonnes = ['exam_date'].concat(CHAMPS_NUM_ECHO.filter(c => c !== 'confiance'))
+                                  .concat(CHAMPS_TXT_ECHO)
+                                  .concat(['confiance', 'source_nom_fichier', 'source_doc_id']);
+    const valeurs = colonnes.map(c => (e[c] === undefined || e[c] === '') ? null : e[c]);
+    colonnes.push('patient_id'); valeurs.push(req.params.patient_id);
+    colonnes.push('created_by');  valeurs.push(req.user.id);
+
+    const params = valeurs.map((_, i) => '$' + (i + 1)).join(',');
+    const { rows } = await query(
+      `INSERT INTO echo_reports (${colonnes.join(',')}) VALUES (${params}) RETURNING *`,
+      valeurs
+    );
+
+    // L'antécédent chirurgical aortique remonte sur la fiche patient,
+    // car c'est une information à voir immédiatement à l'ouverture du dossier.
+    if (e.aorte_operee === true) {
+      await query(
+        `UPDATE patients SET aorte_operee = TRUE,
+            aorte_operee_date = COALESCE($2, aorte_operee_date),
+            aorte_operee_type = COALESCE($3, aorte_operee_type)
+          WHERE id = $1`,
+        [req.params.patient_id, e.aorte_operee_date || null, e.aorte_operee_type || null]
+      ).catch(() => {});
+    }
+
+    // Le diamètre des sinus alimente le suivi aortique « évaluation actuelle »
+    if (e.sinus_valsalva_mm != null) {
+      await query(
+        `INSERT INTO medical_records (patient_id, aortic_followup)
+         VALUES ($1, jsonb_build_object('current_value_mm', $2::numeric,
+                                        'current_date', COALESCE($3::date, CURRENT_DATE),
+                                        'current_site', 'Sinus de Valsalva'))
+         ON CONFLICT (patient_id) DO UPDATE
+           SET aortic_followup = COALESCE(medical_records.aortic_followup, '{}'::jsonb) ||
+               jsonb_build_object('current_value_mm', $2::numeric,
+                                  'current_date', COALESCE($3::date, CURRENT_DATE),
+                                  'current_site', 'Sinus de Valsalva'),
+               updated_at = NOW()`,
+        [req.params.patient_id, e.sinus_valsalva_mm, e.exam_date || null]
+      ).catch(err => console.warn('[echo] maj suivi aortique :', err.message));
+    }
+
+    res.status(201).json({ examen: rows[0] });
+  } catch (err) { next(err); }
+});
+
+// DELETE /:patient_id/echo/:id
+router.delete('/:patient_id/echo/:id', requireAuth, async (req, res, next) => {
+  try {
+    if (!peutEcrire(req.user)) return res.status(403).json({ error: 'Accès interdit' });
+    const r = await query('DELETE FROM echo_reports WHERE id=$1 AND patient_id=$2',
       [req.params.id, req.params.patient_id]);
     if (!r.rowCount) return res.status(404).json({ error: 'Introuvable' });
     res.json({ success: true });

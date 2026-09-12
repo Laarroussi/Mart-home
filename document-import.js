@@ -21,6 +21,7 @@
 
   let _patientId = null;
   let _faits = [];
+  let _echo = null;
   let _docNom = '';
 
   const CATEGORIES = {
@@ -95,6 +96,45 @@
     }
 
     throw new Error('Format non pris en charge : ' + (nom.split('.').pop() || type));
+  }
+
+  /**
+   * Les photos prises avec un iPhone sont au format HEIC, que les services
+   * d'OCR ne savent pas lire. Safari, lui, sait le décoder : on le convertit
+   * donc en JPEG directement dans la page avant l'envoi.
+   * Renvoie le fichier d'origine si ce n'est pas du HEIC.
+   */
+  async function convertirSiHeic(file) {
+    const nom = (file.name || '').toLowerCase();
+    const estHeic = /\.(heic|heif)$/.test(nom) ||
+                    /image\/hei[cf]/i.test(file.type || '');
+    if (!estHeic) return file;
+
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = () => rej(new Error(
+          "Ce navigateur ne sait pas lire le format HEIC des photos iPhone.\n\n" +
+          "Deux solutions : ouvrez la photo dans l'app Photos, menu Fichier > Exporter, " +
+          "et choisissez JPEG. Ou bien, sur l'iPhone : Réglages > Appareil photo > Formats > " +
+          "« Le plus compatible »."));
+        im.src = url;
+      });
+      // On borne la taille : au-delà, le fichier devient lourd sans gain de lisibilité
+      const maxCote = 2200;
+      const ratio = Math.min(1, maxCote / Math.max(img.width, img.height));
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(img.width * ratio);
+      cv.height = Math.round(img.height * ratio);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      const blob = await new Promise(res => cv.toBlob(res, 'image/jpeg', 0.88));
+      if (!blob) throw new Error("Conversion de la photo impossible.");
+      return new File([blob], nom.replace(/\.(heic|heif)$/, '.jpg'), { type: 'image/jpeg' });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   /** Convertit un fichier en base64 (sans le préfixe data:) pour l'envoi OCR */
@@ -191,7 +231,7 @@
           </div>
           <div>
             <input type="file" data-di-input style="display:none"
-              accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,.xlsm,.png,.jpg,.jpeg,.webp,.tif,.tiff,application/pdf,text/*,image/*">
+              accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,.xlsm,.png,.jpg,.jpeg,.webp,.tif,.tiff,.heic,.heif,application/pdf,text/*,image/*">
             <button data-di-btn style="padding:10px 18px; border:none; background:white; color:#1d4ed8; border-radius:9px; font-weight:700; cursor:pointer; font-size:12.5px; white-space:nowrap;">⬆️ Verser une pièce</button>
           </div>
         </div>
@@ -218,6 +258,17 @@
     }
 
     ouvrirAttente('Lecture du document…', _docNom);
+
+    // Photo iPhone au format HEIC : conversion en JPEG avant toute chose
+    try {
+      const avant = file;
+      file = await convertirSiHeic(file);
+      if (file !== avant) majAttente('Photo iPhone convertie — préparation…');
+    } catch (e) {
+      majAttente('❌ ' + ((e && e.message) || 'Conversion impossible'), true);
+      return;
+    }
+
     let texte = '', base64 = null;
     try {
       const r = await lireTexte(file);
@@ -231,7 +282,7 @@
     // optique au serveur (OCR Mistral), qui sait lire les PDF image.
     const besoinOcr = texte.length < 20;
     if (besoinOcr) {
-      const estLisibleParOcr = /\.(pdf|png|jpe?g|webp|tiff?)$/i.test(_docNom) ||
+      const estLisibleParOcr = /\.(pdf|png|jpe?g|webp|tiff?|heic|heif)$/i.test(file.name || _docNom) ||
                                (file.type || '').startsWith('image/') ||
                                file.type === 'application/pdf';
       if (!estLisibleParOcr) {
@@ -255,12 +306,154 @@
     }
 
     _faits = (prop && prop.faits) || [];
+    _echo = (prop && prop.echo) || null;
     fermerAttente();
-    if (!_faits.length) {
+    if (!_faits.length && !_echo) {
       alert("Aucune donnée datée n'a pu être extraite de ce document.");
       return;
     }
     ouvrirRelecture(prop);
+  }
+
+  // ============================================================
+  // === Bloc de relecture des mesures d'échocardiographie ======
+  // ============================================================
+  // Groupes affichés dans l'ordre de lecture d'un compte-rendu ETT.
+  const GROUPES_ECHO = [
+    { titre: 'Aorte — niveaux de mesure', couleur: '#dc2626', champs: [
+      ['anneau_aortique_mm', 'Anneau aortique', 'mm'],
+      ['sinus_valsalva_mm', 'Sinus de Valsalva', 'mm'],
+      ['jonction_sinotub_mm', 'Jonction sino-tubulaire', 'mm'],
+      ['aorte_ascendante_mm', 'Aorte ascendante', 'mm'],
+      ['crosse_aortique_mm', 'Crosse aortique', 'mm'],
+      ['aorte_descendante_mm', 'Aorte descendante', 'mm'],
+      ['aorte_abdominale_mm', 'Aorte abdominale', 'mm'],
+      ['aorte_max_mm', 'Diamètre maximal', 'mm']
+    ]},
+    { titre: 'Ventricule gauche', couleur: '#0891b2', champs: [
+      ['divgd_cm', 'DIVGd', 'cm'], ['divgs_cm', 'DIVGs', 'cm'],
+      ['sivgd_cm', 'SIVGd', 'cm'], ['ppvgd_cm', 'PPVGd', 'cm'],
+      ['fr_teicholz_pct', 'FR Teicholz', '%'], ['fe_teicholz_pct', 'FE Teicholz', '%'],
+      ['fevg_bp_pct', 'FEVG biplan', '%'],
+      ['mvg_g', 'Masse VG', 'g'], ['mvg_ind_g_m2', 'Masse VG indexée', 'g/m²'],
+      ['h_sur_r', 'h/R', ''],
+      ['vtd_bp_ml', 'VTD biplan', 'mL'], ['vts_bp_ml', 'VTS biplan', 'mL'],
+      ['vtd_bp_ind_ml_m2', 'VTD indexé', 'mL/m²'], ['vts_bp_ind_ml_m2', 'VTS indexé', 'mL/m²'],
+      ['ve_bp_ml', 'Volume éjection', 'mL'], ['ve_bp_ind_ml_m2', 'VE indexé', 'mL/m²'],
+      ['vtd_a4c_ml', 'VTD A4C', 'mL'], ['vts_a4c_ml', 'VTS A4C', 'mL'],
+      ['vtd_a2c_ml', 'VTD A2C', 'mL'], ['vts_a2c_ml', 'VTS A2C', 'mL']
+    ]},
+    { titre: 'Oreillette gauche', couleur: '#7c3aed', champs: [
+      ['vts_og_bp_ml', 'VTS OG', 'mL'], ['vts_og_bp_ind_ml_m2', 'VTS OG indexé', 'mL/m²']
+    ]},
+    { titre: 'Valves', couleur: '#16a34a', champs: [
+      ['vit_pic_e_vm_cm_s', 'Onde E mitrale', 'cm/s'],
+      ['vit_pic_a_vm_cm_s', 'Onde A mitrale', 'cm/s'],
+      ['td_vm_s', 'TD mitral', 's'],
+      ['vmax_va_cm_s', 'Vmax aortique', 'cm/s'], ['itv_va_cm', 'ITV aortique', 'cm'],
+      ['grad_max_va_mmhg', 'Gradient max aortique', 'mmHg'],
+      ['vmax_it_cm_s', 'Vmax tricuspide', 'cm/s'],
+      ['grad_max_it_mmhg', 'Gradient max tricuspide', 'mmHg']
+    ]},
+    { titre: 'Morphologie', couleur: '#64748b', champs: [
+      ['taille_cm', 'Taille', 'cm'], ['poids_kg', 'Poids', 'kg'],
+      ['surface_corporelle_m2', 'Surface corporelle', 'm²']
+    ]}
+  ];
+
+  function rendreBlocEcho(e) {
+    if (!e) return '';
+    const champ = (cle, lib, unite) => {
+      const v = e[cle];
+      const vide = (v == null || v === '');
+      return `
+        <div style="display:flex; align-items:center; gap:6px; padding:4px 0;">
+          <label style="flex:1; min-width:0; font-size:11.5px; color:${vide ? '#cbd5e1' : '#475569'};">${lib}</label>
+          <input type="text" class="echoF" data-k="${cle}" value="${v == null ? '' : esc(v)}"
+            style="width:74px; padding:4px 7px; border:1px solid ${vide ? '#eef1f6' : '#cbd5e1'}; border-radius:6px; font-size:12px; text-align:right; font-weight:${vide ? '400' : '700'}; color:#0b1530;">
+          <span style="width:42px; font-size:10.5px; color:#94a3b8;">${unite}</span>
+        </div>`;
+    };
+    const sinus = e.sinus_valsalva_mm;
+    const alerte = sinus != null && sinus >= 45;
+    const vigilance = sinus != null && sinus >= 42 && sinus < 45;
+
+    return `
+      <div style="margin:0 0 18px; border:1px solid #bfdbfe; border-radius:12px; overflow:hidden;">
+        <div style="padding:12px 16px; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white;">
+          <strong style="font-size:14px;">🫀 Compte-rendu d'échocardiographie reconnu</strong>
+          <div style="font-size:11.5px; opacity:.93; margin-top:2px;">
+            Ces mesures formeront une ligne complète dans le tableau « Échocardiographie » de la base de données.
+          </div>
+        </div>
+        <div style="padding:14px 16px;">
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+            <div style="flex:1; min-width:150px;">
+              <label style="display:block; font-size:10.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px;">Date de l'examen *</label>
+              <input type="date" class="echoF" data-k="exam_date" value="${e.exam_date || ''}"
+                style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:7px; font-size:13px; box-sizing:border-box;">
+            </div>
+            <div style="flex:1; min-width:150px;">
+              <label style="display:block; font-size:10.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px;">Opérateur</label>
+              <input type="text" class="echoF" data-k="operateur" value="${esc(e.operateur || '')}"
+                style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:7px; font-size:13px; box-sizing:border-box;">
+            </div>
+          </div>
+
+          ${sinus != null ? `
+          <div style="margin-bottom:14px; padding:11px 14px; border-radius:9px; background:${alerte ? '#fee2e2' : vigilance ? '#fef3c7' : '#eff6ff'}; border:1px solid ${alerte ? '#fecaca' : vigilance ? '#fde68a' : '#bfdbfe'};">
+            <strong style="font-size:13px; color:${alerte ? '#991b1b' : vigilance ? '#92400e' : '#1e40af'};">
+              Sinus de Valsalva : ${sinus} mm
+            </strong>
+            ${alerte ? '<div style="font-size:12px; color:#991b1b; margin-top:2px;">⚠️ Seuil ≥ 45 mm — indication chirurgicale à discuter</div>' : ''}
+            ${vigilance ? '<div style="font-size:12px; color:#92400e; margin-top:2px;">⚠ Surveillance rapprochée</div>' : ''}
+          </div>` : ''}
+
+          <label style="display:flex; align-items:center; gap:9px; padding:10px 12px; background:#fdf2f8; border:1px solid #fbcfe8; border-radius:8px; margin-bottom:14px; cursor:pointer;">
+            <input type="checkbox" id="echoOpere" ${e.aorte_operee ? 'checked' : ''} style="width:17px; height:17px; cursor:pointer; accent-color:#be185d;">
+            <span style="font-size:12.5px; color:#9d174d; font-weight:600;">Patient opéré de l'aorte — information affichée en évidence sur sa fiche</span>
+          </label>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:16px;">
+            ${GROUPES_ECHO.map(g => `
+              <div>
+                <div style="font-size:11px; font-weight:800; color:${g.couleur}; text-transform:uppercase; letter-spacing:.5px; padding-bottom:5px; border-bottom:2px solid ${g.couleur}33; margin-bottom:5px;">${g.titre}</div>
+                ${g.champs.map(c => champ(c[0], c[1], c[2])).join('')}
+              </div>`).join('')}
+          </div>
+
+          ${e.conclusion ? `
+          <div style="margin-top:14px;">
+            <label style="display:block; font-size:10.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px;">Conclusion</label>
+            <textarea class="echoF" data-k="conclusion" rows="3"
+              style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:7px; font-size:12.5px; font-family:inherit; resize:vertical; box-sizing:border-box;">${esc(e.conclusion)}</textarea>
+          </div>` : ''}
+
+          <div style="margin-top:10px; font-size:11px; color:#94a3b8;">
+            Les cases grisées sont absentes du document. Vous pouvez les compléter ou corriger toute valeur avant d'enregistrer.
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function lireBlocEcho() {
+    if (!_echo) return null;
+    const out = Object.assign({}, _echo);
+    document.querySelectorAll('.echoF').forEach(el => {
+      const k = el.dataset.k;
+      let v = (el.value || '').trim();
+      if (v === '') { out[k] = null; return; }
+      if (k === 'exam_date' || k === 'operateur' || k === 'conclusion' || k === 'aorte_site_max') {
+        out[k] = v;
+      } else {
+        const n = Number(v.replace(',', '.'));
+        out[k] = Number.isFinite(n) ? n : null;
+      }
+    });
+    const op = document.getElementById('echoOpere');
+    out.aorte_operee = op ? op.checked : null;
+    out.source_nom_fichier = _docNom;
+    return out;
   }
 
   // ============================================================
@@ -356,6 +549,8 @@
           </div>
 
           <div style="flex:1; overflow-y:auto; padding:0 24px;">
+            ${rendreBlocEcho(_echo)}
+            ${_faits.length ? '<div style="font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:.5px; margin:4px 0 6px;">Autres données datées relevées</div>' : ''}
             <table style="width:100%; border-collapse:collapse; font-size:12px;">
               <thead style="position:sticky; top:0; background:white; z-index:1;">
                 <tr style="border-bottom:2px solid #e2e8f0; text-align:left; color:#475569; font-size:10.5px; text-transform:uppercase; letter-spacing:.4px;">
@@ -417,14 +612,23 @@
           confiance:      _faits[i].confiance
         });
       });
-      if (!retenus.length) { alert('Aucune donnée sélectionnée.'); return; }
+      const echoAEnregistrer = lireBlocEcho();
+      if (!retenus.length && !echoAEnregistrer) { alert('Aucune donnée sélectionnée.'); return; }
 
       this.disabled = true; this.textContent = 'Enregistrement…';
       try {
-        await window.MarfanAPI.timeline.save(_patientId, retenus, null);
+        let messages = [];
+        if (echoAEnregistrer) {
+          await window.MarfanAPI.timeline.echoSave(_patientId, echoAEnregistrer);
+          messages.push('1 échocardiographie');
+        }
+        if (retenus.length) {
+          await window.MarfanAPI.timeline.save(_patientId, retenus, null);
+          messages.push(retenus.length + ' donnée(s) datées');
+        }
         const b = document.getElementById('diRelecture'); if (b) b.remove();
         if (typeof window.toast === 'function') {
-          window.toast('✓ <strong>' + retenus.length + ' donnée(s)</strong> intégrées au dossier de ' + _patientId + '.', 'success', 6000);
+          window.toast('✓ <strong>' + messages.join(' et ') + '</strong> intégrée(s) au dossier de ' + _patientId + '.', 'success', 6000);
         }
         // Rafraîchit la carte et le tableau « Base de données »
         try { await mount('docImportMount', _patientId); } catch (_) {}
