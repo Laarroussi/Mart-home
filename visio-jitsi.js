@@ -24,15 +24,33 @@
 (function () {
   'use strict';
 
-  // Instance Jitsi utilisée.
+  // Service utilisé : Jitsi as a Service (8x8.vc).
   //
-  // meet.jit.si accepte l'intégration dans une page, contrairement à
-  // d'autres instances publiques qui la refusent et n'affichent alors
-  // qu'un rectangle noir.
+  // Le serveur public meet.jit.si exige un modérateur authentifié pour
+  // ouvrir une salle : sans compte, la conférence ne démarrait jamais.
+  // JaaS résout cela — c'est notre serveur qui délivre un jeton signé
+  // désignant le soignant comme modérateur.
   //
-  // Pour en changer, définir window.MARFAN_JITSI_DOMAIN avant le chargement.
-  const DOMAINE = window.MARFAN_JITSI_DOMAIN || 'meet.jit.si';
-  const SCRIPT = 'https://' + DOMAINE + '/external_api.js';
+  // Repli : si la visioconférence n'est pas configurée côté serveur, on
+  // retombe sur meet.jit.si pour ne pas casser la page.
+  const DOMAINE_JAAS = window.MARFAN_JITSI_DOMAIN || '8x8.vc';
+  const DOMAINE_LIBRE = 'meet.jit.si';
+  let DOMAINE = DOMAINE_JAAS;
+  let SCRIPT = 'https://' + DOMAINE + '/external_api.js';
+
+  let _jaas = null;     // { token, app_id, moderateur } une fois récupéré
+
+  /** Demande au serveur un jeton d'accès signé pour l'utilisateur connecté */
+  async function obtenirJeton() {
+    if (!window.MarfanAPI || !window.MarfanAPI.visioJaas) return null;
+    try {
+      const r = await window.MarfanAPI.visioJaas.token();
+      if (r && r.token && r.app_id) return r;
+    } catch (e) {
+      console.warn('[visio] jeton JaaS indisponible :', e && e.message);
+    }
+    return null;
+  }
 
   let _api = null;
   let _salle = null;
@@ -77,14 +95,34 @@
       '<div style="display:flex; align-items:center; justify-content:center; height:100%; min-height:340px; color:#94a3b8; font-size:13.5px;">' +
       'Ouverture de la salle…</div>';
 
+    // Jeton signé par notre serveur : il désigne le modérateur et porte
+    // l'identifiant stable du participant. Sans lui, on bascule sur le
+    // serveur public, qui ne permettra pas d'ouvrir la salle.
+    _jaas = await obtenirJeton();
+    if (_jaas) {
+      DOMAINE = DOMAINE_JAAS;
+    } else {
+      DOMAINE = DOMAINE_LIBRE;
+      console.warn('[visio] Aucun jeton : repli sur ' + DOMAINE_LIBRE +
+                   ' (la salle risque de rester en attente de modérateur).');
+    }
+    SCRIPT = 'https://' + DOMAINE + '/external_api.js';
+
     await chargerScript();
 
-    _salle = construireNomSalle(options.salle);
-    const moderateur = !!options.moderateur;
+    const salleCourte = construireNomSalle(options.salle);
+    // Sur JaaS, le nom de salle doit être préfixé par l'identifiant
+    // d'application, faute de quoi la salle n'appartient pas au compte.
+    _salle = _jaas ? (_jaas.app_id + '/' + salleCourte) : salleCourte;
+
+    // Le rôle vient du serveur, pas de la page : un patient ne peut pas
+    // se déclarer modérateur en modifiant le code de son navigateur.
+    const moderateur = _jaas ? !!_jaas.moderateur : !!options.moderateur;
 
     conteneur.innerHTML = '';
     _api = new window.JitsiMeetExternalAPI(DOMAINE, {
       roomName: _salle,
+      jwt: _jaas ? _jaas.token : undefined,
       parentNode: conteneur,
       width: '100%',
       height: '100%',

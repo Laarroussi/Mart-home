@@ -238,6 +238,12 @@
       patchAortic: (patientId, data)       => request('PATCH', `/consultations/${patientId}/aortic`, data)
     },
 
+    /** ===== Visioconférence : jeton d'accès signé par le serveur ===== */
+    visioJaas: {
+      token:  () => request('GET', '/visio-jaas/token'),
+      config: () => request('GET', '/visio-jaas/config')
+    },
+
     /** ===== Chronologie médicale extraite des documents (IA) ===== */
     timeline: {
       list:     (patientId)              => request('GET',   `/timeline/${patientId}`),

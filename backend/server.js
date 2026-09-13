@@ -87,6 +87,7 @@ function mountRoutes(prefix) {
   app.use(prefix + '/consultations',   require('./routes/consultations'));
   app.use(prefix + '/activation',      require('./routes/activation'));
   app.use(prefix + '/timeline',        require('./routes/timeline'));
+  app.use(prefix + '/visio-jaas',      require('./routes/visio-jaas'));
 }
 mountRoutes('/api');   // mode local dev OU Passenger qui garde le préfixe
 mountRoutes('');       // mode Passenger qui strippe le préfixe URI
