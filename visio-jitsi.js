@@ -151,9 +151,13 @@
         SHOW_BRAND_WATERMARK: false,
         DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
         MOBILE_APP_PROMO: false,
+        // « sharedvideo » permet de diffuser une vidéo YouTube à tous les
+        // participants, synchronisée, tout en continuant à se voir et à
+        // s'entendre. C'est ce qui réunit la séance d'entraînement et la
+        // visioconférence en un seul écran.
         TOOLBAR_BUTTONS: moderateur
-          ? ['microphone','camera','desktop','fullscreen','hangup','chat',
-             'raisehand','tileview','settings','videoquality','filmstrip']
+          ? ['microphone','camera','desktop','sharedvideo','fullscreen','hangup',
+             'chat','raisehand','tileview','settings','videoquality','filmstrip']
           : ['microphone','camera','fullscreen','hangup','chat','raisehand','tileview']
       }
     });
@@ -237,10 +241,33 @@
   function nomSalle() { return _salle; }
   function estActif() { return !!_api; }
 
+  /**
+   * Diffuse une vidéo YouTube à tous les participants, en gardant la
+   * visioconférence active : le soignant reste visible et audible pendant
+   * que la vidéo d'entraînement se joue, de façon synchronisée pour tous.
+   */
+  function partagerVideo(url) {
+    if (!_api) throw new Error("Aucune séance en cours. Démarrez d'abord la séance.");
+    _api.executeCommand('startShareVideo', url);
+  }
+  function arreterPartageVideo() {
+    if (!_api) return;
+    try { _api.executeCommand('stopShareVideo'); } catch (_) {}
+  }
+  /** Partage l'écran (utile pour un support autre qu'une vidéo YouTube) */
+  function partagerEcran() {
+    if (!_api) throw new Error("Aucune séance en cours.");
+    _api.executeCommand('toggleShareScreen');
+  }
+
   /** Lien à transmettre à un participant qui ne passe pas par la plateforme */
   function lienSalle(cle) {
     return 'https://' + DOMAINE + '/' + construireNomSalle(cle);
   }
 
-  window.VisioJitsi = { rejoindre, quitter, nomSalle, estActif, lienSalle, construireNomSalle, DOMAINE };
+  window.VisioJitsi = {
+    rejoindre, quitter, nomSalle, estActif, lienSalle, construireNomSalle,
+    partagerVideo, arreterPartageVideo, partagerEcran,
+    get domaine() { return DOMAINE; }
+  };
 })();

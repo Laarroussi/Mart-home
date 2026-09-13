@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase20"></script>
+  <script src="api-client.js?v=phase20-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase20"></script>
+  <script src="questionnaires-defs.js?v=phase20-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase20"></script>
+  <script src="medical-parsers.js?v=phase20-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase20"></script>
+  <script src="cpet-graph-preview.js?v=phase20-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase20"></script>
-  <script src="medical-record-ui.js?v=phase20"></script>
+  <script src="pdf-extractor.js?v=phase20-1"></script>
+  <script src="medical-record-ui.js?v=phase20-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase20"></script>
+  <script src="aortic-consultations.js?v=phase20-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase20"></script>
-  <script src="visio-jitsi.js?v=phase20"></script>
+  <script src="document-import.js?v=phase20-1"></script>
+  <script src="visio-jitsi.js?v=phase20-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4283,7 +4283,9 @@
       </section>
 
       <!-- ============================== VISIO ============================== -->
-      <section id="visio" class="tab-panel hidden">
+      <!-- padding-bottom : la barre de boutons flottante masquait le bas de
+           la salle visio, notamment les commandes Jitsi. -->
+      <section id="visio" class="tab-panel hidden" style="padding-bottom:90px;">
         <header class="page-header">
           <div>
             <h2>Salle visio — coaching APA collectif</h2>
@@ -4307,6 +4309,7 @@
                 </div>
                 <div style="display:flex; gap:6px;">
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioToggleCam()" id="visioCamBtn">📷 Caméra</button>
+                  <button class="btn-light" style="padding:6px 11px; font-size:11px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border:none; font-weight:700;" onclick="visioPartagerVideo()" title="Diffuser une vidéo d'entraînement à tous les participants, sans quitter la visio">🎬 Diffuser une vidéo</button>
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioCopierLien()" title="Copier le lien de la salle pour l'envoyer à un patient">🔗 Copier le lien</button>
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioOuvrirOnglet()" title="Ouvrir la salle dans un onglet séparé — fonctionne même si l'intégration est bloquée">↗ Ouvrir en plein écran</button>
                 </div>
@@ -10375,7 +10378,10 @@
     startTime: null,
     selfMic: true,
     selfCam: true,
-    selfScreen: false
+    selfScreen: false,
+    // Nombre de patients réellement connectés à la conférence.
+    // null tant qu'aucune conférence n'est ouverte : la simulation reprend alors la main.
+    participantsReels: null
   };
 
   function initParticipantState(p) {
@@ -10439,7 +10445,12 @@
       tile.classList.toggle('disconnected', !s.connected);
     });
     // Header monitoring
-    if ($('visioConnectedCount')) $('visioConnectedCount').textContent = `${patients.filter(p => visioState.participants[p.id] && visioState.participants[p.id].connected).length} / ${patients.length}`;
+    // Phase 20.1 : quand une vraie conférence est en cours, le nombre de
+    // participants vient de Jitsi. La simulation ne doit plus l'écraser —
+    // c'est ce qui affichait « 0 / 0 » alors qu'un patient était connecté.
+    if ($('visioConnectedCount') && visioState.participantsReels == null) {
+      $('visioConnectedCount').textContent = `${patients.filter(p => visioState.participants[p.id] && visioState.participants[p.id].connected).length} / ${patients.length}`;
+    }
     if ($('visioAvgHR')) $('visioAvgHR').textContent = hrCount ? Math.round(hrSum / hrCount) + ' bpm' : '— bpm';
     if ($('visioCumEnergy')) $('visioCumEnergy').textContent = Math.round(cumEnergy) + ' kcal';
     if ($('visioAlertsList')) $('visioAlertsList').textContent = alerts.length ? alerts.join(' · ') : 'Aucune';
@@ -10500,9 +10511,11 @@
           nomAffiche: u.name || 'Soignant',
           moderateur: true,
           onParticipants: n => {
-            const el = $('visioConnectedCount');
             // n inclut le soignant : on retire 1 pour compter les patients
-            if (el) el.textContent = Math.max(0, n - 1) + ' patient(s)';
+            const nb = Math.max(0, n - 1);
+            visioState.participantsReels = nb;
+            const el = $('visioConnectedCount');
+            if (el) el.textContent = nb + (nb > 1 ? ' patients' : ' patient');
           }
         });
         if ($('visioSessionStatus')) {
@@ -10549,6 +10562,78 @@
    * certaines instances Jitsi refusent d'être affichées dans une page,
    * et le navigateur accorde plus facilement l'accès caméra hors iframe.
    */
+  /**
+   * Phase 20.1 — Diffuser une vidéo d'entraînement PENDANT la visio.
+   * Les patients voient la vidéo et continuent de voir et d'entendre le
+   * soignant : plus besoin de choisir entre « Entraînement » et « Visio ».
+   */
+  window.visioPartagerVideo = function () {
+    if (!window.VisioJitsi || !window.VisioJitsi.estActif()) {
+      alert("Démarrez d'abord la séance, puis partagez une vidéo.");
+      return;
+    }
+    const liste = (typeof trainingVideos !== 'undefined' && trainingVideos.length)
+      ? trainingVideos : [];
+    const old = document.getElementById('visioVideoModal');
+    if (old) old.remove();
+
+    const lignes = liste.length
+      ? liste.map(v => `
+          <button data-yid="${v.id}" data-titre="${(v.title || '').replace(/"/g, '&quot;')}"
+            style="display:flex; align-items:center; gap:12px; width:100%; padding:9px 11px; border:1px solid #e2e8f0; background:white; border-radius:9px; cursor:pointer; text-align:left; margin-bottom:6px; font-family:inherit;">
+            <img src="https://img.youtube.com/vi/${v.id}/default.jpg" alt=""
+                 style="width:64px; height:36px; object-fit:cover; border-radius:5px; flex:0 0 auto;">
+            <span style="flex:1; min-width:0;">
+              <span style="display:block; font-size:12.5px; font-weight:700; color:#0b1530;">${v.title || ''}</span>
+              <span style="display:block; font-size:11px; color:#64748b;">${v.category || ''}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}</span>
+            </span>
+          </button>`).join('')
+      : '<div style="padding:16px; text-align:center; color:#94a3b8; font-size:12.5px; font-style:italic;">Aucune vidéo disponible dans votre bibliothèque.</div>';
+
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="visioVideoModal" style="position:fixed; inset:0; background:rgba(11,21,48,.82); z-index:10070; display:flex; align-items:center; justify-content:center; padding:18px;">
+        <div style="background:white; border-radius:16px; width:560px; max-width:96vw; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 26px 70px rgba(0,0,0,.35);">
+          <div style="padding:18px 22px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border-radius:16px 16px 0 0;">
+            <h3 style="margin:0; color:white; font-size:16px;">🎬 Diffuser une vidéo à tous les participants</h3>
+            <p style="margin:4px 0 0; font-size:12px; opacity:.94;">La vidéo se lance chez tout le monde en même temps. Vous restez visible et audible.</p>
+          </div>
+          <div style="padding:16px 22px; overflow-y:auto; flex:1;">
+            <label style="display:block; font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">Votre bibliothèque</label>
+            ${lignes}
+            <label style="display:block; font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px; margin:14px 0 6px;">Ou coller une adresse YouTube</label>
+            <div style="display:flex; gap:7px;">
+              <input type="text" id="visioVideoUrl" placeholder="https://www.youtube.com/watch?v=..."
+                style="flex:1; padding:10px; border:1px solid #cbd5e1; border-radius:8px; font-size:12.5px;">
+              <button id="visioVideoUrlBtn" style="padding:10px 16px; border:none; background:#0b1530; color:white; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap;">Diffuser</button>
+            </div>
+          </div>
+          <div style="padding:14px 22px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; gap:9px;">
+            <button onclick="window.VisioJitsi.arreterPartageVideo(); document.getElementById('visioVideoModal').remove();"
+              style="padding:11px 18px; border:1px solid #fecaca; background:#fef2f2; color:#991b1b; border-radius:9px; font-weight:600; font-size:13px; cursor:pointer;">⏹ Arrêter la diffusion</button>
+            <button onclick="document.getElementById('visioVideoModal').remove()"
+              style="padding:11px 20px; border:1px solid #cbd5e1; background:white; color:#475569; border-radius:9px; font-weight:600; font-size:13px; cursor:pointer;">Fermer</button>
+          </div>
+        </div>
+      </div>`);
+
+    const lancer = (url, titre) => {
+      try {
+        window.VisioJitsi.partagerVideo(url);
+        const m = document.getElementById('visioVideoModal'); if (m) m.remove();
+        toast('🎬 Diffusion de <strong>' + (titre || 'la vidéo') + '</strong> lancée pour tous les participants.', 'success', 6000);
+      } catch (e) { alert(e.message); }
+    };
+    document.querySelectorAll('#visioVideoModal [data-yid]').forEach(b => {
+      b.addEventListener('click', () => lancer('https://www.youtube.com/watch?v=' + b.dataset.yid, b.dataset.titre));
+    });
+    const btnUrl = document.getElementById('visioVideoUrlBtn');
+    if (btnUrl) btnUrl.addEventListener('click', () => {
+      const u = (document.getElementById('visioVideoUrl').value || '').trim();
+      if (!u) { alert('Collez une adresse YouTube.'); return; }
+      lancer(u, null);
+    });
+  };
+
   window.visioOuvrirOnglet = function () {
     try {
       window.open(window.VisioJitsi.lienSalle(visioCleSalle()), '_blank', 'noopener');
