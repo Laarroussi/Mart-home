@@ -26,14 +26,12 @@
 
   // Instance Jitsi utilisée.
   //
-  // meet.jit.si impose désormais qu'un compte authentifié ouvre la salle :
-  // sans cela, tous les participants restent bloqués sur « Demander à
-  // rejoindre une réunion ». On utilise donc une instance publique libre
-  // d'accès. meet.ffmuc.net est opérée par Freifunk München (Allemagne),
-  // sans compte requis — et hébergée dans l'Union européenne.
+  // meet.jit.si accepte l'intégration dans une page, contrairement à
+  // d'autres instances publiques qui la refusent et n'affichent alors
+  // qu'un rectangle noir.
   //
   // Pour en changer, définir window.MARFAN_JITSI_DOMAIN avant le chargement.
-  const DOMAINE = window.MARFAN_JITSI_DOMAIN || 'meet.ffmuc.net';
+  const DOMAINE = window.MARFAN_JITSI_DOMAIN || 'meet.jit.si';
   const SCRIPT = 'https://' + DOMAINE + '/external_api.js';
 
   let _api = null;
@@ -92,11 +90,13 @@
       height: '100%',
       userInfo: { displayName: options.nomAffiche || (moderateur ? 'Soignant' : 'Patient') },
       configOverwrite: {
-        // Jitsi a changé de clé de configuration au fil des versions :
-        // on fournit les deux pour être sûr de sauter l'écran d'attente,
-        // qui faisait croire que la connexion ne s'établissait pas.
-        prejoinPageEnabled: false,
-        prejoinConfig: { enabled: false },
+        // L'écran de pré-connexion est CONSERVÉ volontairement.
+        // En le désactivant, meet.jit.si basculait sur une salle d'attente
+        // (« Demander à rejoindre ») dont personne ne pouvait sortir.
+        // Avec cet écran, un clic sur « Rejoindre la réunion » suffit, et
+        // le premier arrivé devient modérateur. Il permet en prime de
+        // vérifier sa caméra et son micro avant d'entrer.
+        prejoinPageEnabled: true,
         startWithAudioMuted: !moderateur, // le patient arrive micro coupé
         startWithVideoMuted: false,
         disableDeepLinking: true,
@@ -149,9 +149,11 @@
       try { _api.addListener(ev, d => console.warn('[visio] ' + ev, d)); } catch (_) {}
     });
 
-    // Filet de sécurité : si rien ne s'affiche au bout de 12 secondes,
+    // Filet de sécurité : si rien ne s'affiche au bout de 45 secondes,
     // on propose d'ouvrir la salle dans un onglet séparé — certaines
     // instances Jitsi refusent purement et simplement l'intégration.
+    // Le délai est large : l'écran de pré-connexion attend une action
+    // de l'utilisateur, il ne faut pas le prendre pour une panne.
     setTimeout(() => {
       if (rejoint || !_api) return;
       const lien = 'https://' + DOMAINE + '/' + _salle;
@@ -171,7 +173,7 @@
         '</div>';
       if (getComputedStyle(conteneur).position === 'static') conteneur.style.position = 'relative';
       conteneur.appendChild(alerte);
-    }, 12000);
+    }, 45000);
     _api.addListener('participantJoined', compter);
     _api.addListener('participantLeft', compter);
     _api.addListener('videoConferenceLeft', () => {
