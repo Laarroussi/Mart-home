@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase20-4"></script>
+  <script src="api-client.js?v=phase20-5"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase20-4"></script>
+  <script src="questionnaires-defs.js?v=phase20-5"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase20-4"></script>
+  <script src="medical-parsers.js?v=phase20-5"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase20-4"></script>
+  <script src="cpet-graph-preview.js?v=phase20-5"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase20-4"></script>
-  <script src="medical-record-ui.js?v=phase20-4"></script>
+  <script src="pdf-extractor.js?v=phase20-5"></script>
+  <script src="medical-record-ui.js?v=phase20-5"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase20-4"></script>
+  <script src="aortic-consultations.js?v=phase20-5"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase20-4"></script>
-  <script src="visio-jitsi.js?v=phase20-4"></script>
+  <script src="document-import.js?v=phase20-5"></script>
+  <script src="visio-jitsi.js?v=phase20-5"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13262,11 +13262,34 @@
           'Utilisez Chrome, Edge ou Opera (Safari et Firefox ne le supportent pas).'
         );
       }
-      // requestDevice DOIT être appelé dans un handler de clic utilisateur
-      const device = await navigator.bluetooth.requestDevice({
-        filters: [{ services: ['heart_rate'] }],
-        optionalServices: ['battery_service', 'device_information']
-      });
+      // requestDevice DOIT être appelé dans un handler de clic utilisateur.
+      //
+      // Phase 20.5 — Le filtre sur le service « heart_rate » ne montrait que
+      // les ceintures qui l'annoncent dans leur signal Bluetooth. Beaucoup ne
+      // le font pas : la liste restait alors désespérément vide. On accepte
+      // désormais tous les appareils, quitte à ce que le patient choisisse
+      // lui-même sa ceinture dans la liste — elle porte son nom (Polar, Garmin,
+      // Wahoo, Decathlon...). Le service reste déclaré en « optionalServices »
+      // pour pouvoir être lu une fois la connexion établie.
+      const SERVICES = ['heart_rate', 'battery_service', 'device_information'];
+      let device;
+      try {
+        device = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: SERVICES
+        });
+      } catch (e) {
+        if (e && e.name === 'NotFoundError') {
+          throw new Error(
+            "Aucun appareil sélectionné.\n\n" +
+            "Si votre ceinture n'apparaît pas dans la liste :\n" +
+            "• vérifiez qu'elle est bien portée et humidifiée (elle ne s'allume qu'au contact de la peau) ;\n" +
+            "• assurez-vous qu'elle n'est pas déjà connectée à un autre appareil — une ceinture ne se connecte qu'à un seul à la fois ;\n" +
+            "• éloignez-vous des autres appareils Bluetooth et réessayez."
+          );
+        }
+        throw e;
+      }
 
       device.addEventListener('gattserverdisconnected', () => {
         console.warn('[BLE] Ceinture déconnectée (gattserverdisconnected)');
@@ -13324,7 +13347,9 @@
       // Si navigateur ne supporte pas Web Bluetooth → désactive tous les boutons "Connecter"
       if (!isWebBluetoothSupported()) {
         setBeltStatus(
-          '⚠ Web Bluetooth non disponible (Chrome/Edge requis pour la ceinture FC) — démarrage possible sans ceinture',
+          '⚠ Ceinture cardiaque indisponible dans ce navigateur. Sur ordinateur : Chrome ou Edge. ' +
+          'Sur iPhone ou iPad : l\'application Bluefy, Safari ne gérant pas le Bluetooth. ' +
+          'La séance reste possible sans ceinture.',
           '#92400e', '#fffbeb'
         );
         allConn.forEach(b => {
