@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase20-7"></script>
+  <script src="api-client.js?v=phase20-8"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase20-7"></script>
+  <script src="questionnaires-defs.js?v=phase20-8"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase20-7"></script>
+  <script src="medical-parsers.js?v=phase20-8"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase20-7"></script>
+  <script src="cpet-graph-preview.js?v=phase20-8"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase20-7"></script>
-  <script src="medical-record-ui.js?v=phase20-7"></script>
+  <script src="pdf-extractor.js?v=phase20-8"></script>
+  <script src="medical-record-ui.js?v=phase20-8"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase20-7"></script>
+  <script src="aortic-consultations.js?v=phase20-8"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase20-7"></script>
-  <script src="visio-jitsi.js?v=phase20-7"></script>
+  <script src="document-import.js?v=phase20-8"></script>
+  <script src="visio-jitsi.js?v=phase20-8"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4310,6 +4310,7 @@
                 <div style="display:flex; gap:6px;">
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioToggleCam()" id="visioCamBtn">📷 Caméra</button>
                   <button class="btn-light" style="padding:6px 11px; font-size:11px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border:none; font-weight:700;" onclick="visioPartagerVideo()" title="Diffuser une vidéo d'entraînement à tous les participants, sans quitter la visio">🎬 Diffuser une vidéo</button>
+                  <button class="btn-light" style="padding:6px 11px; font-size:11px; background:linear-gradient(135deg,#0891b2,#06b6d4); color:white; border:none; font-weight:700;" onclick="visioPartagerEcran()" title="Retransmettre votre écran en direct — méthode la plus fiable pour que tous voient la vidéo au même instant">🖥 Partager mon écran</button>
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioBasculerMosaique()" id="visioMosaiqueBtn" title="Voir tous les patients côte à côte pendant l'exercice">🔲 Vue mosaïque</button>
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioCopierLien()" title="Copier le lien de la salle pour l'envoyer à un patient">🔗 Copier le lien</button>
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioOuvrirOnglet()" title="Ouvrir la salle dans un onglet séparé — fonctionne même si l'intégration est bloquée">↗ Ouvrir en plein écran</button>
@@ -10615,9 +10616,12 @@
         <div style="background:white; border-radius:16px; width:560px; max-width:96vw; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 26px 70px rgba(0,0,0,.35);">
           <div style="padding:18px 22px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border-radius:16px 16px 0 0;">
             <h3 style="margin:0; color:white; font-size:16px;">🎬 Diffuser une vidéo à tous les participants</h3>
-            <p style="margin:4px 0 0; font-size:12px; opacity:.94;">La vidéo se lance chez tout le monde en même temps. Vous restez visible et audible.</p>
+            <p style="margin:4px 0 0; font-size:12px; opacity:.94;">Chaque participant lit la vidéo de son côté. Vous restez visible et audible.</p>
           </div>
           <div style="padding:16px 22px; overflow-y:auto; flex:1;">
+            <div style="margin-bottom:14px; padding:10px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-left:3px solid #3b82f6; border-radius:8px; font-size:11.5px; color:#1e40af; line-height:1.5;">
+              <strong>Patients sur iPhone ou iPad :</strong> ils devront toucher une fois la vidéo pour la lancer, iOS bloquant le démarrage automatique. Si la synchronisation vous importe, préférez le bouton <strong>« 🖥 Partager mon écran »</strong> : tous voient alors votre écran au même instant, sans rien avoir à toucher.
+            </div>
             <label style="display:block; font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">Votre bibliothèque</label>
             ${lignes}
             <label style="display:block; font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px; margin:14px 0 6px;">Ou coller une adresse YouTube</label>
@@ -10843,6 +10847,29 @@
     if (_visioMonitorTimer) clearInterval(_visioMonitorTimer);
     _visioMonitorTimer = null;
   }
+
+  /**
+   * Partage d'écran — méthode la plus fiable pour diffuser une vidéo.
+   *
+   * La diffusion « vidéo partagée » de Jitsi laisse chaque participant lire
+   * le fichier de son côté, ce qui suppose une synchronisation entre eux.
+   * Sur iPhone et iPad, le blocage du démarrage automatique interrompt ce
+   * mécanisme et les lectures se désynchronisent.
+   *
+   * Le partage d'écran retransmet l'image telle quelle : les patients voient
+   * exactement ce que voit le soignant, au même instant, sans rien à toucher.
+   */
+  window.visioPartagerEcran = function () {
+    if (!window.VisioJitsi || !window.VisioJitsi.estActif()) {
+      alert("Démarrez d'abord la séance.");
+      return;
+    }
+    try {
+      window.VisioJitsi.partagerEcran();
+      toast("🖥 Sélectionnez <strong>l'onglet</strong> qui joue la vidéo, et cochez « Partager l'audio » " +
+            "pour que le son soit transmis.", 'info', 9000);
+    } catch (e) { alert(e.message); }
+  };
 
   // Vue mosaïque : voir tous les patients côte à côte pendant l'exercice
   let _visioMosaique = false;
