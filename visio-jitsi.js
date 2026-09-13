@@ -281,6 +281,16 @@
     _api.executeCommand('toggleShareScreen');
   }
 
+  /**
+   * Vue mosaïque : tous les participants côte à côte, à taille égale.
+   * Indispensable pendant un exercice — le soignant doit voir ses patients
+   * travailler, et non la seule vidéo de démonstration en plein écran.
+   */
+  function vueMosaique(actif) {
+    if (!_api) throw new Error("Aucune séance en cours.");
+    _api.executeCommand('setTileView', actif !== false);
+  }
+
   /** Lien à transmettre à un participant qui ne passe pas par la plateforme */
   function lienSalle(cle) {
     return 'https://' + DOMAINE + '/' + construireNomSalle(cle);
@@ -288,7 +298,7 @@
 
   window.VisioJitsi = {
     rejoindre, quitter, nomSalle, estActif, lienSalle, construireNomSalle,
-    partagerVideo, arreterPartageVideo, partagerEcran, participants,
+    partagerVideo, arreterPartageVideo, partagerEcran, participants, vueMosaique,
     get domaine() { return DOMAINE; }
   };
 })();

@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase20-6"></script>
+  <script src="api-client.js?v=phase20-7"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase20-6"></script>
+  <script src="questionnaires-defs.js?v=phase20-7"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase20-6"></script>
+  <script src="medical-parsers.js?v=phase20-7"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase20-6"></script>
+  <script src="cpet-graph-preview.js?v=phase20-7"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase20-6"></script>
-  <script src="medical-record-ui.js?v=phase20-6"></script>
+  <script src="pdf-extractor.js?v=phase20-7"></script>
+  <script src="medical-record-ui.js?v=phase20-7"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase20-6"></script>
+  <script src="aortic-consultations.js?v=phase20-7"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase20-6"></script>
-  <script src="visio-jitsi.js?v=phase20-6"></script>
+  <script src="document-import.js?v=phase20-7"></script>
+  <script src="visio-jitsi.js?v=phase20-7"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4310,6 +4310,7 @@
                 <div style="display:flex; gap:6px;">
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioToggleCam()" id="visioCamBtn">📷 Caméra</button>
                   <button class="btn-light" style="padding:6px 11px; font-size:11px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border:none; font-weight:700;" onclick="visioPartagerVideo()" title="Diffuser une vidéo d'entraînement à tous les participants, sans quitter la visio">🎬 Diffuser une vidéo</button>
+                  <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioBasculerMosaique()" id="visioMosaiqueBtn" title="Voir tous les patients côte à côte pendant l'exercice">🔲 Vue mosaïque</button>
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioCopierLien()" title="Copier le lien de la salle pour l'envoyer à un patient">🔗 Copier le lien</button>
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioOuvrirOnglet()" title="Ouvrir la salle dans un onglet séparé — fonctionne même si l'intégration est bloquée">↗ Ouvrir en plein écran</button>
                 </div>
@@ -10639,7 +10640,12 @@
       try {
         window.VisioJitsi.partagerVideo(url);
         const m = document.getElementById('visioVideoModal'); if (m) m.remove();
-        toast('🎬 Diffusion de <strong>' + (titre || 'la vidéo') + '</strong> lancée pour tous les participants.', 'success', 6000);
+        // Bascule en mosaïque : pendant l'exercice, le soignant doit voir ses
+        // patients travailler. Sans cela, la vidéo occupe tout l'écran.
+        setTimeout(() => {
+          try { window.VisioJitsi.vueMosaique(true); _visioMosaique = true; majBoutonMosaique(); } catch (_) {}
+        }, 1200);
+        toast('🎬 <strong>' + (titre || 'Vidéo') + '</strong> diffusée · vue mosaïque activée pour suivre vos patients.', 'success', 7000);
       } catch (e) { alert(e.message); }
     };
     document.querySelectorAll('#visioVideoModal [data-yid]').forEach(b => {
@@ -10837,6 +10843,23 @@
     if (_visioMonitorTimer) clearInterval(_visioMonitorTimer);
     _visioMonitorTimer = null;
   }
+
+  // Vue mosaïque : voir tous les patients côte à côte pendant l'exercice
+  let _visioMosaique = false;
+  function majBoutonMosaique() {
+    const b = $('visioMosaiqueBtn');
+    if (!b) return;
+    b.textContent = _visioMosaique ? '👤 Vue intervenant' : '🔲 Vue mosaïque';
+    b.style.background = _visioMosaique ? '#0b1530' : '';
+    b.style.color = _visioMosaique ? 'white' : '';
+  }
+  window.visioBasculerMosaique = function () {
+    try {
+      _visioMosaique = !_visioMosaique;
+      window.VisioJitsi.vueMosaique(_visioMosaique);
+      majBoutonMosaique();
+    } catch (e) { alert(e.message); }
+  };
 
   window.visioOuvrirOnglet = function () {
     try {
