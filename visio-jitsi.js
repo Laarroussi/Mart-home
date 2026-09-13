@@ -83,10 +83,65 @@
     return base;
   }
 
+  /**
+   * Demande l'accès caméra et micro AVANT d'ouvrir la salle.
+   *
+   * Sans cette étape, la demande est faite depuis l'iframe de Jitsi : si
+   * l'utilisateur a refusé une fois, le navigateur mémorise ce refus et
+   * n'affiche plus aucune demande. Les boutons micro et caméra deviennent
+   * alors inopérants, sans le moindre message — c'est déroutant.
+   *
+   * En demandant depuis la page elle-même, la permission est explicite et
+   * un refus peut être expliqué clairement.
+   */
+  async function verifierPermissions() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("Ce navigateur ne permet pas d'accéder à la caméra. Utilisez Chrome, Edge ou Safari à jour.");
+    }
+    let flux;
+    try {
+      flux = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    } catch (e) {
+      // Sans caméra, on tente au moins le micro : une séance audio reste utile
+      try {
+        flux = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        console.warn('[visio] caméra indisponible, séance en audio seul');
+      } catch (e2) {
+        const nom = (e2 && e2.name) || '';
+        if (nom === 'NotAllowedError' || nom === 'SecurityError') {
+          throw new Error(
+            "L'accès à la caméra et au micro est bloqué pour ce site.\n\n" +
+            "Pour le débloquer dans Chrome : cliquez sur l'icône à gauche de l'adresse " +
+            "du site (cadenas ou curseurs), puis autorisez « Caméra » et « Microphone ». " +
+            "Rechargez ensuite la page.\n\n" +
+            "Sur Safari : menu Safari, puis « Réglages pour ce site web »."
+          );
+        }
+        if (nom === 'NotFoundError' || nom === 'DevicesNotFoundError') {
+          throw new Error("Aucune caméra ni microphone détecté sur cet appareil.");
+        }
+        if (nom === 'NotReadableError') {
+          throw new Error(
+            "La caméra est déjà utilisée par une autre application.\n\n" +
+            "Fermez Zoom, Teams, FaceTime ou tout autre logiciel de visioconférence, puis réessayez."
+          );
+        }
+        throw new Error("Accès caméra impossible : " + (e2 && e2.message ? e2.message : nom));
+      }
+    }
+    // On relâche immédiatement : Jitsi ouvrira ses propres flux.
+    try { flux.getTracks().forEach(t => t.stop()); } catch (_) {}
+    return true;
+  }
+
   async function rejoindre(conteneurId, options) {
     options = options || {};
     const conteneur = document.getElementById(conteneurId);
     if (!conteneur) throw new Error('Zone d\'affichage introuvable : ' + conteneurId);
+
+    // Autorisations d'abord : un refus ici donne un message clair,
+    // plutôt que des boutons muets une fois dans la salle.
+    await verifierPermissions();
 
     // Une seule conférence à la fois
     quitter();
@@ -120,6 +175,23 @@
     const moderateur = _jaas ? !!_jaas.moderateur : !!options.moderateur;
 
     conteneur.innerHTML = '';
+
+    // L'attribut « allow » doit être présent AVANT le chargement de l'iframe :
+    // appliqué après coup, il est ignoré par le navigateur. On surveille donc
+    // la création de l'iframe par Jitsi pour le poser immédiatement.
+    const observateur = new MutationObserver(() => {
+      const cadre = conteneur.querySelector('iframe');
+      if (cadre && !cadre.dataset.permsOk) {
+        cadre.dataset.permsOk = '1';
+        cadre.setAttribute('allow',
+          'camera; microphone; display-capture; autoplay; clipboard-write; fullscreen; speaker-selection');
+        cadre.setAttribute('allowfullscreen', 'true');
+        observateur.disconnect();
+      }
+    });
+    observateur.observe(conteneur, { childList: true, subtree: true });
+    setTimeout(() => { try { observateur.disconnect(); } catch (_) {} }, 5000);
+
     _api = new window.JitsiMeetExternalAPI(DOMAINE, {
       roomName: _salle,
       jwt: _jaas ? _jaas.token : undefined,
