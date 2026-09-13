@@ -83,7 +83,11 @@
       height: '100%',
       userInfo: { displayName: options.nomAffiche || (moderateur ? 'Soignant' : 'Patient') },
       configOverwrite: {
-        prejoinPageEnabled: false,        // on entre directement
+        // Jitsi a changé de clé de configuration au fil des versions :
+        // on fournit les deux pour être sûr de sauter l'écran d'attente,
+        // qui faisait croire que la connexion ne s'établissait pas.
+        prejoinPageEnabled: false,
+        prejoinConfig: { enabled: false },
         startWithAudioMuted: !moderateur, // le patient arrive micro coupé
         startWithVideoMuted: false,
         disableDeepLinking: true,

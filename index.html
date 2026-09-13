@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase18-1"></script>
+  <script src="api-client.js?v=phase19-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase18-1"></script>
+  <script src="questionnaires-defs.js?v=phase19-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase18-1"></script>
+  <script src="medical-parsers.js?v=phase19-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase18-1"></script>
+  <script src="cpet-graph-preview.js?v=phase19-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase18-1"></script>
-  <script src="medical-record-ui.js?v=phase18-1"></script>
+  <script src="pdf-extractor.js?v=phase19-1"></script>
+  <script src="medical-record-ui.js?v=phase19-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase18-1"></script>
+  <script src="aortic-consultations.js?v=phase19-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase18-1-1"></script>
-  <script src="visio-jitsi.js?v=phase19"></script>
+  <script src="document-import.js?v=phase19-1"></script>
+  <script src="visio-jitsi.js?v=phase19-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2633,6 +2633,18 @@
 
       <!-- ===== PANEL : VISIO ===== -->
       <section class="patient-panel" id="pat-visio">
+        <!-- Phase 19 : accès permanent à la salle.
+             Auparavant le bouton « Rejoindre » vivait DANS la zone vidéo,
+             que l'affichage des séances programmées remplaçait : sans séance
+             planifiée, le patient n'avait plus aucun moyen de se connecter. -->
+        <article class="pat-card" style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:230px;">
+            <strong style="font-size:15px; color:#0b1530; display:block;">Rejoindre la séance en visio</strong>
+            <span style="font-size:12.5px; color:var(--muted);">Votre soignant vous attend dans la salle. Autorisez l'accès à la caméra et au micro lorsque le navigateur le demande.</span>
+          </div>
+          <button class="pat-btn-success" onclick="patJoinSession()" style="padding:14px 26px; font-size:15px; white-space:nowrap;">▶ Rejoindre la séance</button>
+        </article>
+
         <!-- Zone principale : vidéo investigateur en grand -->
         <article class="pat-card" style="padding:0; overflow:hidden; margin-bottom:16px;">
           <div style="background:#020617; color:white; min-height:420px; position:relative; display:flex; flex-direction:column;">
@@ -10452,17 +10464,17 @@
   // patients grâce à un nom de salle commun.
   // ============================================================
 
-  /** Nom de salle partagé : identique pour le soignant et ses patients */
+  /**
+   * Nom de salle partagé entre le soignant et ses patients.
+   *
+   * Il DOIT être identique des deux côtés, sinon chacun ouvre sa propre
+   * salle et personne ne se voit. On utilise donc une salle unique pour
+   * toute la plateforme : le compte patient ne connaît pas son
+   * investigateur référent (l'API ne transmet pas ce lien), toute
+   * dérivation depuis l'identité mènerait à des salles divergentes.
+   */
   function visioCleSalle() {
-    try {
-      const u = window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser();
-      if (u && u.role === 'patient') {
-        // Le patient rejoint la salle de son investigateur référent
-        return 'cabinet-' + (u.created_by || 'general');
-      }
-      if (u && u.id) return 'cabinet-' + u.id;
-    } catch (_) {}
-    return 'cabinet-general';
+    return window.MARFAN_SALLE_VISIO || 'salle-principale';
   }
 
   async function visioStartSession() {
@@ -10483,10 +10495,16 @@
           moderateur: true,
           onParticipants: n => {
             const el = $('visioConnectedCount');
-            if (el) el.textContent = Math.max(0, n - 1) + ' / ' + patients.length;
+            // n inclut le soignant : on retire 1 pour compter les patients
+            if (el) el.textContent = Math.max(0, n - 1) + ' patient(s)';
           }
         });
-        toast('▶ Salle ouverte — communiquez le lien à vos patients ou demandez-leur de rejoindre depuis leur espace.', 'success', 7000);
+        if ($('visioSessionStatus')) {
+          $('visioSessionStatus').textContent =
+            'Salle « ' + window.VisioJitsi.construireNomSalle(visioCleSalle()) + ' » · ouverte à ' +
+            new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        }
+        toast('▶ Salle ouverte. Vos patients la rejoignent depuis leur onglet « Séance en visio ».', 'success', 7000);
       } catch (e) {
         $('visioSelfStage').innerHTML =
           '<div style="padding:30px; text-align:center; color:#fca5a5;">' +
