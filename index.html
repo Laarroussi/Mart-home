@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase20-3"></script>
+  <script src="api-client.js?v=phase20-4"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase20-3"></script>
+  <script src="questionnaires-defs.js?v=phase20-4"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase20-3"></script>
+  <script src="medical-parsers.js?v=phase20-4"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase20-3"></script>
+  <script src="cpet-graph-preview.js?v=phase20-4"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase20-3"></script>
-  <script src="medical-record-ui.js?v=phase20-3"></script>
+  <script src="pdf-extractor.js?v=phase20-4"></script>
+  <script src="medical-record-ui.js?v=phase20-4"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase20-3"></script>
+  <script src="aortic-consultations.js?v=phase20-4"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase20-3"></script>
-  <script src="visio-jitsi.js?v=phase20-3"></script>
+  <script src="document-import.js?v=phase20-4"></script>
+  <script src="visio-jitsi.js?v=phase20-4"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4340,14 +4340,8 @@
                 <small style="color:var(--muted); font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">Participants connectés</small>
                 <div style="font-size:24px; font-weight:800; font-family:'Sora',sans-serif; margin-top:3px;" id="visioConnectedCount">0 / 20</div>
               </div>
-              <div style="background:white; border:1px solid var(--line); border-radius:12px; padding:12px;">
-                <small style="color:var(--muted); font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">FC moyenne</small>
-                <div style="font-size:24px; font-weight:800; font-family:'Sora',sans-serif; margin-top:3px; color:var(--rose);" id="visioAvgHR">— bpm</div>
-              </div>
-              <div style="background:white; border:1px solid var(--line); border-radius:12px; padding:12px;">
-                <small style="color:var(--muted); font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">Dépense énergétique cumulée</small>
-                <div style="font-size:24px; font-weight:800; font-family:'Sora',sans-serif; margin-top:3px; color:var(--emerald);" id="visioCumEnergy">— kcal</div>
-              </div>
+              <!-- Moyennes de cohorte retirées : c'est le suivi patient par
+                   patient qui compte pendant une séance, pas l'agrégat. -->
               <div style="background:linear-gradient(135deg, #fee2e2, #fef3c7); border:1px solid #fcd34d; border-radius:12px; padding:12px;">
                 <small style="color:#92400e; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">⚠ Alertes en cours</small>
                 <div style="font-size:18px; font-weight:800; font-family:'Sora',sans-serif; margin-top:3px; color:#9a3412;" id="visioAlerts">Aucune</div>
@@ -10739,27 +10733,41 @@
       return;
     }
 
+    // Un patient peut avoir laissé plusieurs séances ouvertes (démarrages
+    // successifs sans clôture). On ne garde que la plus récente de chacun.
+    const parPatient = {};
+    seances.forEach(s => {
+      const prec = parPatient[s.patient_id];
+      if (!prec || new Date(s.debut) > new Date(prec.debut)) parPatient[s.patient_id] = s;
+    });
+    seances = Object.values(parPatient);
+
+    // Et on ne montre que les patients réellement présents dans la salle.
+    // Les patients rejoignent sous leur code d'étude : on compare les noms.
+    try {
+      if (window.VisioJitsi && window.VisioJitsi.estActif()) {
+        const presents = window.VisioJitsi.participants().map(n => n.toUpperCase());
+        if (presents.length) {
+          seances = seances.filter(s => presents.some(n => n.includes(String(s.patient_id).toUpperCase())));
+        }
+      }
+    } catch (_) { /* en cas de doute, on affiche tout */ }
+
     if (!seances.length) {
       zone.innerHTML = `
         <div style="padding:14px 12px; text-align:center; color:#94a3b8; font-size:11.5px; line-height:1.5;">
-          Aucune séance en cours.<br>
-          <span style="font-size:11px;">Les mesures s'affichent dès qu'un patient démarre sa séance avec sa ceinture cardiaque.</span>
+          Aucun patient connecté en séance.<br>
+          <span style="font-size:11px;">Les mesures s'affichent dès qu'un patient rejoint la salle et démarre sa séance avec sa ceinture cardiaque.</span>
         </div>`;
-      // Totaux remis à zéro
-      if ($('visioAvgHR')) $('visioAvgHR').textContent = '— bpm';
-      if ($('visioCumEnergy')) $('visioCumEnergy').textContent = '0 kcal';
       return;
     }
 
-    let sommeFC = 0, nbFC = 0, sommeKcal = 0;
     const alertes = [];
 
     zone.innerHTML = seances.map(s => {
       const p = (window.patients || []).find(x => x.id === s.patient_id);
       const seuils = seuilsPatient(p);
       const z = zoneFC(s.fc, seuils);
-      if (s.fc != null) { sommeFC += s.fc; nbFC++; }
-      if (s.kcal != null) sommeKcal += s.kcal;
       if (z.alerte) alertes.push(s.patient_id);
 
       // Position de la FC sur l'échelle repos → pic, avec les repères SV1 et SV2
@@ -10813,8 +10821,6 @@
         </div>`;
     }).join('');
 
-    if ($('visioAvgHR')) $('visioAvgHR').textContent = nbFC ? Math.round(sommeFC / nbFC) + ' bpm' : '— bpm';
-    if ($('visioCumEnergy')) $('visioCumEnergy').textContent = Math.round(sommeKcal) + ' kcal';
     const al = $('visioAlerts');
     if (al) {
       al.textContent = alertes.length ? alertes.join(', ') : 'Aucune';

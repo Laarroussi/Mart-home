@@ -242,6 +242,20 @@
   function estActif() { return !!_api; }
 
   /**
+   * Noms affichés des participants présents dans la salle.
+   * Les patients rejoignent sous leur code d'étude (MRF-XXX) : cette liste
+   * permet donc de n'afficher le monitoring que des patients réellement
+   * connectés, et non de toutes les séances ouvertes en base.
+   */
+  function participants() {
+    if (!_api) return [];
+    try {
+      const infos = _api.getParticipantsInfo() || [];
+      return infos.map(p => (p.displayName || p.formattedDisplayName || '').trim()).filter(Boolean);
+    } catch (_) { return []; }
+  }
+
+  /**
    * Diffuse une vidéo YouTube à tous les participants, en gardant la
    * visioconférence active : le soignant reste visible et audible pendant
    * que la vidéo d'entraînement se joue, de façon synchronisée pour tous.
@@ -274,7 +288,7 @@
 
   window.VisioJitsi = {
     rejoindre, quitter, nomSalle, estActif, lienSalle, construireNomSalle,
-    partagerVideo, arreterPartageVideo, partagerEcran,
+    partagerVideo, arreterPartageVideo, partagerEcran, participants,
     get domaine() { return DOMAINE; }
   };
 })();
