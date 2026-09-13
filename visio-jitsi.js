@@ -248,7 +248,14 @@
    */
   function partagerVideo(url) {
     if (!_api) throw new Error("Aucune séance en cours. Démarrez d'abord la séance.");
-    _api.executeCommand('startShareVideo', url);
+    // Jitsi refuse de lancer une vidéo si une autre est déjà diffusée.
+    // On arrête donc la précédente puis on lance la nouvelle : le soignant
+    // enchaîne les exercices d'un simple clic, sans manipulation préalable.
+    try { _api.executeCommand('stopShareVideo'); } catch (_) {}
+    setTimeout(() => {
+      try { _api.executeCommand('startShareVideo', url); }
+      catch (e) { console.warn('[visio] partage vidéo :', e && e.message); }
+    }, 400);
   }
   function arreterPartageVideo() {
     if (!_api) return;

@@ -316,6 +316,8 @@
       end:         (id, borg, opts={})      => request('POST', `/training/sessions/${id}/end`,
                                                        Object.assign({ borg_cr10: borg }, opts)),
       mine:        ()                       => request('GET',  '/training/sessions/mine'),
+      // Séances en cours + dernière mesure de chaque patient (monitoring visio)
+      live:        ()                       => request('GET',  '/training/live'),
       get:         (id)                     => request('GET',  `/training/sessions/${id}`),
       list:        (filters={})             => request('GET',  '/training/sessions?' + new URLSearchParams(filters).toString())
     },

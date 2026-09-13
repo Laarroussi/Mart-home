@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase20-1"></script>
+  <script src="api-client.js?v=phase20-3"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase20-1"></script>
+  <script src="questionnaires-defs.js?v=phase20-3"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase20-1"></script>
+  <script src="medical-parsers.js?v=phase20-3"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase20-1"></script>
+  <script src="cpet-graph-preview.js?v=phase20-3"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase20-1"></script>
-  <script src="medical-record-ui.js?v=phase20-1"></script>
+  <script src="pdf-extractor.js?v=phase20-3"></script>
+  <script src="medical-record-ui.js?v=phase20-3"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase20-1"></script>
+  <script src="aortic-consultations.js?v=phase20-3"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase20-1"></script>
-  <script src="visio-jitsi.js?v=phase20-1"></script>
+  <script src="document-import.js?v=phase20-3"></script>
+  <script src="visio-jitsi.js?v=phase20-3"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4350,7 +4350,20 @@
               </div>
               <div style="background:linear-gradient(135deg, #fee2e2, #fef3c7); border:1px solid #fcd34d; border-radius:12px; padding:12px;">
                 <small style="color:#92400e; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">⚠ Alertes en cours</small>
-                <div style="font-size:18px; font-weight:800; font-family:'Sora',sans-serif; margin-top:3px; color:#9a3412;" id="visioAlertsList">Aucune</div>
+                <div style="font-size:18px; font-weight:800; font-family:'Sora',sans-serif; margin-top:3px; color:#9a3412;" id="visioAlerts">Aucune</div>
+              </div>
+            </div>
+
+            <!-- Phase 20.2 : mesures réelles, patient par patient -->
+            <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line);">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+                <span style="font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:1px;">Par patient</span>
+                <span style="font-size:10px; color:#94a3b8;">actualisé toutes les 5 s</span>
+              </div>
+              <div id="visioMonitorPatients" style="max-height:320px; overflow-y:auto;">
+                <div style="padding:14px 12px; text-align:center; color:#94a3b8; font-size:11.5px;">
+                  Démarrez la séance pour afficher les mesures.
+                </div>
               </div>
             </div>
             <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line);">
@@ -10422,8 +10435,16 @@
       const dtMin = (now - s.lastTick) / 60000;
       s.kcal += mets * 3.5 * s.weight / 200 * dtMin;
       s.lastTick = now;
-      // Alerte si FC dépasse 85% FCmax
-      s.alert = (s.hr > 0.85 * fcMax) || (p.statusClass === 'alert' && s.hr > 0.75 * fcMax);
+      // Alerte fondée sur les seuils ventilatoires du test d'effort du patient
+      // lorsqu'ils existent, sinon sur la formule théorique.
+      let sAlerte;
+      try {
+        const seuilsP = seuilsPatient(p);
+        sAlerte = s.hr >= seuilsP.sv2;
+      } catch (_) {
+        sAlerte = s.hr > 0.85 * fcMax;
+      }
+      s.alert = sAlerte || (p.statusClass === 'alert' && s.hr > 0.75 * fcMax);
       if (s.alert) alerts.push(p.id);
       cumEnergy += s.kcal;
       hrSum += s.hr; hrCount++;
@@ -10538,6 +10559,8 @@
     visioState.interval = setInterval(visioTick, 1500);
     visioTick();
     renderVisioGrid();
+    // Phase 20.2 : mesures reelles des patients en seance
+    try { demarrerMonitoringVisio(); } catch (e) { console.warn('[monitoring]', e); }
   }
 
   function visioEndSession() {
@@ -10545,6 +10568,8 @@
     if (visioState.interval) clearInterval(visioState.interval);
     visioState.interval = null;
     try { if (window.VisioJitsi) window.VisioJitsi.quitter(); } catch (_) {}
+    try { arreterMonitoringVisio(); } catch (_) {}
+    visioState.participantsReels = null;
     if ($('visioSelfStage')) {
       $('visioSelfStage').style.padding = '30px';
       $('visioSelfStage').innerHTML =
@@ -10633,6 +10658,179 @@
       lancer(u, null);
     });
   };
+
+  // ============================================================
+  // Phase 20.2 — Monitoring physiologique RÉEL pendant la visio
+  // ------------------------------------------------------------
+  // Les valeurs affichées jusqu'ici étaient générées par la maquette.
+  // Elles proviennent désormais des mesures réellement transmises par la
+  // ceinture cardiaque du patient pendant sa séance.
+  // ============================================================
+  let _visioMonitorTimer = null;
+
+  function fmtDuree(s) {
+    if (s == null) return '—';
+    const m = Math.floor(s / 60), r = s % 60;
+    return m + ':' + String(r).padStart(2, '0');
+  }
+
+  /**
+   * Seuils de référence du patient.
+   * On privilégie TOUJOURS les valeurs mesurées lors de son test d'effort :
+   * SV1, SV2 et FC pic sont individuels et bien plus justes que la formule
+   * théorique 220 − âge, qui peut se tromper de plus de 20 battements —
+   * un écart considérable chez des patients sous bêta-bloquant, ce qui est
+   * fréquent dans le syndrome de Marfan.
+   * La formule théorique ne sert que de repli, et c'est signalé à l'écran.
+   */
+  function seuilsPatient(p) {
+    const evals = (p && p.evaluations) || [];
+    // Évaluation la plus récente comportant des seuils ventilatoires
+    for (let i = evals.length - 1; i >= 0; i--) {
+      const e = evals[i];
+      if (e && e.sv1Fc && e.sv2Fc && e.fcPeak) {
+        return {
+          sv1: Math.round(e.sv1Fc),
+          sv2: Math.round(e.sv2Fc),
+          pic: Math.round(e.fcPeak),
+          repos: e.fcRepos ? Math.round(e.fcRepos) : null,
+          mesure: true,
+          date: e.date || null
+        };
+      }
+    }
+    // Repli théorique, faute de test d'effort disponible
+    const fcMax = 220 - ((p && p.age) || 40);
+    return {
+      sv1: Math.round(fcMax * 0.60),
+      sv2: Math.round(fcMax * 0.80),
+      pic: fcMax,
+      repos: null,
+      mesure: false,
+      date: null
+    };
+  }
+
+  /**
+   * Zone d'effort selon les seuils ventilatoires.
+   *   sous SV1            → endurance fondamentale, effort tenable longtemps
+   *   entre SV1 et SV2    → zone d'entraînement cible en APA
+   *   au-dessus de SV2    → zone haute, à limiter dans le temps
+   *   au-delà du pic      → dépassement de la valeur mesurée au test
+   */
+  function zoneFC(fc, seuils) {
+    if (fc == null || !seuils) return { l: '—', c: '#94a3b8', pct: null, alerte: false };
+    const pct = seuils.pic ? Math.round((fc / seuils.pic) * 100) : null;
+    if (fc >= seuils.pic)  return { l: 'Au-delà du pic', c: '#b91c1c', pct, alerte: true };
+    if (fc >= seuils.sv2)  return { l: 'Au-dessus de SV2', c: '#dc2626', pct, alerte: true };
+    if (fc >= seuils.sv1)  return { l: 'Entre SV1 et SV2', c: '#16a34a', pct, alerte: false };
+    return { l: 'Sous SV1', c: '#38bdf8', pct, alerte: false };
+  }
+
+  async function rafraichirMonitoringVisio() {
+    const zone = document.getElementById('visioMonitorPatients');
+    if (!zone) return;
+    let seances = [];
+    try {
+      const r = await window.MarfanAPI.training.live();
+      seances = (r && r.seances) || [];
+    } catch (e) {
+      zone.innerHTML = '<div style="padding:12px; font-size:11.5px; color:#94a3b8; font-style:italic;">Mesures indisponibles.</div>';
+      return;
+    }
+
+    if (!seances.length) {
+      zone.innerHTML = `
+        <div style="padding:14px 12px; text-align:center; color:#94a3b8; font-size:11.5px; line-height:1.5;">
+          Aucune séance en cours.<br>
+          <span style="font-size:11px;">Les mesures s'affichent dès qu'un patient démarre sa séance avec sa ceinture cardiaque.</span>
+        </div>`;
+      // Totaux remis à zéro
+      if ($('visioAvgHR')) $('visioAvgHR').textContent = '— bpm';
+      if ($('visioCumEnergy')) $('visioCumEnergy').textContent = '0 kcal';
+      return;
+    }
+
+    let sommeFC = 0, nbFC = 0, sommeKcal = 0;
+    const alertes = [];
+
+    zone.innerHTML = seances.map(s => {
+      const p = (window.patients || []).find(x => x.id === s.patient_id);
+      const seuils = seuilsPatient(p);
+      const z = zoneFC(s.fc, seuils);
+      if (s.fc != null) { sommeFC += s.fc; nbFC++; }
+      if (s.kcal != null) sommeKcal += s.kcal;
+      if (z.alerte) alertes.push(s.patient_id);
+
+      // Position de la FC sur l'échelle repos → pic, avec les repères SV1 et SV2
+      const bas = seuils.repos || Math.round(seuils.pic * 0.35);
+      const etendue = Math.max(1, seuils.pic - bas);
+      const pos = v => Math.max(0, Math.min(100, ((v - bas) / etendue) * 100));
+      const curseur = s.fc != null ? pos(s.fc) : null;
+
+      return `
+        <div style="padding:9px 11px; border-radius:9px; background:${z.alerte ? '#fef2f2' : '#f8fafc'}; border:1px solid ${z.alerte ? '#fecaca' : '#e8edf6'}; margin-bottom:6px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:5px;">
+            <strong style="font-size:12px; color:#0b1530;">${s.patient_id}</strong>
+            <span style="font-size:10.5px; color:#64748b;">⏱ ${fmtDuree(s.duree_s)}</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:5px;">
+            <div>
+              <div style="font-size:9.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.3px;">FC</div>
+              <div style="font-size:14px; font-weight:800; color:${z.c};">${s.fc != null ? s.fc : '—'}<span style="font-size:9px; font-weight:600;"> bpm</span></div>
+              ${z.pct != null ? `<div style="font-size:9.5px; color:${z.c}; font-weight:700;">${z.pct} % du pic</div>` : ''}
+            </div>
+            <div>
+              <div style="font-size:9.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.3px;">PA est.</div>
+              <div style="font-size:14px; font-weight:800; color:#475569;">${s.pa_estimee != null ? s.pa_estimee : '—'}</div>
+            </div>
+            <div>
+              <div style="font-size:9.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.3px;">Énergie</div>
+              <div style="font-size:14px; font-weight:800; color:#059669;">${s.kcal != null ? s.kcal : '—'}<span style="font-size:9px; font-weight:600;"> kcal</span></div>
+            </div>
+          </div>
+
+          <!-- Échelle repos → pic, avec les seuils ventilatoires en repères -->
+          <div style="margin-top:7px; position:relative; height:7px; border-radius:99px; overflow:hidden;
+                      background:linear-gradient(90deg,#38bdf8 0%, #38bdf8 ${pos(seuils.sv1)}%,
+                                                 #16a34a ${pos(seuils.sv1)}%, #16a34a ${pos(seuils.sv2)}%,
+                                                 #dc2626 ${pos(seuils.sv2)}%, #b91c1c 100%);">
+            ${curseur != null ? `<div style="position:absolute; top:-2px; left:${curseur}%; width:3px; height:11px; background:#0b1530; border-radius:2px; box-shadow:0 0 0 1.5px white;"></div>` : ''}
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:8.5px; color:#94a3b8; margin-top:2px;">
+            <span>SV1 ${seuils.sv1}</span>
+            <span>SV2 ${seuils.sv2}</span>
+            <span>Pic ${seuils.pic}</span>
+          </div>
+
+          <div style="margin-top:4px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+            <span style="font-size:10.5px; font-weight:700; color:${z.c};">${z.l}${z.alerte ? ' ⚠' : ''}</span>
+            <span style="font-size:9px; color:${seuils.mesure ? '#059669' : '#f59e0b'};" title="${seuils.mesure ? 'Seuils issus du test d\'effort du patient' : 'Aucun test d\'effort disponible : seuils estimés par la formule 220 − âge'}">
+              ${seuils.mesure ? '✓ seuils mesurés' : '≈ seuils estimés'}
+            </span>
+          </div>
+        </div>`;
+    }).join('');
+
+    if ($('visioAvgHR')) $('visioAvgHR').textContent = nbFC ? Math.round(sommeFC / nbFC) + ' bpm' : '— bpm';
+    if ($('visioCumEnergy')) $('visioCumEnergy').textContent = Math.round(sommeKcal) + ' kcal';
+    const al = $('visioAlerts');
+    if (al) {
+      al.textContent = alertes.length ? alertes.join(', ') : 'Aucune';
+      al.style.color = alertes.length ? '#991b1b' : '';
+    }
+  }
+
+  function demarrerMonitoringVisio() {
+    if (_visioMonitorTimer) clearInterval(_visioMonitorTimer);
+    rafraichirMonitoringVisio();
+    _visioMonitorTimer = setInterval(rafraichirMonitoringVisio, 5000);
+  }
+  function arreterMonitoringVisio() {
+    if (_visioMonitorTimer) clearInterval(_visioMonitorTimer);
+    _visioMonitorTimer = null;
+  }
 
   window.visioOuvrirOnglet = function () {
     try {

@@ -189,6 +189,51 @@ router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
 });
 
 // ============================================================
+// GET /api/training/live — Séances EN COURS avec leur dernière mesure
+// ------------------------------------------------------------
+// Alimente le monitoring physiologique de la salle visio avec de VRAIES
+// données : fréquence cardiaque, pression artérielle estimée, dépense
+// énergétique et durée écoulée, telles que remontées par la ceinture
+// cardiaque du patient. Réservé au personnel soignant.
+//
+// Déclaré AVANT /sessions/:id pour ne pas être capturé par ce paramètre.
+// ============================================================
+router.get('/live', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR),
+  async (req, res, next) => {
+    try {
+      const { rows } = await query(
+        `SELECT s.id, s.patient_id, s.started_at, s.session_type,
+                EXTRACT(EPOCH FROM (NOW() - s.started_at))::INTEGER AS duree_s,
+                d.hr, d.pa_estimated, d.energy_kcal, d.t_seconds
+           FROM training_sessions s
+           LEFT JOIN LATERAL (
+             SELECT hr, pa_estimated, energy_kcal, t_seconds
+               FROM training_samples
+              WHERE session_id = s.id
+              ORDER BY t_seconds DESC
+              LIMIT 1
+           ) d ON TRUE
+          WHERE s.status = 'in_progress'
+            AND s.started_at > NOW() - INTERVAL '6 hours'
+          ORDER BY s.started_at DESC`
+      );
+      res.json({
+        seances: rows.map(r => ({
+          session_id: r.id,
+          patient_id: r.patient_id,
+          type: r.session_type,
+          debut: r.started_at,
+          duree_s: r.duree_s,
+          fc: r.hr != null ? Math.round(r.hr) : null,
+          pa_estimee: r.pa_estimated != null ? Math.round(r.pa_estimated) : null,
+          kcal: r.energy_kcal != null ? Math.round(r.energy_kcal * 10) / 10 : null,
+          derniere_mesure_s: r.t_seconds
+        }))
+      });
+    } catch (err) { next(err); }
+  });
+
+// ============================================================
 // GET /api/training/sessions/mine — Patient : ses séances
 // ============================================================
 router.get('/sessions/mine', requireAuth, async (req, res, next) => {
