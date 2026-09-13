@@ -90,13 +90,17 @@
       height: '100%',
       userInfo: { displayName: options.nomAffiche || (moderateur ? 'Soignant' : 'Patient') },
       configOverwrite: {
-        // L'écran de pré-connexion est CONSERVÉ volontairement.
-        // En le désactivant, meet.jit.si basculait sur une salle d'attente
-        // (« Demander à rejoindre ») dont personne ne pouvait sortir.
-        // Avec cet écran, un clic sur « Rejoindre la réunion » suffit, et
-        // le premier arrivé devient modérateur. Il permet en prime de
-        // vérifier sa caméra et son micro avant d'entrer.
-        prejoinPageEnabled: true,
+        // Entrée directe : le soignant ouvre la salle, il n'a pas à demander
+        // l'autorisation d'y entrer ; les patients y entrent de même sans
+        // étape intermédiaire. Associé à un nom de salle unique, cela évite
+        // la salle d'attente qu'imposait une salle occupée par un inconnu.
+        prejoinPageEnabled: false,
+        prejoinConfig: { enabled: false },
+        // Aucune salle d'attente ni mot de passe : la confidentialité repose
+        // sur le caractère non devinable du nom de salle.
+        lobby: { enabled: false, autoKnock: false },
+        enableLobbyChat: false,
+        requireDisplayName: false,
         startWithAudioMuted: !moderateur, // le patient arrive micro coupé
         startWithVideoMuted: false,
         disableDeepLinking: true,
