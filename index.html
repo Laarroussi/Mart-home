@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase20-5"></script>
+  <script src="api-client.js?v=phase20-6"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase20-5"></script>
+  <script src="questionnaires-defs.js?v=phase20-6"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase20-5"></script>
+  <script src="medical-parsers.js?v=phase20-6"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase20-5"></script>
+  <script src="cpet-graph-preview.js?v=phase20-6"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase20-5"></script>
-  <script src="medical-record-ui.js?v=phase20-5"></script>
+  <script src="pdf-extractor.js?v=phase20-6"></script>
+  <script src="medical-record-ui.js?v=phase20-6"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase20-5"></script>
+  <script src="aortic-consultations.js?v=phase20-6"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase20-5"></script>
-  <script src="visio-jitsi.js?v=phase20-5"></script>
+  <script src="document-import.js?v=phase20-6"></script>
+  <script src="visio-jitsi.js?v=phase20-6"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13101,7 +13101,11 @@
           ⚪ Ceinture non connectée
         </div>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;">
-          <button class="apiBtnConnectBelt pat-btn-secondary" style="padding:14px; font-size:13px;">⌁ Connecter la ceinture</button>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <button class="apiBtnConnectBelt pat-btn-secondary" style="padding:14px; font-size:13px;">⌁ Connecter la ceinture</button>
+            <button onclick="bleAfficherTousAppareils()" type="button"
+              style="border:none; background:transparent; color:#64748b; font-size:11px; text-decoration:underline; cursor:pointer; padding:2px;">Ma ceinture n'apparaît pas — afficher tous les appareils</button>
+          </div>
           <button class="apiBtnStartSession pat-btn-success" style="padding:14px; font-size:13px;">▶ Démarrer la séance</button>
           <button class="apiBtnStopSession pat-btn-secondary" disabled style="padding:14px; font-size:13px; background:#fee2e2; color:#991b1b; opacity:0.4;">■ Arrêter la séance</button>
         </div>
@@ -13249,6 +13253,21 @@
       return typeof navigator !== 'undefined' && !!navigator.bluetooth;
     }
 
+    // Mode de recherche : filtré par défaut, exhaustif si le patient
+    // active le repli parce que sa ceinture porte un nom inhabituel.
+    let _bleToutAfficher = false;
+    window.bleAfficherTousAppareils = function () {
+      _bleToutAfficher = true;
+      const btns = document.querySelectorAll('[id="apiBtnConnectBelt"], #apiBtnConnectBelt');
+      alert("Recherche élargie activée.\n\n" +
+            "Cliquez maintenant sur « Connecter la ceinture ». Tous les appareils Bluetooth " +
+            "à portée s'afficheront, y compris ceux sans nom lisible.\n\n" +
+            "Repérez votre ceinture : sur un modèle Decathlon, elle apparaît souvent sous " +
+            "« Dual HR », « Kalenji » ou un identifiant se terminant par des chiffres. " +
+            "Au besoin, éteignez temporairement vos autres appareils Bluetooth pour réduire la liste.");
+      if (btns.length) btns[0].focus();
+    };
+
     function parseHeartRate(dataView) {
       const flags = dataView.getUint8(0);
       const is16bit = (flags & 0x01) === 0x01;
@@ -13272,20 +13291,40 @@
       // Wahoo, Decathlon...). Le service reste déclaré en « optionalServices »
       // pour pouvoir être lu une fois la connexion établie.
       const SERVICES = ['heart_rate', 'battery_service', 'device_information'];
+
+      // Filtres combinés (règle OU) : le service standard de fréquence
+      // cardiaque, plus les noms des marques courantes. Certaines ceintures
+      // n'annoncent pas le service dans leur signal Bluetooth et resteraient
+      // invisibles avec le seul filtre technique ; à l'inverse, tout accepter
+      // noie la ceinture au milieu des téléviseurs et casques environnants,
+      // souvent sans nom lisible.
+      const FILTRES = [
+        { services: ['heart_rate'] },
+        { namePrefix: 'Decathlon' }, { namePrefix: 'Kalenji' },  // marques Decathlon
+        { namePrefix: 'Geonaute' },  { namePrefix: 'Dual' },
+        { namePrefix: 'Polar' },     { namePrefix: 'Garmin' },
+        { namePrefix: 'Wahoo' },     { namePrefix: 'Suunto' },
+        { namePrefix: 'HRM' },       { namePrefix: 'HR' },
+        { namePrefix: 'Coospo' },    { namePrefix: 'Magene' },
+        { namePrefix: 'Scosche' },   { namePrefix: 'CardioSport' }
+      ];
+
       let device;
       try {
-        device = await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true,
-          optionalServices: SERVICES
-        });
+        device = await navigator.bluetooth.requestDevice(
+          _bleToutAfficher
+            ? { acceptAllDevices: true, optionalServices: SERVICES }
+            : { filters: FILTRES, optionalServices: SERVICES }
+        );
       } catch (e) {
         if (e && e.name === 'NotFoundError') {
           throw new Error(
-            "Aucun appareil sélectionné.\n\n" +
-            "Si votre ceinture n'apparaît pas dans la liste :\n" +
-            "• vérifiez qu'elle est bien portée et humidifiée (elle ne s'allume qu'au contact de la peau) ;\n" +
-            "• assurez-vous qu'elle n'est pas déjà connectée à un autre appareil — une ceinture ne se connecte qu'à un seul à la fois ;\n" +
-            "• éloignez-vous des autres appareils Bluetooth et réessayez."
+            "Ceinture non trouvée.\n\n" +
+            "Vérifiez d'abord :\n" +
+            "• la ceinture est portée et les électrodes humidifiées — elle ne s'allume qu'au contact de la peau ;\n" +
+            "• elle n'est pas déjà connectée à un autre appareil : une ceinture ne se connecte qu'à un seul à la fois ;\n" +
+            "• elle n'est pas appairée dans les réglages Bluetooth du système, ce qui la rendrait indisponible ici.\n\n" +
+            "Si elle reste introuvable, utilisez le lien « Afficher tous les appareils » sous le bouton."
           );
         }
         throw e;
