@@ -27,6 +27,7 @@
   <script src="aortic-consultations.js?v=phase18-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
   <script src="document-import.js?v=phase18-1-1"></script>
+  <script src="visio-jitsi.js?v=phase19"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4294,7 +4295,7 @@
                 </div>
                 <div style="display:flex; gap:6px;">
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioToggleCam()" id="visioCamBtn">📷 Caméra</button>
-                  <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioToggleScreen()" id="visioScreenBtn">🖥 Partager écran</button>
+                  <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioCopierLien()" title="Copier le lien de la salle pour l'envoyer à un patient">🔗 Copier le lien</button>
                 </div>
               </div>
               <div id="visioSelfStage" style="flex:1; min-height:480px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px;">
@@ -10442,37 +10443,92 @@
     }
   }
 
-  function visioStartSession() {
+  // ============================================================
+  // Phase 19 — Visioconférence RÉELLE (Jitsi Meet)
+  // ------------------------------------------------------------
+  // Auparavant, cet écran était une maquette : aucune caméra n'était
+  // ouverte et aucun participant ne pouvait se connecter. La salle est
+  // désormais une vraie conférence, partagée entre le soignant et ses
+  // patients grâce à un nom de salle commun.
+  // ============================================================
+
+  /** Nom de salle partagé : identique pour le soignant et ses patients */
+  function visioCleSalle() {
+    try {
+      const u = window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser();
+      if (u && u.role === 'patient') {
+        // Le patient rejoint la salle de son investigateur référent
+        return 'cabinet-' + (u.created_by || 'general');
+      }
+      if (u && u.id) return 'cabinet-' + u.id;
+    } catch (_) {}
+    return 'cabinet-general';
+  }
+
+  async function visioStartSession() {
     visioState.sessionActive = true;
     visioState.startTime = Date.now();
     patients.forEach(p => initParticipantState(p));
     if ($('visioLiveLabel')) $('visioLiveLabel').textContent = 'EN DIRECT — séance en cours';
     if ($('visioSessionStatus')) $('visioSessionStatus').textContent = 'Session démarrée à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
     if ($('visioSelfStage')) {
-      $('visioSelfStage').innerHTML = `
-        <div style="font-size:64px; margin-bottom:12px;">📡</div>
-        <strong style="font-family:'Sora',sans-serif; font-size:22px;">Diffusion en cours</strong>
-        <p style="color:#94a3b8; margin-top:10px; max-width:480px; line-height:1.6;">Votre caméra et votre micro sont actifs. Les patients connectés reçoivent votre flux en direct.</p>
-        <div style="display:inline-flex; align-items:center; gap:8px; padding:8px 14px; background:rgba(220,38,38,0.18); border:1px solid rgba(220,38,38,0.4); border-radius:99px; margin-top:14px;">
-          <span style="display:inline-block; width:9px; height:9px; border-radius:50%; background:#dc2626; animation:visioPulse 1.2s infinite;"></span>
-          <span style="font-size:11.5px; font-weight:800; color:#fca5a5;">REC · ${patients.filter(p => p.connected).length} participants</span>
-        </div>`;
+      $('visioSelfStage').style.padding = '0';
+      $('visioSelfStage').style.minHeight = '480px';
+      try {
+        const u = (window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser()) || {};
+        await window.VisioJitsi.rejoindre('visioSelfStage', {
+          salle: visioCleSalle(),
+          nomAffiche: u.name || 'Soignant',
+          moderateur: true,
+          onParticipants: n => {
+            const el = $('visioConnectedCount');
+            if (el) el.textContent = Math.max(0, n - 1) + ' / ' + patients.length;
+          }
+        });
+        toast('▶ Salle ouverte — communiquez le lien à vos patients ou demandez-leur de rejoindre depuis leur espace.', 'success', 7000);
+      } catch (e) {
+        $('visioSelfStage').innerHTML =
+          '<div style="padding:30px; text-align:center; color:#fca5a5;">' +
+          '<div style="font-size:40px; margin-bottom:10px;">⚠️</div>' +
+          '<strong style="font-size:16px;">Visioconférence indisponible</strong>' +
+          '<p style="color:#94a3b8; margin-top:8px; max-width:460px;">' + (e && e.message ? e.message : '') + '</p></div>';
+        toast('⚠ ' + ((e && e.message) || 'Impossible d\'ouvrir la salle.'), 'error', 9000);
+      }
     }
+
     if (visioState.interval) clearInterval(visioState.interval);
     visioState.interval = setInterval(visioTick, 1500);
     visioTick();
     renderVisioGrid();
-    toast('▶ Séance démarrée — les patients connectés voient votre flux.', 'success');
   }
 
   function visioEndSession() {
     visioState.sessionActive = false;
     if (visioState.interval) clearInterval(visioState.interval);
     visioState.interval = null;
+    try { if (window.VisioJitsi) window.VisioJitsi.quitter(); } catch (_) {}
+    if ($('visioSelfStage')) {
+      $('visioSelfStage').style.padding = '30px';
+      $('visioSelfStage').innerHTML =
+        '<div style="text-align:center;"><div style="font-size:54px; margin-bottom:12px;">📡</div>' +
+        '<strong style="font-family:\'Sora\',sans-serif; font-size:20px;">Séance terminée</strong>' +
+        '<p style="color:#94a3b8; margin-top:8px;">Cliquez sur « Démarrer » pour rouvrir la salle.</p></div>';
+    }
     if ($('visioLiveLabel')) $('visioLiveLabel').textContent = 'Séance terminée';
     if ($('visioSessionStatus')) $('visioSessionStatus').textContent = 'Session terminée';
     toast('⏹ Séance terminée.', 'success');
   }
+
+  /** Copie le lien de la salle, pour l'envoyer à un patient hors plateforme */
+  window.visioCopierLien = function () {
+    try {
+      const lien = window.VisioJitsi.lienSalle(visioCleSalle());
+      navigator.clipboard.writeText(lien).then(
+        () => toast('🔗 Lien de la salle copié : <strong>' + lien + '</strong>', 'success', 8000),
+        () => prompt('Copiez ce lien et transmettez-le au patient :', lien));
+    } catch (e) { alert('Lien indisponible : ' + e.message); }
+  };
 
   function visioToggleMic() {
     visioState.selfMic = !visioState.selfMic;
@@ -10964,27 +11020,34 @@
     if ($('patBorgCap')) $('patBorgCap').textContent = `Vous ressentez un ${label}.`;
   }
 
-  function patJoinSession() {
-    // Démarre la simulation côté investigateur si pas déjà active (pour avoir des données live)
-    if (!visioState.sessionActive) visioStartSession();
+  async function patJoinSession() {
+    // Phase 19 : le patient rejoint réellement la salle de son soignant
     if ($('patMainStage')) {
-      $('patMainStage').innerHTML = `
-        <div>
-          <div style="font-size:48px; margin-bottom:10px;">📺</div>
-          <strong style="font-size:22px; font-family:'Sora',sans-serif; display:block;">🟢 Séance APA en direct</strong>
-          <p style="color:#ccfbf1; margin-top:8px; max-width:480px; line-height:1.6;">Vous voyez votre coach. Suivez les consignes, le coach voit vos paramètres en temps réel.</p>
-          <div style="display:inline-flex; align-items:center; gap:8px; padding:8px 14px; background:rgba(132,204,22,0.18); border:1px solid rgba(132,204,22,0.4); border-radius:99px; margin-top:14px;">
-            <span style="display:inline-block; width:9px; height:9px; border-radius:50%; background:#84cc16; animation:visioPulse 1.2s infinite;"></span>
-            <span style="font-size:11.5px; font-weight:800; color:#d9f99d;">EN LIGNE</span>
-          </div>
-        </div>`;
+      $('patMainStage').style.padding = '0';
+      $('patMainStage').style.minHeight = '460px';
+      $('patMainStage').style.background = '#020617';
+      try {
+        const u = (window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser()) || {};
+        await window.VisioJitsi.rejoindre('patMainStage', {
+          salle: visioCleSalle(),
+          nomAffiche: u.name || (u.patient_id || 'Patient'),
+          moderateur: false
+        });
+      } catch (e) {
+        $('patMainStage').style.padding = '30px';
+        $('patMainStage').innerHTML =
+          '<div style="text-align:center;"><div style="font-size:44px; margin-bottom:10px;">⚠️</div>' +
+          '<strong style="font-size:18px;">Visioconférence indisponible</strong>' +
+          '<p style="color:#ccfbf1; margin-top:8px; max-width:460px;">' + (e && e.message ? e.message : '') + '</p></div>';
+        return;
+      }
     }
     if ($('patVisioLiveDot')) $('patVisioLiveDot').style.background = '#dc2626';
     if ($('patVisioLiveDot')) $('patVisioLiveDot').style.animation = 'visioPulse 1.4s infinite';
     if ($('patVisioLiveText')) $('patVisioLiveText').textContent = 'EN DIRECT';
     if ($('patSessionStatus')) $('patSessionStatus').textContent = 'En séance · ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     // S'assurer que le patient courant est dans participants
-    initParticipantState(patients[patientUserIdx]);
+    try { initParticipantState(patients[patientUserIdx]); } catch (_) {}
     if (!patHrConnected) patConnectHR();
   }
 
