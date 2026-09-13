@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase20-9"></script>
+  <script src="api-client.js?v=phase21"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase20-9"></script>
+  <script src="questionnaires-defs.js?v=phase21"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase20-9"></script>
+  <script src="medical-parsers.js?v=phase21"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase20-9"></script>
+  <script src="cpet-graph-preview.js?v=phase21"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase20-9"></script>
-  <script src="medical-record-ui.js?v=phase20-9"></script>
+  <script src="pdf-extractor.js?v=phase21"></script>
+  <script src="medical-record-ui.js?v=phase21"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase20-9"></script>
+  <script src="aortic-consultations.js?v=phase21"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase20-9"></script>
-  <script src="visio-jitsi.js?v=phase20-9"></script>
+  <script src="document-import.js?v=phase21"></script>
+  <script src="visio-jitsi.js?v=phase21"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4288,11 +4288,10 @@
       <section id="visio" class="tab-panel hidden" style="padding-bottom:90px;">
         <header class="page-header">
           <div>
-            <h2>Salle visio — coaching APA collectif</h2>
-            <p>Vous partagez votre vidéo (caméra ou contenu d'écran). Les patients vous voient et se voient entre eux. Chaque vignette patient affiche en temps réel sa <strong>FC</strong>, sa <strong>PA estimée</strong> et sa <strong>dépense énergétique</strong>.</p>
+            <h2>Salle visio</h2>
           </div>
           <div class="actions">
-            <button class="btn-secondary" onclick="openVisioOptionsModal()">⚙ Options & Zoom / Jitsi</button>
+            <button class="btn-light" onclick="visioCopierLien()" title="Copier le lien de la salle">🔗 Lien</button>
             <button class="btn-light" onclick="visioStartSession()">▶ Démarrer séance</button>
             <button class="btn-danger" onclick="visioEndSession()">⏹ Terminer</button>
           </div>
@@ -4307,14 +4306,10 @@
                   <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#dc2626; margin-right:6px; animation:visioPulse 1.4s infinite;"></span>
                   <span id="visioLiveLabel">EN DIRECT — votre flux</span>
                 </div>
-                <div style="display:flex; gap:6px;">
-                  <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioToggleCam()" id="visioCamBtn">📷 Caméra</button>
-                  <button class="btn-light" style="padding:6px 11px; font-size:11px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border:none; font-weight:700;" onclick="visioPartagerVideo()" title="Diffuser une vidéo d'entraînement à tous les participants, sans quitter la visio">🎬 Diffuser une vidéo</button>
-                  <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioPartagerEcran()" title="Retransmettre un onglet de votre écran — utile pour montrer un support autre qu'une vidéo">🖥 Partager un onglet</button>
-                  <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioBasculerMosaique()" id="visioMosaiqueBtn" title="Voir tous les patients côte à côte pendant l'exercice">🔲 Vue mosaïque</button>
-                  <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioCopierLien()" title="Copier le lien de la salle pour l'envoyer à un patient">🔗 Copier le lien</button>
-                  <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioOuvrirOnglet()" title="Ouvrir la salle dans un onglet séparé — fonctionne même si l'intégration est bloquée">↗ Ouvrir en plein écran</button>
-                </div>
+                <!-- Un seul bouton conservé : la barre d'outils de Jitsi, en bas
+                     de la vidéo, offre déjà caméra, micro, partage d'écran,
+                     mosaïque et plein écran. Les doublons encombraient l'image. -->
+                <button class="btn-light" style="padding:6px 13px; font-size:11.5px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border:none; font-weight:700;" onclick="visioPartagerVideo()" title="Diffuser une vidéo d'entraînement à tous les participants">🎬 Diffuser une vidéo</button>
               </div>
               <div id="visioSelfStage" style="flex:1; min-height:480px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px;">
                 <div style="font-size:64px; margin-bottom:12px;">🎥</div>

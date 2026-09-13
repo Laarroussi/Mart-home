@@ -139,8 +139,13 @@
         lobby: { enabled: false, autoKnock: false },
         enableLobbyChat: false,
         requireDisplayName: false,
-        startWithAudioMuted: !moderateur, // le patient arrive micro coupé
+        // Personne n'arrive micro coupé. Démarrer en sourdine empêchait les
+        // patients de se réactiver : le navigateur n'ayant jamais demandé
+        // l'autorisation d'accès au micro, les boutons restaient sans effet.
+        startWithAudioMuted: false,
         startWithVideoMuted: false,
+        // Le soignant garde la main s'il souhaite couper tout le monde
+        startAudioOnly: false,
         disableDeepLinking: true,
         enableWelcomePage: false,
         defaultLanguage: 'fr'
@@ -158,7 +163,10 @@
         TOOLBAR_BUTTONS: moderateur
           ? ['microphone','camera','desktop','sharedvideo','fullscreen','hangup',
              'chat','raisehand','tileview','settings','videoquality','filmstrip']
-          : ['microphone','camera','fullscreen','hangup','chat','raisehand','tileview']
+          // « settings » permet au patient de choisir son micro et sa caméra
+          // s'il en possède plusieurs, ou si le mauvais périphérique a été
+          // sélectionné par défaut — cause fréquente d'un micro qui semble muet.
+          : ['microphone','camera','fullscreen','hangup','chat','raisehand','tileview','settings']
       }
     });
 
