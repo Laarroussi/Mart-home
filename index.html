@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase19-2"></script>
+  <script src="api-client.js?v=phase19-3"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase19-2"></script>
+  <script src="questionnaires-defs.js?v=phase19-3"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase19-2"></script>
+  <script src="medical-parsers.js?v=phase19-3"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase19-2"></script>
+  <script src="cpet-graph-preview.js?v=phase19-3"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase19-2"></script>
-  <script src="medical-record-ui.js?v=phase19-2"></script>
+  <script src="pdf-extractor.js?v=phase19-3"></script>
+  <script src="medical-record-ui.js?v=phase19-3"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase19-2"></script>
+  <script src="aortic-consultations.js?v=phase19-3"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase19-2"></script>
-  <script src="visio-jitsi.js?v=phase19-2"></script>
+  <script src="document-import.js?v=phase19-3"></script>
+  <script src="visio-jitsi.js?v=phase19-3"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4308,6 +4308,7 @@
                 <div style="display:flex; gap:6px;">
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioToggleCam()" id="visioCamBtn">📷 Caméra</button>
                   <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioCopierLien()" title="Copier le lien de la salle pour l'envoyer à un patient">🔗 Copier le lien</button>
+                  <button class="btn-light" style="padding:6px 11px; font-size:11px;" onclick="visioOuvrirOnglet()" title="Ouvrir la salle dans un onglet séparé — fonctionne même si l'intégration est bloquée">↗ Ouvrir en plein écran</button>
                 </div>
               </div>
               <div id="visioSelfStage" style="flex:1; min-height:480px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px;">
@@ -10537,6 +10538,17 @@
     if ($('visioSessionStatus')) $('visioSessionStatus').textContent = 'Session terminée';
     toast('⏹ Séance terminée.', 'success');
   }
+
+  /**
+   * Ouvre la salle dans un onglet séparé. Solution de repli fiable :
+   * certaines instances Jitsi refusent d'être affichées dans une page,
+   * et le navigateur accorde plus facilement l'accès caméra hors iframe.
+   */
+  window.visioOuvrirOnglet = function () {
+    try {
+      window.open(window.VisioJitsi.lienSalle(visioCleSalle()), '_blank', 'noopener');
+    } catch (e) { alert('Ouverture impossible : ' + e.message); }
+  };
 
   /** Copie le lien de la salle, pour l'envoyer à un patient hors plateforme */
   window.visioCopierLien = function () {

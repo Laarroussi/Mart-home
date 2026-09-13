@@ -116,7 +116,23 @@
       }
     });
 
+    // Une iframe n'a PAS accès à la caméra par défaut : sans cet attribut,
+    // la conférence se charge mais reste noire, sans image ni son.
+    try {
+      const cadre = _api.getIFrame ? _api.getIFrame() : conteneur.querySelector('iframe');
+      if (cadre) {
+        cadre.setAttribute('allow',
+          'camera; microphone; display-capture; autoplay; clipboard-write; fullscreen; speaker-selection');
+        cadre.setAttribute('allowfullscreen', 'true');
+        cadre.style.width = '100%';
+        cadre.style.height = '100%';
+        cadre.style.minHeight = '460px';
+        cadre.style.border = '0';
+      }
+    } catch (e) { console.warn('[visio] permissions iframe :', e && e.message); }
+
     // Nombre de participants, transmis à l'interface appelante
+    let rejoint = false;
     const compter = () => {
       try {
         const n = _api.getNumberOfParticipants();
@@ -124,9 +140,38 @@
       } catch (_) {}
     };
     _api.addListener('videoConferenceJoined', () => {
+      rejoint = true;
       compter();
       if (typeof options.onRejoint === 'function') options.onRejoint(_salle);
     });
+    // Remonte les erreurs de la conférence plutôt que de laisser un écran noir
+    ['errorOccurred', 'cameraError', 'micError'].forEach(ev => {
+      try { _api.addListener(ev, d => console.warn('[visio] ' + ev, d)); } catch (_) {}
+    });
+
+    // Filet de sécurité : si rien ne s'affiche au bout de 12 secondes,
+    // on propose d'ouvrir la salle dans un onglet séparé — certaines
+    // instances Jitsi refusent purement et simplement l'intégration.
+    setTimeout(() => {
+      if (rejoint || !_api) return;
+      const lien = 'https://' + DOMAINE + '/' + _salle;
+      const alerte = document.createElement('div');
+      alerte.style.cssText = 'position:absolute; inset:0; background:rgba(2,6,23,.96); color:white; display:flex; align-items:center; justify-content:center; text-align:center; padding:26px; z-index:5;';
+      alerte.innerHTML =
+        '<div style="max-width:460px;">' +
+        '<div style="font-size:40px; margin-bottom:10px;">🎥</div>' +
+        '<strong style="font-size:17px; display:block; margin-bottom:8px;">La vidéo ne s\'affiche pas ici</strong>' +
+        '<p style="color:#cbd5e1; font-size:13px; line-height:1.55; margin:0 0 16px;">' +
+        'Cette salle refuse d\'être intégrée dans la page. Ouvrez-la dans un onglet séparé : ' +
+        'la visioconférence fonctionnera normalement.</p>' +
+        '<a href="' + lien + '" target="_blank" rel="noopener" ' +
+        'style="display:inline-block; padding:12px 24px; background:linear-gradient(135deg,#0891b2,#06b6d4); color:white; text-decoration:none; border-radius:10px; font-weight:700; font-size:14px;">' +
+        'Ouvrir la salle dans un onglet</a>' +
+        '<p style="color:#64748b; font-size:11.5px; margin-top:12px; word-break:break-all;">' + lien + '</p>' +
+        '</div>';
+      if (getComputedStyle(conteneur).position === 'static') conteneur.style.position = 'relative';
+      conteneur.appendChild(alerte);
+    }, 12000);
     _api.addListener('participantJoined', compter);
     _api.addListener('participantLeft', compter);
     _api.addListener('videoConferenceLeft', () => {
