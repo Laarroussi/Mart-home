@@ -24,7 +24,16 @@
 (function () {
   'use strict';
 
-  const DOMAINE = window.MARFAN_JITSI_DOMAIN || 'meet.jit.si';
+  // Instance Jitsi utilisée.
+  //
+  // meet.jit.si impose désormais qu'un compte authentifié ouvre la salle :
+  // sans cela, tous les participants restent bloqués sur « Demander à
+  // rejoindre une réunion ». On utilise donc une instance publique libre
+  // d'accès. meet.ffmuc.net est opérée par Freifunk München (Allemagne),
+  // sans compte requis — et hébergée dans l'Union européenne.
+  //
+  // Pour en changer, définir window.MARFAN_JITSI_DOMAIN avant le chargement.
+  const DOMAINE = window.MARFAN_JITSI_DOMAIN || 'meet.ffmuc.net';
   const SCRIPT = 'https://' + DOMAINE + '/external_api.js';
 
   let _api = null;

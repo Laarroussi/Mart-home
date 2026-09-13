@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase19-1"></script>
+  <script src="api-client.js?v=phase19-2"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase19-1"></script>
+  <script src="questionnaires-defs.js?v=phase19-2"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase19-1"></script>
+  <script src="medical-parsers.js?v=phase19-2"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase19-1"></script>
+  <script src="cpet-graph-preview.js?v=phase19-2"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase19-1"></script>
-  <script src="medical-record-ui.js?v=phase19-1"></script>
+  <script src="pdf-extractor.js?v=phase19-2"></script>
+  <script src="medical-record-ui.js?v=phase19-2"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase19-1"></script>
+  <script src="aortic-consultations.js?v=phase19-2"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase19-1"></script>
-  <script src="visio-jitsi.js?v=phase19-1"></script>
+  <script src="document-import.js?v=phase19-2"></script>
+  <script src="visio-jitsi.js?v=phase19-2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -11039,21 +11039,26 @@
   }
 
   async function patJoinSession() {
-    // Phase 19 : le patient rejoint réellement la salle de son soignant
-    if ($('patMainStage')) {
-      $('patMainStage').style.padding = '0';
-      $('patMainStage').style.minHeight = '460px';
-      $('patMainStage').style.background = '#020617';
+    // Phase 19.2 : selon que le panneau ait été reconstruit ou non, la zone
+    // vidéo s'appelle « apiVisioStage » ou « patMainStage ». On prend celle
+    // qui existe réellement, sinon le clic restait sans effet.
+    const zone = document.getElementById('apiVisioStage') || document.getElementById('patMainStage');
+    if (zone) {
+      const zoneId = zone.id;
+      zone.style.padding = '0';
+      zone.style.minHeight = '460px';
+      zone.style.background = '#020617';
+      zone.style.display = 'block';
       try {
         const u = (window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser()) || {};
-        await window.VisioJitsi.rejoindre('patMainStage', {
+        await window.VisioJitsi.rejoindre(zoneId, {
           salle: visioCleSalle(),
           nomAffiche: u.name || (u.patient_id || 'Patient'),
           moderateur: false
         });
       } catch (e) {
-        $('patMainStage').style.padding = '30px';
-        $('patMainStage').innerHTML =
+        zone.style.padding = '30px';
+        zone.innerHTML =
           '<div style="text-align:center;"><div style="font-size:44px; margin-bottom:10px;">⚠️</div>' +
           '<strong style="font-size:18px;">Visioconférence indisponible</strong>' +
           '<p style="color:#ccfbf1; margin-top:8px; max-width:460px;">' + (e && e.message ? e.message : '') + '</p></div>';
@@ -12695,6 +12700,25 @@
       // On conserve la grille participants existante en bas si présente
       const existing = document.getElementById('patParticipantsPanel');
       panel.innerHTML = '';
+
+      // === Carte 0 : accès permanent à la salle (Phase 19.2) ===
+      // Cette fonction reconstruit tout le panneau : un bouton placé dans le
+      // HTML de la page serait effacé ici. Il doit donc être créé par elle.
+      const accesCard = document.createElement('article');
+      accesCard.className = 'pat-card';
+      accesCard.style.cssText = 'margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap;';
+      accesCard.innerHTML = `
+        <div style="flex:1; min-width:230px;">
+          <strong style="font-size:15px; color:#0b1530; display:block;">Rejoindre la séance en visio</strong>
+          <span style="font-size:12.5px; color:var(--muted);">Votre soignant vous attend dans la salle. Autorisez l'accès à la caméra et au micro lorsque le navigateur le demande.</span>
+        </div>
+        <button class="pat-btn-success" id="patBtnRejoindreSalle"
+          style="padding:14px 26px; font-size:15px; white-space:nowrap;">▶ Rejoindre la séance</button>`;
+      panel.appendChild(accesCard);
+      const btnRejoindre = accesCard.querySelector('#patBtnRejoindreSalle');
+      if (btnRejoindre) btnRejoindre.addEventListener('click', () => {
+        try { patJoinSession(); } catch (e) { alert('Impossible de rejoindre : ' + e.message); }
+      });
 
       // === Carte 1 : Visio intégrée (initialement vide, l'iframe s'injecte au "Rejoindre") ===
       const visioCard = document.createElement('article');
