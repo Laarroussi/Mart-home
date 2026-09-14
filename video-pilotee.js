@@ -59,18 +59,63 @@
     return _apiPrete;
   }
 
-  /** Construit la scène : un lecteur occupant toute la largeur disponible */
+  /**
+   * Construit la scène.
+   * En mode plein cadre (patient), le lecteur occupe toute la hauteur
+   * disponible ; sinon il garde les proportions 16/9 dans la page.
+   */
   function scene(conteneurId) {
     var hote = document.getElementById(conteneurId);
     if (!hote) throw new Error("Zone d'affichage introuvable : " + conteneurId);
+    var plein = hote.dataset && hote.dataset.plein === '1';
+    if (plein) { hote.style.display = 'flex'; hote.style.flexDirection = 'column'; }
     hote.innerHTML =
-      '<div id="vpBarre" style="display:flex; align-items:center; gap:10px; padding:9px 14px; background:#0b1530; color:white;">' +
+      '<div id="vpBarre" style="flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:9px 14px; background:#0b1530; color:white;">' +
         '<span style="width:9px; height:9px; border-radius:50%; background:#f43f5e;"></span>' +
         '<strong id="vpTitre" style="font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></strong>' +
+        '<button id="vpSon" style="display:none; border:none; background:#f59e0b; color:#0b1530; font-weight:800; font-size:12px; padding:6px 13px; border-radius:8px; cursor:pointer;">🔊 Activer le son</button>' +
         '<span id="vpEtat" style="margin-left:auto; font-size:11px; color:#94a3b8; white-space:nowrap;"></span>' +
+        // Le patient doit toujours pouvoir revenir à son espace : on ne
+        // l'enferme pas dans la vidéo, même pendant une séance encadrée.
+        (plein ? '<button id="vpReduire" style="border:1px solid rgba(255,255,255,.25); background:transparent; color:#cbd5e1; font-size:11.5px; padding:6px 12px; border-radius:8px; cursor:pointer;">Réduire</button>' : '') +
       '</div>' +
-      '<div id="vpLecteur" style="width:100%; aspect-ratio:16/9; background:#000;"></div>';
+      (plein
+        ? '<div id="vpLecteur" style="flex:1; min-height:0; width:100%; background:#000;"></div>'
+        : '<div id="vpLecteur" style="width:100%; aspect-ratio:16/9; background:#000;"></div>');
+    var bs = document.getElementById('vpSon');
+    if (bs) bs.addEventListener('click', activerSon);
+    var br = document.getElementById('vpReduire');
+    if (br) br.addEventListener('click', function () {
+      hote.style.display = 'none';
+      document.body.style.overflow = '';
+      // La vidéo continue de tourner : le patient peut revenir sans décalage.
+      window.dispatchEvent(new CustomEvent('marfan-video-reduite'));
+    });
     return document.getElementById('vpLecteur');
+  }
+
+  /**
+   * Rétablit le son après un démarrage en sourdine.
+   *
+   * Les navigateurs refusent de lancer seuls une vidéo qui a du son : c'est
+   * ce blocage qui obligeait le patient à cliquer sur Lecture. On démarre
+   * donc en sourdine — toujours autorisé — puis on rend le son aussitôt.
+   * Si le navigateur s'y oppose encore, un bouton apparaît : un seul clic,
+   * et la vidéo continue sans s'interrompre.
+   */
+  function activerSon() {
+    if (!_lecteur) return;
+    try {
+      _lecteur.unMute();
+      _lecteur.setVolume(100);
+    } catch (_) {}
+    var b = document.getElementById('vpSon');
+    if (!b) return;
+    setTimeout(function () {
+      var muet = true;
+      try { muet = _lecteur.isMuted(); } catch (_) {}
+      b.style.display = muet ? 'inline-block' : 'none';
+    }, 250);
   }
 
   function majEtat(texte) {
@@ -85,21 +130,34 @@
     if (t) t.textContent = _titre || "Vidéo d'entraînement";
     return new Promise(function (resolve) {
       if (_lecteur) { try { _lecteur.destroy(); } catch (_) {} _lecteur = null; }
+      var patient = _role === 'patient';
       _lecteur = new window.YT.Player('vpLecteur', {
         videoId: videoId,
         playerVars: {
           rel: 0, playsinline: 1, iv_load_policy: 3, fs: 0,
-          modestbranding: 1, controls: _role === 'soignant' ? 1 : 0,
-          disablekb: _role === 'soignant' ? 0 : 1,
+          modestbranding: 1, controls: patient ? 0 : 1,
+          disablekb: patient ? 1 : 0,
+          // autoplay + démarrage en sourdine : la seule combinaison que les
+          // navigateurs laissent partir sans clic. Le son revient juste après.
+          autoplay: autoPlay ? 1 : 0,
+          mute: patient && autoPlay ? 1 : 0,
           start: Math.max(0, Math.floor(demarrerA || 0))
         },
         events: {
           onReady: function (ev) {
             try {
+              if (patient && autoPlay) { try { ev.target.mute(); } catch (_) {} }
               ev.target.seekTo(demarrerA || 0, true);
               if (autoPlay) ev.target.playVideo();
             } catch (_) {}
+            // Le son est rendu dès que la lecture est effectivement partie.
+            if (patient && autoPlay) setTimeout(activerSon, 700);
             resolve(ev.target);
+          },
+          onStateChange: function (ev) {
+            // 1 = en lecture. Nouvelle tentative de rétablir le son, au cas
+            // où la première est arrivée trop tôt.
+            if (patient && ev && ev.data === 1) setTimeout(activerSon, 200);
           }
         }
       });
