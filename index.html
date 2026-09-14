@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase22-1"></script>
+  <script src="api-client.js?v=phase22-2"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase22-1"></script>
+  <script src="questionnaires-defs.js?v=phase22-2"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase22-1"></script>
+  <script src="medical-parsers.js?v=phase22-2"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase22-1"></script>
+  <script src="cpet-graph-preview.js?v=phase22-2"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase22-1"></script>
-  <script src="medical-record-ui.js?v=phase22-1"></script>
+  <script src="pdf-extractor.js?v=phase22-2"></script>
+  <script src="medical-record-ui.js?v=phase22-2"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase22-1"></script>
+  <script src="aortic-consultations.js?v=phase22-2"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase22-1"></script>
-  <script src="visio-jitsi.js?v=phase22-1"></script>
+  <script src="document-import.js?v=phase22-2"></script>
+  <script src="visio-jitsi.js?v=phase22-2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4302,6 +4302,7 @@
               </div>
               <div style="padding:12px 16px; background:rgba(11,21,48,0.96); border-top:1px solid rgba(255,255,255,0.08); display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                 <button class="btn-light" style="padding:8px 13px; font-size:12px;" onclick="visioBasculerMosaique()" id="visioMosaiqueBtn">🔲 Vue mosaïque</button>
+                <span id="visioPartageEtat" style="padding:6px 12px; border-radius:99px; font-size:11.5px; font-weight:800; background:rgba(148,163,184,.18); color:#94a3b8;">⚪ Vidéo non partagée</span>
                 <span style="color:#94a3b8; font-size:11.5px; margin-left:auto;" id="visioSessionStatus">Session non démarrée</span>
               </div>
             </div>
@@ -10553,7 +10554,8 @@
             visioState.participantsReels = nb;
             const el = $('visioConnectedCount');
             if (el) el.textContent = nb + (nb > 1 ? ' patients' : ' patient');
-          }
+          },
+          onPartageEcran: majTemoinPartage
         });
         if ($('visioSessionStatus')) {
           $('visioSessionStatus').textContent =
@@ -10971,13 +10973,47 @@
     });
   };
 
+  /**
+   * Témoin d'état du partage. Il répond à la seule question qui compte au
+   * moment de lancer l'exercice : est-ce que mes patients voient la vidéo ?
+   */
+  window.majTemoinPartage = function (actif) {
+    const t = $('visioPartageEtat');
+    if (!t) return;
+    if (actif) {
+      t.textContent = '🔴 Vidéo partagée aux patients';
+      t.style.background = 'rgba(220,38,38,.18)';
+      t.style.color = '#fca5a5';
+    } else {
+      t.textContent = '⚪ Vidéo non partagée';
+      t.style.background = 'rgba(148,163,184,.18)';
+      t.style.color = '#94a3b8';
+    }
+  };
+
   window.visioLancerPartageEcran = function () {
     const m = $('visioEcranModal');
     if (m) m.remove();
+    // Si un partage tourne déjà, « toggle » l'arrêterait au lieu d'en ouvrir
+    // un nouveau — le soignant croirait avoir changé de vidéo alors qu'il
+    // vient de couper la diffusion.
+    if (window.VisioJitsi.partageEnCours && window.VisioJitsi.partageEnCours()) {
+      toast("🖥 Un partage est déjà en cours. Arrêtez-le d'abord depuis la barre Chrome " +
+            "(« Ne plus partager »), puis relancez.", 'info', 9000);
+      return;
+    }
     try {
       window.VisioJitsi.partagerEcran();
-      toast("🖥 Partage lancé. Lancez la lecture dans l'onglet de la vidéo — " +
-            "vos patients la voient en direct.", 'success', 9000);
+      toast("🖥 Choisissez l'onglet de la vidéo dans la fenêtre de Chrome, " +
+            "puis allez y lancer la lecture.", 'info', 9000);
+      // Vérification à froid : si rien n'est diffusé 8 s plus tard, c'est que
+      // la fenêtre de sélection a été fermée ou le mauvais élément choisi.
+      setTimeout(() => {
+        if (window.VisioJitsi.partageEnCours && !window.VisioJitsi.partageEnCours()) {
+          toast("⚠ Aucun partage détecté. Recliquez sur « Partager l'onglet de la vidéo » " +
+                "et sélectionnez bien l'onglet du lecteur dans la liste.", 'error', 11000);
+        }
+      }, 8000);
     } catch (e) { alert(e.message); }
   };
 

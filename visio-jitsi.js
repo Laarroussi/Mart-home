@@ -65,6 +65,7 @@
   let _api = null;
   let _salle = null;
   let _scriptCharge = false;
+  let _partageActif = false;
 
   /** Charge la bibliothèque Jitsi à la demande, une seule fois */
   function chargerScript() {
@@ -297,9 +298,20 @@
       if (typeof options.onRejoint === 'function') options.onRejoint(_salle);
     });
     // Remonte les erreurs de la conférence plutôt que de laisser un écran noir
-    ['errorOccurred', 'cameraError', 'micError'].forEach(ev => {
+    ['errorOccurred', 'cameraError', 'micError', 'screenSharingStatusChanged'].forEach(ev => {
       try { _api.addListener(ev, d => console.warn('[visio] ' + ev, d)); } catch (_) {}
     });
+
+    // État réel du partage d'écran. Sans ce retour, rien à l'écran ne distingue
+    // « je crois partager » de « je partage vraiment » : c'est en séance de
+    // groupe la différence entre un exercice suivi et vingt patients qui
+    // attendent devant une image figée.
+    try {
+      _api.addListener('screenSharingStatusChanged', d => {
+        _partageActif = !!(d && d.on);
+        if (typeof options.onPartageEcran === 'function') options.onPartageEcran(_partageActif);
+      });
+    } catch (_) {}
 
     // Filet de sécurité : si rien ne s'affiche au bout de 45 secondes,
     // on propose d'ouvrir la salle dans un onglet séparé — certaines
@@ -342,7 +354,11 @@
       _api = null;
     }
     _salle = null;
+    _partageActif = false;
   }
+
+  /** true si un partage d'écran est effectivement diffusé aux participants */
+  function partageEnCours() { return _partageActif; }
 
   function nomSalle() { return _salle; }
   function estActif() { return !!_api; }
@@ -405,7 +421,7 @@
   window.VisioJitsi = {
     rejoindre, quitter, nomSalle, estActif, lienSalle, construireNomSalle,
     partagerVideo, arreterPartageVideo, partagerEcran, participants, vueMosaique,
-    diagnostic,
+    diagnostic, partageEnCours,
     get domaine() { return DOMAINE; }
   };
 })();
