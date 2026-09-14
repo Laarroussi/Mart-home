@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase21-2"></script>
+  <script src="api-client.js?v=phase21-3"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase21-2"></script>
+  <script src="questionnaires-defs.js?v=phase21-3"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase21-2"></script>
+  <script src="medical-parsers.js?v=phase21-3"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase21-2"></script>
+  <script src="cpet-graph-preview.js?v=phase21-3"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase21-2"></script>
-  <script src="medical-record-ui.js?v=phase21-2"></script>
+  <script src="pdf-extractor.js?v=phase21-3"></script>
+  <script src="medical-record-ui.js?v=phase21-3"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase21-2"></script>
+  <script src="aortic-consultations.js?v=phase21-3"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase21-2"></script>
-  <script src="visio-jitsi.js?v=phase21-2"></script>
+  <script src="document-import.js?v=phase21-3"></script>
+  <script src="visio-jitsi.js?v=phase21-3"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2603,36 +2603,19 @@
       </section>
 
       <nav class="patient-tabs" role="tablist">
-        <button class="patient-tab active" data-pat-tab="pat-questionnaires">📨 Mes questionnaires <span id="patNotifCount" style="background:#f43f5e; color:white; padding:1px 7px; border-radius:99px; font-size:10.5px; font-weight:800;"></span></button>
-        <button class="patient-tab" data-pat-tab="pat-visio">🎥 Séance en visio</button>
+        <!-- L'onglet « Mes questionnaires » a été retiré : les questionnaires
+             s'imposent en plein écran à la connexion et les réponses sont
+             consultables dans « Mes données ». Un onglet de plus n'apportait
+             rien et détournait le patient de la séance. -->
+        <button class="patient-tab active" data-pat-tab="pat-visio">🎥 Séance en visio</button>
         <button class="patient-tab" data-pat-tab="pat-training">🏃 Entraînement avec vidéo</button>
         <button class="patient-tab" data-pat-tab="pat-free-training">🏃 Entraînement libre</button>
         <button class="patient-tab" data-pat-tab="pat-education">📚 Éducation thérapeutique</button>
         <button class="patient-tab" data-pat-tab="pat-progress">📊 Mes données</button>
       </nav>
 
-      <!-- ===== PANEL : QUESTIONNAIRES ===== -->
-      <section class="patient-panel active" id="pat-questionnaires">
-        <div class="pat-grid-2">
-          <article class="pat-card">
-            <h3>Questionnaires à compléter</h3>
-            <p>Les questionnaires envoyés par votre équipe médicale apparaissent ici. Vos réponses sont enregistrées dans votre dossier.</p>
-            <div id="patQuestionnaireList"></div>
-          </article>
-          <aside class="pat-card" style="background:linear-gradient(135deg, #ecfdf5, #f0fdfa);">
-            <h3>💡 Rappels</h3>
-            <ul style="padding-left:18px; color:#163533; font-size:13px; line-height:1.7;">
-              <li><b>SF-36 :</b> qualité de vie, à renseigner à l'inclusion et lors des évaluations principales.</li>
-              <li><b>GPAQ :</b> activité physique hebdomadaire (travail, déplacements, loisirs, sédentarité).</li>
-              <li><b>Capsules :</b> questionnaire <b>diagnostique</b> avant la vidéo puis <b>sommatif</b> après.</li>
-              <li><b>Borg CR10 :</b> utilisé pendant et après chaque séance.</li>
-            </ul>
-          </aside>
-        </div>
-      </section>
-
       <!-- ===== PANEL : VISIO ===== -->
-      <section class="patient-panel" id="pat-visio">
+      <section class="patient-panel active" id="pat-visio">
         <!-- Phase 19 : accès permanent à la salle.
              Auparavant le bouton « Rejoindre » vivait DANS la zone vidéo,
              que l'affichage des séances programmées remplaçait : sans séance
@@ -11113,11 +11096,13 @@
     if ($('patName')) $('patName').textContent = 'Patient ' + p.id;
     if ($('patSub')) $('patSub').textContent = `${p.sex} · ${p.age} ans · ${p.gene} · ${p.evaluations.length} évaluations enregistrées`;
 
-    // Active tab
+    // Onglet ouvert par défaut : la séance en visio, qui est ce que le patient
+    // vient faire. Les questionnaires s'affichent d'eux-mêmes en plein écran
+    // lorsqu'il en reste à remplir.
     document.querySelectorAll('.patient-tab').forEach(b => {
-      b.classList.toggle('active', b.dataset.patTab === 'pat-questionnaires');
+      b.classList.toggle('active', b.dataset.patTab === 'pat-visio');
     });
-    document.querySelectorAll('.patient-panel').forEach(pa => pa.classList.toggle('active', pa.id === 'pat-questionnaires'));
+    document.querySelectorAll('.patient-panel').forEach(pa => pa.classList.toggle('active', pa.id === 'pat-visio'));
 
     renderPatientQuestionnaires();
     renderPatientEducation();
