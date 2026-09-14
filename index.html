@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase21-6"></script>
+  <script src="api-client.js?v=phase22-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase21-6"></script>
+  <script src="questionnaires-defs.js?v=phase22-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase21-6"></script>
+  <script src="medical-parsers.js?v=phase22-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase21-6"></script>
+  <script src="cpet-graph-preview.js?v=phase22-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase21-6"></script>
-  <script src="medical-record-ui.js?v=phase21-6"></script>
+  <script src="pdf-extractor.js?v=phase22-0"></script>
+  <script src="medical-record-ui.js?v=phase22-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase21-6"></script>
+  <script src="aortic-consultations.js?v=phase22-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase21-6"></script>
-  <script src="visio-jitsi.js?v=phase21-6"></script>
+  <script src="document-import.js?v=phase22-0"></script>
+  <script src="visio-jitsi.js?v=phase22-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2837,13 +2837,11 @@
         </button>
 
         <div class="nav-section">Séance</div>
-        <button class="tab-button" data-tab="training">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-          Entraînement + Visio
-        </button>
+        <!-- « Entraînement + Visio » et « Salle visio » fusionnés : une seule
+             page de séance, un seul endroit où aller. -->
         <button class="tab-button" data-tab="visio">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          Salle visio
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          Séance de groupe
         </button>
         <button class="tab-button" data-tab="education">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -4270,12 +4268,12 @@
       <section id="visio" class="tab-panel hidden" style="padding-bottom:90px;">
         <header class="page-header">
           <div>
-            <h2>Salle visio</h2>
+            <h2>Séance de groupe</h2>
           </div>
           <div class="actions">
             <button class="btn-light" onclick="visioDiagnostic()" title="Vérifier la configuration de la visioconférence">🩺 Diagnostic</button>
             <button class="btn-light" onclick="visioCopierLien()" title="Copier le lien de la salle">🔗 Lien</button>
-            <button class="btn-light" onclick="visioStartSession()">▶ Démarrer séance</button>
+            <button class="btn-light" onclick="visioStartSession()">▶ Démarrer la séance</button>
             <button class="btn-danger" onclick="visioEndSession()">⏹ Terminer</button>
           </div>
         </header>
@@ -4294,18 +4292,16 @@
                      mosaïque et plein écran. Les doublons encombraient l'image. -->
                 <button class="btn-light" style="padding:6px 13px; font-size:11.5px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border:none; font-weight:700;" onclick="visioPartagerEcran()" title="Partager l'écran : tous les patients voient votre vidéo au même instant">🖥 Partager la vidéo</button>
               </div>
-              <div id="visioSelfStage" style="flex:1; min-height:480px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px;">
+              <div id="visioSelfStage" style="flex:1; min-height:520px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px;">
                 <div style="font-size:64px; margin-bottom:12px;">🎥</div>
-                <strong style="font-family:'Sora',sans-serif; font-size:22px;">Votre caméra investigateur</strong>
-                <p style="color:#94a3b8; margin-top:10px; max-width:480px; line-height:1.6;">Dans la version finale connectée à Zoom / Jitsi / Daily.co, c'est votre flux vidéo (caméra ou partage d'écran avec la vidéo d'entraînement) qui sera diffusé aux patients.</p>
+                <strong style="font-family:'Sora',sans-serif; font-size:22px;">Salle de séance</strong>
+                <p style="color:#94a3b8; margin-top:10px; max-width:480px; line-height:1.6;">Démarrez la séance : vos patients apparaîtront ici en mosaïque, chacun visible pendant qu'il réalise l'exercice.</p>
                 <div style="display:flex; gap:8px; margin-top:18px;">
-                  <button class="btn-gradient" onclick="visioStartSession()">▶ Démarrer ma caméra</button>
-                  <button class="btn-light" onclick="switchMainTab('training')">📺 Partager une vidéo d'entraînement</button>
+                  <button class="btn-gradient" onclick="visioStartSession()">▶ Démarrer la séance</button>
                 </div>
               </div>
               <div style="padding:12px 16px; background:rgba(11,21,48,0.96); border-top:1px solid rgba(255,255,255,0.08); display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                <button class="btn-light" style="padding:8px 13px; font-size:12px;" onclick="visioToggleMic()" id="visioMicBtn">🎙 Micro activé</button>
-                <button class="btn-light" style="padding:8px 13px; font-size:12px;" onclick="alert('Chat investigateur à venir')">💬 Chat groupe</button>
+                <button class="btn-light" style="padding:8px 13px; font-size:12px;" onclick="visioBasculerMosaique()" id="visioMosaiqueBtn">🔲 Vue mosaïque</button>
                 <span style="color:#94a3b8; font-size:11.5px; margin-left:auto;" id="visioSessionStatus">Session non démarrée</span>
               </div>
             </div>
@@ -4340,31 +4336,26 @@
                 </div>
               </div>
             </div>
-            <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line);">
-              <div style="font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Vue grille</div>
-              <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                <button class="card-pill active" data-grid-size="6" onclick="setVisioGridSize(this, 'repeat(3, 1fr)')">3×</button>
-                <button class="card-pill" data-grid-size="4" onclick="setVisioGridSize(this, 'repeat(4, 1fr)')">4×</button>
-                <button class="card-pill" data-grid-size="5" onclick="setVisioGridSize(this, 'repeat(5, 1fr)')">5×</button>
-              </div>
-            </div>
           </article>
         </div>
 
-        <!-- Grille des participants — chaque vignette = vidéo simulée + overlay physio -->
+        <!-- ===== Vidéo d'entraînement : ouvrir puis partager =====
+             Fusion des anciens onglets « Salle visio » et « Entraînement + Visio ».
+             La vidéo s'ouvre dans un onglet séparé, que l'on partage : les patients
+             voient l'exercice, jamais le contenu de cette page — donc jamais les
+             dossiers ni les mesures des autres. -->
         <article class="card" style="padding:18px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:10px;">
             <div>
-              <h3 style="font-size:15px; font-weight:800;">👥 Patients en visio — flux vidéo + paramètres physiologiques en direct</h3>
-              <p style="color:var(--muted); font-size:12.5px; margin-top:3px;">Vous voyez chaque patient et ses données vitales en temps réel. Cliquez sur une vignette pour agrandir.</p>
+              <h3 style="font-size:15px; font-weight:800;">🎬 Vidéo d'entraînement</h3>
+              <p style="color:var(--muted); font-size:12.5px; margin-top:3px;">
+                Cliquez une vidéo : elle s'ouvre dans un onglet séparé, en pause.
+                Partagez ensuite cet onglet — la lecture démarre alors chez tous vos patients en même temps.
+              </p>
             </div>
-            <div style="display:flex; gap:6px;">
-              <button class="btn-light" onclick="visioFilterParticipants('all')">Tous (20)</button>
-              <button class="btn-light" onclick="visioFilterParticipants('connected')" style="background:var(--emerald-soft); color:#065f46; border-color:#a7f3d0;">Connectés</button>
-              <button class="btn-light" onclick="visioFilterParticipants('alert')" style="background:var(--rose-soft); color:#9a3412; border-color:#fecaca;">⚠ Alertes</button>
-            </div>
+            <button class="btn-light" style="background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border:none; font-weight:700;" onclick="visioPartagerEcran()">🖥 Partager l'onglet de la vidéo</button>
           </div>
-          <div id="visioParticipantGrid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px;"></div>
+          <div id="seanceVideoStrip" style="display:flex; gap:10px; overflow-x:auto; padding:12px 2px 4px;"></div>
         </article>
       </section>
 
@@ -5419,6 +5410,10 @@
   // === NAVIGATION
   // ============================================================
   function switchMainTab(tabId) {
+    // Les deux onglets « Entraînement + Visio » et « Salle visio » faisaient
+    // la même chose à moitié chacun. Ils sont fusionnés en une seule page de
+    // séance ; tout appel à l'ancien identifiant y est redirigé.
+    if (tabId === 'training') tabId = 'visio';
     const titles = {
       accueil: ['Résumé de cohorte', 'Synthèse agrégée sans affichage individuel des patients.'],
       accounts: ['Gestion des comptes', 'Création et suivi des comptes Administrateur, Investigateur principal, Investigateur et Patient.'],
@@ -5426,8 +5421,8 @@
       'invest-account': ['Création compte investigateur', 'Création d\'un compte avec rôle Investigateur — réservé à l\'Administrateur principal.'],
       dossier: ['Consultation dossier patient', 'Évaluations longitudinales et comparaisons ouvertes.'],
       database: ['Base de données', 'Vue longitudinale ou large, structure dynamique.'],
-      training: ['Entraînement + Visio', 'Vidéo de séance, partage écran et participants visibles.'],
-      visio: ['Salle visio', 'Gestion simple de la visioconférence.'],
+      training: ['Séance de groupe', 'Patients en visio, vidéo d\'entraînement partagée et suivi physiologique.'],
+      visio: ['Séance de groupe', 'Patients en visio, vidéo d\'entraînement partagée et suivi physiologique.'],
       education: ['Éducation thérapeutique', 'Capsules courtes pour accompagner les patients.'],
       listing: ['Listing patients', 'Vue tabulaire compacte.'],
       stats: ['Statistiques', 'Analyses de groupe et exports.'],
@@ -5445,7 +5440,7 @@
     if (tabId === 'training') renderParticipantGrid();
     if (tabId === 'database') renderDbTable();
     if (tabId === 'creation') initCreationForm();
-    if (tabId === 'visio') { patients.forEach(p => initParticipantState(p)); renderVisioGrid(); }
+    if (tabId === 'visio') { patients.forEach(p => initParticipantState(p)); renderSeanceVideos(); }
   }
 
   function setSelectedPatient(patientId) {
@@ -10986,6 +10981,38 @@
     } catch (e) { alert(e.message); }
   };
 
+  /**
+   * Bande des vidéos d'entraînement, sur la page de séance.
+   * Un clic ouvre la vidéo dans un onglet séparé : c'est cet onglet que l'on
+   * partage, jamais celui de la plateforme — sans quoi les patients verraient
+   * les dossiers et les mesures affichés à l'écran.
+   */
+  window.renderSeanceVideos = function () {
+    const bande = $('seanceVideoStrip');
+    if (!bande) return;
+    const liste = (typeof trainingVideos !== 'undefined' && trainingVideos.length) ? trainingVideos : [];
+    if (!liste.length) {
+      bande.innerHTML = '<div style="padding:16px; color:#94a3b8; font-size:12.5px; font-style:italic;">Aucune vidéo enregistrée. Ajoutez-en avec le bouton « + Ajouter vidéo YouTube ».</div>';
+      return;
+    }
+    bande.innerHTML = liste.map(v => `
+      <button data-seance-yid="${v.id}" title="Ouvrir dans un onglet séparé"
+        style="flex:0 0 auto; width:172px; border:1px solid var(--line); background:white; border-radius:11px; padding:0; overflow:hidden; cursor:pointer; text-align:left; font-family:inherit;">
+        <img src="https://img.youtube.com/vi/${v.id}/mqdefault.jpg" alt=""
+             style="width:100%; height:96px; object-fit:cover; display:block;">
+        <span style="display:block; padding:8px 9px 9px;">
+          <span style="display:block; font-size:12px; font-weight:700; color:#0b1530; line-height:1.35; max-height:32px; overflow:hidden;">${(v.title || '').replace(/</g, '&lt;')}</span>
+          <span style="display:block; font-size:10.5px; color:#f97316; font-weight:700; margin-top:4px;">Ouvrir ↗</span>
+        </span>
+      </button>`).join('');
+    bande.querySelectorAll('[data-seance-yid]').forEach(b => {
+      b.addEventListener('click', () => {
+        window.open('https://www.youtube.com/watch?v=' + b.dataset.seanceYid, '_blank', 'noopener');
+        toast("▶️ Vidéo ouverte dans un onglet. Laissez-la en pause, puis cliquez sur « Partager l'onglet de la vidéo ».", 'info', 9000);
+      });
+    });
+  };
+
   // Vue mosaïque : voir tous les patients côte à côte pendant l'exercice
   let _visioMosaique = false;
   function majBoutonMosaique() {
@@ -11894,6 +11921,7 @@
         try {
           if (typeof initTrainingFilters === 'function') initTrainingFilters();
           if (typeof renderTrainingVideos === 'function') renderTrainingVideos();
+          if (typeof renderSeanceVideos === 'function') renderSeanceVideos();
           if (typeof selectTrainingVideo === 'function' && trainingVideos[0]) selectTrainingVideo(trainingVideos[0].id);
         } catch (e) { console.warn('Re-render vidéos après chargement API :', e); }
 
