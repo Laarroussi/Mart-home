@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase22-0"></script>
+  <script src="api-client.js?v=phase22-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase22-0"></script>
+  <script src="questionnaires-defs.js?v=phase22-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase22-0"></script>
+  <script src="medical-parsers.js?v=phase22-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase22-0"></script>
+  <script src="cpet-graph-preview.js?v=phase22-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase22-0"></script>
-  <script src="medical-record-ui.js?v=phase22-0"></script>
+  <script src="pdf-extractor.js?v=phase22-1"></script>
+  <script src="medical-record-ui.js?v=phase22-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase22-0"></script>
+  <script src="aortic-consultations.js?v=phase22-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase22-0"></script>
-  <script src="visio-jitsi.js?v=phase22-0"></script>
+  <script src="document-import.js?v=phase22-1"></script>
+  <script src="visio-jitsi.js?v=phase22-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -10956,18 +10956,18 @@
         </div>
       </div>`);
 
-    const ouvrir = (url) => {
-      window.open(url, '_blank', 'noopener');
-      toast("▶️ Vidéo ouverte dans un nouvel onglet. Laissez-la en pause, puis revenez partager l'onglet.", 'info', 8000);
-    };
     document.querySelectorAll('#visioEcranModal [data-yid]').forEach(b => {
-      b.addEventListener('click', () => ouvrir('https://www.youtube.com/watch?v=' + b.dataset.yid));
+      b.addEventListener('click', () => ouvrirLecteurPropre(b.dataset.yid, b.dataset.titre));
     });
     const btnU = $('visioEcranUrlBtn');
     if (btnU) btnU.addEventListener('click', () => {
       const u = (($('visioEcranUrl') || {}).value || '').trim();
       if (!u) { alert('Collez une adresse de vidéo.'); return; }
-      ouvrir(u);
+      // On extrait l'identifiant pour passer par notre lecteur, plutôt que
+      // d'ouvrir youtube.com et ses suggestions.
+      const m = u.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{6,20})/);
+      if (!m) { alert("Adresse YouTube non reconnue.\n\nExemple attendu :\nhttps://www.youtube.com/watch?v=XXXXXXXXXXX"); return; }
+      ouvrirLecteurPropre(m[1], null);
     });
   };
 
@@ -10996,7 +10996,7 @@
       return;
     }
     bande.innerHTML = liste.map(v => `
-      <button data-seance-yid="${v.id}" title="Ouvrir dans un onglet séparé"
+      <button data-seance-yid="${v.id}" data-seance-titre="${(v.title || '').replace(/"/g, '&quot;')}" title="Ouvrir dans un onglet séparé"
         style="flex:0 0 auto; width:172px; border:1px solid var(--line); background:white; border-radius:11px; padding:0; overflow:hidden; cursor:pointer; text-align:left; font-family:inherit;">
         <img src="https://img.youtube.com/vi/${v.id}/mqdefault.jpg" alt=""
              style="width:100%; height:96px; object-fit:cover; display:block;">
@@ -11007,10 +11007,25 @@
       </button>`).join('');
     bande.querySelectorAll('[data-seance-yid]').forEach(b => {
       b.addEventListener('click', () => {
-        window.open('https://www.youtube.com/watch?v=' + b.dataset.seanceYid, '_blank', 'noopener');
-        toast("▶️ Vidéo ouverte dans un onglet. Laissez-la en pause, puis cliquez sur « Partager l'onglet de la vidéo ».", 'info', 9000);
+        ouvrirLecteurPropre(b.dataset.seanceYid, b.dataset.seanceTitre);
       });
     });
+  };
+
+  /**
+   * Ouvre la vidéo dans « lecteur.html », une page de notre domaine qui
+   * n'affiche que le lecteur sur fond noir.
+   *
+   * Ouvrir youtube.com faisait apparaître les suggestions d'autres chaînes
+   * autour de la vidéo. Pendant une séance de groupe, ces vignettes sont
+   * projetées à tous les patients : des contenus que personne n'a choisis.
+   */
+  window.ouvrirLecteurPropre = function (youtubeId, titre) {
+    if (!youtubeId) { alert('Vidéo introuvable.'); return; }
+    const url = 'lecteur.html?v=' + encodeURIComponent(youtubeId) +
+                (titre ? '&t=' + encodeURIComponent(titre) : '');
+    window.open(url, '_blank', 'noopener');
+    toast("▶️ Vidéo ouverte dans un onglet propre. Laissez-la en pause, puis cliquez sur « Partager l'onglet de la vidéo ».", 'info', 9000);
   };
 
   // Vue mosaïque : voir tous les patients côte à côte pendant l'exercice

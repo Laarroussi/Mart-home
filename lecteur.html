@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Vidéo d'entraînement — Marfan APA</title>
+  <!--
+    Page de lecture destinée au PARTAGE D'ÉCRAN pendant une séance de groupe.
+
+    Pourquoi cette page existe :
+    ouvrir youtube.com affichait autour du lecteur les vidéos suggérées
+    d'autres chaînes. Projetées à des patients pendant une séance de soin,
+    ce sont des contenus non maîtrisés. Cette page n'affiche que la vidéo
+    demandée, sur fond noir, et rien d'autre.
+
+    Elle est volontairement autonome : aucun script de la plateforme, donc
+    aucune donnée patient ne peut y apparaître, même par erreur. C'est cet
+    onglet que l'on partage — jamais celui de la plateforme.
+  -->
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; background: #000; overflow: hidden;
+                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { display: flex; flex-direction: column; }
+    header {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
+      padding: 9px 16px; background: #0b1530; color: #fff;
+    }
+    header .pastille {
+      width: 9px; height: 9px; border-radius: 50%; background: #14b8a6; flex: 0 0 auto;
+    }
+    header h1 { font-size: 13.5px; font-weight: 700; letter-spacing: .2px;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    header span { margin-left: auto; font-size: 11px; color: #94a3b8; white-space: nowrap; }
+    #scene { flex: 1; min-height: 0; position: relative; background: #000; }
+    #scene iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    #vide { display: flex; height: 100%; align-items: center; justify-content: center;
+            color: #64748b; font-size: 14px; text-align: center; padding: 30px; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="pastille"></span>
+    <h1 id="titre">Vidéo d'entraînement</h1>
+    <span>Marfan APA</span>
+  </header>
+  <div id="scene"><div id="vide">Aucune vidéo indiquée.</div></div>
+
+  <script>
+    (function () {
+      'use strict';
+      var params = new URLSearchParams(window.location.search);
+      var id = (params.get('v') || '').trim();
+      var titre = (params.get('t') || '').trim();
+
+      // Un identifiant YouTube ne contient que des lettres, chiffres, - et _.
+      // Ce filtre empêche qu'une adresse fabriquée fasse charger autre chose.
+      if (!/^[A-Za-z0-9_-]{6,20}$/.test(id)) return;
+
+      if (titre) document.getElementById('titre').textContent = titre;
+      document.title = (titre || 'Vidéo') + " — Marfan APA";
+
+      // rel=0            : pas de suggestions d'autres chaînes
+      // iv_load_policy=3 : pas d'annotations superposées
+      // playsinline=1    : reste dans la page sur mobile
+      // fs=0             : pas de plein écran système — il change la surface
+      //                    capturée et rend l'image floue chez les patients
+      var src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(id) +
+                '?rel=0&playsinline=1&iv_load_policy=3&fs=0&modestbranding=1&color=white';
+
+      var cadre = document.createElement('iframe');
+      cadre.src = src;
+      cadre.title = titre || "Vidéo d'entraînement";
+      cadre.setAttribute('allow', 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture');
+      var scene = document.getElementById('scene');
+      scene.innerHTML = '';
+      scene.appendChild(cadre);
+    })();
+  </script>
+</body>
+</html>
