@@ -38,19 +38,29 @@
   let DOMAINE = DOMAINE_JAAS;
   let SCRIPT = 'https://' + DOMAINE + '/external_api.js';
 
-  let _jaas = null;     // { token, app_id, moderateur } une fois récupéré
+  let _jaas = null;       // { token, app_id, moderateur } une fois récupéré
+  let _jetonErreur = null; // raison précise de l'échec, affichée à l'écran
 
   /** Demande au serveur un jeton d'accès signé pour l'utilisateur connecté */
   async function obtenirJeton() {
-    if (!window.MarfanAPI || !window.MarfanAPI.visioJaas) return null;
+    _jetonErreur = null;
+    if (!window.MarfanAPI || !window.MarfanAPI.visioJaas) {
+      _jetonErreur = "Le module d'accès au serveur n'est pas chargé (api-client.js).";
+      return null;
+    }
     try {
       const r = await window.MarfanAPI.visioJaas.token();
       if (r && r.token && r.app_id) return r;
+      _jetonErreur = "Le serveur a répondu sans jeton ni identifiant d'application.";
     } catch (e) {
-      console.warn('[visio] jeton JaaS indisponible :', e && e.message);
+      _jetonErreur = (e && e.message) ? e.message : 'Erreur inconnue.';
+      console.warn('[visio] jeton JaaS indisponible :', _jetonErreur);
     }
     return null;
   }
+
+  /** Dernière raison connue d'un échec de jeton (diagnostic) */
+  function diagnostic() { return _jetonErreur; }
 
   let _api = null;
   let _salle = null;
@@ -154,13 +164,20 @@
     // l'identifiant stable du participant. Sans lui, on bascule sur le
     // serveur public, qui ne permettra pas d'ouvrir la salle.
     _jaas = await obtenirJeton();
-    if (_jaas) {
-      DOMAINE = DOMAINE_JAAS;
-    } else {
-      DOMAINE = DOMAINE_LIBRE;
-      console.warn('[visio] Aucun jeton : repli sur ' + DOMAINE_LIBRE +
-                   ' (la salle risque de rester en attente de modérateur).');
+    if (!_jaas) {
+      // Auparavant on basculait ici sur meet.jit.si. C'était trompeur : le
+      // serveur public exige un modérateur authentifié, la salle affichait
+      // « La conférence n'a pas encore commencé » et PERSONNE — pas même le
+      // soignant — ne pouvait activer sa caméra. Mieux vaut dire pourquoi.
+      conteneur.innerHTML = '';
+      throw new Error(
+        "La visioconférence n'est pas configurée sur le serveur.\n\n" +
+        "Détail : " + (_jetonErreur || 'jeton refusé') + "\n\n" +
+        "Vérifiez dans le fichier .env du serveur les valeurs JAAS_APP_ID, " +
+        "JAAS_KID et JAAS_PRIVATE_KEY_PATH, puis redémarrez l'application Node."
+      );
     }
+    DOMAINE = DOMAINE_JAAS;
     SCRIPT = 'https://' + DOMAINE + '/external_api.js';
 
     await chargerScript();
@@ -379,6 +396,7 @@
   window.VisioJitsi = {
     rejoindre, quitter, nomSalle, estActif, lienSalle, construireNomSalle,
     partagerVideo, arreterPartageVideo, partagerEcran, participants, vueMosaique,
+    diagnostic,
     get domaine() { return DOMAINE; }
   };
 })();
