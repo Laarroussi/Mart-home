@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase21-5"></script>
+  <script src="api-client.js?v=phase21-6"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase21-5"></script>
+  <script src="questionnaires-defs.js?v=phase21-6"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase21-5"></script>
+  <script src="medical-parsers.js?v=phase21-6"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase21-5"></script>
+  <script src="cpet-graph-preview.js?v=phase21-6"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase21-5"></script>
-  <script src="medical-record-ui.js?v=phase21-5"></script>
+  <script src="pdf-extractor.js?v=phase21-6"></script>
+  <script src="medical-record-ui.js?v=phase21-6"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase21-5"></script>
+  <script src="aortic-consultations.js?v=phase21-6"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase21-5"></script>
-  <script src="visio-jitsi.js?v=phase21-5"></script>
+  <script src="document-import.js?v=phase21-6"></script>
+  <script src="visio-jitsi.js?v=phase21-6"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4235,9 +4235,8 @@
               <div class="video-preview" id="videoPreview"><strong>Sélectionnez une vidéo</strong><p>La vidéo apparaîtra ici pour préparer le partage d'écran.</p></div>
               <div class="studio-toolbar">
                 <button onclick="openSelectedVideoFullScreen()">🖥️ Ouvrir en grand</button>
-                <button onclick="alert('Partager écran via Zoom/Meet/Teams')">📡 Partage écran</button>
-                <button onclick="alert('Pause séance')">⏸️ Pause</button>
-                <button onclick="alert('Fin de séance')">⏹️ Terminer</button>
+                <button onclick="visioPartagerEcran()">📡 Partage écran</button>
+                <button onclick="fermerCinema()">⏹️ Fermer le grand écran</button>
               </div>
             </div>
             <div class="coach-panel">
@@ -8571,11 +8570,58 @@
 
   function selectTrainingVideo(videoId) {
     selectedTrainingVideo = trainingVideos.find(v => v.id === videoId) || trainingVideos[0];
-    $('videoPreview').innerHTML = `<iframe src="https://www.youtube.com/embed/${selectedTrainingVideo.id}?rel=0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen title="${selectedTrainingVideo.title}"></iframe>`;
+    // fs=0 : pas de bouton plein écran YouTube — il déclencherait le plein
+    // écran système, qui rend l'image floue chez les patients pendant le
+    // partage. « Ouvrir en grand » fait la même chose proprement.
+    $('videoPreview').innerHTML = `<iframe src="https://www.youtube.com/embed/${selectedTrainingVideo.id}?rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&fs=0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" title="${selectedTrainingVideo.title}"></iframe>`;
     renderTrainingVideos();
   }
 
-  function openSelectedVideoFullScreen() { window.open(`https://www.youtube.com/watch?v=${selectedTrainingVideo.id}`, '_blank'); }
+  /**
+   * « Ouvrir en grand » — mode cinéma DANS la page.
+   *
+   * Deux raisons de ne pas ouvrir youtube.com ni le plein écran du système :
+   *
+   *  1. Sur YouTube, les vidéos suggérées d'autres chaînes s'affichent autour
+   *     du lecteur. En séance de groupe, ce sont des contenus non maîtrisés
+   *     projetés à des patients — inacceptable dans un cadre de soin.
+   *
+   *  2. Le plein écran du système change la surface affichée par le navigateur
+   *     alors que le partage continue de capturer l'onglet à sa taille
+   *     d'origine. Le patient reçoit alors une image agrandie par
+   *     interpolation : c'est le flou constaté.
+   *
+   * Un agrandissement en CSS, à l'intérieur de l'onglet partagé, supprime les
+   * deux problèmes : rien d'étranger à l'écran, et l'image reste nette.
+   */
+  function openSelectedVideoFullScreen() {
+    if (!selectedTrainingVideo) { alert('Sélectionnez d\'abord une vidéo dans la bibliothèque.'); return; }
+    const old = document.getElementById('videoCinema');
+    if (old) old.remove();
+    // fs=0 retire le bouton plein écran de YouTube : il déclencherait le plein
+    // écran système, donc le flou côté patient.
+    const src = 'https://www.youtube.com/embed/' + selectedTrainingVideo.id +
+                '?rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&fs=0&autoplay=0';
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="videoCinema" style="position:fixed; inset:0; background:#000; z-index:10080; display:flex; flex-direction:column;">
+        <div style="flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:#0b1530; color:white;">
+          <strong style="font-size:14px; font-family:'Sora',sans-serif;">${(selectedTrainingVideo.title || 'Vidéo d\'entraînement').replace(/</g,'&lt;')}</strong>
+          <button onclick="fermerCinema()" style="border:none; background:rgba(255,255,255,.14); color:white; padding:7px 15px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer;">✕ Fermer</button>
+        </div>
+        <div style="flex:1; min-height:0;">
+          <iframe src="${src}" style="width:100%; height:100%; border:0; display:block;"
+            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+            title="Vidéo d'entraînement"></iframe>
+        </div>
+      </div>`);
+    document.addEventListener('keydown', _cinemaEchap);
+  }
+  function _cinemaEchap(e) { if (e.key === 'Escape') fermerCinema(); }
+  window.fermerCinema = function () {
+    const c = document.getElementById('videoCinema');
+    if (c) c.remove();
+    document.removeEventListener('keydown', _cinemaEchap);
+  };
   function resetTrainingFilters() { $('trainingVideoSearch').value = ''; $('trainingCategory').value = ''; $('trainingInterval').value = ''; renderTrainingVideos(); }
 
   // ============================================================
