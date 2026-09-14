@@ -12,22 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase21-3"></script>
+  <script src="api-client.js?v=phase21-4"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase21-3"></script>
+  <script src="questionnaires-defs.js?v=phase21-4"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase21-3"></script>
+  <script src="medical-parsers.js?v=phase21-4"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase21-3"></script>
+  <script src="cpet-graph-preview.js?v=phase21-4"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase21-3"></script>
-  <script src="medical-record-ui.js?v=phase21-3"></script>
+  <script src="pdf-extractor.js?v=phase21-4"></script>
+  <script src="medical-record-ui.js?v=phase21-4"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase21-3"></script>
+  <script src="aortic-consultations.js?v=phase21-4"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase21-3"></script>
-  <script src="visio-jitsi.js?v=phase21-3"></script>
+  <script src="document-import.js?v=phase21-4"></script>
+  <script src="visio-jitsi.js?v=phase21-4"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4293,7 +4293,7 @@
                 <!-- Un seul bouton conservé : la barre d'outils de Jitsi, en bas
                      de la vidéo, offre déjà caméra, micro, partage d'écran,
                      mosaïque et plein écran. Les doublons encombraient l'image. -->
-                <button class="btn-light" style="padding:6px 13px; font-size:11.5px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border:none; font-weight:700;" onclick="visioPartagerVideo()" title="Diffuser une vidéo d'entraînement à tous les participants">🎬 Diffuser une vidéo</button>
+                <button class="btn-light" style="padding:6px 13px; font-size:11.5px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border:none; font-weight:700;" onclick="visioPartagerEcran()" title="Partager l'écran : tous les patients voient votre vidéo au même instant">🖥 Partager la vidéo</button>
               </div>
               <div id="visioSelfStage" style="flex:1; min-height:480px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px;">
                 <div style="font-size:64px; margin-bottom:12px;">🎥</div>
@@ -10835,15 +10835,65 @@
    * Le partage d'écran retransmet l'image telle quelle : les patients voient
    * exactement ce que voit le soignant, au même instant, sans rien à toucher.
    */
+  /**
+   * Le son ne part QUE si le navigateur sait capturer l'audio d'un onglet.
+   * Chrome et Edge le savent ; Safari et Firefox ne le savent pas. Autant le
+   * dire avant le partage plutôt que de laisser découvrir une vidéo muette
+   * au milieu d'une séance de groupe.
+   */
+  function navigateurCaptureAudio() {
+    const ua = navigator.userAgent;
+    const estChrome = /Chrome\//.test(ua) && !/Edg\//.test(ua) && !/OPR\//.test(ua);
+    const estEdge = /Edg\//.test(ua);
+    return estChrome || estEdge;
+  }
+
   window.visioPartagerEcran = function () {
     if (!window.VisioJitsi || !window.VisioJitsi.estActif()) {
-      alert("Démarrez d'abord la séance.");
+      alert("Démarrez d'abord la séance, puis partagez la vidéo.");
       return;
     }
+    const audioOk = navigateurCaptureAudio();
+    const ancienne = $('visioEcranModal');
+    if (ancienne) ancienne.remove();
+
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="visioEcranModal" style="position:fixed; inset:0; background:rgba(11,21,48,.84); z-index:10070; display:flex; align-items:center; justify-content:center; padding:18px;">
+        <div style="background:white; border-radius:16px; width:560px; max-width:96vw; max-height:90vh; overflow-y:auto; box-shadow:0 26px 70px rgba(0,0,0,.35);">
+          <div style="padding:18px 22px; background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border-radius:16px 16px 0 0;">
+            <h3 style="margin:0; color:white; font-size:16px;">🖥 Partager la vidéo d'entraînement</h3>
+            <p style="margin:4px 0 0; font-size:12px; opacity:.94;">Tous les patients verront votre écran au même instant. Ils n'ont rien à lancer.</p>
+          </div>
+          <div style="padding:18px 22px;">
+            ${audioOk ? '' : `<div style="background:#fef2f2; border:1px solid #fecaca; border-left:4px solid #dc2626; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+              <strong style="display:block; font-size:13px; color:#991b1b; margin-bottom:3px;">Le son ne sera pas transmis</strong>
+              <span style="font-size:12.5px; color:#7f1d1d; line-height:1.55;">Ce navigateur ne sait pas capturer l'audio d'un onglet. Vos patients verraient la vidéo <b>sans le son</b>. Pour animer une séance, ouvrez la plateforme dans <b>Google Chrome</b>.</span>
+            </div>`}
+            <ol style="margin:0; padding-left:20px; font-size:13.5px; color:#1e293b; line-height:1.85;">
+              <li>Ouvrez votre vidéo d'entraînement dans <b>un autre onglet</b>, et mettez-la en pause au début.</li>
+              <li>Cliquez ci-dessous, puis choisissez <b>« Onglet Chrome »</b> — pas « Fenêtre », pas « Écran entier ».</li>
+              <li>Sélectionnez l'onglet de la vidéo${audioOk ? ', et <b style="color:#b45309;">cochez « Partager aussi l\'audio de l\'onglet »</b> en bas à gauche' : ''}.</li>
+              <li>Revenez à l'onglet de la vidéo et appuyez sur lecture : la séance démarre pour tout le monde.</li>
+            </ol>
+            <div style="background:#f0fdfa; border:1px solid #99f6e4; border-radius:10px; padding:11px 14px; margin-top:16px; font-size:12.5px; color:#115e59; line-height:1.55;">
+              💡 Partager <b>l'onglet</b> plutôt que l'écran entier préserve votre confidentialité : vos patients ne voient que la vidéo, jamais vos autres fenêtres ni vos dossiers.
+            </div>
+          </div>
+          <div style="padding:14px 22px 20px; display:flex; gap:10px; justify-content:flex-end;">
+            <button class="btn-light" onclick="document.getElementById('visioEcranModal').remove()">Annuler</button>
+            <button class="btn-gradient" onclick="visioLancerPartageEcran()">🖥 Choisir l'onglet à partager</button>
+          </div>
+        </div>
+      </div>`);
+  };
+
+  window.visioLancerPartageEcran = function () {
+    const m = $('visioEcranModal');
+    if (m) m.remove();
     try {
       window.VisioJitsi.partagerEcran();
-      toast("🖥 Sélectionnez <strong>l'onglet</strong> qui joue la vidéo, et cochez « Partager l'audio » " +
-            "pour que le son soit transmis.", 'info', 9000);
+      toast("🖥 Partage lancé. Lancez la lecture dans l'onglet de la vidéo — " +
+            "vos patients la voient en direct.", 'success', 9000);
     } catch (e) { alert(e.message); }
   };
 

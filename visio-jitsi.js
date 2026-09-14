@@ -237,7 +237,16 @@
         startAudioOnly: false,
         disableDeepLinking: true,
         enableWelcomePage: false,
-        defaultLanguage: 'fr'
+        defaultLanguage: 'fr',
+        // Le partage d'écran sert ici à diffuser une vidéo d'exercice : des
+        // corps en mouvement. Jitsi se limite par défaut à 5 images par
+        // seconde, ce qui convient à une présentation mais rend un mouvement
+        // saccadé — impossible de suivre un geste. On monte à 30.
+        desktopSharingFrameRate: { min: 15, max: 30 },
+        // Ne jamais proposer de couper le son du partage : la musique et les
+        // consignes de la vidéo font partie de la séance.
+        disableScreensharingVirtualBackground: true,
+        startScreenSharing: false
       },
       interfaceConfigOverwrite: {
         DEFAULT_BACKGROUND: '#020617',
