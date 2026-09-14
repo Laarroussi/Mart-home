@@ -12,22 +12,23 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase22-2"></script>
+  <script src="api-client.js?v=phase23-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase22-2"></script>
+  <script src="questionnaires-defs.js?v=phase23-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase22-2"></script>
+  <script src="medical-parsers.js?v=phase23-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase22-2"></script>
+  <script src="cpet-graph-preview.js?v=phase23-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase22-2"></script>
-  <script src="medical-record-ui.js?v=phase22-2"></script>
+  <script src="pdf-extractor.js?v=phase23-0"></script>
+  <script src="medical-record-ui.js?v=phase23-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase22-2"></script>
+  <script src="aortic-consultations.js?v=phase23-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase22-2"></script>
-  <script src="visio-jitsi.js?v=phase22-2"></script>
+  <script src="document-import.js?v=phase23-0"></script>
+  <script src="visio-jitsi.js?v=phase23-0"></script>
+  <script src="video-pilotee.js?v=phase23-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4350,12 +4351,17 @@
             <div>
               <h3 style="font-size:15px; font-weight:800;">🎬 Vidéo d'entraînement</h3>
               <p style="color:var(--muted); font-size:12.5px; margin-top:3px;">
-                Cliquez une vidéo : elle s'ouvre dans un onglet séparé, en pause.
-                Partagez ensuite cet onglet — la lecture démarre alors chez tous vos patients en même temps.
+                Cliquez une vidéo : elle démarre aussitôt chez tous vos patients connectés, en grand et avec le son.
+                Rien à partager, rien à sélectionner.
               </p>
             </div>
-            <button class="btn-light" style="background:linear-gradient(135deg,#f59e0b,#f97316); color:white; border:none; font-weight:700;" onclick="visioPartagerEcran()">🖥 Partager l'onglet de la vidéo</button>
+            <button class="btn-light" id="seanceStopVideoBtn" style="display:none; background:#fef2f2; color:#991b1b; border-color:#fecaca; font-weight:700;" onclick="arreterDiffusionVideo()">⏹ Arrêter la diffusion</button>
           </div>
+
+          <!-- Lecteur du soignant : ce qu'il voit est exactement ce que voient
+               ses patients, à la même seconde. -->
+          <div id="seanceLecteur" style="display:none; border-radius:12px; overflow:hidden; margin:12px 0 4px; background:#000;"></div>
+
           <div id="seanceVideoStrip" style="display:flex; gap:10px; overflow-x:auto; padding:12px 2px 4px;"></div>
         </article>
       </section>
@@ -11043,9 +11049,43 @@
       </button>`).join('');
     bande.querySelectorAll('[data-seance-yid]').forEach(b => {
       b.addEventListener('click', () => {
-        ouvrirLecteurPropre(b.dataset.seanceYid, b.dataset.seanceTitre);
+        diffuserVideoPilotee(b.dataset.seanceYid, b.dataset.seanceTitre);
       });
     });
+  };
+
+  /**
+   * Lance la vidéo chez tous les patients connectés.
+   *
+   * Le soignant ne partage plus son écran : il envoie une commande par la
+   * salle visio, et chaque patient lit la vidéo depuis sa propre connexion.
+   * L'image reste en pleine qualité et occupe la place principale de son
+   * écran — c'est elle qui guide l'exercice.
+   */
+  window.diffuserVideoPilotee = async function (youtubeId, titre) {
+    if (!window.VisioJitsi || !window.VisioJitsi.estActif()) {
+      alert("Démarrez d'abord la séance.\n\nLa vidéo est envoyée aux patients par la salle : sans salle ouverte, personne ne peut la recevoir.");
+      return;
+    }
+    const zone = $('seanceLecteur');
+    const stop = $('seanceStopVideoBtn');
+    if (zone) zone.style.display = 'block';
+    if (stop) stop.style.display = 'inline-flex';
+    try {
+      await window.VideoPilotee.diffuser('seanceLecteur', youtubeId, titre || '');
+      toast('🎬 <strong>' + (titre || 'Vidéo') + '</strong> lancée chez tous les patients connectés.', 'success', 7000);
+    } catch (e) {
+      if (zone) zone.style.display = 'none';
+      if (stop) stop.style.display = 'none';
+      alert(e && e.message ? e.message : 'Diffusion impossible.');
+    }
+  };
+
+  window.arreterDiffusionVideo = function () {
+    try { window.VideoPilotee.arreter(); } catch (_) {}
+    const zone = $('seanceLecteur'); if (zone) { zone.style.display = 'none'; zone.innerHTML = ''; }
+    const stop = $('seanceStopVideoBtn'); if (stop) stop.style.display = 'none';
+    toast('⏹ Diffusion arrêtée.', 'info');
   };
 
   /**
@@ -11616,6 +11656,36 @@
     if ($('patBorgCap')) $('patBorgCap').textContent = `Vous ressentez un ${label}.`;
   }
 
+  /**
+   * Réception, côté patient, de la vidéo lancée par le soignant.
+   *
+   * La vidéo est placée AU-DESSUS de la visio et en pleine largeur : c'est
+   * elle que le patient doit suivre pour réaliser l'exercice. La salle visio
+   * reste visible en dessous, réduite, pour garder le lien avec le groupe.
+   */
+  window.recevoirVideoSeance = function (msg) {
+    let hote = document.getElementById('patVideoSeance');
+    if (!hote) {
+      const ancre = document.getElementById('apiVisioStage') || document.getElementById('patMainStage');
+      if (!ancre || !ancre.parentNode) return;
+      hote = document.createElement('div');
+      hote.id = 'patVideoSeance';
+      hote.style.cssText = 'display:none; border-radius:14px; overflow:hidden; margin-bottom:14px; background:#000; box-shadow:0 14px 40px rgba(2,6,23,.35);';
+      ancre.parentNode.insertBefore(hote, ancre);
+    }
+    const afficher = (visible) => {
+      hote.style.display = visible ? 'block' : 'none';
+      if (!visible) hote.innerHTML = '';
+      // La visio passe au second plan pendant l'exercice : le patient doit
+      // regarder la vidéo, pas les vignettes.
+      const v = document.getElementById('apiVisioStage') || document.getElementById('patMainStage');
+      if (v) v.style.minHeight = visible ? '220px' : '460px';
+      if (visible) hote.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    try { window.VideoPilotee.recevoir(msg, 'patVideoSeance', afficher); }
+    catch (e) { console.warn('[video] réception :', e && e.message); }
+  };
+
   async function patJoinSession() {
     // Phase 19.2 : selon que le panneau ait été reconstruit ou non, la zone
     // vidéo s'appelle « apiVisioStage » ou « patMainStage ». On prend celle
@@ -11632,7 +11702,11 @@
         await window.VisioJitsi.rejoindre(zoneId, {
           salle: visioCleSalle(),
           nomAffiche: u.name || (u.patient_id || 'Patient'),
-          moderateur: false
+          moderateur: false,
+          // Le soignant pilote la vidéo d'entraînement depuis son poste :
+          // elle s'ouvre ici en grand, au-dessus de la visio, puisque c'est
+          // elle qui guide l'exercice.
+          onCommandeVideo: msg => recevoirVideoSeance(msg)
         });
       } catch (e) {
         zone.style.padding = '30px';

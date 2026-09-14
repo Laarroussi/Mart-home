@@ -302,6 +302,25 @@
       try { _api.addListener(ev, d => console.warn('[visio] ' + ev, d)); } catch (_) {}
     });
 
+    // Canal de commande entre le soignant et les patients.
+    //
+    // Jitsi transporte de courts messages texte entre participants. On s'en
+    // sert pour piloter la vidéo d'entraînement : le soignant annonce quelle
+    // vidéo lancer et à quelle seconde, chaque patient s'y cale. La vidéo se
+    // joue alors chez lui en pleine qualité, sans passer par le partage
+    // d'écran — donc sans perte d'image ni manipulation à faire en séance.
+    try {
+      _api.addListener('endpointTextMessageReceived', e => {
+        try {
+          const brut = e && e.data && e.data.eventData && e.data.eventData.text;
+          if (!brut) return;
+          const msg = JSON.parse(brut);
+          if (!msg || msg.canal !== 'marfan-video') return;
+          if (typeof options.onCommandeVideo === 'function') options.onCommandeVideo(msg);
+        } catch (_) {}
+      });
+    } catch (_) {}
+
     // État réel du partage d'écran. Sans ce retour, rien à l'écran ne distingue
     // « je crois partager » de « je partage vraiment » : c'est en séance de
     // groupe la différence entre un exercice suivi et vingt patients qui
@@ -359,6 +378,16 @@
 
   /** true si un partage d'écran est effectivement diffusé aux participants */
   function partageEnCours() { return _partageActif; }
+
+  /**
+   * Envoie une commande vidéo à TOUS les participants.
+   * Le destinataire vide ('') signifie « diffusion générale » pour Jitsi.
+   */
+  function commanderVideo(objet) {
+    if (!_api) throw new Error("Aucune séance en cours. Démarrez d'abord la séance.");
+    const msg = Object.assign({ canal: 'marfan-video' }, objet || {});
+    _api.executeCommand('sendEndpointTextMessage', '', JSON.stringify(msg));
+  }
 
   function nomSalle() { return _salle; }
   function estActif() { return !!_api; }
@@ -421,7 +450,7 @@
   window.VisioJitsi = {
     rejoindre, quitter, nomSalle, estActif, lienSalle, construireNomSalle,
     partagerVideo, arreterPartageVideo, partagerEcran, participants, vueMosaique,
-    diagnostic, partageEnCours,
+    diagnostic, partageEnCours, commanderVideo,
     get domaine() { return DOMAINE; }
   };
 })();
