@@ -12,23 +12,23 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase23-2"></script>
+  <script src="api-client.js?v=phase23-3"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase23-2"></script>
+  <script src="questionnaires-defs.js?v=phase23-3"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase23-2"></script>
+  <script src="medical-parsers.js?v=phase23-3"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase23-2"></script>
+  <script src="cpet-graph-preview.js?v=phase23-3"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase23-2"></script>
-  <script src="medical-record-ui.js?v=phase23-2"></script>
+  <script src="pdf-extractor.js?v=phase23-3"></script>
+  <script src="medical-record-ui.js?v=phase23-3"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase23-2"></script>
+  <script src="aortic-consultations.js?v=phase23-3"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase23-2"></script>
-  <script src="visio-jitsi.js?v=phase23-2"></script>
-  <script src="video-pilotee.js?v=phase23-2"></script>
+  <script src="document-import.js?v=phase23-3"></script>
+  <script src="visio-jitsi.js?v=phase23-3"></script>
+  <script src="video-pilotee.js?v=phase23-3"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -8558,10 +8558,9 @@
 
   function selectTrainingVideo(videoId) {
     selectedTrainingVideo = trainingVideos.find(v => v.id === videoId) || trainingVideos[0];
-    // fs=0 : pas de bouton plein écran YouTube — il déclencherait le plein
-    // écran système, qui rend l'image floue chez les patients pendant le
-    // partage. « Ouvrir en grand » fait la même chose proprement.
-    $('videoPreview').innerHTML = `<iframe src="https://www.youtube.com/embed/${selectedTrainingVideo.id}?rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&fs=0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" title="${selectedTrainingVideo.title}"></iframe>`;
+    // Page de préparation : le plein écran y est sans inconvénient, puisque
+    // rien n'est diffusé depuis cet écran. Le bouton de YouTube est rétabli.
+    $('videoPreview').innerHTML = `<iframe src="https://www.youtube.com/embed/${selectedTrainingVideo.id}?rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&fs=1" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen title="${selectedTrainingVideo.title}"></iframe>`;
     renderTrainingVideos();
   }
 
@@ -8589,20 +8588,52 @@
     // fs=0 retire le bouton plein écran de YouTube : il déclencherait le plein
     // écran système, donc le flou côté patient.
     const src = 'https://www.youtube.com/embed/' + selectedTrainingVideo.id +
-                '?rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&fs=0&autoplay=0';
+                '?rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&fs=1&autoplay=0';
     document.body.insertAdjacentHTML('beforeend', `
       <div id="videoCinema" style="position:fixed; inset:0; background:#000; z-index:10080; display:flex; flex-direction:column;">
-        <div style="flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:#0b1530; color:white;">
-          <strong style="font-size:14px; font-family:'Sora',sans-serif;">${(selectedTrainingVideo.title || 'Vidéo d\'entraînement').replace(/</g,'&lt;')}</strong>
+        <div style="flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:10px 16px; background:#0b1530; color:white;">
+          <strong style="font-size:14px; font-family:'Sora',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${(selectedTrainingVideo.title || 'Vidéo d\'entraînement').replace(/</g,'&lt;')}</strong>
+          <button onclick="basculerPleinEcran()" id="cinemaFsBtn" style="margin-left:auto; border:none; background:rgba(255,255,255,.14); color:white; padding:7px 15px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer;">⛶ Plein écran</button>
           <button onclick="fermerCinema()" style="border:none; background:rgba(255,255,255,.14); color:white; padding:7px 15px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer;">✕ Fermer</button>
         </div>
         <div style="flex:1; min-height:0;">
           <iframe src="${src}" style="width:100%; height:100%; border:0; display:block;"
-            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowfullscreen
             title="Vidéo d'entraînement"></iframe>
         </div>
       </div>`);
     document.addEventListener('keydown', _cinemaEchap);
+    document.addEventListener('fullscreenchange', _majBoutonPleinEcran);
+    // Le plein écran doit être demandé pendant le clic lui-même : différé,
+    // le navigateur le refuse.
+    basculerPleinEcran(true);
+  }
+
+  /**
+   * Plein écran réel du navigateur.
+   * Il n'est accordé qu'en réponse à un geste de l'utilisateur — d'où le
+   * bouton, et l'appel immédiat depuis le clic « Ouvrir en grand ».
+   */
+  window.basculerPleinEcran = function (forcer) {
+    const c = document.getElementById('videoCinema');
+    if (!c) return;
+    const actif = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    try {
+      if (actif && !forcer) {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      } else if (!actif) {
+        if (c.requestFullscreen) c.requestFullscreen();
+        else if (c.webkitRequestFullscreen) c.webkitRequestFullscreen();
+      }
+    } catch (_) {}
+  };
+  function _majBoutonPleinEcran() {
+    const b = document.getElementById('cinemaFsBtn');
+    if (!b) return;
+    const actif = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    b.textContent = actif ? '⤡ Quitter le plein écran' : '⛶ Plein écran';
   }
   /**
    * Depuis la bibliothèque, envoie la vidéo visionnée à la séance en cours.
@@ -8622,9 +8653,14 @@
 
   function _cinemaEchap(e) { if (e.key === 'Escape') fermerCinema(); }
   window.fermerCinema = function () {
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch (_) {}
     const c = document.getElementById('videoCinema');
     if (c) c.remove();
     document.removeEventListener('keydown', _cinemaEchap);
+    document.removeEventListener('fullscreenchange', _majBoutonPleinEcran);
   };
   function resetTrainingFilters() { $('trainingVideoSearch').value = ''; $('trainingCategory').value = ''; $('trainingInterval').value = ''; renderTrainingVideos(); }
 
