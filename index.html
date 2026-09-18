@@ -12,24 +12,24 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase24-1"></script>
+  <script src="api-client.js?v=phase24-2"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase24-1"></script>
+  <script src="questionnaires-defs.js?v=phase24-2"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase24-1"></script>
+  <script src="medical-parsers.js?v=phase24-2"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase24-1"></script>
+  <script src="cpet-graph-preview.js?v=phase24-2"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase24-1"></script>
-  <script src="medical-record-ui.js?v=phase24-1"></script>
+  <script src="pdf-extractor.js?v=phase24-2"></script>
+  <script src="medical-record-ui.js?v=phase24-2"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase24-1"></script>
-  <script src="synthese-ui.js?v=phase24-1"></script>
+  <script src="aortic-consultations.js?v=phase24-2"></script>
+  <script src="synthese-ui.js?v=phase24-2"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase24-1"></script>
-  <script src="visio-jitsi.js?v=phase24-1"></script>
-  <script src="video-pilotee.js?v=phase24-1"></script>
+  <script src="document-import.js?v=phase24-2"></script>
+  <script src="visio-jitsi.js?v=phase24-2"></script>
+  <script src="video-pilotee.js?v=phase24-2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -6140,6 +6140,19 @@
       if (syMount) syMount.innerHTML = '';
       const diMount = document.getElementById('docImportMount');
       if (diMount) diMount.innerHTML = '';
+      // La carte de résumé conservait les valeurs du patient précédent —
+      // 42 mm d'aorte affichés sous « Aucun patient sélectionné ». Dans un
+      // dossier médical, une donnée orpheline attribuée au mauvais patient
+      // est plus grave qu'une case vide.
+      [['dossierPatientTitle', 'Aucun patient'], ['dossierPatientMeta', '—'],
+       ['dossierRiskFactor', '—'], ['dossierRiskComment', ''],
+       ['dossierAorta', '—'], ['dossierVo2', '—'],
+       ['dossierForce', '—'], ['dossierSf36', '—']].forEach(([id, val]) => {
+        const e = document.getElementById(id);
+        if (e) e.textContent = val;
+      });
+      const av = document.getElementById('dossierAvatar');
+      if (av) { av.textContent = '--'; av.style.background = ''; }
       return;
     }
     const evals = selectedPatient.evaluations || [];
@@ -8905,7 +8918,11 @@
     document.querySelectorAll('#dossierVues .subtab-button').forEach(b => {
       b.classList.toggle('active', b.dataset.dgroup === groupe && b.dataset.subtab === panneau);
     });
-    document.querySelectorAll('#dossier [data-dgroup]').forEach(bloc => {
+    // :not(.subtab-button) est indispensable : les boutons de la barre portent
+    // eux aussi un data-dgroup. Sans cette exclusion, changer de vue masquait
+    // les cinq autres boutons — il ne restait qu'un seul onglet à l'écran et
+    // plus aucun moyen d'atteindre les documents.
+    document.querySelectorAll('#dossier [data-dgroup]:not(.subtab-button)').forEach(bloc => {
       bloc.style.display = bloc.dataset.dgroup === groupe ? '' : 'none';
     });
     document.querySelectorAll('.sub-panel').forEach(p => p.classList.add('hidden'));
