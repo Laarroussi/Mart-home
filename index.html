@@ -12,24 +12,24 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase25-0"></script>
+  <script src="api-client.js?v=phase25-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase25-0"></script>
+  <script src="questionnaires-defs.js?v=phase25-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase25-0"></script>
+  <script src="medical-parsers.js?v=phase25-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase25-0"></script>
+  <script src="cpet-graph-preview.js?v=phase25-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase25-0"></script>
-  <script src="medical-record-ui.js?v=phase25-0"></script>
+  <script src="pdf-extractor.js?v=phase25-1"></script>
+  <script src="medical-record-ui.js?v=phase25-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase25-0"></script>
-  <script src="synthese-ui.js?v=phase25-0"></script>
+  <script src="aortic-consultations.js?v=phase25-1"></script>
+  <script src="synthese-ui.js?v=phase25-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase25-0"></script>
-  <script src="visio-jitsi.js?v=phase25-0"></script>
-  <script src="video-pilotee.js?v=phase25-0"></script>
+  <script src="document-import.js?v=phase25-1"></script>
+  <script src="visio-jitsi.js?v=phase25-1"></script>
+  <script src="video-pilotee.js?v=phase25-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3138,10 +3138,10 @@
           <div style="margin-bottom:16px; padding:12px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid #3b82f6; border-radius:10px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
             <div style="flex:1; min-width:230px;">
               <strong style="font-size:13px; color:#1e40af; display:block;">Gagner du temps : partir d'un compte-rendu</strong>
-              <span style="font-size:12px; color:#3b5a8f;">Versez un document médical : les dates, mesures et traitements sont lus automatiquement et le formulaire est pré-rempli. Vous n'avez plus qu'à vérifier.</span>
+              <span style="font-size:12px; color:#3b5a8f;">Compte rendu, épreuve d'effort, échocardiographie, courrier, photo — ou un <b>enregistrement audio</b> d'entretien, qui sera transcrit. Les dates, mesures et traitements sont lus automatiquement et le formulaire pré-rempli.</span>
             </div>
             <input type="file" id="cf_docImport" style="display:none"
-              accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.tif,.tiff,application/pdf,text/*,image/*">
+              accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.tif,.tiff,.heic,.heif,.mp3,.m4a,.wav,.ogg,.opus,.webm,.aac,.flac,application/pdf,text/*,image/*,audio/*">
             <button type="button" onclick="document.getElementById('cf_docImport').click()"
               style="padding:10px 18px; border:none; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white; border-radius:9px; font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap;">⬆️ Verser un document</button>
           </div>
@@ -3149,7 +3149,9 @@
           <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px;">
             <div>
               <div class="control-label">Code patient anonymisé *</div>
-              <input type="text" id="cf_code" placeholder="MRF-XXX" />
+              <!-- oninput : dès que le code est saisi à la main, on cesse de le
+                   remplacer automatiquement. -->
+              <input type="text" id="cf_code" placeholder="MRF-XXX" oninput="this.dataset.auto='0';" />
             </div>
             <div>
               <div class="control-label">IPP (Identifiant Permanent Patient)</div>
@@ -7107,6 +7109,30 @@
     return 'MRF-' + String(maxN + 1).padStart(3, '0');
   }
 
+  /**
+   * Demande au serveur le prochain code libre, puis l'inscrit dans le champ.
+   *
+   * Le calcul local part de la liste chargée en mémoire : après un
+   * enregistrement, ou si deux investigateurs travaillent en parallèle, elle
+   * est en retard et le même code était proposé deux fois — la validation
+   * échouait alors sur un doublon. La base, elle, ne se trompe pas.
+   */
+  window.majProchainCode = async function (forcer) {
+    const champ = $('cf_code');
+    if (!champ) return;
+    // On ne remplace pas un code que l'utilisateur a saisi lui-même.
+    if (!forcer && champ.value && champ.dataset.auto !== '1') return;
+    try {
+      const r = await window.MarfanAPI.patients.prochainCode();
+      if (r && r.code) { champ.value = r.code; champ.dataset.auto = '1'; }
+    } catch (e) {
+      // Hors ligne ou API indisponible : le calcul local reste un repli utile.
+      champ.value = nextPatientCode();
+      champ.dataset.auto = '1';
+      console.warn('[creation] prochain code depuis le serveur indisponible :', e && e.message);
+    }
+  };
+
   function updateAgeFromDob() {
     const dob = $('cf_dob').value;
     if (!dob) return;
@@ -7119,8 +7145,14 @@
   }
 
   function initCreationForm() {
-    // Pré-remplit le code patient suggéré et la date d'inclusion
-    if ($('cf_code') && !$('cf_code').value) $('cf_code').value = nextPatientCode();
+    // Pré-remplit le code patient suggéré et la date d'inclusion.
+    // Le code définitif vient du serveur ; le calcul local sert d'affichage
+    // immédiat le temps de la réponse.
+    if ($('cf_code') && !$('cf_code').value) {
+      $('cf_code').value = nextPatientCode();
+      $('cf_code').dataset.auto = '1';
+    }
+    try { if (typeof window.majProchainCode === 'function') window.majProchainCode(); } catch (_) {}
     if ($('cf_inclusionDate') && !$('cf_inclusionDate').value) $('cf_inclusionDate').value = new Date().toISOString().slice(0, 10);
     // Phase 13.4 : date de l'évaluation du jour toujours = aujourd'hui (lecture seule)
     if ($('cf_aorticTodayDate')) $('cf_aorticTodayDate').value = new Date().toISOString().slice(0, 10);
@@ -7883,19 +7915,36 @@
       const code = ($('cf_code') && $('cf_code').value || '').trim();
       if (!code) { statut('Renseignez d\'abord le code patient.', 'err'); return; }
 
-      statut('📄 Lecture de « ' + f.name + ' »…', 'info');
-      let texte = '', base64 = null;
-      try {
-        const r = await window.DocImport.lireTexte(f);
-        texte = (r.texte || '').trim();
-      } catch (e) { statut('❌ ' + ((e && e.message) || 'Lecture impossible'), 'err'); return; }
+      // Enregistrement sonore : rien à lire dans le navigateur, le serveur
+      // le transcrit. Un entretien d'une heure pèse lourd, d'où la limite.
+      const estAudio = (f.type || '').startsWith('audio/') ||
+                       /\.(mp3|m4a|wav|ogg|opus|webm|aac|flac)$/i.test(f.name || '');
+      if (estAudio && f.size > 12 * 1024 * 1024) {
+        statut('❌ Enregistrement trop volumineux (' + Math.round(f.size / 1048576) + ' Mo). ' +
+               'Limite : 12 Mo, soit environ 25 minutes en qualité voix. ' +
+               'Découpez-le, ou réenregistrez en qualité inférieure.', 'err');
+        return;
+      }
 
-      // Document scanné ou photo : lecture optique par le serveur
-      if (texte.length < 20) {
-        const ocrPossible = /\.(pdf|png|jpe?g|webp|tiff?)$/i.test(f.name || '') ||
+      statut(estAudio ? '🎙 Transcription de « ' + f.name + ' » en cours…'
+                      : '📄 Lecture de « ' + f.name + ' »…', 'info');
+      let texte = '', base64 = null;
+      if (!estAudio) {
+        try {
+          const r = await window.DocImport.lireTexte(f);
+          texte = (r.texte || '').trim();
+        } catch (e) { statut('❌ ' + ((e && e.message) || 'Lecture impossible'), 'err'); return; }
+      }
+
+      // Audio, document scanné ou photo : lecture par le serveur
+      if (estAudio || texte.length < 20) {
+        const ocrPossible = estAudio ||
+                            /\.(pdf|png|jpe?g|webp|tiff?|heic|heif)$/i.test(f.name || '') ||
                             (f.type || '').startsWith('image/') || f.type === 'application/pdf';
         if (!ocrPossible) { statut('❌ Aucun texte exploitable dans ce document.', 'err'); return; }
-        statut('📷 Document scanné détecté — lecture optique en cours, patientez…', 'info');
+        statut(estAudio
+          ? '🎙 Transcription en cours — comptez environ une minute pour dix minutes d\'enregistrement…'
+          : '📷 Document scanné détecté — lecture optique en cours, patientez…', 'info');
         try {
           const fr = new FileReader();
           base64 = await new Promise((res, rej) => {
@@ -7912,7 +7961,7 @@
       try {
         // true = mode création : l'identité est lue pour remplir la fiche
         prop = await window.MarfanAPI.timeline.analyser(
-          code, texte, null, base64, f.type || 'application/pdf', true);
+          code, texte, null, base64, f.type || 'application/pdf', true, f.name);
       } catch (e) { statut('❌ ' + ((e && e.message) || 'Analyse impossible'), 'err'); return; }
 
       const faits = (prop && prop.faits) || [];

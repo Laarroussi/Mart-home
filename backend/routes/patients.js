@@ -36,6 +36,29 @@ router.get('/', requireAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+/**
+ * GET /api/patients/prochain-code — prochain code d'inclusion disponible
+ *
+ * Déclarée AVANT /:id, sinon « prochain-code » serait pris pour un
+ * identifiant de patient.
+ *
+ * Le calcul se fait en base et non dans le navigateur : la liste chargée
+ * côté client peut être incomplète ou dépassée, et deux investigateurs
+ * travaillant en parallèle se verraient proposer le même code.
+ */
+router.get('/prochain-code', requireAuth, requireRole('principal_admin', 'investigator'),
+  async (req, res, next) => {
+    try {
+      const { rows } = await query(
+        `SELECT COALESCE(MAX((regexp_replace(id, '^MRF-?', '', 'i'))::int), 0) AS maxi
+           FROM patients
+          WHERE id ~* '^MRF-?[0-9]+$'`
+      );
+      const suivant = (rows[0] ? Number(rows[0].maxi) : 0) + 1;
+      res.json({ code: 'MRF-' + String(suivant).padStart(3, '0'), dernier: rows[0] ? Number(rows[0].maxi) : 0 });
+    } catch (err) { next(err); }
+  });
+
 /** GET /api/patients/:id — Détail patient + ses évaluations + éducation */
 router.get('/:id', requireAuth, async (req, res, next) => {
   try {

@@ -242,7 +242,7 @@
           </div>
           <div>
             <input type="file" data-di-input style="display:none"
-              accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,.xlsm,.png,.jpg,.jpeg,.webp,.tif,.tiff,.heic,.heif,application/pdf,text/*,image/*">
+              accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,.xlsm,.png,.jpg,.jpeg,.webp,.tif,.tiff,.heic,.heif,.mp3,.m4a,.wav,.ogg,.opus,.webm,.aac,.flac,application/pdf,text/*,image/*,audio/*">
             <button data-di-btn style="padding:10px 18px; border:none; background:white; color:#1d4ed8; border-radius:9px; font-weight:700; cursor:pointer; font-size:12.5px; white-space:nowrap;">⬆️ Verser une pièce</button>
           </div>
         </div>
@@ -262,9 +262,15 @@
   async function traiter(file, patientId) {
     _patientId = patientId;
     _docNom = file.name || 'document';
-    const maxMo = 10;
+    // Un enregistrement de consultation pèse naturellement plus qu'un PDF :
+    // on lui accorde un peu plus de marge, sans dépasser la limite d'envoi
+    // du serveur (15 Mo une fois encodé en base64).
+    const estAudioFichier = (file.type || '').startsWith('audio/') ||
+                            /\.(mp3|m4a|wav|ogg|opus|webm|aac|flac)$/i.test(file.name || '');
+    const maxMo = estAudioFichier ? 12 : 10;
     if (file.size > maxMo * 1024 * 1024) {
-      alert('Fichier trop volumineux (' + Math.round(file.size / 1048576) + ' Mo). Maximum ' + maxMo + ' Mo.');
+      alert('Fichier trop volumineux (' + Math.round(file.size / 1048576) + ' Mo). Maximum ' + maxMo + ' Mo.' +
+            (estAudioFichier ? '\n\nCela représente environ 25 minutes en qualité voix. Découpez l\'enregistrement, ou réenregistrez en qualité inférieure.' : ''));
       return;
     }
 
@@ -280,30 +286,45 @@
       return;
     }
 
+    // Un enregistrement sonore ne se lit pas dans le navigateur : on saute
+    // l'extraction de texte et on l'envoie tel quel à la transcription.
+    const estAudio = (file.type || '').startsWith('audio/') ||
+                     /\.(mp3|m4a|wav|ogg|opus|webm|aac|flac)$/i.test(file.name || _docNom || '');
+
     let texte = '', base64 = null, scanne = false;
-    try {
-      const r = await lireTexte(file);
-      // Ceinture et bretelles : si un lecteur renvoie autre chose qu'une
-      // chaîne, on le convertit plutôt que de laisser échouer .trim().
-      texte = (typeof r.texte === 'string' ? r.texte : String(r.texte || '')).trim();
-      scanne = !!r.scanne;
-    } catch (e) {
-      majAttente('❌ ' + ((e && e.message) || 'Lecture impossible'), true);
-      return;
+    if (!estAudio) {
+      try {
+        const r = await lireTexte(file);
+        // Ceinture et bretelles : si un lecteur renvoie autre chose qu'une
+        // chaîne, on le convertit plutôt que de laisser échouer .trim().
+        texte = (typeof r.texte === 'string' ? r.texte : String(r.texte || '')).trim();
+        scanne = !!r.scanne;
+      } catch (e) {
+        majAttente('❌ ' + ((e && e.message) || 'Lecture impossible'), true);
+        return;
+      }
     }
 
-    // Document scanné ou photo : le texte est absent ou résiduel, on confie la
-    // lecture optique au serveur (OCR Mistral), qui sait lire les PDF image.
-    const besoinOcr = scanne || texte.length < 20;
+    // Audio, document scanné ou photo : rien d'exploitable dans le navigateur,
+    // le serveur s'en charge — transcription Voxtral ou OCR Mistral.
+    const besoinOcr = estAudio || scanne || texte.length < 20;
     if (besoinOcr) {
-      const estLisibleParOcr = /\.(pdf|png|jpe?g|webp|tiff?|heic|heif)$/i.test(file.name || _docNom) ||
+      const estLisibleParServeur = estAudio ||
+                               /\.(pdf|png|jpe?g|webp|tiff?|heic|heif)$/i.test(file.name || _docNom) ||
                                (file.type || '').startsWith('image/') ||
                                file.type === 'application/pdf';
-      if (!estLisibleParOcr) {
+      if (!estLisibleParServeur) {
         majAttente("❌ Aucun texte exploitable dans ce document.", true);
         return;
       }
-      majAttente('Document scanné détecté — lecture optique en cours…\nCela peut prendre quelques secondes.');
+      if (estAudio && file.size > 12 * 1024 * 1024) {
+        majAttente('❌ Enregistrement trop volumineux (' + Math.round(file.size / 1048576) +
+                   ' Mo). Limite : 12 Mo, soit environ 25 minutes en qualité voix.', true);
+        return;
+      }
+      majAttente(estAudio
+        ? "Transcription de l'enregistrement en cours…\nComptez environ une minute pour dix minutes d'audio."
+        : 'Document scanné détecté — lecture optique en cours…\nCela peut prendre quelques secondes.');
       try { base64 = await versBase64(file); }
       catch (e) { majAttente('❌ ' + e.message, true); return; }
     } else {
@@ -313,7 +334,7 @@
     let prop;
     try {
       prop = await window.MarfanAPI.timeline.analyser(
-        patientId, texte, null, base64, file.type || 'application/pdf');
+        patientId, texte, null, base64, file.type || 'application/pdf', false, file.name);
     } catch (e) {
       majAttente('❌ ' + ((e && e.message) || "L'analyse a échoué."), true);
       return;

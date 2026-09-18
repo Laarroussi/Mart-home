@@ -439,6 +439,61 @@ async function analyserEcho(texte) {
 }
 
 // ============================================================
+// TRANSCRIPTION AUDIO
+// ------------------------------------------------------------
+// Un entretien enregistré, une dictée après consultation : le son devient du
+// texte, qui suit ensuite exactement le même chemin qu'un compte rendu écrit
+// — extraction des faits, puis validation par le clinicien.
+//
+// Voxtral est hébergé en Europe comme le reste de Mistral. Attention tout de
+// même : un enregistrement de consultation contient la voix du patient, qui
+// est une donnée biométrique. Son consentement explicite est nécessaire, et
+// le point doit figurer au registre des traitements.
+// ============================================================
+const MODELE_AUDIO = process.env.MISTRAL_AUDIO_MODEL || 'voxtral-mini-latest';
+
+/**
+ * @param {string} base64  contenu du fichier audio
+ * @param {string} mime    type MIME (audio/mpeg, audio/mp4, audio/wav…)
+ * @param {string} nom     nom de fichier, utile au serveur pour deviner le format
+ */
+async function transcrireAudio(base64, mime, nom) {
+  exigerCle();
+  const debut = Date.now();
+  if (!base64) throw new Error('Aucun contenu audio reçu.');
+
+  const binaire = Buffer.from(base64, 'base64');
+  const formulaire = new FormData();
+  formulaire.append('file', new Blob([binaire], { type: mime || 'audio/mpeg' }),
+                    nom || 'entretien.mp3');
+  formulaire.append('model', MODELE_AUDIO);
+
+  let rep;
+  try {
+    rep = await fetch(BASE + '/v1/audio/transcriptions', {
+      method: 'POST',
+      // Pas de Content-Type : fetch pose lui-même la frontière multipart.
+      headers: { Authorization: 'Bearer ' + (process.env.MISTRAL_API_KEY || '') },
+      body: formulaire
+    });
+  } catch (e) {
+    throw new Error('Service de transcription injoignable : ' + e.message);
+  }
+  if (!rep.ok) throw await erreurLisible(rep, 'la transcription audio');
+
+  const data = await rep.json();
+  const texte = (data && (data.text || data.transcription)) || '';
+  if (!texte.trim()) throw new Error("L'enregistrement n'a produit aucun texte exploitable.");
+
+  return {
+    texte,
+    modele: MODELE_AUDIO,
+    duree_ms: Date.now() - debut,
+    secondes_audio: (data && data.duration) || null
+  };
+}
+
+// ============================================================
 // SYNTHÈSE CLINIQUE
 // ------------------------------------------------------------
 // Trois rubriques, rédigées à partir des seules données du dossier.
@@ -544,7 +599,7 @@ function statutIA() {
 
 module.exports = {
   analyserTexte, analyserEcho, analyserIdentite, ocrDocument,
-  genererSynthese,
+  genererSynthese, transcrireAudio,
   pseudonymiser, statutIA, cleActive,
   CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO
 };

@@ -119,6 +119,9 @@
         return request('GET', '/patients' + qs);
       },
       get:    (id) => request('GET', `/patients/${id}`),
+      // Prochain code d'inclusion libre, calculé en base : la liste locale
+      // peut être en retard et proposerait alors un code déjà pris.
+      prochainCode: () => request('GET', '/patients/prochain-code'),
       create: (data) => request('POST', '/patients', data),
       update: (id, data) => request('PATCH', `/patients/${id}`, data)
     },
@@ -263,10 +266,12 @@
       // avecIdentite : uniquement pour pré-remplir une fiche patient encore
       // inexistante. Dans ce cas le texte n'est pas pseudonymisé, afin que
       // nom, prénom, IPP et date de naissance puissent être lus.
-      analyser: (patientId, texte, docId, fichierBase64, mime, avecIdentite) =>
+      // nomFichier : transmis pour que le serveur reconnaisse un enregistrement
+      // sonore même quand le navigateur ne renseigne pas le type MIME.
+      analyser: (patientId, texte, docId, fichierBase64, mime, avecIdentite, nomFichier) =>
                   request('POST', `/timeline/${patientId}/analyser`,
                           { texte, doc_id: docId, fichier_base64: fichierBase64, mime,
-                            avec_identite: !!avecIdentite }),
+                            avec_identite: !!avecIdentite, nom_fichier: nomFichier || null }),
       save:     (patientId, faits, docId)=> request('POST',  `/timeline/${patientId}`, { faits, doc_id: docId }),
       update:   (patientId, id, data)    => request('PATCH', `/timeline/${patientId}/${id}`, data),
       remove:   (patientId, id)          => request('DELETE',`/timeline/${patientId}/${id}`),

@@ -15,8 +15,8 @@
 const express = require('express');
 const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE } = require('../middleware/auth');
-const { analyserTexte, analyserEcho, analyserIdentite, ocrDocument, pseudonymiser,
-        statutIA, CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO } = require('../config/ai');
+const { analyserTexte, analyserEcho, analyserIdentite, ocrDocument, transcrireAudio,
+        pseudonymiser, statutIA, CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO } = require('../config/ai');
 
 const router = express.Router();
 
@@ -67,13 +67,28 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
     let texte = (req.body && req.body.texte) || '';
     let ocrInfo = null;
 
+    // Enregistrement sonore : entretien, dictée. On le transcrit d'abord, puis
+    // le texte obtenu suit exactement le même chemin qu'un compte rendu écrit.
+    const estAudio = /^audio\//i.test(mime || '') ||
+                     /\.(mp3|m4a|wav|ogg|opus|webm|aac|flac)$/i.test(req.body.nom_fichier || '');
+    if (estAudio && fichier_base64) {
+      try {
+        const r = await transcrireAudio(fichier_base64, mime, req.body.nom_fichier);
+        texte = r.texte || '';
+        ocrInfo = { modele: r.modele, duree_ms: r.duree_ms, type: 'transcription',
+                    secondes_audio: r.secondes_audio };
+      } catch (e) {
+        const code = e.code === 'NO_KEY' ? 503 : 502;
+        return res.status(code).json({ error: 'Transcription impossible : ' + e.message });
+      }
+    }
     // Document scanné : aucun texte extractible côté navigateur.
     // On passe alors par l'OCR de Mistral, qui lit les PDF image et les photos.
-    if ((!texte || String(texte).trim().length < 20) && fichier_base64) {
+    else if ((!texte || String(texte).trim().length < 20) && fichier_base64) {
       try {
         const r = await ocrDocument(fichier_base64, mime || 'application/pdf');
         texte = r.texte || '';
-        ocrInfo = { pages: r.pages, modele: r.modele, duree_ms: r.duree_ms };
+        ocrInfo = { pages: r.pages, modele: r.modele, duree_ms: r.duree_ms, type: 'ocr' };
       } catch (e) {
         const code = e.code === 'NO_KEY' ? 503 : 502;
         return res.status(code).json({ error: "Lecture OCR impossible : " + e.message });
