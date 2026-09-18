@@ -12,24 +12,24 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase24-0"></script>
+  <script src="api-client.js?v=phase24-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase24-0"></script>
+  <script src="questionnaires-defs.js?v=phase24-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase24-0"></script>
+  <script src="medical-parsers.js?v=phase24-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase24-0"></script>
+  <script src="cpet-graph-preview.js?v=phase24-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase24-0"></script>
-  <script src="medical-record-ui.js?v=phase24-0"></script>
+  <script src="pdf-extractor.js?v=phase24-1"></script>
+  <script src="medical-record-ui.js?v=phase24-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase24-0"></script>
-  <script src="synthese-ui.js?v=phase24-0"></script>
+  <script src="aortic-consultations.js?v=phase24-1"></script>
+  <script src="synthese-ui.js?v=phase24-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase24-0"></script>
-  <script src="visio-jitsi.js?v=phase24-0"></script>
-  <script src="video-pilotee.js?v=phase24-0"></script>
+  <script src="document-import.js?v=phase24-1"></script>
+  <script src="visio-jitsi.js?v=phase24-1"></script>
+  <script src="video-pilotee.js?v=phase24-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3181,30 +3181,42 @@
               <input type="number" id="cf_age" min="0" max="120" placeholder="35" />
             </div>
             <div>
-              <div class="control-label">Initiales (optionnel — auto-générées)</div>
-              <input type="text" id="cf_initials" placeholder="ex. J.D." maxlength="6" oninput="this.dataset.manual='true';" />
-            </div>
-            <div>
-              <div class="control-label">Email</div>
+              <div class="control-label">Email *</div>
               <input type="email" id="cf_email" placeholder="patient@exemple.fr" />
             </div>
-            <div>
-              <div class="control-label">Téléphone</div>
-              <input type="tel" id="cf_phone" placeholder="06 12 34 56 78" />
-            </div>
-            <div>
-              <div class="control-label">Médecin référent</div>
-              <input type="text" id="cf_doctor" placeholder="Dr Nom" />
-            </div>
-            <div>
-              <div class="control-label">Centre de référence</div>
-              <input type="text" id="cf_center" placeholder="ex. CHU Toulouse — Cardiologie" />
-            </div>
-            <div style="grid-column: 1 / -1;">
-              <div class="control-label">Adresse (optionnel)</div>
-              <input type="text" id="cf_address" placeholder="Adresse postale" />
-            </div>
           </div>
+
+          <!-- Coordonnées et rattachement : utiles au dossier, inutiles à
+               l'inclusion. Repliés, ils laissent à l'écran les seuls champs
+               qui conditionnent la création du compte. L'email reste visible
+               au-dessus : c'est par lui que le patient reçoit son accès. -->
+          <details style="margin-top:14px; border-top:1px solid var(--line); padding-top:12px;">
+            <summary style="cursor:pointer; font-weight:700; font-size:13.5px; color:#0b1530; list-style:none;">
+              📇 Coordonnées et rattachement <span style="font-weight:600; color:#94a3b8; font-size:12px;">— facultatif</span>
+            </summary>
+            <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px; margin-top:14px;">
+              <div>
+                <div class="control-label">Initiales (auto-générées)</div>
+                <input type="text" id="cf_initials" placeholder="ex. J.D." maxlength="6" oninput="this.dataset.manual='true';" />
+              </div>
+              <div>
+                <div class="control-label">Téléphone</div>
+                <input type="tel" id="cf_phone" placeholder="06 12 34 56 78" />
+              </div>
+              <div>
+                <div class="control-label">Médecin référent</div>
+                <input type="text" id="cf_doctor" placeholder="Dr Nom" />
+              </div>
+              <div>
+                <div class="control-label">Centre de référence</div>
+                <input type="text" id="cf_center" placeholder="ex. CHU Toulouse — Cardiologie" />
+              </div>
+              <div style="grid-column: 1 / -1;">
+                <div class="control-label">Adresse</div>
+                <input type="text" id="cf_address" placeholder="Adresse postale" />
+              </div>
+            </div>
+          </details>
         </section>
 
         <!-- Section 2 : Informations médicales -->

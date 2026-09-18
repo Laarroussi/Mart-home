@@ -53,8 +53,19 @@
     // PDF — pdf.js, déjà chargé dans la page
     if (type === 'application/pdf' || nom.endsWith('.pdf')) {
       if (window.PDFExtractor && window.PDFExtractor.extractTextFromFile) {
-        const t = await window.PDFExtractor.extractTextFromFile(file);
-        return { texte: t || '', mode: 'pdf' };
+        // extractTextFromFile renvoie un OBJET { pages, fullText, isScanned },
+        // pas une chaîne. Le prendre pour du texte cassait tout versement de
+        // PDF dès le premier caractère lu.
+        const r = await window.PDFExtractor.extractTextFromFile(file);
+        const brut = (r && typeof r === 'object') ? (r.fullText || '') : String(r || '');
+        return {
+          texte: brut,
+          mode: 'pdf',
+          // Un compte rendu scanné n'a pas de couche de texte : on le signale
+          // pour que la lecture passe par l'OCR du serveur.
+          scanne: !!(r && r.isScanned),
+          pages: (r && r.numPages) || null
+        };
       }
       throw new Error("Lecteur PDF indisponible. Rechargez la page et réessayez.");
     }
@@ -269,18 +280,21 @@
       return;
     }
 
-    let texte = '', base64 = null;
+    let texte = '', base64 = null, scanne = false;
     try {
       const r = await lireTexte(file);
-      texte = (r.texte || '').trim();
+      // Ceinture et bretelles : si un lecteur renvoie autre chose qu'une
+      // chaîne, on le convertit plutôt que de laisser échouer .trim().
+      texte = (typeof r.texte === 'string' ? r.texte : String(r.texte || '')).trim();
+      scanne = !!r.scanne;
     } catch (e) {
       majAttente('❌ ' + ((e && e.message) || 'Lecture impossible'), true);
       return;
     }
 
-    // Document scanné ou photo : le texte est absent, on confie la lecture
-    // optique au serveur (OCR Mistral), qui sait lire les PDF image.
-    const besoinOcr = texte.length < 20;
+    // Document scanné ou photo : le texte est absent ou résiduel, on confie la
+    // lecture optique au serveur (OCR Mistral), qui sait lire les PDF image.
+    const besoinOcr = scanne || texte.length < 20;
     if (besoinOcr) {
       const estLisibleParOcr = /\.(pdf|png|jpe?g|webp|tiff?|heic|heif)$/i.test(file.name || _docNom) ||
                                (file.type || '').startsWith('image/') ||
