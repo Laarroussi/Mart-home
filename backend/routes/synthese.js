@@ -31,6 +31,43 @@ function verifierAcces(req, patientId) {
 }
 
 // ============================================================
+// POST /brouillon — rédaction AVANT que la fiche existe
+// ------------------------------------------------------------
+// À la création d'un dossier, le patient n'est pas encore en base : il n'y a
+// donc rien à assembler. L'interface transmet ici ce qu'elle a sous la main —
+// les données lues dans le document versé et ce que le clinicien vient de
+// saisir pendant l'entretien. Déclarée AVANT /:patient_id, sinon capturée.
+// ============================================================
+router.post('/brouillon', requireAuth, staff, async (req, res, next) => {
+  try {
+    if (!ia.cleActive()) {
+      return res.status(503).json({
+        error: "L'analyse par IA n'est pas configurée sur le serveur (MISTRAL_API_KEY absente)."
+      });
+    }
+    const d = (req.body && req.body.dossier) || {};
+    // Rien d'utile : autant le dire plutôt que de faire rédiger du vide.
+    const utile = Object.keys(d).some(k => {
+      const v = d[k];
+      return v != null && v !== '' && !(Array.isArray(v) && !v.length);
+    });
+    if (!utile) {
+      return res.status(400).json({
+        error: "Aucun élément à synthétiser. Versez un document ou renseignez l'entretien."
+      });
+    }
+    const out = await ia.genererSynthese(d);
+    res.json({
+      entree: out.entree,
+      objectifs: out.objectifs,
+      suivi_activite: out.suivi_activite,
+      modele: out.modele,
+      duree_ms: out.duree_ms
+    });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
 // GET /:patient_id — synthèse enregistrée
 // ============================================================
 router.get('/:patient_id', requireAuth, async (req, res, next) => {

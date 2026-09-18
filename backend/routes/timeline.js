@@ -165,9 +165,24 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
       } catch (e) { console.warn('[echo] extraction structurée échouée :', e.message); }
     }
 
+    // Génétique : recherche déterministe dans le TEXTE COMPLET du document.
+    // Chercher dans les faits déjà extraits ne suffisait pas — le gène est
+    // souvent cité dans une phrase d'antécédents que l'IA ne retient pas
+    // comme un « fait » à part entière.
+    const GENES = ['FBN1', 'TGFBR1', 'TGFBR2', 'SMAD3', 'TGFB2', 'TGFB3',
+                   'ACTA2', 'MYH11', 'MYLK', 'LOX', 'COL3A1', 'PLOD1'];
+    const genetique = { gene: null, variant: null };
+    for (const g of GENES) {
+      if (new RegExp('\\b' + g + '\\b', 'i').test(texte)) { genetique.gene = g; break; }
+    }
+    // Notation HGVS : c.2678G>A, p.Cys893Tyr…
+    const mv = texte.match(/\b([cp]\.[A-Za-z0-9_>+*()-]{3,40})/);
+    if (mv) genetique.variant = mv[1];
+
     res.json({
       faits: resultat.faits,
       echo,                               // non nul si compte-rendu d'ETT reconnu
+      genetique,                          // gène et variant lus dans le document
       identite,                           // non nul en mode création de fiche
       identite_erreur: identiteErreur,    // raison lisible si l'identité n'a pas pu être lue
       modele: resultat.modele,

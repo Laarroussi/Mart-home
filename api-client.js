@@ -243,6 +243,9 @@
       get:     (patientId)       => request('GET',  `/synthese/${patientId}`),
       save:    (patientId, data) => request('POST', `/synthese/${patientId}`, data),
       generer: (patientId, data) => request('POST', `/synthese/${patientId}/generer`, data || {}),
+      // Rédaction avant que la fiche existe : on transmet le dossier assemblé
+      // par le navigateur (document versé + entretien saisi).
+      brouillon: (dossier)      => request('POST', '/synthese/brouillon', { dossier }),
       donnees: (patientId)       => request('GET',  `/synthese/${patientId}/donnees`)
     },
 
