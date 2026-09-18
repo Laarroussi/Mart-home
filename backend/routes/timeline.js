@@ -91,8 +91,20 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
     // Mode « création de fiche » : l'identité doit être lue pour pré-remplir le
     // formulaire, elle n'est donc pas masquée. Ce mode est explicitement demandé
     // par l'appelant et réservé à un patient pas encore enregistré.
-    const modeIdentite = avec_identite === true && !p.rows.length;
-    const texteMasque = modeIdentite ? texte : pseudonymiser(texte, patient);
+    // Cette route n'écrit RIEN en base : elle renvoie une proposition. Refuser
+    // de lire l'identité au motif que le code patient existe déjà n'protégeait
+    // donc rien, et privait le clinicien du pré-remplissage à chaque fois qu'un
+    // code était déjà pris. Le pré-remplissage ne touche de toute façon que les
+    // champs restés vides.
+    const modeIdentite = avec_identite === true;
+
+    // La pseudonymisation reste appliquée à l'analyse chronologique dès lors que
+    // le patient existe : c'est elle qui protège les dossiers déjà constitués.
+    // Seule la lecture de l'en-tête travaille sur le texte d'origine, puisqu'il
+    // s'agit précisément d'y trouver un nom.
+    const texteMasque = (modeIdentite && !p.rows.length)
+      ? texte
+      : pseudonymiser(texte, patient);
 
     let identite = null;
     let identiteErreur = null;
@@ -112,9 +124,13 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
         // clinicien concluait que la fonction ne marchait pas.
         identiteErreur = e.message;
       }
-    } else if (avec_identite === true && p.rows.length) {
-      identiteErreur = "Le code patient " + req.params.patient_id +
-        " existe déjà en base : l'identité n'est pas relue, pour ne pas écraser la fiche existante.";
+    }
+    // Avertissement sans blocage : le code proposé est déjà pris, la
+    // validation échouerait. Autant le signaler tout de suite.
+    if (modeIdentite && p.rows.length) {
+      identiteErreur = (identiteErreur ? identiteErreur + ' ' : '') +
+        "Attention : le code patient " + req.params.patient_id +
+        " est déjà utilisé. Changez-le avant d'enregistrer la fiche.";
     }
 
     let resultat;
