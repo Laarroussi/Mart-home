@@ -12,24 +12,24 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase24-2"></script>
+  <script src="api-client.js?v=phase24-3"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase24-2"></script>
+  <script src="questionnaires-defs.js?v=phase24-3"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase24-2"></script>
+  <script src="medical-parsers.js?v=phase24-3"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase24-2"></script>
+  <script src="cpet-graph-preview.js?v=phase24-3"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase24-2"></script>
-  <script src="medical-record-ui.js?v=phase24-2"></script>
+  <script src="pdf-extractor.js?v=phase24-3"></script>
+  <script src="medical-record-ui.js?v=phase24-3"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase24-2"></script>
-  <script src="synthese-ui.js?v=phase24-2"></script>
+  <script src="aortic-consultations.js?v=phase24-3"></script>
+  <script src="synthese-ui.js?v=phase24-3"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase24-2"></script>
-  <script src="visio-jitsi.js?v=phase24-2"></script>
-  <script src="video-pilotee.js?v=phase24-2"></script>
+  <script src="document-import.js?v=phase24-3"></script>
+  <script src="visio-jitsi.js?v=phase24-3"></script>
+  <script src="video-pilotee.js?v=phase24-3"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -7951,13 +7951,85 @@
       // Les faits restants seront rattachés au patient après validation de la fiche
       window._faitsAImporter = { code, faits };
 
+      // Aperçu du détail : le clinicien doit pouvoir lire ce qui a été extrait
+      // AVANT de valider, et non le découvrir dans le dossier après coup.
+      const apercu = construireApercuExtraction(faits, echo, ident);
+
+      const msgIdent = (!ident && prop && prop.identite_erreur)
+        ? '<br><span style="color:#b45309;">⚠ Identité non pré-remplie : ' +
+          String(prop.identite_erreur).replace(/</g, '&lt;') + '</span>'
+        : '';
+
       statut('✓ <strong>' + n + ' champ(s) pré-remplis</strong>' +
-             (details.length ? ' — ' + details.join(', ') : '') + '.<br>' +
+             (details.length ? ' — ' + details.join(', ') : '') + '.' + msgIdent + '<br>' +
              (echo ? '🫀 Échocardiographie reconnue : les mesures complètes seront enregistrées avec la fiche.<br>' : '') +
              (faits.length ? faits.length + ' donnée(s) médicales seront rattachées au dossier après validation.<br>' : '') +
-             '<span style="font-weight:500;">Vérifiez et corrigez les champs avant d\'enregistrer.</span>', 'ok');
+             '<span style="font-weight:500;">Vérifiez et corrigez les champs avant d\'enregistrer.</span>' +
+             apercu, 'ok');
     });
   })();
+
+  /**
+   * Aperçu de tout ce que l'IA a lu, dépliable, avant validation de la fiche.
+   *
+   * Les 88 données extraites n'étaient visibles qu'une fois la fiche
+   * enregistrée. On validait donc à l'aveugle un contenu produit par un
+   * modèle — l'inverse du principe « l'IA propose, le soignant valide ».
+   */
+  function construireApercuExtraction(faits, echo, ident) {
+    const ech = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const lignes = [];
+
+    if (ident) {
+      const champs = [
+        ['Nom', ident.nom], ['Prénom', ident.prenom], ['IPP', ident.ipp],
+        ['Naissance', ident.date_naissance], ['Sexe', ident.sexe], ['Âge', ident.age],
+        ['Taille', ident.taille_cm ? ident.taille_cm + ' cm' : null],
+        ['Poids', ident.poids_kg ? ident.poids_kg + ' kg' : null],
+        ['Centre', ident.centre], ['Médecin', ident.medecin]
+      ].filter(c => c[1] != null && c[1] !== '');
+      if (champs.length) {
+        lignes.push('<div style="margin-bottom:10px;"><strong style="font-size:12px;">Identité lue</strong><br>' +
+          champs.map(c => '<span style="display:inline-block; margin:2px 6px 2px 0; padding:2px 8px; background:#e0f2fe; border-radius:99px; font-size:11.5px;">' +
+            ech(c[0]) + ' : <b>' + ech(c[1]) + '</b></span>').join('') + '</div>');
+      }
+    }
+
+    if (echo) {
+      const mes = Object.keys(echo)
+        .filter(k => echo[k] != null && echo[k] !== '' && /_mm$|_pct$|_cm$/.test(k))
+        .slice(0, 24);
+      if (mes.length) {
+        lignes.push('<div style="margin-bottom:10px;"><strong style="font-size:12px;">Échocardiographie — ' +
+          mes.length + ' mesure(s)</strong><br>' +
+          mes.map(k => '<span style="display:inline-block; margin:2px 6px 2px 0; padding:2px 8px; background:#fce7f3; border-radius:99px; font-size:11.5px;">' +
+            ech(k.replace(/_/g, ' ')) + ' : <b>' + ech(echo[k]) + '</b></span>').join('') + '</div>');
+      }
+    }
+
+    if (faits && faits.length) {
+      const rangs = faits.slice(0, 120).map(f => {
+        const d = f.event_date ? new Date(f.event_date).toLocaleDateString('fr-FR') : '—';
+        const v = (f.value_num != null ? f.value_num + ' ' + (f.unit || '') : (f.value_text || ''));
+        const sur = f.confiance != null && f.confiance < 0.7;
+        return '<tr' + (sur ? ' style="background:#fffbeb;"' : '') + '>' +
+               '<td style="padding:3px 7px; white-space:nowrap; color:#64748b;">' + d + '</td>' +
+               '<td style="padding:3px 7px; color:#94a3b8; font-size:10.5px;">' + ech(f.category || '') + '</td>' +
+               '<td style="padding:3px 7px;">' + ech(f.label || '') + '</td>' +
+               '<td style="padding:3px 7px; font-weight:700; white-space:nowrap;">' + ech(v.trim()) + '</td>' +
+               '</tr>';
+      }).join('');
+      lignes.push('<div><strong style="font-size:12px;">Chronologie extraite — ' + faits.length + ' donnée(s)</strong>' +
+        '<div style="max-height:260px; overflow-y:auto; margin-top:6px; border:1px solid #e2e8f0; border-radius:8px;">' +
+        '<table style="width:100%; border-collapse:collapse; font-size:11.5px;">' + rangs + '</table></div>' +
+        '<p style="margin:6px 0 0; font-size:11px; color:#92400e;">Les lignes sur fond jaune ont une confiance faible : relisez-les en priorité.</p></div>');
+    }
+
+    if (!lignes.length) return '';
+    return '<details style="margin-top:12px; border-top:1px solid #d1fae5; padding-top:10px;">' +
+      '<summary style="cursor:pointer; font-weight:700; font-size:12.5px;">🔍 Voir le détail de ce qui a été lu</summary>' +
+      '<div style="margin-top:10px;">' + lignes.join('') + '</div></details>';
+  }
 
   // Phase 14 : (ré)envoi du lien d'activation au patient
   window.__renvoyerActivation = async function (patientId) {

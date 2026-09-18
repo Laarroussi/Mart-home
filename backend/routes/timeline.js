@@ -95,11 +95,26 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
     const texteMasque = modeIdentite ? texte : pseudonymiser(texte, patient);
 
     let identite = null;
+    let identiteErreur = null;
     if (modeIdentite) {
       try {
         const ri = await analyserIdentite(texte);
         identite = ri.identite;
-      } catch (e) { console.warn('[identite] extraction échouée :', e.message); }
+        // Une identité dont tous les champs sont vides n'est pas une identité :
+        // autant le dire, plutôt que d'afficher « 0 champ prérempli » sans raison.
+        const utiles = ['nom', 'prenom', 'ipp', 'date_naissance', 'sexe', 'age', 'centre', 'medecin'];
+        if (!utiles.some(k => identite && identite[k] != null)) {
+          identiteErreur = "L'en-tête du document n'a pas permis de lire le nom, le prénom ni la date de naissance.";
+        }
+      } catch (e) {
+        console.warn('[identite] extraction échouée :', e.message);
+        // Renvoyée à l'interface : jusqu'ici l'échec était silencieux, et le
+        // clinicien concluait que la fonction ne marchait pas.
+        identiteErreur = e.message;
+      }
+    } else if (avec_identite === true && p.rows.length) {
+      identiteErreur = "Le code patient " + req.params.patient_id +
+        " existe déjà en base : l'identité n'est pas relue, pour ne pas écraser la fiche existante.";
     }
 
     let resultat;
@@ -138,6 +153,7 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
       faits: resultat.faits,
       echo,                               // non nul si compte-rendu d'ETT reconnu
       identite,                           // non nul en mode création de fiche
+      identite_erreur: identiteErreur,    // raison lisible si l'identité n'a pas pu être lue
       modele: resultat.modele,
       duree_ms: resultat.duree_ms,
       pseudonymise: !modeIdentite,
