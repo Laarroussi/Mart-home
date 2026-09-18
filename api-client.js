@@ -238,6 +238,14 @@
       patchAortic: (patientId, data)       => request('PATCH', `/consultations/${patientId}/aortic`, data)
     },
 
+    /** ===== Synthèse clinique (3 rubriques, rédaction assistée) ===== */
+    synthese: {
+      get:     (patientId)       => request('GET',  `/synthese/${patientId}`),
+      save:    (patientId, data) => request('POST', `/synthese/${patientId}`, data),
+      generer: (patientId, data) => request('POST', `/synthese/${patientId}/generer`, data || {}),
+      donnees: (patientId)       => request('GET',  `/synthese/${patientId}/donnees`)
+    },
+
     /** ===== Visioconférence : jeton d'accès signé par le serveur ===== */
     visioJaas: {
       token:  () => request('GET', '/visio-jaas/token'),

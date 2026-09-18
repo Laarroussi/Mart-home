@@ -438,6 +438,96 @@ async function analyserEcho(texte) {
   return { est_echo: true, echo, modele: MODELE, duree_ms: Date.now() - debut };
 }
 
+// ============================================================
+// SYNTHÈSE CLINIQUE
+// ------------------------------------------------------------
+// Trois rubriques, rédigées à partir des seules données du dossier.
+//
+// La consigne est volontairement sévère sur un point : ne rien inventer.
+// Un modèle de langage comble naturellement les vides, et dans un dossier
+// médical un vide comblé est une erreur qui sera lue comme un fait. On lui
+// interdit donc les formules d'attente : une donnée absente est omise,
+// pas annoncée comme « non renseignée ».
+// ============================================================
+const CONSIGNE_SYNTHESE = `Tu es assistant d'un professionnel d'activité physique adaptée (APA) qui suit des patients atteints du syndrome de Marfan.
+
+Tu rédiges une synthèse clinique en français, en trois rubriques. Tu écris en prose continue, sobre et professionnelle, à la troisième personne. Pas de listes à puces, pas de titres internes, pas de gras.
+
+RÈGLE ABSOLUE : tu n'utilises QUE les données fournies. Tu n'inventes aucun chiffre, aucune date, aucun antécédent. Si une information manque, tu n'en parles pas du tout — tu n'écris jamais "non renseigné", "à compléter", "information manquante" ni aucune formule équivalente. Une rubrique sans données disponibles reste une chaîne vide.
+
+RUBRIQUE "entree" — présentation à l'inclusion :
+Nomme le patient (nom et prénom), son sexe, son âge, sa profession si connue. Précise la pathologie et la mutation génétique si elle figure au dossier. Donne les diamètres aortiques disponibles, en priorité le sinus de Valsalva, avec leurs dates. Si deux évaluations au moins existent, indique l'évolution entre l'avant-dernière et la dernière, en millimètres et en précisant la durée écoulée. Mentionne les interventions chirurgicales subies, cardiaques ou autres, avec leur date et leur nature.
+
+RUBRIQUE "objectifs" — difficultés et projet :
+Décris les difficultés ressenties par le patient, telles qu'elles ressortent des éléments fournis et du bilan d'entretien. Énonce ensuite les objectifs de la prise en charge. Explique enfin que l'accompagnement en activité physique adaptée se déroule à distance, en visioconférence, avec des séances encadrées par un professionnel et un suivi de la fréquence cardiaque en direct.
+
+RUBRIQUE "suivi_activite" — état de la pratique :
+Rends compte de la pratique de façon globale et non séance par séance : nombre de séances réalisées, durée moyenne, intensités de fréquence cardiaque observées et leur situation par rapport aux seuils ventilatoires si ceux-ci sont connus, ressenti d'effort moyen sur l'échelle CR10 de Borg. Mentionne les modules d'éducation thérapeutique suivis. Si aucune séance n'a encore été réalisée, renvoie une chaîne vide.
+
+Le "bilan d'entretien" que l'on te transmet est rédigé par le professionnel. Tu t'en sers pour nourrir les rubriques "entree" et "objectifs", en répartissant chaque élément là où il a sa place. Tu ne le recopies pas tel quel et tu n'en fais pas une rubrique séparée.
+
+Réponds STRICTEMENT en JSON :
+{"entree": "...", "objectifs": "...", "suivi_activite": "..."}`;
+
+/**
+ * Rédige la synthèse à partir du dossier assemblé par la route.
+ * @param {object} dossier données déjà filtrées et mises en forme
+ */
+async function genererSynthese(dossier) {
+  exigerCle();
+  const debut = Date.now();
+
+  // Le dossier contient le nom du patient : c'est demandé, la synthèse est
+  // nominative. On ne pseudonymise donc pas ici — contrairement à l'analyse
+  // de documents. Ce choix doit rester explicite dans la documentation DPO.
+  const contenu = JSON.stringify(dossier || {}, null, 1).slice(0, 60000);
+
+  let rep;
+  try {
+    rep = await fetch(BASE + '/v1/chat/completions', {
+      method: 'POST',
+      headers: entetes(),
+      body: JSON.stringify({
+        model: MODELE,
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: CONSIGNE_SYNTHESE },
+          { role: 'user', content: 'Dossier du patient :\n\n' + contenu }
+        ]
+      })
+    });
+  } catch (e) {
+    throw new Error("Service Mistral injoignable : " + e.message);
+  }
+  if (!rep.ok) throw await erreurLisible(rep, "la synthèse");
+
+  const data = await rep.json();
+  const brut = data && data.choices && data.choices[0] && data.choices[0].message
+    ? data.choices[0].message.content : '{}';
+  let parsed;
+  try { parsed = JSON.parse(brut); }
+  catch (_) { throw new Error("Réponse de l'IA illisible (JSON invalide)"); }
+
+  // Dernier filet contre les formules d'attente, que les modèles produisent
+  // malgré la consigne : on les supprime plutôt que de les laisser passer
+  // dans un document clinique.
+  const nettoyer = (t) => {
+    let s = String(t || '').trim();
+    if (!s) return '';
+    if (/^(non renseign|aucune information|information manquante|à compléter|données? (non|in)disponibles?)/i.test(s)) return '';
+    return s.slice(0, 6000);
+  };
+
+  return {
+    entree: nettoyer(parsed.entree),
+    objectifs: nettoyer(parsed.objectifs),
+    suivi_activite: nettoyer(parsed.suivi_activite),
+    modele: MODELE,
+    duree_ms: Date.now() - debut
+  };
+}
+
 /** Diagnostic de configuration, sans jamais exposer la clé */
 function statutIA() {
   const k = process.env.MISTRAL_API_KEY || '';
@@ -454,6 +544,7 @@ function statutIA() {
 
 module.exports = {
   analyserTexte, analyserEcho, analyserIdentite, ocrDocument,
+  genererSynthese,
   pseudonymiser, statutIA, cleActive,
   CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO
 };

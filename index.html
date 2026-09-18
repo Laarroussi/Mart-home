@@ -12,23 +12,24 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase23-3"></script>
+  <script src="api-client.js?v=phase24-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase23-3"></script>
+  <script src="questionnaires-defs.js?v=phase24-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase23-3"></script>
+  <script src="medical-parsers.js?v=phase24-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase23-3"></script>
+  <script src="cpet-graph-preview.js?v=phase24-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase23-3"></script>
-  <script src="medical-record-ui.js?v=phase23-3"></script>
+  <script src="pdf-extractor.js?v=phase24-0"></script>
+  <script src="medical-record-ui.js?v=phase24-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase23-3"></script>
+  <script src="aortic-consultations.js?v=phase24-0"></script>
+  <script src="synthese-ui.js?v=phase24-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase23-3"></script>
-  <script src="visio-jitsi.js?v=phase23-3"></script>
-  <script src="video-pilotee.js?v=phase23-3"></script>
+  <script src="document-import.js?v=phase24-0"></script>
+  <script src="visio-jitsi.js?v=phase24-0"></script>
+  <script src="video-pilotee.js?v=phase24-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3328,8 +3329,15 @@
           </div>
         </section>
 
-        <!-- Section 3 : Statut clinique & vigilance -->
-        <section class="card" style="padding:20px; margin-bottom:16px;">
+        <!-- Section 3 : Statut clinique & vigilance — repliée par défaut.
+             Ces champs ne sont pas nécessaires pour inclure un patient : ils
+             se complètent à la première consultation. Les laisser ouverts
+             allongeait le formulaire sans rien rendre obligatoire. -->
+        <details class="card" style="padding:20px; margin-bottom:16px;">
+          <summary style="cursor:pointer; font-weight:800; font-size:15px; color:#0b1530; list-style:none;">
+            ⚠️ Statut clinique &amp; vigilance APA <span style="font-weight:600; color:#94a3b8; font-size:12.5px;">— facultatif, dépliez si besoin</span>
+          </summary>
+        <section style="padding:16px 0 0;">
           <h3 style="font-size:17px; font-weight:800; display:flex; align-items:center; gap:9px; margin-bottom:6px;">
             <span class="icon-bg amber"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
             Statut clinique &amp; vigilance APA
@@ -3366,14 +3374,19 @@
             </div>
           </div>
         </section>
+        </details>
 
         <!-- Section 4 : Évaluation Baseline — RETIRÉE (Phase 12.1.6) -->
         <!-- Les évaluations cliniques (VO2, force, aorta, SF-36, GPAQ, ...) sont désormais -->
         <!-- alimentées depuis l'import de fichiers (CPET CSV, Pulse Wave, questionnaires) -->
         <!-- dans le Dossier patient. Pas de saisie manuelle au moment de la création. -->
 
-        <!-- Section 5 : Notes investigateur -->
-        <section class="card" style="padding:20px; margin-bottom:16px;">
+        <!-- Section 5 : Notes investigateur — repliée par défaut. -->
+        <details class="card" style="padding:20px; margin-bottom:16px;">
+          <summary style="cursor:pointer; font-weight:800; font-size:15px; color:#0b1530; list-style:none;">
+            🗒 Notes investigateur <span style="font-weight:600; color:#94a3b8; font-size:12.5px;">— facultatif</span>
+          </summary>
+        <section style="padding:16px 0 0;">
           <h3 style="font-size:17px; font-weight:800; display:flex; align-items:center; gap:9px; margin-bottom:6px;">
             <span class="icon-bg rose"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></span>
             Notes investigateur
@@ -3398,6 +3411,7 @@
             </div>
           </div>
         </section>
+        </details>
 
         <div class="actions" style="justify-content:flex-end; gap:10px;">
           <button class="btn-secondary" onclick="resetCreationForm()">Réinitialiser</button>
@@ -3417,28 +3431,46 @@
           </div>
         </header>
 
+        <!-- Phase 24.5 — Le dossier tenait sur une seule page de 39 sections :
+             il fallait faire défiler longuement pour atteindre l'aorte ou les
+             documents. Les blocs sont désormais répartis en six vues, chacune
+             accessible en un clic. Rien n'a été supprimé. -->
+        <div class="subtabs" id="dossierVues">
+          <button class="subtab-button active" data-dgroup="synthese" data-subtab="patient-synthese">📋 Synthèse</button>
+          <button class="subtab-button" data-dgroup="aorte" data-subtab="patient-aorte">❤️ Aorte</button>
+          <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-physio">📊 Évaluations</button>
+          <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-questionnaires">📝 SF-36 &amp; GPAQ</button>
+          <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-comparaisons">🎯 Comparaisons</button>
+          <button class="subtab-button" data-dgroup="documents">📄 Documents &amp; examens</button>
+        </div>
+
         <!-- Phase 12.4 : Carte d'identité enrichie -->
-        <div id="patientIdentityCardMount"></div>
+        <div id="patientIdentityCardMount" data-dgroup="synthese"></div>
+
+        <!-- Phase 24 : Synthèse clinique en trois rubriques.
+             Placée en tête du dossier : c'est le document qu'on relit en
+             premier avant une consultation. -->
+        <div id="syntheseMount" data-dgroup="synthese"></div>
 
         <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-        <div id="aorticConsultMount"></div>
+        <div id="aorticConsultMount" data-dgroup="aorte"></div>
         <!-- Phase 17 : versement de pièces + chronologie extraite par IA -->
-        <div id="docImportMount"></div>
+        <div id="docImportMount" data-dgroup="documents"></div>
 
         <!-- Phase 12.4 : Chronologie des actes réalisés -->
-        <div id="patientActsTimelineMount"></div>
+        <div id="patientActsTimelineMount" data-dgroup="documents"></div>
 
         <!-- ============================================================ -->
         <!-- === Dossier médical structuré (Phase 12.1) === -->
         <!-- === Identité, antécédents, objectifs, points clés, import PDF === -->
         <!-- ============================================================ -->
-        <div id="apiMedicalRecordMount"></div>
+        <div id="apiMedicalRecordMount" data-dgroup="documents"></div>
 
         <!-- ============================================================ -->
         <!-- === Dossiers médicaux — UI ÉPURÉE (Phase A) === -->
         <!-- === Seul et unique endroit d'import d'examens cliniques === -->
         <!-- ============================================================ -->
-        <article class="card" id="apiMedicalExamsCard" style="padding:0; margin-bottom:14px; overflow:hidden;">
+        <article class="card" id="apiMedicalExamsCard" data-dgroup="documents" style="padding:0; margin-bottom:14px; overflow:hidden;">
           <!-- En-tête sobre -->
           <div style="padding:18px 22px; background:linear-gradient(135deg,#7c3aed,#a855f7); color:white;">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
@@ -3472,7 +3504,7 @@
           <div id="apiMedExList" style="padding:0 22px 22px;"></div>
         </article>
 
-        <div id="dossierSharedHeader">
+        <div id="dossierSharedHeader" data-dgroup="evaluations">
         <article class="card timeline-card">
           <div class="timeline-head">
             <h3>📅 Évaluations enregistrées <span id="evalCountLabel" style="color:var(--muted); font-weight:600; font-size:13px;"></span></h3>
@@ -3482,18 +3514,15 @@
         </article>
         </div>
 
-        <div class="subtabs">
-          <button class="subtab-button active" data-subtab="patient-synthese">📊 Synthèse</button>
-          <button class="subtab-button" data-subtab="patient-physio">💪 Physiologie</button>
-          <button class="subtab-button" data-subtab="patient-aorte">❤️ Aorte</button>
-          <button class="subtab-button" data-subtab="patient-questionnaires">📝 SF-36 & GPAQ</button>
-          <button class="subtab-button" data-subtab="patient-comparaisons">🎯 Comparaisons</button>
-          <!-- Anciens sous-onglets d'import VO2/Pulse Wave masqués — remplacés par la carte unique "Dossiers médicaux" en haut du Dossier patient -->
-          <button class="subtab-button" data-subtab="patient-vo2" style="display:none;">🫁 Analyse VO₂</button>
-          <button class="subtab-button" data-subtab="patient-pulse" style="display:none;">💓 Onde de pouls</button>
+        <!-- La barre de vues a été remontée en tête de page (id dossierVues).
+             Ces deux entrées restent masquées : les analyses VO₂ et pOpmètre
+             s'ouvrent depuis la carte « Dossiers médicaux ». -->
+        <div class="subtabs" style="display:none;">
+          <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-vo2">🫁 Analyse VO₂</button>
+          <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-pulse">💓 Onde de pouls</button>
         </div>
 
-        <div id="dossierGraphBoard">
+        <div id="dossierGraphBoard" data-dgroup="evaluations">
         <div class="assessment-note">
           <div class="note-head">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -5429,7 +5458,12 @@
     $('workspaceSubtitle').textContent = titles[tabId][1];
     const quickPatientBox = document.querySelector('.quick-patient');
     if (quickPatientBox) quickPatientBox.style.display = tabId === 'accueil' ? 'none' : 'flex';
-    if (tabId === 'dossier') renderPatientFile();
+    if (tabId === 'dossier') {
+      renderPatientFile();
+      // Le dossier s'ouvre toujours sur la synthèse : c'est ce qu'on relit
+      // en premier avant une consultation.
+      try { afficherVueDossier('synthese', 'patient-synthese'); } catch (_) {}
+    }
     if (tabId === 'training') renderTrainingVideos();
     if (tabId === 'database') renderDbTable();
     if (tabId === 'creation') initCreationForm();
@@ -6090,6 +6124,8 @@
       // les données du patient précédent, ce qui prêtait fortement à confusion.
       const aoMount = document.getElementById('aorticConsultMount');
       if (aoMount) aoMount.innerHTML = '';
+      const syMount = document.getElementById('syntheseMount');
+      if (syMount) syMount.innerHTML = '';
       const diMount = document.getElementById('docImportMount');
       if (diMount) diMount.innerHTML = '';
       return;
@@ -6114,6 +6150,13 @@
     // Phase 12.4 : injecte la carte d'identité + timeline actes en haut du dossier
     try { renderPatientIdentityCard(); } catch (e) { console.warn('[dossier] carte identité', e); }
     try { renderPatientTimelineActs(); } catch (e) { console.warn('[dossier] timeline actes', e); }
+
+    // Phase 24 : synthèse clinique en trois rubriques
+    try {
+      if (window.SyntheseUI && document.getElementById('syntheseMount')) {
+        window.SyntheseUI.mount('syntheseMount', selectedPatient.id);
+      }
+    } catch (e) { console.warn('[synthese] mount échoué', e); }
 
     // Phase 13 : suivi aortique + consultations chronologiques
     try {
@@ -8838,17 +8881,36 @@
   // === ÉVÉNEMENTS
   // ============================================================
   document.querySelectorAll('.tab-button').forEach(btn => btn.addEventListener('click', () => switchMainTab(btn.dataset.tab)));
-  document.querySelectorAll('.subtab-button').forEach(btn => btn.addEventListener('click', () => {
-    const target = btn.dataset.subtab;
-    document.querySelectorAll('.subtab-button').forEach(b => b.classList.toggle('active', b.dataset.subtab === target));
+  /**
+   * Bascule de vue dans le dossier patient.
+   *
+   * Deux choses se jouent ensemble : le panneau d'analyse (.sub-panel) et le
+   * groupe de blocs de tête (data-dgroup) — identité et synthèse, aorte,
+   * documents, évaluations. Les afficher tous en même temps donnait une page
+   * de plusieurs milliers de pixels dans laquelle on cherchait l'information.
+   */
+  function afficherVueDossier(groupe, panneau) {
+    document.querySelectorAll('#dossierVues .subtab-button').forEach(b => {
+      b.classList.toggle('active', b.dataset.dgroup === groupe && b.dataset.subtab === panneau);
+    });
+    document.querySelectorAll('#dossier [data-dgroup]').forEach(bloc => {
+      bloc.style.display = bloc.dataset.dgroup === groupe ? '' : 'none';
+    });
     document.querySelectorAll('.sub-panel').forEach(p => p.classList.add('hidden'));
-    $(target).classList.remove('hidden');
-    // Masquer le tableau graphique (4 mini-charts) sur les analyses dédiées
-    const analysisTabs = ['patient-vo2', 'patient-pulse'];
+    if (panneau && $(panneau)) $(panneau).classList.remove('hidden');
+
+    // Le tableau de mini-graphiques n'a de sens qu'avec les évaluations.
     const board = $('dossierGraphBoard');
-    if (board) board.style.display = analysisTabs.includes(target) ? 'none' : '';
-    if (target === 'patient-vo2') { syncEvalSelectors(); renderVo2Analysis(); }
-    if (target === 'patient-pulse') { syncEvalSelectors(); renderPulseAnalysis(); }
+    if (board && groupe === 'evaluations') {
+      board.style.display = ['patient-vo2', 'patient-pulse'].includes(panneau) ? 'none' : '';
+    }
+    if (panneau === 'patient-vo2') { syncEvalSelectors(); renderVo2Analysis(); }
+    if (panneau === 'patient-pulse') { syncEvalSelectors(); renderPulseAnalysis(); }
+  }
+  window.afficherVueDossier = afficherVueDossier;
+
+  document.querySelectorAll('.subtab-button').forEach(btn => btn.addEventListener('click', () => {
+    afficherVueDossier(btn.dataset.dgroup || 'evaluations', btn.dataset.subtab || null);
   }));
 
   // ============================================================
