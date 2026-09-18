@@ -252,6 +252,16 @@
       donnees: (patientId)       => request('GET',  `/synthese/${patientId}/donnees`)
     },
 
+    /** ===== Entretien patient : enregistrement transcrit puis analysé ===== */
+    entretien: {
+      // patientId null pendant la création : la fiche n'existe pas encore,
+      // l'entretien est alors transcrit sans être archivé.
+      transcrire: (patientId, data) => request('POST',
+        patientId ? `/entretien/${patientId}/transcrire` : '/entretien/transcrire', data),
+      list:  (patientId)       => request('GET',  `/entretien/${patientId}`),
+      save:  (patientId, data) => request('POST', `/entretien/${patientId}`, data)
+    },
+
     /** ===== Visioconférence : jeton d'accès signé par le serveur ===== */
     visioJaas: {
       token:  () => request('GET', '/visio-jaas/token'),

@@ -583,6 +583,103 @@ async function genererSynthese(dossier) {
   };
 }
 
+// ============================================================
+// ENTRETIEN PATIENT — extraction des éléments utiles au dossier
+// ------------------------------------------------------------
+// Un entretien parlé est décousu : digressions, hésitations, allers-retours.
+// On en tire les seuls éléments qui ont leur place dans un dossier d'APA,
+// en distinguant ce que dit le patient de ce que décide le clinicien.
+//
+// La règle de non-invention est ici particulièrement importante : une
+// transcription contient des approximations, des mots mal reconnus. Le
+// modèle ne doit pas « réparer » ce qu'il n'a pas compris.
+// ============================================================
+const CONSIGNE_ENTRETIEN = `Tu assistes un professionnel d'activité physique adaptée qui vient de mener un entretien avec un patient atteint du syndrome de Marfan. On te remet la transcription de cet entretien.
+
+Tu en extrais les éléments utiles au dossier. Tu écris en français, en prose, à la troisième personne, de façon factuelle et sobre.
+
+RÈGLES ABSOLUES :
+- Tu ne rapportes QUE ce qui a été dit. Tu n'ajoutes aucun élément, aucun chiffre, aucun antécédent qui ne figure pas dans la transcription.
+- Une transcription automatique comporte des erreurs de reconnaissance. Si un passage est incompréhensible ou douteux, tu l'ignores ; tu ne devines pas ce qui aurait pu être dit.
+- Si un champ n'a pas de matière, tu renvoies une chaîne vide. Tu n'écris jamais "non abordé", "non renseigné" ni aucune formule équivalente.
+- Tu ne poses aucun diagnostic et ne formules aucune recommandation qui n'ait été énoncée pendant l'entretien.
+
+Champs à produire :
+
+"profession" : la profession ou la situation professionnelle, en quelques mots seulement. Vide si elle n'est pas évoquée.
+
+"difficultes" : ce que le patient décrit comme gênant ou limitant — essoufflement, fatigue, douleurs, appréhension, limitations dans la vie quotidienne. Ses mots, reformulés sobrement.
+
+"attentes_patient" : ce qu'il souhaite obtenir, ce qu'il espère du programme.
+
+"objectifs" : les objectifs énoncés par le professionnel pendant l'entretien. Vide s'il n'en a pas formulé.
+
+"precautions" : les précautions, contre-indications ou signaux d'alerte évoqués.
+
+"antecedents" : les antécédents médicaux ou chirurgicaux mentionnés, avec leur date si elle est donnée.
+
+"traitements" : les traitements en cours cités.
+
+"activite_actuelle" : le niveau d'activité physique décrit par le patient aujourd'hui.
+
+"resume" : cinq à dix lignes restituant le déroulé de l'entretien et son contenu.
+
+"points_a_verifier" : les affirmations qui mériteraient confirmation — chiffres cités de mémoire, passages peu audibles, informations rapportées de seconde main. Une phrase par point, séparées par un retour à la ligne. Vide s'il n'y en a pas.
+
+Réponds STRICTEMENT en JSON avec exactement ces clés :
+{"profession":"...","difficultes":"...","attentes_patient":"...","objectifs":"...","precautions":"...","antecedents":"...","traitements":"...","activite_actuelle":"...","resume":"...","points_a_verifier":"..."}`;
+
+const CHAMPS_ENTRETIEN = ['profession', 'difficultes', 'attentes_patient', 'objectifs',
+  'precautions', 'antecedents', 'traitements', 'activite_actuelle', 'resume', 'points_a_verifier'];
+
+async function analyserEntretien(texte) {
+  exigerCle();
+  const debut = Date.now();
+  const extrait = String(texte || '').slice(0, 60000);
+  if (extrait.trim().length < 40) {
+    throw new Error("La transcription est trop courte pour en tirer quoi que ce soit.");
+  }
+
+  let rep;
+  try {
+    rep = await fetch(BASE + '/v1/chat/completions', {
+      method: 'POST',
+      headers: entetes(),
+      body: JSON.stringify({
+        model: MODELE,
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: CONSIGNE_ENTRETIEN },
+          { role: 'user', content: "Transcription de l'entretien :\n\n" + extrait }
+        ]
+      })
+    });
+  } catch (e) {
+    throw new Error('Service Mistral injoignable : ' + e.message);
+  }
+  if (!rep.ok) throw await erreurLisible(rep, "l'analyse de l'entretien");
+
+  const data = await rep.json();
+  const brut = data && data.choices && data.choices[0] && data.choices[0].message
+    ? data.choices[0].message.content : '{}';
+  let p;
+  try { p = JSON.parse(brut); }
+  catch (_) { throw new Error("Réponse de l'IA illisible (JSON invalide)"); }
+
+  const nettoyer = (t) => {
+    let s = String(t || '').trim();
+    if (!s) return '';
+    if (/^(non (abord|renseign|évoqu|mentionn)|aucun|rien|à compléter)/i.test(s)) return '';
+    return s.slice(0, 4000);
+  };
+
+  const champs = {};
+  CHAMPS_ENTRETIEN.forEach(k => { champs[k] = nettoyer(p[k]); });
+
+  return { champs, modele: MODELE, duree_ms: Date.now() - debut };
+}
+
 /** Diagnostic de configuration, sans jamais exposer la clé */
 function statutIA() {
   const k = process.env.MISTRAL_API_KEY || '';
@@ -599,7 +696,7 @@ function statutIA() {
 
 module.exports = {
   analyserTexte, analyserEcho, analyserIdentite, ocrDocument,
-  genererSynthese, transcrireAudio,
+  genererSynthese, transcrireAudio, analyserEntretien, CHAMPS_ENTRETIEN,
   pseudonymiser, statutIA, cleActive,
   CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO
 };

@@ -12,24 +12,25 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase25-1"></script>
+  <script src="api-client.js?v=phase26-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase25-1"></script>
+  <script src="questionnaires-defs.js?v=phase26-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase25-1"></script>
+  <script src="medical-parsers.js?v=phase26-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase25-1"></script>
+  <script src="cpet-graph-preview.js?v=phase26-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase25-1"></script>
-  <script src="medical-record-ui.js?v=phase25-1"></script>
+  <script src="pdf-extractor.js?v=phase26-1"></script>
+  <script src="medical-record-ui.js?v=phase26-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase25-1"></script>
-  <script src="synthese-ui.js?v=phase25-1"></script>
+  <script src="aortic-consultations.js?v=phase26-1"></script>
+  <script src="synthese-ui.js?v=phase26-1"></script>
+  <script src="entretien-ui.js?v=phase26-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase25-1"></script>
-  <script src="visio-jitsi.js?v=phase25-1"></script>
-  <script src="video-pilotee.js?v=phase25-1"></script>
+  <script src="document-import.js?v=phase26-1"></script>
+  <script src="visio-jitsi.js?v=phase26-1"></script>
+  <script src="video-pilotee.js?v=phase26-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3369,6 +3370,10 @@
             Ce que vous notez ici nourrit la synthèse clinique : difficultés exprimées, attentes, objectifs, précautions.
           </p>
 
+          <!-- Enregistrement de l'entretien : les champs ci-dessous se
+               remplissent à partir de ce qui a été dit. -->
+          <div id="creationEntretienMount" style="margin-bottom:18px;"></div>
+
           <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; margin-bottom:14px;">
             <div>
               <div class="control-label">Profession / situation</div>
@@ -5503,7 +5508,17 @@
     }
     if (tabId === 'training') renderTrainingVideos();
     if (tabId === 'database') renderDbTable();
-    if (tabId === 'creation') initCreationForm();
+    if (tabId === 'creation') {
+      initCreationForm();
+      // L'entretien se mène au moment de l'inclusion : le bloc doit être
+      // présent dès l'ouverture du formulaire, sans fiche encore créée.
+      try {
+        if (window.EntretienUI && document.getElementById('creationEntretienMount')
+            && !document.getElementById('entRecBtn')) {
+          window.EntretienUI.monter('creationEntretienMount', { patientId: null });
+        }
+      } catch (e) { console.warn('[entretien] montage création échoué :', e && e.message); }
+    }
     if (tabId === 'visio') { patients.forEach(p => initParticipantState(p)); renderSeanceVideos(); }
   }
 
@@ -7755,6 +7770,17 @@
             entree: sE, objectifs: sO, suivi_activite: '', bilan_entretien: notes
           });
           console.log('[synthese] enregistrée pour ' + code);
+        }
+        // L'entretien a été transcrit avant que la fiche existe : on le
+        // rattache maintenant. La transcription est la seule trace vérifiable
+        // de ce qui a été porté au dossier.
+        if (window._derniereTranscription) {
+          await window.MarfanAPI.entretien.save(code, {
+            transcription: window._derniereTranscription,
+            source: 'enregistrement', valide: true
+          });
+          window._derniereTranscription = null;
+          console.log('[entretien] transcription rattachée à ' + code);
         }
       } catch (e) { console.warn('[synthese] enregistrement échoué :', e && e.message); }
 

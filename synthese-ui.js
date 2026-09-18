@@ -61,7 +61,11 @@
         '<button id="synSaveBtn" class="btn-light" style="font-weight:700;">💾 Enregistrer</button>' +
       '</div>' +
 
+
       '<div style="padding:18px 20px;">' +
+        // L'entretien précède la rédaction : on l'enregistre, on relit ce qui
+        // en a été tiré, puis seulement on fait rédiger la synthèse.
+        '<div id="dossierEntretienMount" style="margin-bottom:18px;"></div>' +
         '<div id="synInfo" style="display:none; margin-bottom:14px; padding:11px 14px; border-radius:10px; font-size:12.5px; line-height:1.55;"></div>' +
 
         RUBRIQUES.map(function (r) {
@@ -244,6 +248,11 @@
     hote.innerHTML = gabarit();
     var g = el('synGenBtn'); if (g) g.addEventListener('click', generer);
     var s = el('synSaveBtn'); if (s) s.addEventListener('click', enregistrer);
+    // Entretien enregistré : ce qui en est retenu alimente le bilan
+    // d'entretien juste en dessous, qui nourrit à son tour la synthèse.
+    try {
+      if (window.EntretienUI) window.EntretienUI.monter('dossierEntretienMount', { patientId: patientId });
+    } catch (e) { console.warn('[entretien] montage échoué :', e && e.message); }
     charger();
   }
 
