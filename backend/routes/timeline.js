@@ -15,6 +15,7 @@
 const express = require('express');
 const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE } = require('../middleware/auth');
+const { synchroniser } = require('../utils/sync-evaluations');
 const { analyserTexte, analyserEcho, analyserIdentite, ocrDocument, transcrireAudio,
         pseudonymiser, statutIA, CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO } = require('../config/ai');
 
@@ -246,7 +247,15 @@ router.post('/:patient_id', requireAuth, async (req, res, next) => {
       );
       enregistres.push(rows[0]);
     }
-    res.status(201).json({ enregistres: enregistres.length, faits: enregistres });
+    // Les mesures datées que l'on vient de valider doivent apparaître sur les
+    // courbes longitudinales, sans quoi le dossier et les graphiques
+    // divergent. Volontairement non bloquant : un échec ici ne doit pas
+    // annuler l'enregistrement des faits.
+    let sync = null;
+    try { sync = await synchroniser(req.params.patient_id, req.user.id); }
+    catch (e) { console.warn('[timeline] synchronisation des évaluations :', e.message); }
+
+    res.status(201).json({ enregistres: enregistres.length, faits: enregistres, sync });
   } catch (err) { next(err); }
 });
 
@@ -355,7 +364,11 @@ router.post('/:patient_id/echo', requireAuth, async (req, res, next) => {
       ).catch(err => console.warn('[echo] maj suivi aortique :', err.message));
     }
 
-    res.status(201).json({ examen: rows[0] });
+    let sync = null;
+    try { sync = await synchroniser(req.params.patient_id, req.user.id); }
+    catch (e) { console.warn('[echo] synchronisation des évaluations :', e.message); }
+
+    res.status(201).json({ examen: rows[0], sync });
   } catch (err) { next(err); }
 });
 

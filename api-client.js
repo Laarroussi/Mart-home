@@ -130,7 +130,10 @@
     evaluations: {
       list:   (patientId) => request('GET', `/evaluations/${patientId}`),
       create: (patientId, data) => request('POST', `/evaluations/${patientId}`, data),
-      update: (id, data) => request('PATCH', `/evaluations/by-id/${id}`, data)
+      update: (id, data) => request('PATCH', `/evaluations/by-id/${id}`, data),
+      // Reconstruit les points de courbe à partir des pièces déjà versées :
+      // utile pour les dossiers antérieurs à la synchronisation automatique.
+      synchroniser: (patientId) => request('POST', `/evaluations/${patientId}/synchroniser`)
     },
 
     /** ===== Notifications ===== */

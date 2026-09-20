@@ -17,6 +17,7 @@
 const express = require('express');
 const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE } = require('../middleware/auth');
+const { synchroniser } = require('../utils/sync-evaluations');
 
 const router = express.Router();
 
@@ -98,7 +99,15 @@ router.post('/:patient_id', requireAuth, async (req, res, next) => {
         [req.params.patient_id, b.aortic_value_mm, b.consultation_date || null, b.aortic_site || null]
       );
     }
-    res.status(201).json({ consultation: consult });
+    // Une mesure aortique relevée en consultation est une donnée datée : elle
+    // a sa place sur la courbe longitudinale, au même titre qu'une évaluation.
+    let sync = null;
+    if (b.aortic_value_mm != null) {
+      try { sync = await synchroniser(req.params.patient_id, req.user.id); }
+      catch (e) { console.warn('[consultations] synchronisation :', e.message); }
+    }
+
+    res.status(201).json({ consultation: consult, sync });
   } catch (err) { next(err); }
 });
 

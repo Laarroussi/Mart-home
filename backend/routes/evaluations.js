@@ -14,12 +14,38 @@ router.get('/:patientId', requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: 'Accès refusé' });
     }
     const { rows } = await query(
-      'SELECT * FROM evaluations WHERE patient_id = $1 ORDER BY eval_id',
+      // Tri par DATE et non par identifiant : une évaluation déduite d'un
+      // document ancien porte un identifiant élevé mais doit s'afficher à sa
+      // place chronologique, sinon la courbe part en zigzag.
+      'SELECT * FROM evaluations WHERE patient_id = $1 ORDER BY eval_date ASC NULLS LAST, eval_id ASC',
       [req.params.patientId]
     );
     res.json({ evaluations: rows });
   } catch (err) { next(err); }
 });
+
+/**
+ * POST /api/evaluations/:patientId/synchroniser
+ *
+ * Reconstruit les évaluations d'origine documentaire à partir de tout ce que
+ * le dossier contient déjà : échocardiographies, consultations, faits extraits
+ * des pièces versées, suivi aortique.
+ *
+ * Utile pour les dossiers constitués avant la mise en place de la
+ * synchronisation automatique — leurs documents existent, mais leurs mesures
+ * ne figurent pas encore sur les courbes.
+ *
+ * Déclarée AVANT /:patientId, sinon « synchroniser » serait pris pour un
+ * identifiant de patient.
+ */
+router.post('/:patientId/synchroniser', requireAuth,
+  requireRole('principal_admin', 'investigator'), async (req, res, next) => {
+    try {
+      const { synchroniser } = require('../utils/sync-evaluations');
+      const r = await synchroniser(req.params.patientId, req.user.id);
+      res.json(r);
+    } catch (err) { next(err); }
+  });
 
 /** POST /api/evaluations/:patientId — Nouvelle évaluation */
 router.post('/:patientId', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {

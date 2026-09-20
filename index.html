@@ -12,26 +12,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase30-1"></script>
+  <script src="api-client.js?v=phase31-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase30-1"></script>
+  <script src="questionnaires-defs.js?v=phase31-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase30-1"></script>
+  <script src="medical-parsers.js?v=phase31-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase30-1"></script>
-  <script src="cpet-analyse.js?v=phase30-1"></script>
+  <script src="cpet-graph-preview.js?v=phase31-0"></script>
+  <script src="cpet-analyse.js?v=phase31-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase30-1"></script>
-  <script src="medical-record-ui.js?v=phase30-1"></script>
+  <script src="pdf-extractor.js?v=phase31-0"></script>
+  <script src="medical-record-ui.js?v=phase31-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase30-1"></script>
-  <script src="synthese-ui.js?v=phase30-1"></script>
-  <script src="entretien-ui.js?v=phase30-1"></script>
+  <script src="aortic-consultations.js?v=phase31-0"></script>
+  <script src="synthese-ui.js?v=phase31-0"></script>
+  <script src="entretien-ui.js?v=phase31-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase30-1"></script>
-  <script src="visio-jitsi.js?v=phase30-1"></script>
-  <script src="video-pilotee.js?v=phase30-1"></script>
+  <script src="document-import.js?v=phase31-0"></script>
+  <script src="visio-jitsi.js?v=phase31-0"></script>
+  <script src="video-pilotee.js?v=phase31-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3716,6 +3716,18 @@
         </section>
 
         <section id="patient-aorte" class="sub-panel hidden">
+          <!-- Reprise des dossiers antérieurs : les documents déjà versés
+               contiennent des mesures datées qui ne figurent pas encore sur
+               les courbes. Ce bouton les y fait entrer. -->
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; padding:12px 15px; background:#f0fdfa; border:1px solid #99f6e4; border-radius:12px;">
+            <div style="flex:1; min-width:240px; font-size:12.5px; color:#115e59; line-height:1.55;">
+              <strong>Les pièces versées alimentent la courbe.</strong>
+              Échocardiographies, consultations et mesures extraites des documents deviennent des points datés.
+              Pour un dossier constitué avant cette fonction, lancez la reprise.
+            </div>
+            <button class="btn-light" onclick="resynchroniserCourbes()" style="font-weight:700; white-space:nowrap;">↻ Reprendre les documents</button>
+          </div>
+          <div id="syncCourbesInfo" style="display:none; margin-bottom:14px;"></div>
           <div class="chart-grid">
             <article class="card chart-card">
               <div class="chart-header"><div><h3>Dilatation de l'aorte</h3><p>Suivi longitudinal avec validation investigateur.</p></div></div>
@@ -6284,6 +6296,55 @@
     cible('dbQualCheck', pct(evals.length - valides, evals.length));
     cible('dbQualMiss', pct(vides, cases));
   }
+
+  /**
+   * Reprend les pièces déjà versées pour en tirer des points de courbe.
+   *
+   * Les évaluations ainsi créées sont marquées « à valider » : elles viennent
+   * d'une lecture automatique, et un point de courbe qui entre dans une
+   * analyse d'évolution mérite d'être relu avant d'être tenu pour acquis.
+   */
+  window.resynchroniserCourbes = async function () {
+    const zone = $('syncCourbesInfo');
+    const dire = (html, ton) => {
+      if (!zone) return;
+      const c = ton === 'err' ? ['#fef2f2', '#fecaca', '#991b1b']
+              : ton === 'ok'  ? ['#ecfdf5', '#a7f3d0', '#065f46']
+                              : ['#f8fafc', '#e2e8f0', '#475569'];
+      zone.style.cssText = 'display:block; margin-bottom:14px; padding:11px 14px; border-radius:10px; ' +
+        'font-size:12.5px; line-height:1.55; background:' + c[0] + '; border:1px solid ' + c[1] + '; color:' + c[2] + ';';
+      zone.innerHTML = html;
+    };
+    if (!selectedPatient) { dire('Sélectionnez d\'abord un patient.', 'err'); return; }
+    if (selectedPatient.demo && !selectedPatient._fromApi) {
+      dire("Patient de démonstration : ses données ne sont pas en base, il n'y a rien à reprendre.", 'err');
+      return;
+    }
+    dire('Lecture des pièces du dossier…', null);
+    try {
+      const r = await window.MarfanAPI.evaluations.synchroniser(selectedPatient.id);
+      const total = (r.creees || 0) + (r.majs || 0);
+      if (!total) {
+        dire("Aucune mesure datée exploitable dans les pièces de ce dossier. " +
+             "Les courbes restent inchangées.", 'ok');
+      } else {
+        dire('<strong>' + (r.creees || 0) + ' point(s) ajouté(s)</strong>' +
+             (r.majs ? ' et ' + r.majs + ' mis à jour' : '') + ' sur les courbes.' +
+             (r.ignorees ? '<br><span style="opacity:.85;">' + r.ignorees +
+                ' date(s) ignorée(s) : une évaluation saisie existe déjà, elle fait foi.</span>' : '') +
+             '<br><span style="opacity:.85;">Ces points sont marqués « à valider » — relisez-les dans le tableau.</span>',
+             'ok');
+        // Recharge la cohorte pour que les courbes intègrent les nouveaux points.
+        try { if (typeof loadPatientsFromApi === 'function') await loadPatientsFromApi(); } catch (_) {}
+        try { setSelectedPatient(selectedPatient.id); } catch (_) {}
+      }
+      if (r.erreurs && r.erreurs.length) {
+        console.warn('[sync] erreurs :', r.erreurs);
+      }
+    } catch (e) {
+      dire('Reprise impossible : ' + ((e && e.message) || 'erreur inconnue'), 'err');
+    }
+  };
 
   function renderPatientFile() {
     // Phase 12.4 : garde-fou cohorte vide / patient non sélectionné
