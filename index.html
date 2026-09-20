@@ -12,25 +12,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase26-1"></script>
+  <script src="api-client.js?v=phase27-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase26-1"></script>
+  <script src="questionnaires-defs.js?v=phase27-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase26-1"></script>
+  <script src="medical-parsers.js?v=phase27-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase26-1"></script>
+  <script src="cpet-graph-preview.js?v=phase27-0"></script>
+  <script src="cpet-analyse.js?v=phase27-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase26-1"></script>
-  <script src="medical-record-ui.js?v=phase26-1"></script>
+  <script src="pdf-extractor.js?v=phase27-0"></script>
+  <script src="medical-record-ui.js?v=phase27-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase26-1"></script>
-  <script src="synthese-ui.js?v=phase26-1"></script>
-  <script src="entretien-ui.js?v=phase26-1"></script>
+  <script src="aortic-consultations.js?v=phase27-0"></script>
+  <script src="synthese-ui.js?v=phase27-0"></script>
+  <script src="entretien-ui.js?v=phase27-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase26-1"></script>
-  <script src="visio-jitsi.js?v=phase26-1"></script>
-  <script src="video-pilotee.js?v=phase26-1"></script>
+  <script src="document-import.js?v=phase27-0"></script>
+  <script src="visio-jitsi.js?v=phase27-0"></script>
+  <script src="video-pilotee.js?v=phase27-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -15156,11 +15157,28 @@
         try {
           let typeChoice = typeSel.value;
           let content = null;
-          if (f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls')) {
-            const ab = await M.fileToArrayBuffer(f);
+          // Détection par le CONTENU : les logiciels d'épreuve d'effort
+          // exportent parfois un classeur Excel sous l'extension .csv.
+          const ab0 = await M.fileToArrayBuffer(f);
+          const estExcel = M.estClasseurExcel ? M.estClasseurExcel(ab0) : false;
+          if (estExcel || f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls')) {
+            const ab = ab0;
             if (typeChoice === 'auto') typeChoice = 'cpet';
             detectedType = 'cpet';
             parsedResult = M.parseCPETXlsx(ab);
+            // Analyse approfondie : seuils, VO2 pic, facteurs pronostiques,
+            // zones d'entraînement. Elle complète le parseur historique sans
+            // le remplacer — en cas d'échec, l'import reste possible.
+            try {
+              if (window.CpetAnalyse) {
+                const av = window.CpetAnalyse.analyserClasseur(ab);
+                if (!av.erreur) {
+                  parsedResult.summary = Object.assign({}, parsedResult.summary, av);
+                  parsedResult.full = Object.assign({}, parsedResult.full, { analyse_avancee: av });
+                  window._derniereAnalyseCpet = av;
+                }
+              }
+            } catch (e) { console.warn('[cpet] analyse avancée :', e && e.message); }
           } else {
             content = await M.fileToText(f);
             if (typeChoice === 'auto') typeChoice = M.detectType(f.name, content);
@@ -15235,6 +15253,43 @@
           <tr><td style="${tdL}">SV2 (VO₂)</td><td style="${tdR}">${s.sv2_vo2 != null ? Math.round(s.sv2_vo2) : '—'}</td></tr>
           <tr><td style="${tdL}">Protocole</td><td style="${tdR}">${s.protocol || '—'}</td></tr>
         </table>`;
+        // Analyse approfondie : nature du VO₂, facteurs pronostiques et
+        // zones d'entraînement. Elle n'apparaît que si elle a abouti.
+        if (s.nature_vo2) {
+          const c = s.criteres_maximalite || {};
+          const natureTxt = s.nature_vo2 === 'VO2max'
+            ? '<span style="color:#065f46; font-weight:800;">VO₂ max — effort maximal confirmé</span>'
+            : '<span style="color:#b45309; font-weight:800;">VO₂ pic — effort maximal non confirmé</span>';
+          const oui = v => v === true ? '✅' : v === false ? '❌' : '—';
+          html += `<div style="margin-top:12px; padding-top:10px; border-top:1px solid #e2e8f0;">
+            <strong style="font-size:12px;">Analyse approfondie</strong>
+            <table style="width:100%; margin-top:6px; font-size:11.5px; border-collapse:collapse;">
+              <tr><td style="${tdL}">Nature de la mesure</td><td style="${tdR}">${natureTxt}</td></tr>
+              <tr><td style="${tdL}">VO₂ pic (lissé 30 s, phase d'exercice)</td><td style="${tdR}">${s.vo2_pic_ml_min || '—'} mL/min${s.vo2_pic_ml_kg_min ? ' · ' + s.vo2_pic_ml_kg_min + ' mL/kg/min' : ''}</td></tr>
+              ${s.vo2_logiciel_ml_min ? `<tr><td style="${tdL}">Valeur du logiciel, pour comparaison</td><td style="${tdR}; font-weight:500; color:#64748b;">${s.vo2_logiciel_ml_min} mL/min</td></tr>` : ''}
+              <tr><td style="${tdL}">Plateau de VO₂</td><td style="${tdR}">${oui(c.plateau)}</td></tr>
+              <tr><td style="${tdL}">QR ≥ 1,10</td><td style="${tdR}">${oui(c.qr_atteint)}${s.qr_pic ? ' (' + s.qr_pic + ')' : ''}</td></tr>
+              <tr><td style="${tdL}">FC ≥ 90 % de la prédite</td><td style="${tdR}">${oui(c.fc_atteinte)}${c.fc_pct_predite ? ' (' + c.fc_pct_predite + ' %)' : ''}</td></tr>
+              <tr><td style="${tdL}">Pente VE/VCO₂</td><td style="${tdR}">${s.ve_vco2_pente != null ? s.ve_vco2_pente : '—'}${s.ve_vco2_interpretation ? ` <span style="color:${s.ve_vco2_interpretation.couleur};">· classe ${s.ve_vco2_interpretation.classe}, ${s.ve_vco2_interpretation.libelle.toLowerCase()}</span>` : ''}${s.ve_vco2_r2 ? ` <span style="color:#94a3b8; font-weight:500;">R²&nbsp;${s.ve_vco2_r2}</span>` : ''}</td></tr>
+              <tr><td style="${tdL}">OUES</td><td style="${tdR}">${s.oues_ml_min != null ? s.oues_ml_min : '—'}${s.oues_par_kg ? ' · ' + s.oues_par_kg + '/kg' : ''}${s.oues_r2 ? ` <span style="color:#94a3b8; font-weight:500;">R²&nbsp;${s.oues_r2}</span>` : ''}</td></tr>
+              <tr><td style="${tdL}">SV1 / SV2 — fréquence cardiaque</td><td style="${tdR}">${s.sv1_fc || '—'} / ${s.sv2_fc || '—'} bpm</td></tr>
+            </table>`;
+          if (s.zones && s.zones.length) {
+            html += `<div style="margin-top:10px;"><strong style="font-size:12px;">Zones d'entraînement déduites</strong>
+              <div style="margin-top:6px;">` +
+              s.zones.map(z => `<div style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:11.5px;">
+                  <span style="width:10px; height:10px; border-radius:3px; background:${z.couleur}; flex:0 0 auto;"></span>
+                  <span style="flex:1;">${z.nom}</span>
+                  <strong style="white-space:nowrap;">${z.min}–${z.max} bpm</strong>
+                </div>`).join('') +
+              `</div>
+              <p style="margin:7px 0 0; font-size:11px; color:#64748b; line-height:1.5;">
+                Bornées par les seuils mesurés, et non par la formule « 220 moins l'âge » —
+                inadaptée sous bêtabloquant, traitement fréquent dans le syndrome de Marfan.
+              </p></div>`;
+          }
+          html += '</div>';
+        }
       } else if (type === 'pulse_wave') {
         html += `<table style="width:100%; margin-top:6px; font-size:11.5px; border-collapse:collapse;">
           <tr><td style="${tdL}">VOP (FTPWV)</td><td style="${tdR}; font-weight:700;">${s.ftpwv != null ? s.ftpwv + ' m/s' : '—'}</td></tr>

@@ -46,9 +46,72 @@
   // ============================================================
   // === Lecture du fichier : extraction du texte ===============
   // ============================================================
+  /**
+   * Lit les quatre premiers octets pour reconnaître un vrai classeur Excel.
+   *
+   * Les logiciels d'épreuve d'effort COSMED exportent un classeur Excel sous
+   * l'extension .csv. Traité comme du texte, il ne donnait que des caractères
+   * illisibles. La signature ZIP « PK\x03\x04 » lève l'ambiguïté.
+   */
+  async function estClasseurExcel(file) {
+    try {
+      const t = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+      return t[0] === 0x50 && t[1] === 0x4B && t[2] === 0x03 && t[3] === 0x04;
+    } catch (_) { return false; }
+  }
+
+  /**
+   * Lit un classeur Excel, feuille par feuille.
+   *
+   * Les feuilles très hautes sont condensées, et c'est essentiel : un examen
+   * d'épreuve d'effort contient plusieurs centaines de lignes cycle par
+   * cycle. Transmises intégralement, elles saturent la limite de lecture et
+   * la feuille « Résultats » — celle qui porte les seuils ventilatoires,
+   * donc la seule vraiment exploitable — se retrouvait tronquée.
+   *
+   * On conserve l'en-tête, le début et la fin de chaque grande feuille : de
+   * quoi reconnaître le format et les valeurs de repos comme de pic, sans
+   * noyer le reste.
+   */
+  const LIGNES_MAX = 45;
+  function lireClasseur(buf) {
+    if (typeof XLSX === 'undefined') throw new Error("Lecteur Excel indisponible dans cette page.");
+    const wb = XLSX.read(buf, { type: 'array' });
+    const blocs = [];
+    wb.SheetNames.forEach(n => {
+      const csv = XLSX.utils.sheet_to_csv(wb.Sheets[n]);
+      const lignes = csv.split('\n');
+      let corps;
+      if (lignes.length <= LIGNES_MAX) {
+        corps = csv;
+      } else {
+        const tete = lignes.slice(0, LIGNES_MAX - 8).join('\n');
+        const queue = lignes.slice(-6).join('\n');
+        corps = tete +
+          '\n[… ' + (lignes.length - LIGNES_MAX + 2) + ' lignes intermédiaires omises …]\n' +
+          queue;
+      }
+      blocs.push({ nom: n, texte: '\n--- Feuille : ' + n + ' ---\n' + corps, taille: lignes.length });
+    });
+    // Les feuilles de synthèse passent en premier : ce sont les plus denses
+    // en information, et elles ne doivent jamais être celles qu'on tronque.
+    blocs.sort((a, b) => a.taille - b.taille);
+    return blocs.map(b => b.texte).join('\n');
+  }
+
   async function lireTexte(file) {
     const nom = (file.name || '').toLowerCase();
     const type = file.type || '';
+
+    // Contrôle du contenu AVANT tout aiguillage par extension : un fichier
+    // nommé .csv peut être un classeur Excel déguisé.
+    if (await estClasseurExcel(file)) {
+      // Un .docx est aussi une archive ZIP : on ne détourne que ce qui n'est
+      // pas déjà traité comme un document Word.
+      if (!/\.docx$/.test(nom)) {
+        return { texte: lireClasseur(await file.arrayBuffer()), mode: 'tableur' };
+      }
+    }
 
     // PDF — pdf.js, déjà chargé dans la page
     if (type === 'application/pdf' || nom.endsWith('.pdf')) {
@@ -78,14 +141,7 @@
 
     // Tableurs — SheetJS si présent
     if (/\.(xlsx|xls|xlsm)$/.test(nom)) {
-      if (typeof XLSX === 'undefined') throw new Error("Lecteur Excel indisponible dans cette page.");
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: 'array' });
-      let t = '';
-      wb.SheetNames.forEach(n => {
-        t += '\n--- Feuille : ' + n + ' ---\n' + XLSX.utils.sheet_to_csv(wb.Sheets[n]);
-      });
-      return { texte: t, mode: 'tableur' };
+      return { texte: lireClasseur(await file.arrayBuffer()), mode: 'tableur' };
     }
 
     // Word .docx — le texte vit dans word/document.xml de l'archive

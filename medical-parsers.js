@@ -20,9 +20,31 @@
   // ============================================================
   // Détection automatique du type de fichier
   // ============================================================
+  /**
+   * Un fichier Excel commence toujours par la signature ZIP « PK\x03\x04 ».
+   *
+   * Pourquoi ce contrôle : les logiciels d'épreuve d'effort COSMED exportent
+   * un vrai classeur Excel sous l'extension .csv. En se fiant à l'extension,
+   * on envoyait ce fichier au parseur d'onde de pouls, qui n'y comprenait
+   * rien. Le contenu, lui, ne ment pas.
+   */
+  function estClasseurExcel(content) {
+    if (!content) return false;
+    if (typeof content === 'string') {
+      return content.charCodeAt(0) === 0x50 && content.charCodeAt(1) === 0x4B &&
+             content.charCodeAt(2) === 0x03 && content.charCodeAt(3) === 0x04;
+    }
+    try {
+      const o = new Uint8Array(content.buffer || content, 0, 4);
+      return o[0] === 0x50 && o[1] === 0x4B && o[2] === 0x03 && o[3] === 0x04;
+    } catch (_) { return false; }
+  }
+
   function detectType(filename, content) {
     const fn = (filename || '').toLowerCase();
-    if (fn.endsWith('.xlsx') || fn.endsWith('.xls')) {
+    // Le contenu prime sur l'extension : un .csv peut être un classeur Excel.
+    if (estClasseurExcel(content)) return 'cpet';
+    if (fn.endsWith('.xlsx') || fn.endsWith('.xls') || fn.endsWith('.xlsm')) {
       // CPET COSMED ou autre format XLSX
       return 'cpet';
     }
@@ -406,7 +428,7 @@
   }
 
   window.MedicalParsers = {
-    detectType, parsePulseWaveCSV, parseCPETXlsx,
+    detectType, estClasseurExcel, parsePulseWaveCSV, parseCPETXlsx,
     fileToArrayBuffer, fileToText, fileToBase64
   };
 })();
