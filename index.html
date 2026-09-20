@@ -12,26 +12,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase27-1"></script>
+  <script src="api-client.js?v=phase27-2"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase27-1"></script>
+  <script src="questionnaires-defs.js?v=phase27-2"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase27-1"></script>
+  <script src="medical-parsers.js?v=phase27-2"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase27-1"></script>
-  <script src="cpet-analyse.js?v=phase27-1"></script>
+  <script src="cpet-graph-preview.js?v=phase27-2"></script>
+  <script src="cpet-analyse.js?v=phase27-2"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase27-1"></script>
-  <script src="medical-record-ui.js?v=phase27-1"></script>
+  <script src="pdf-extractor.js?v=phase27-2"></script>
+  <script src="medical-record-ui.js?v=phase27-2"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase27-1"></script>
-  <script src="synthese-ui.js?v=phase27-1"></script>
-  <script src="entretien-ui.js?v=phase27-1"></script>
+  <script src="aortic-consultations.js?v=phase27-2"></script>
+  <script src="synthese-ui.js?v=phase27-2"></script>
+  <script src="entretien-ui.js?v=phase27-2"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase27-1"></script>
-  <script src="visio-jitsi.js?v=phase27-1"></script>
-  <script src="video-pilotee.js?v=phase27-1"></script>
+  <script src="document-import.js?v=phase27-2"></script>
+  <script src="visio-jitsi.js?v=phase27-2"></script>
+  <script src="video-pilotee.js?v=phase27-2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4218,11 +4218,15 @@
           <article class="card db-card">
             <h3><span class="icon-bg emerald"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>Qualité des données</h3>
             <p>Données saisies patients, validées investigateurs, éléments à vérifier.</p>
+            <!-- Ces quatre valeurs étaient codées en dur depuis la maquette :
+                 82 %, 11 %, 7 % s'affichaient même sans le moindre patient.
+                 Un indicateur de qualité qui invente ses propres chiffres est
+                 pire qu'un indicateur absent. Elles sont désormais calculées. -->
             <div class="info-grid">
-              <div class="info-box"><small>Validées</small><strong>82%</strong></div>
-              <div class="info-box"><small>À vérifier</small><strong>11%</strong></div>
-              <div class="info-box"><small>Manquantes</small><strong>7%</strong></div>
-              <div class="info-box"><small>Lignes</small><strong id="dbLineCount">-</strong></div>
+              <div class="info-box"><small>Validées</small><strong id="dbQualValid">—</strong></div>
+              <div class="info-box"><small>À vérifier</small><strong id="dbQualCheck">—</strong></div>
+              <div class="info-box"><small>Manquantes</small><strong id="dbQualMiss">—</strong></div>
+              <div class="info-box"><small>Lignes</small><strong id="dbLineCount">—</strong></div>
             </div>
           </article>
         </div>
@@ -6156,6 +6160,44 @@
   // ============================================================
   // === DOSSIER + TIMELINE
   // ============================================================
+  /**
+   * Qualité des données : trois taux calculés sur les évaluations réelles.
+   *
+   *   validées   — l'investigateur a coché « validée »
+   *   à vérifier — enregistrée mais pas encore relue
+   *   manquantes — champs cliniques clés restés vides
+   *
+   * Sans évaluation, les trois affichent « — ». Un indicateur qui affiche
+   * 82 % sur une base vide fait douter de tous les autres chiffres de la page.
+   */
+  function majQualiteDonnees(liste) {
+    const cible = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+    const evals = [];
+    (liste || []).forEach(p => (p.evaluations || []).forEach(e => evals.push(e)));
+
+    if (!evals.length) {
+      cible('dbQualValid', '—');
+      cible('dbQualCheck', '—');
+      cible('dbQualMiss', '—');
+      return;
+    }
+    // Champs attendus d'une évaluation exploitable
+    const CLES = ['vo2', 'watts', 'fc', 'aorta', 'force'];
+    let valides = 0, cases = 0, vides = 0;
+    evals.forEach(e => {
+      if (e.validated === true || e.validated === undefined) valides++;
+      CLES.forEach(k => {
+        cases++;
+        const v = e[k];
+        if (v == null || v === '' || Number(v) === 0) vides++;
+      });
+    });
+    const pct = (n, d) => d ? Math.round(100 * n / d) + ' %' : '—';
+    cible('dbQualValid', pct(valides, evals.length));
+    cible('dbQualCheck', pct(evals.length - valides, evals.length));
+    cible('dbQualMiss', pct(vides, cases));
+  }
+
   function renderPatientFile() {
     // Phase 12.4 : garde-fou cohorte vide / patient non sélectionné
     if (!selectedPatient) {
@@ -8737,6 +8779,7 @@
     const norm = (filter || $('dbSearch').value || '').toLowerCase();
     const filtered = patients.filter(p => [p.id, p.sex, p.gene, p.status].join(' ').toLowerCase().includes(norm));
     wrap.classList.toggle('db-wide-mode', dbMode === 'wide');
+    try { majQualiteDonnees(filtered); } catch (e) { console.warn('[bdd] qualité', e && e.message); }
 
     if (!filtered.length) {
       wrap.innerHTML = '<div class="placeholder"><h3>Aucun patient trouve</h3><p>Modifiez le filtre pour afficher la base.</p></div>';
