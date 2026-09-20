@@ -29,12 +29,17 @@ router.post('/:patientId', requireAuth, requireRole('principal_admin', 'investig
     const max = await query('SELECT COALESCE(MAX(eval_id), 0) AS max FROM evaluations WHERE patient_id = $1', [req.params.patientId]);
     const evalId = max.rows[0].max + 1;
     const { rows } = await query(
+      // thresholds : fréquences cardiaques aux seuils ventilatoires et
+      // indices pronostiques. C'est de cette colonne que sortent les zones
+      // d'entraînement affichées pendant les séances ; sans elle, la
+      // plateforme retombait sur la formule « 220 moins l'âge ».
       `INSERT INTO evaluations (patient_id, eval_id, label, eval_date, vo2, sv1, sv2, ve_vco2_slope, watts, fc_max,
-                                force_kg, sf36, gpaq, aorta, validated, note)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+                                force_kg, sf36, gpaq, aorta, validated, note, thresholds)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
       [req.params.patientId, evalId, ev.label || ('Évaluation ' + evalId), ev.date,
        ev.vo2, ev.sv1, ev.sv2, ev.ve_vco2_slope, ev.watts, ev.fc_max,
-       ev.force, ev.sf36, ev.gpaq, ev.aorta, ev.validated !== false, ev.note || '']
+       ev.force, ev.sf36, ev.gpaq, ev.aorta, ev.validated !== false, ev.note || '',
+       JSON.stringify(ev.thresholds || {})]
     );
     res.status(201).json({ evaluation: rows[0] });
   } catch (err) { next(err); }

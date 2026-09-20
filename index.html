@@ -12,26 +12,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase27-0"></script>
+  <script src="api-client.js?v=phase27-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase27-0"></script>
+  <script src="questionnaires-defs.js?v=phase27-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase27-0"></script>
+  <script src="medical-parsers.js?v=phase27-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase27-0"></script>
-  <script src="cpet-analyse.js?v=phase27-0"></script>
+  <script src="cpet-graph-preview.js?v=phase27-1"></script>
+  <script src="cpet-analyse.js?v=phase27-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase27-0"></script>
-  <script src="medical-record-ui.js?v=phase27-0"></script>
+  <script src="pdf-extractor.js?v=phase27-1"></script>
+  <script src="medical-record-ui.js?v=phase27-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase27-0"></script>
-  <script src="synthese-ui.js?v=phase27-0"></script>
-  <script src="entretien-ui.js?v=phase27-0"></script>
+  <script src="aortic-consultations.js?v=phase27-1"></script>
+  <script src="synthese-ui.js?v=phase27-1"></script>
+  <script src="entretien-ui.js?v=phase27-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase27-0"></script>
-  <script src="visio-jitsi.js?v=phase27-0"></script>
-  <script src="video-pilotee.js?v=phase27-0"></script>
+  <script src="document-import.js?v=phase27-1"></script>
+  <script src="visio-jitsi.js?v=phase27-1"></script>
+  <script src="video-pilotee.js?v=phase27-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -12274,6 +12274,48 @@
     // Mapping minimal d'un patient API → format in-memory attendu par l'UI
     // (le frontend a beaucoup de champs ; on remplit le strict nécessaire,
     // le reste prend des valeurs par défaut sans casser le rendu)
+    /**
+     * Traduit une évaluation venue de l'API vers la forme attendue par l'interface.
+     *
+     * La base utilise des noms en minuscules séparés par des tirets bas
+     * (fc_max, ve_vco2_slope) tandis que l'affichage et le calcul des zones
+     * d'entraînement attendent une autre graphie (fcPeak, sv1Fc). Sans cette
+     * traduction, les colonnes du tableau restaient vides et les seuils
+     * mesurés étaient ignorés au profit de la formule théorique.
+     */
+    function adaptApiEvaluation(e) {
+      if (!e || typeof e !== 'object') return e;
+      const n = v => (v == null || v === '') ? null : Number(v);
+      const s = e.thresholds || {};
+      return Object.assign({}, e, {
+        date:   e.eval_date || e.date || null,
+        label:  e.label || null,
+        vo2:    n(e.vo2),
+        sv1:    n(e.sv1),
+        sv2:    n(e.sv2),
+        watts:  n(e.watts),
+        // « fc » est la colonne lue par le tableau de la base de données
+        fc:     n(e.fc_max),
+        force:  n(e.force_kg),
+        aorta:  n(e.aorta),
+        sf36:   n(e.sf36),
+        gpaq:   n(e.gpaq),
+        vevco2Slope: n(e.ve_vco2_slope),
+        // Seuils ventilatoires : ce sont eux qui bornent les zones d'effort
+        fcRepos: n(s.fcRepos),
+        fcPeak:  n(s.fcPeak) || n(e.fc_max),
+        sv1Fc:   n(s.sv1Fc),
+        sv2Fc:   n(s.sv2Fc),
+        sv1Watts: n(s.sv1Watts),
+        sv2Watts: n(s.sv2Watts),
+        sv1Vo2:  n(s.sv1Vo2),
+        sv2Vo2:  n(s.sv2Vo2),
+        oues:    n(s.oues),
+        natureVo2: s.natureVo2 || null,
+        zones:   s.zones || null
+      });
+    }
+
     function adaptApiPatient(p) {
       const statusClassMap = { 'Stable':'ok', 'Surveillance':'watch', 'Alerte':'alert' };
       return {
@@ -12296,7 +12338,8 @@
         // Phase 12.4 : plus de "Baseline" fictive auto-générée. Un patient sans évaluations
         // affiche un tableau vide et un message "Aucune évaluation enregistrée pour ce patient
         // — importez un CPET/onde de pouls ou remplissez un questionnaire".
-        evaluations: (p.evaluations && p.evaluations.length) ? p.evaluations : [],
+        evaluations: (p.evaluations && p.evaluations.length)
+          ? p.evaluations.map(adaptApiEvaluation) : [],
         notifications: p.notifications || [],
         _fromApi: true
       };
@@ -15214,11 +15257,53 @@
             parsed_full: parsedResult.full,
             notes: document.getElementById('medExNotes').value || null
           });
-          showStatus(statusEl, '✓ Examen #' + (r.exam && r.exam.id) + ' importé avec succès.', 'success');
+          let complement = '';
+          // Une épreuve d'effort n'est pas qu'une pièce jointe : elle devient
+          // une évaluation du suivi. Sans cette étape, le tableau « Base de
+          // données » restait vide et les zones d'entraînement retombaient
+          // sur la formule théorique.
+          const av = window._derniereAnalyseCpet;
+          if (detectedType === 'cpet' && av && !av.erreur) {
+            try {
+              await window.MarfanAPI.evaluations.create(getSelectedPatientId(), {
+                label: "Épreuve d'effort" + (av.sujet && av.sujet.date_test ? ' — ' + av.sujet.date_test : ''),
+                date: document.getElementById('medExDate').value || new Date().toISOString().slice(0, 10),
+                vo2: av.vo2_pic_ml_kg_min != null ? av.vo2_pic_ml_kg_min : null,
+                sv1: av.sv1_vo2 != null ? Math.round(av.sv1_vo2 / 10) / 100 : null,
+                sv2: av.sv2_vo2 != null ? Math.round(av.sv2_vo2 / 10) / 100 : null,
+                ve_vco2_slope: av.ve_vco2_pente,
+                watts: av.watts_pic,
+                fc_max: av.fc_pic,
+                note: av.nature_vo2 === 'VO2max'
+                  ? 'VO₂ max — effort maximal confirmé'
+                  : 'VO₂ pic — effort maximal non confirmé',
+                thresholds: {
+                  fcRepos: av.fc_repos, fcPeak: av.fc_pic,
+                  sv1Fc: av.sv1_fc, sv2Fc: av.sv2_fc,
+                  sv1Watts: av.sv1_watts, sv2Watts: av.sv2_watts,
+                  sv1Vo2: av.sv1_vo2, sv2Vo2: av.sv2_vo2,
+                  oues: av.oues_ml_min, ouesParKg: av.oues_par_kg,
+                  veVco2Pente: av.ve_vco2_pente, veVco2R2: av.ve_vco2_r2,
+                  natureVo2: av.nature_vo2, criteres: av.criteres_maximalite,
+                  zones: av.zones
+                }
+              });
+              complement = ' Une évaluation a été créée dans le suivi.';
+              window._derniereAnalyseCpet = null;
+              // Recharge la cohorte pour que le tableau et les zones
+              // d'entraînement reflètent immédiatement la nouvelle évaluation.
+              try { if (typeof loadPatientsFromApi === 'function') await loadPatientsFromApi(); } catch (_) {}
+              try { if (typeof renderDbTable === 'function') renderDbTable(); } catch (_) {}
+            } catch (e) {
+              complement = ' ⚠ Évaluation non créée : ' + ((e && e.message) || 'erreur');
+              console.warn('[cpet] création évaluation :', e && e.message);
+            }
+          }
+          showStatus(statusEl, '✓ Examen #' + (r.exam && r.exam.id) + ' importé.' + complement, 'success');
           setTimeout(() => {
             document.getElementById('apiMedExModal').remove();
             loadMedicalExamsForCurrentPatient();
-          }, 1200);
+          }, 2200);
         } catch (e) {
           showStatus(statusEl, '✖ Échec de l\'envoi : ' + e.message, 'error');
           btnUpload.disabled = false; btnUpload.textContent = '📤 Parser et importer';
