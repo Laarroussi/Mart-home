@@ -140,7 +140,53 @@
     m.textContent = bouts.join(' · ');
   }
 
+  /**
+   * Patient de démonstration : ses données vivent dans le navigateur, pas en
+   * base. Interroger le serveur renvoyait une erreur et le panneau s'ouvrait
+   * sur un message rouge — désagréable quand on fait justement une démonstration.
+   */
+  function patientDemo() {
+    var p = (window.patients || []).find(function (x) { return x.id === _patientId; });
+    return (p && p.demo && !p._fromApi) ? p : null;
+  }
+
+  /** Synthèse d'exemple, construite depuis les données en mémoire */
+  function syntheseDemo(p) {
+    var c = p.civil || {};
+    var evals = p.evaluations || [];
+    var der = evals.length ? evals[evals.length - 1] : null;
+    var prem = evals.length ? evals[0] : null;
+    var entree = c.firstName
+      ? c.firstName + ' ' + c.lastName + ', ' + (p.sex || '').toLowerCase() + ' de ' + p.age +
+        ' ans, ' + (c.profession ? c.profession.toLowerCase() + ', ' : '') +
+        'suivie pour un syndrome de Marfan avec mutation du gène ' + (p.gene || '—') + '. ' +
+        (der ? 'Le dernier diamètre aortique enregistré est de ' + der.aorta + ' mm' +
+               (prem && prem !== der ? ', contre ' + prem.aorta + ' mm à l\'inclusion' : '') + '. ' : '') +
+        (der ? 'La VO₂ de pic s\'établit à ' + der.vo2 + ' mL/min/kg.' : '')
+      : '';
+    var objectifs = (p.incidents && p.incidents.length)
+      ? 'Les précautions retenues sont les suivantes : ' + p.incidents.join(', ').toLowerCase() + '. ' +
+        'L\'accompagnement se déroule à distance, en visioconférence, par séances encadrées ' +
+        'avec suivi de la fréquence cardiaque en direct.'
+      : '';
+    var suivi = der
+      ? 'Les repères d\'intensité sont issus de la dernière épreuve d\'effort : premier seuil ' +
+        'ventilatoire à ' + der.sv1Fc + ' battements par minute, second seuil à ' + der.sv2Fc +
+        ', pic à ' + der.fcPeak + '.'
+      : '';
+    return { entree: entree, objectifs: objectifs, suivi_activite: suivi, bilan_entretien: '' };
+  }
+
   async function charger() {
+    var d = patientDemo();
+    if (d) {
+      _etat = syntheseDemo(d);
+      ecrireChamps();
+      majMeta(null);
+      info("<strong>Patient de démonstration.</strong> Cette synthèse est un exemple généré " +
+           "à partir des données affichées ; elle n'est ni enregistrée ni transmise à l'IA.", 'alerte');
+      return;
+    }
     try {
       var s = await window.MarfanAPI.synthese.get(_patientId);
       _etat = {
@@ -158,6 +204,10 @@
 
   async function enregistrer() {
     if (_chargement) return;
+    if (patientDemo()) {
+      info("Patient de démonstration : rien n'est enregistré. Créez une vraie fiche pour utiliser cette fonction.", 'alerte');
+      return;
+    }
     lireChamps();
     var b = el('synSaveBtn');
     if (b) { b.disabled = true; b.textContent = '💾 Enregistrement…'; }
@@ -186,6 +236,11 @@
 
   async function generer() {
     if (_chargement) return;
+    if (patientDemo()) {
+      info("Patient de démonstration : le dossier n'existe pas en base, l'IA n'a rien à lire. " +
+           "Créez une fiche réelle pour essayer la rédaction assistée.", 'alerte');
+      return;
+    }
     lireChamps();
 
     var rempli = _etat.entree || _etat.objectifs || _etat.suivi_activite;

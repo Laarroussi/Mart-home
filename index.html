@@ -12,26 +12,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase27-2"></script>
+  <script src="api-client.js?v=phase27-3"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase27-2"></script>
+  <script src="questionnaires-defs.js?v=phase27-3"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase27-2"></script>
+  <script src="medical-parsers.js?v=phase27-3"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase27-2"></script>
-  <script src="cpet-analyse.js?v=phase27-2"></script>
+  <script src="cpet-graph-preview.js?v=phase27-3"></script>
+  <script src="cpet-analyse.js?v=phase27-3"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase27-2"></script>
-  <script src="medical-record-ui.js?v=phase27-2"></script>
+  <script src="pdf-extractor.js?v=phase27-3"></script>
+  <script src="medical-record-ui.js?v=phase27-3"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase27-2"></script>
-  <script src="synthese-ui.js?v=phase27-2"></script>
-  <script src="entretien-ui.js?v=phase27-2"></script>
+  <script src="aortic-consultations.js?v=phase27-3"></script>
+  <script src="synthese-ui.js?v=phase27-3"></script>
+  <script src="entretien-ui.js?v=phase27-3"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase27-2"></script>
-  <script src="visio-jitsi.js?v=phase27-2"></script>
-  <script src="video-pilotee.js?v=phase27-2"></script>
+  <script src="document-import.js?v=phase27-3"></script>
+  <script src="visio-jitsi.js?v=phase27-3"></script>
+  <script src="video-pilotee.js?v=phase27-3"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4779,6 +4779,11 @@
       sv2Watts: Math.round(wattsPeak * 0.72),
       sv2Fc: Math.round(fcRepos + (fcPeak - fcRepos) * 0.70),
       vevco2Slope,
+      // Indices ajoutés avec l'analyse CPET : sans eux, les patients de
+      // démonstration affichaient des rubriques vides là où un patient réel
+      // montre ses facteurs pronostiques et ses zones d'entraînement.
+      oues: Math.round(clamp(vo2n * 78 + forcen * 3 - idx * 12, 900, 3600)),
+      natureVo2: (idx % 4 === 0) ? 'VO2pic' : 'VO2max',
       rer: round2(clamp(1.05 + idx * 0.012 + vo2n * 0.001, 1.04, 1.22)),
       ventilationMax: Math.round(clamp(vo2n * 2.65 + 18 + idx, 35, 150)),
       spo2Repos: 98,
@@ -4820,8 +4825,63 @@
       spo2Pic: Math.round(toNumber(x.spo2Pic, defaults.spo2Pic)),
       vo2Pred: Math.round(toNumber(x.vo2Pred, defaults.vo2Pred)),
       tensionRepos: x.tensionRepos || defaults.tensionRepos,
-      tensionPic: x.tensionPic || defaults.tensionPic
+      tensionPic: x.tensionPic || defaults.tensionPic,
+      oues: Math.round(toNumber(x.oues, defaults.oues)),
+      natureVo2: x.natureVo2 || defaults.natureVo2,
+      // Zones d'entraînement bornées par les seuils, comme pour un vrai
+      // examen importé. Calculées par le même module, donc cohérentes.
+      zones: (function () {
+        try {
+          if (!window.CpetAnalyse) return null;
+          return window.CpetAnalyse.zonesDepuisSeuils({
+            repos: Math.round(toNumber(x.fcRepos, defaults.fcRepos)),
+            sv1:   Math.round(toNumber(x.sv1Fc, defaults.sv1Fc)),
+            sv2:   Math.round(toNumber(x.sv2Fc, defaults.sv2Fc)),
+            pic:   Math.round(toNumber(x.fcPeak, defaults.fcPeak))
+          });
+        } catch (_) { return null; }
+      })()
     };
+  }
+
+  /**
+   * Identités fictives des patients de démonstration.
+   *
+   * Sans elles, la carte d'identité, la synthèse clinique et le formulaire
+   * restaient vides en mode démo, alors que ces écrans sont précisément ce
+   * qu'on veut montrer. Les noms sont inventés et ne correspondent à aucune
+   * personne réelle.
+   */
+  const IDENTITES_DEMO = [
+    { lastName: 'MARTEAU',  firstName: 'Claire',   profession: 'Enseignante' },
+    { lastName: 'BOURDIN',  firstName: 'Thomas',   profession: 'Technicien de maintenance' },
+    { lastName: 'NGUYEN',   firstName: 'Léa',      profession: 'Étudiante en droit' },
+    { lastName: 'FERRAND',  firstName: 'Marc',     profession: 'Comptable' },
+    { lastName: 'OLIVIER',  firstName: 'Sophie',   profession: 'Infirmière, temps partiel' },
+    { lastName: 'GARNIER',  firstName: 'Julien',   profession: 'Architecte' },
+    { lastName: 'DUPRÉ',    firstName: 'Camille',  profession: 'Libraire' },
+    { lastName: 'ROUSSEAU', firstName: 'Antoine',  profession: 'Conducteur de travaux' },
+    { lastName: 'LEFÈVRE',  firstName: 'Nadia',    profession: 'Assistante sociale' },
+    { lastName: 'PERRIN',   firstName: 'Étienne',  profession: 'Retraité de l\'enseignement' }
+  ];
+
+  /** Complète un patient de démonstration : identité civile et objectifs */
+  function enrichirDemo(p, rang) {
+    const ident = IDENTITES_DEMO[rang % IDENTITES_DEMO.length];
+    const initiales = (ident.firstName[0] || '') + '.' + (ident.lastName[0] || '') + '.';
+    p.civil = Object.assign({
+      lastName: ident.lastName,
+      firstName: ident.firstName,
+      profession: ident.profession,
+      initials: initiales,
+      ipp: '7' + String(100000 + rang * 137).slice(0, 6),
+      email: ident.firstName.toLowerCase().replace(/[^a-z]/g, '') + '.' +
+             ident.lastName.toLowerCase().replace(/[^a-z]/g, '') + '@exemple-demo.fr',
+      center: 'CHU de démonstration — Cardiologie'
+    }, p.civil || {});
+    p.medical = Object.assign({ pathologie: 'Syndrome de Marfan', gene: p.gene }, p.medical || {});
+    p.demo = true;
+    return p;
   }
 
   // 10 patients de base avec un nombre variable d'évaluations pour démontrer la flexibilité
@@ -4971,6 +5031,7 @@
   ];
 
   // Étendre à 20 patients en variant le nombre d'évaluations
+  basePatients.forEach((p, i) => enrichirDemo(p, i));
   const patients = [...basePatients];
   for (let i = 11; i <= 20; i++) {
     const source = basePatients[(i - 1) % basePatients.length];
@@ -4998,8 +5059,12 @@
       status: i % 7 === 0 ? 'Alerte' : (i % 4 === 0 ? 'Surveillance' : 'Stable'),
       statusClass: i % 7 === 0 ? 'alert' : (i % 4 === 0 ? 'watch' : 'ok'),
       aorta: source.aorta + (i % 3 === 0 ? 1 : 0),
+      // L'identité du modèle doit être écartée : sans cela, la copie hérite
+      // de son nom et dix dossiers portent la même personne.
+      civil: null,
       evaluations
     });
+    enrichirDemo(patients[patients.length - 1], i - 1);
   }
 
   // ============================================================
