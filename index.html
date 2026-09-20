@@ -12,26 +12,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase27-3"></script>
+  <script src="api-client.js?v=phase28-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase27-3"></script>
+  <script src="questionnaires-defs.js?v=phase28-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase27-3"></script>
+  <script src="medical-parsers.js?v=phase28-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase27-3"></script>
-  <script src="cpet-analyse.js?v=phase27-3"></script>
+  <script src="cpet-graph-preview.js?v=phase28-0"></script>
+  <script src="cpet-analyse.js?v=phase28-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase27-3"></script>
-  <script src="medical-record-ui.js?v=phase27-3"></script>
+  <script src="pdf-extractor.js?v=phase28-0"></script>
+  <script src="medical-record-ui.js?v=phase28-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase27-3"></script>
-  <script src="synthese-ui.js?v=phase27-3"></script>
-  <script src="entretien-ui.js?v=phase27-3"></script>
+  <script src="aortic-consultations.js?v=phase28-0"></script>
+  <script src="synthese-ui.js?v=phase28-0"></script>
+  <script src="entretien-ui.js?v=phase28-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase27-3"></script>
-  <script src="visio-jitsi.js?v=phase27-3"></script>
-  <script src="video-pilotee.js?v=phase27-3"></script>
+  <script src="document-import.js?v=phase28-0"></script>
+  <script src="visio-jitsi.js?v=phase28-0"></script>
+  <script src="video-pilotee.js?v=phase28-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3092,9 +3092,17 @@
               <input type="text" id="inv_specialty" placeholder="ex. Médecin du sport, APA, Cardiologue…" />
             </div>
             <div style="grid-column: 1 / -1;">
-              <div class="control-label">Mot de passe initial (l'investigateur devra le changer à la 1ʳᵉ connexion)</div>
-              <input type="text" id="inv_initialPassword" placeholder="Laisser vide pour générer automatiquement" />
-              <p style="font-size:11px; color:var(--muted); margin-top:4px;">Si laissé vide, un mot de passe sera généré au format <code>Marfan!&lt;année&gt;</code>.</p>
+              <!-- Le mot de passe par défaut « Marfan!<année> » était prévisible
+                   et devait transiter de vive voix ou par message. Le lien par
+                   courriel supprime les deux problèmes. -->
+              <div class="control-label">Mot de passe initial <span style="font-weight:600; color:#94a3b8;">— déconseillé</span></div>
+              <input type="text" id="inv_initialPassword" placeholder="Laisser vide : un lien sera envoyé par courriel" />
+              <p style="font-size:11.5px; color:#065f46; margin-top:6px; line-height:1.55; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:9px 11px;">
+                <strong>Laissez ce champ vide.</strong> L'investigateur recevra à son adresse professionnelle
+                un lien valable 48 heures pour choisir lui-même son mot de passe — vous n'avez rien à lui
+                transmettre, et aucun mot de passe ne circule.
+                Ne renseignez ce champ que si l'envoi de courriels est indisponible.
+              </p>
             </div>
           </div>
         </section>
@@ -8472,17 +8480,20 @@
     if (!firstName) { showInvestFeedback('✖ Prénom requis.', 'error'); return; }
     if (!email || !email.includes('@')) { showInvestFeedback('✖ Email professionnel valide requis.', 'error'); return; }
 
-    if (!initialPwd) initialPwd = 'Marfan!' + new Date().getFullYear();
-
+    // Le champ s'appelle « password » côté serveur : envoyer « initialPassword »
+    // provoquait l'erreur « password ou birth_date requis » et aucun compte
+    // n'était créé.
+    // Laissé vide, aucun mot de passe n'est imposé : l'investigateur reçoit un
+    // lien et choisit le sien, comme les patients.
     const payload = {
       role: 'investigator',
       name: firstName + ' ' + lastName.toUpperCase(),
       email,
       phone: phone || null,
       service: service || null,
-      specialty: specialty || null,
-      initialPassword: initialPwd
+      specialty: specialty || null
     };
+    if (initialPwd) payload.password = initialPwd;
 
     try {
       // Si MarfanAPI dispose d'une méthode users.create, on l'utilise. Sinon on fait l'appel direct.
@@ -8496,15 +8507,27 @@
         return;
       }
       const username = (r && (r.user?.username || r.username)) || (firstName.toLowerCase() + '.' + lastName.toLowerCase());
-      showInvestFeedback(
-        `✅ Compte investigateur créé pour <strong>${firstName} ${lastName.toUpperCase()}</strong>.<br>
-         📨 Identifiants à transmettre :<br>
-         &nbsp;&nbsp;• <strong>Email</strong> : <code>${email}</code><br>
-         &nbsp;&nbsp;• <strong>Identifiant</strong> : <code>${username}</code><br>
-         &nbsp;&nbsp;• <strong>Mot de passe initial</strong> : <code>${initialPwd}</code><br>
-         <em>L'investigateur devra changer son mot de passe à la 1ʳᵉ connexion.</em>`,
-        'success'
-      );
+      const act = r && r.activation;
+      if (act && act.ok) {
+        showInvestFeedback(
+          `✅ Compte créé pour <strong>${firstName} ${lastName.toUpperCase()}</strong>.<br>
+           📨 Un lien de création de mot de passe a été envoyé à <code>${act.email_masque || email}</code>.<br>
+           <em>Il est valable 48 heures. Vous n'avez aucun mot de passe à transmettre :
+           l'investigateur choisit le sien.</em>`, 'success');
+      } else if (act && !act.ok) {
+        showInvestFeedback(
+          `⚠️ Compte créé pour <strong>${firstName} ${lastName.toUpperCase()}</strong>,
+           mais <strong>le courriel n'est pas parti</strong>${act.error ? ' : ' + act.error : ''}.<br>
+           Le compte existe et reste inutilisable tant qu'un lien n'a pas été reçu.
+           Vérifiez l'adresse, puis renvoyez le lien depuis la gestion des comptes.`, 'error');
+      } else {
+        showInvestFeedback(
+          `✅ Compte investigateur créé pour <strong>${firstName} ${lastName.toUpperCase()}</strong>.<br>
+           &nbsp;&nbsp;• <strong>Adresse</strong> : <code>${email}</code><br>
+           &nbsp;&nbsp;• <strong>Identifiant</strong> : <code>${username}</code><br>
+           &nbsp;&nbsp;• <strong>Mot de passe initial</strong> : <code>${initialPwd}</code><br>
+           <em>À changer obligatoirement à la 1ʳᵉ connexion.</em>`, 'success');
+      }
       // Reset partiel : on garde le service / spécialité pour créer un autre membre de la même équipe
       ['inv_lastName','inv_firstName','inv_email','inv_phone','inv_initialPassword']
         .forEach(id => { if ($(id)) $(id).value = ''; });

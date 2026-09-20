@@ -8,6 +8,7 @@
  *   - patient         : aucun accès aux endpoints /users
  */
 const express = require('express');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE, canManageRole } = require('../middleware/auth');
@@ -93,6 +94,9 @@ router.post('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATO
     // === Construction automatique des champs nom + username + mot de passe ===
     let mustChange = false;
     let username = null;
+    // true quand le compte s'active par courriel plutôt que par un mot de
+    // passe initial : détermine ce qu'on renvoie à l'interface.
+    let parLien = false;
 
     if (firstName || lastName) {
       // Nouveau format : auto-génération
@@ -106,7 +110,16 @@ router.post('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATO
     } else {
       // Ancien format : name + password fournis directement (compat)
       if (!name)     return res.status(400).json({ error: 'name ou (firstName + lastName) requis' });
-      if (!password) return res.status(400).json({ error: 'password ou birth_date requis' });
+      // Plus de mot de passe imposé : sans mot de passe fourni, on en tire un
+      // au hasard qui ne sera jamais communiqué, et la personne choisit le
+      // sien depuis le lien reçu par courriel. C'est le même principe que pour
+      // les comptes patients — et c'est plus sûr qu'un mot de passe initial
+      // transmis de la main à la main.
+      if (!password) {
+        password = crypto.randomBytes(24).toString('base64url');
+        parLien = true;
+        mustChange = true;
+      }
       // username par défaut : partie locale de l'email
       username = await findUniqueUsername(email.split('@')[0].toLowerCase());
     }
@@ -153,14 +166,40 @@ router.post('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATO
       } catch (e) { console.warn('[users] auto-questionnaires échoué :', e.message); }
     }
 
-    // Réponse enrichie : on renvoie le user créé + le mot de passe initial EN CLAIR
-    // (uniquement pour que le principal_admin puisse le communiquer à l'utilisateur).
+    // === Activation par courriel ===
+    // Le mot de passe tiré au hasard n'est communiqué à personne : la personne
+    // reçoit un lien et choisit le sien. Un mot de passe qu'on transmet est un
+    // mot de passe qui circule.
+    let activation = null;
+    if (parLien) {
+      try {
+        const { creerEtEnvoyerLien } = require('./activation');
+        activation = await creerEtEnvoyerLien({
+          userId: id,
+          patientId: null,
+          email: email.toLowerCase(),
+          prenom: firstName || (name || '').split(' ')[0] || null,
+          createdBy: req.user.id
+        });
+      } catch (e) {
+        console.warn('[users] envoi du lien d\'activation échoué :', e.message);
+        activation = { ok: false, error: e.message };
+      }
+    }
+
     res.status(201).json({
       user: rows[0],
-      initialPassword: mustChange ? password : undefined,
-      message: mustChange
-        ? `Compte créé. Username : ${username}. Mot de passe initial : ${password} (date de naissance). À changer obligatoirement à la 1re connexion.`
-        : `Compte créé avec mot de passe fourni. Username : ${username}.`
+      activation,
+      // Le mot de passe n'est renvoyé que dans l'ancien mode « date de
+      // naissance », où l'administrateur doit effectivement le communiquer.
+      initialPassword: (mustChange && !parLien) ? password : undefined,
+      message: parLien
+        ? (activation && activation.ok
+            ? `Compte créé. Un lien de création de mot de passe a été envoyé à ${activation.email_masque || email}.`
+            : `Compte créé, mais l'envoi du courriel a échoué${activation && activation.error ? ' : ' + activation.error : ''}. Renvoyez le lien depuis la gestion des comptes.`)
+        : (mustChange
+            ? `Compte créé. Identifiant : ${username}. Mot de passe initial : ${password} (date de naissance). À changer obligatoirement à la 1re connexion.`
+            : `Compte créé avec le mot de passe fourni. Identifiant : ${username}.`)
     });
   } catch (err) { next(err); }
 });
