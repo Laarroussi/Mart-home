@@ -252,6 +252,9 @@
       donnees: (patientId)       => request('GET',  `/synthese/${patientId}/donnees`)
     },
 
+    /** ===== Mot de passe oublié (route publique, sans jeton) ===== */
+    motDePasseOublie: (email) => request('POST', '/activation/oubli', { email }),
+
     /** ===== Entretien patient : enregistrement transcrit puis analysé ===== */
     entretien: {
       // patientId null pendant la création : la fiche n'existe pas encore,

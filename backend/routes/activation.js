@@ -17,7 +17,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE } = require('../middleware/auth');
-const { sendMail, mailerStatus, activationEmail } = require('../config/mailer');
+const { sendMail, mailerStatus, activationEmail, resetEmail } = require('../config/mailer');
 
 const router = express.Router();
 
@@ -41,8 +41,10 @@ function maskEmail(email) {
  * Utilisé par cette route ET par la création de patient.
  * Ne lève jamais : renvoie { ok, error }.
  */
-async function creerEtEnvoyerLien({ userId, patientId, email, prenom, createdBy }) {
+async function creerEtEnvoyerLien({ userId, patientId, email, prenom, createdBy,
+                                    modele, heures }) {
   if (!email) return { ok: false, error: 'Aucune adresse e-mail renseignée pour ce patient' };
+  const duree = heures || VALIDITE_HEURES;
   try {
     // Un seul lien actif à la fois : les anciens sont neutralisés
     await query(
@@ -50,14 +52,15 @@ async function creerEtEnvoyerLien({ userId, patientId, email, prenom, createdBy 
         WHERE user_id = $1 AND used_at IS NULL`, [userId]);
 
     const token = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + VALIDITE_HEURES * 3600 * 1000);
+    const expires = new Date(Date.now() + duree * 3600 * 1000);
     await query(
       `INSERT INTO activation_tokens (token, user_id, patient_id, email, expires_at, created_by)
        VALUES ($1,$2,$3,$4,$5,$6)`,
       [token, userId, patientId || null, email, expires, createdBy || null]);
 
     const lien = baseUrl() + '/?activation=' + token;
-    const { subject, text, html } = activationEmail({ prenom, lien, heures: VALIDITE_HEURES });
+    const gabarit = modele === 'reset' ? resetEmail : activationEmail;
+    const { subject, text, html } = gabarit({ prenom, lien, heures: duree });
 
     try {
       const r = await sendMail({ to: email, subject, text, html });
@@ -184,6 +187,74 @@ router.post('/complete', async (req, res, next) => {
        VALUES ($1,$2,'activated','mot de passe défini')`, [t.user_id, t.patient_id]);
 
     res.json({ success: true, message: 'Compte activé. Vous pouvez maintenant vous connecter.' });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// POST /oubli — mot de passe oublié (route PUBLIQUE)
+// ------------------------------------------------------------
+// Trois précautions, qui ne sont pas facultatives sur ce type de formulaire.
+//
+// 1. La réponse est TOUJOURS la même, que l'adresse existe ou non. Répondre
+//    « compte inconnu » transformerait ce formulaire en outil pour savoir qui
+//    est suivi dans cette cohorte — une information médicale en soi.
+//
+// 2. Le délai de validité est court : une heure, contre 72 pour une
+//    activation. Un lien de réinitialisation traîne dans une boîte aux
+//    lettres et ouvre un compte existant ; un lien d'activation n'ouvre
+//    qu'un compte encore vide.
+//
+// 3. Un délai minimal entre deux demandes évite qu'on inonde la boîte d'une
+//    personne, et limite la recherche exhaustive d'adresses.
+// ============================================================
+const DELAI_MIN_S = 60;
+const VALIDITE_RESET_H = parseInt(process.env.RESET_TTL_HOURS, 10) || 1;
+
+router.post('/oubli', async (req, res, next) => {
+  const reponse = {
+    ok: true,
+    message: "Si un compte existe avec cette adresse, un lien vient d'y être envoyé. " +
+             "Vérifiez votre boîte de réception, ainsi que les courriers indésirables."
+  };
+  try {
+    const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Adresse e-mail non valide.' });
+    }
+
+    const u = await query(
+      `SELECT id, name, email, patient_id, active FROM users WHERE email = $1 LIMIT 1`, [email]);
+
+    // Adresse inconnue ou compte désactivé : on répond comme si tout allait
+    // bien, sans rien envoyer. Le journal, lui, garde la trace.
+    if (!u.rows.length || u.rows[0].active === false) {
+      await query(
+        `INSERT INTO activation_log (user_id, patient_id, action, detail)
+         VALUES (NULL, NULL, 'reset-inconnu', $1)`, [maskEmail(email)]).catch(() => {});
+      return res.json(reponse);
+    }
+    const user = u.rows[0];
+
+    // Demande trop rapprochée : on n'envoie pas, mais on ne le dit pas non plus.
+    const recent = await query(
+      `SELECT created_at FROM activation_tokens
+        WHERE user_id = $1 AND created_at > NOW() - INTERVAL '${DELAI_MIN_S} seconds'
+        ORDER BY created_at DESC LIMIT 1`, [user.id]).catch(() => ({ rows: [] }));
+    if (recent.rows.length) return res.json(reponse);
+
+    const prenom = (user.name || '').trim().split(' ')[0] || null;
+    const r = await creerEtEnvoyerLien({
+      userId: user.id,
+      patientId: user.patient_id || null,
+      email: user.email,
+      prenom,
+      createdBy: null,
+      modele: 'reset',
+      heures: VALIDITE_RESET_H
+    });
+    if (!r.ok) console.warn('[oubli] envoi échoué pour', maskEmail(email), ':', r.error);
+
+    res.json(reponse);
   } catch (err) { next(err); }
 });
 

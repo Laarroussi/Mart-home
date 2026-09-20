@@ -188,4 +188,72 @@ Ce message est automatique, merci de ne pas y répondre.`;
   return { subject, text, html };
 }
 
-module.exports = { sendMail, mailerStatus, activationEmail };
+/**
+ * Réinitialisation de mot de passe.
+ *
+ * Message distinct de l'activation : recevoir « un espace vient d'être créé
+ * pour vous » alors qu'on a simplement oublié son mot de passe est déroutant,
+ * et fait douter de l'authenticité du courriel — donc du bon réflexe à avoir.
+ *
+ * L'avertissement final est ici plus important qu'à l'activation : si la
+ * personne n'est pas à l'origine de la demande, quelqu'un connaît son adresse
+ * et l'a saisie sur la plateforme. Elle doit le savoir.
+ */
+function resetEmail({ prenom, lien, heures }) {
+  const bonjour = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
+  const subject = 'Réinitialisation de votre mot de passe — Marfan APA';
+
+  const text =
+`${bonjour}
+
+Une demande de réinitialisation de mot de passe a été faite pour votre compte
+sur la plateforme Marfan APA.
+
+Pour choisir un nouveau mot de passe, ouvrez ce lien :
+${lien}
+
+Ce lien est personnel, utilisable une seule fois, et valable ${heures} heures.
+
+Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre
+mot de passe actuel reste valable et aucun changement ne sera effectué.
+Si vous recevez plusieurs messages de ce type sans les avoir demandés,
+signalez-le à votre référent.
+
+L'équipe Marfan APA
+Ce message est automatique, merci de ne pas y répondre.`;
+
+  const html =
+`<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:#f1f5f9; padding:24px;">
+  <div style="max-width:560px; margin:0 auto; background:#ffffff; border-radius:14px; overflow:hidden; box-shadow:0 4px 18px rgba(11,21,48,0.10);">
+    <div style="background:linear-gradient(135deg,#0f766e,#14b8a6); padding:26px 28px; color:#ffffff;">
+      <div style="font-size:12px; letter-spacing:1.4px; text-transform:uppercase; opacity:.9;">Marfan APA</div>
+      <div style="font-size:20px; font-weight:700; margin-top:4px;">Nouveau mot de passe</div>
+    </div>
+    <div style="padding:26px 28px; color:#0b1530; font-size:14.5px; line-height:1.6;">
+      <p style="margin:0 0 14px;">${bonjour}</p>
+      <p style="margin:0 0 22px;">Une demande de réinitialisation a été faite pour votre compte. Cliquez ci-dessous pour choisir un nouveau mot de passe.</p>
+      <p style="margin:0 0 22px; text-align:center;">
+        <a href="${lien}" style="display:inline-block; padding:14px 30px; background:linear-gradient(135deg,#0f766e,#14b8a6); color:#ffffff; text-decoration:none; border-radius:10px; font-weight:700; font-size:15px;">Choisir un nouveau mot de passe</a>
+      </p>
+      <p style="margin:0 0 14px; font-size:13px; color:#475569;">
+        Ce lien est <strong>personnel</strong>, utilisable <strong>une seule fois</strong>, et valable <strong>${heures} heures</strong>.
+      </p>
+      <p style="margin:0 0 14px; font-size:12.5px; color:#64748b;">
+        Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :<br>
+        <span style="word-break:break-all; color:#0f766e;">${lien}</span>
+      </p>
+      <p style="margin:18px 0 0; padding-top:16px; border-top:1px solid #e2e8f0; font-size:12.5px; color:#64748b;">
+        Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe actuel
+        reste valable. Si vous recevez plusieurs messages de ce type sans les avoir demandés, signalez-le à votre référent.
+      </p>
+    </div>
+    <div style="padding:14px 28px 20px; background:#f8fafc; color:#94a3b8; font-size:11.5px; text-align:center;">
+      Message automatique — merci de ne pas y répondre.
+    </div>
+  </div>
+</div>`;
+
+  return { subject, text, html };
+}
+
+module.exports = { sendMail, mailerStatus, activationEmail, resetEmail };

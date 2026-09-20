@@ -12,26 +12,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase28-0"></script>
+  <script src="api-client.js?v=phase28-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase28-0"></script>
+  <script src="questionnaires-defs.js?v=phase28-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase28-0"></script>
+  <script src="medical-parsers.js?v=phase28-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase28-0"></script>
-  <script src="cpet-analyse.js?v=phase28-0"></script>
+  <script src="cpet-graph-preview.js?v=phase28-1"></script>
+  <script src="cpet-analyse.js?v=phase28-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase28-0"></script>
-  <script src="medical-record-ui.js?v=phase28-0"></script>
+  <script src="pdf-extractor.js?v=phase28-1"></script>
+  <script src="medical-record-ui.js?v=phase28-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase28-0"></script>
-  <script src="synthese-ui.js?v=phase28-0"></script>
-  <script src="entretien-ui.js?v=phase28-0"></script>
+  <script src="aortic-consultations.js?v=phase28-1"></script>
+  <script src="synthese-ui.js?v=phase28-1"></script>
+  <script src="entretien-ui.js?v=phase28-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase28-0"></script>
-  <script src="visio-jitsi.js?v=phase28-0"></script>
-  <script src="video-pilotee.js?v=phase28-0"></script>
+  <script src="document-import.js?v=phase28-1"></script>
+  <script src="visio-jitsi.js?v=phase28-1"></script>
+  <script src="video-pilotee.js?v=phase28-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -12327,6 +12327,21 @@
              style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:14px;">
       <div id="apiLoginErr" style="display:none; padding:8px 10px; background:#fee2e2; color:#991b1b; border-radius:7px; font-size:11.5px; margin-bottom:10px;"></div>
       <button id="apiLoginBtn" style="width:100%; padding:11px; border:none; border-radius:9px; background:linear-gradient(135deg,#4f8cff,#7c5cff); color:white; font-weight:700; font-size:13.5px; cursor:pointer;">Se connecter</button>
+      <!-- Un oubli de mot de passe ne doit pas obliger à écrire au référent :
+           c'est une porte fermée pour un patient un soir de séance. -->
+      <button id="apiLoginOubli" type="button" style="width:100%; padding:8px; margin-top:10px; border:none; background:none; color:#4f8cff; font-weight:600; font-size:12px; cursor:pointer; text-decoration:underline;">Mot de passe oublié ?</button>
+      <div id="apiOubliZone" style="display:none; margin-top:8px; padding:12px 13px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
+        <p style="margin:0 0 8px; font-size:12px; color:#475569; line-height:1.5;">
+          Saisissez l'adresse de votre compte. Vous recevrez un lien pour choisir un nouveau mot de passe.
+        </p>
+        <input id="apiOubliEmail" type="email" autocomplete="username" placeholder="votre.adresse@exemple.fr"
+               style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:8px; box-sizing:border-box;">
+        <div style="display:flex; gap:7px;">
+          <button id="apiOubliAnnuler" type="button" style="flex:0 0 auto; padding:9px 13px; border:1px solid #d8dde7; background:white; color:#5a6280; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">Annuler</button>
+          <button id="apiOubliEnvoyer" type="button" style="flex:1; padding:9px; border:none; border-radius:8px; background:linear-gradient(135deg,#0f766e,#14b8a6); color:white; font-weight:700; font-size:12.5px; cursor:pointer;">Envoyer le lien</button>
+        </div>
+        <div id="apiOubliMsg" style="display:none; margin-top:9px; padding:9px 11px; border-radius:8px; font-size:12px; line-height:1.5;"></div>
+      </div>
       <button id="apiLoginDemo" style="width:100%; padding:9px; margin-top:8px; border:1px solid #d8dde7; border-radius:9px; background:white; color:#5a6280; font-weight:600; font-size:12px; cursor:pointer;">Continuer en mode démo (sans API)</button>
       <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #e3e7ef; font-size:10.5px; color:#8b91a8; line-height:1.55;">
         Comptes de test :<br>
@@ -16822,6 +16837,64 @@
         setTimeout(() => wireDbCategoryFilter(role), 700);
       }
     }
+
+    // ============================================================
+    // Mot de passe oublié
+    // ------------------------------------------------------------
+    // Le message affiché est volontairement le même que l'adresse existe ou
+    // non. Dire « compte inconnu » transformerait ce formulaire en moyen de
+    // savoir qui est suivi dans la cohorte — une information médicale en soi.
+    // ============================================================
+    (function brancherOubli() {
+      const lien = document.getElementById('apiLoginOubli');
+      const zone = document.getElementById('apiOubliZone');
+      if (!lien || !zone) return;
+      const champ = document.getElementById('apiOubliEmail');
+      const msg = document.getElementById('apiOubliMsg');
+      const dire = (texte, ok) => {
+        if (!msg) return;
+        msg.style.display = 'block';
+        msg.style.background = ok ? '#ecfdf5' : '#fef2f2';
+        msg.style.border = '1px solid ' + (ok ? '#a7f3d0' : '#fecaca');
+        msg.style.color = ok ? '#065f46' : '#991b1b';
+        msg.textContent = texte;
+      };
+
+      lien.addEventListener('click', () => {
+        zone.style.display = zone.style.display === 'none' ? 'block' : 'none';
+        if (zone.style.display === 'block' && champ) {
+          // Reprend l'adresse déjà saisie plus haut : la retaper est pénible.
+          const saisi = (document.getElementById('apiLoginEmail') || {}).value || '';
+          if (saisi && !champ.value) champ.value = saisi.trim();
+          champ.focus();
+        }
+      });
+      const annuler = document.getElementById('apiOubliAnnuler');
+      if (annuler) annuler.addEventListener('click', () => {
+        zone.style.display = 'none';
+        if (msg) msg.style.display = 'none';
+      });
+
+      const envoyer = document.getElementById('apiOubliEnvoyer');
+      if (envoyer) envoyer.addEventListener('click', async function () {
+        const email = (champ && champ.value || '').trim();
+        if (!email || !email.includes('@')) { dire('Saisissez une adresse valide.', false); return; }
+        this.disabled = true; this.textContent = 'Envoi…';
+        try {
+          const r = await window.MarfanAPI.motDePasseOublie(email);
+          dire((r && r.message) ||
+               "Si un compte existe avec cette adresse, un lien vient d'y être envoyé.", true);
+        } catch (e) {
+          dire("Envoi impossible : " + ((e && e.message) || 'serveur injoignable') +
+               ". Contactez votre référent.", false);
+        } finally {
+          this.disabled = false; this.textContent = 'Envoyer le lien';
+        }
+      });
+      if (champ) champ.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && envoyer) { e.preventDefault(); envoyer.click(); }
+      });
+    })();
 
     document.getElementById('apiLoginBtn').addEventListener('click', async function () {
       const email = document.getElementById('apiLoginEmail').value.trim();
