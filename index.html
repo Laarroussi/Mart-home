@@ -12,26 +12,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase28-1"></script>
+  <script src="api-client.js?v=phase29-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase28-1"></script>
+  <script src="questionnaires-defs.js?v=phase29-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase28-1"></script>
+  <script src="medical-parsers.js?v=phase29-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase28-1"></script>
-  <script src="cpet-analyse.js?v=phase28-1"></script>
+  <script src="cpet-graph-preview.js?v=phase29-0"></script>
+  <script src="cpet-analyse.js?v=phase29-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase28-1"></script>
-  <script src="medical-record-ui.js?v=phase28-1"></script>
+  <script src="pdf-extractor.js?v=phase29-0"></script>
+  <script src="medical-record-ui.js?v=phase29-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase28-1"></script>
-  <script src="synthese-ui.js?v=phase28-1"></script>
-  <script src="entretien-ui.js?v=phase28-1"></script>
+  <script src="aortic-consultations.js?v=phase29-0"></script>
+  <script src="synthese-ui.js?v=phase29-0"></script>
+  <script src="entretien-ui.js?v=phase29-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase28-1"></script>
-  <script src="visio-jitsi.js?v=phase28-1"></script>
-  <script src="video-pilotee.js?v=phase28-1"></script>
+  <script src="document-import.js?v=phase29-0"></script>
+  <script src="visio-jitsi.js?v=phase29-0"></script>
+  <script src="video-pilotee.js?v=phase29-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -146,7 +146,7 @@
       color: #a5f3fc;
       text-transform: uppercase;
       letter-spacing: 2.4px;
-      font-size: 10px;
+      font-size:11.5px;
       font-weight: 800;
       margin-bottom: 3px;
     }
@@ -167,7 +167,7 @@
     .nav-tabs { display: flex; flex-direction: column; gap: 5px; }
     .nav-section {
       color: #94a3b8;
-      font-size: 10px;
+      font-size:11.5px;
       text-transform: uppercase;
       letter-spacing: 1.6px;
       font-weight: 700;
@@ -209,7 +209,7 @@
       background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(6, 182, 212, 0.18));
       border: 1px solid rgba(255,255,255,0.08);
       color: #dffafe;
-      font-size: 11px;
+      font-size:11.5px;
       line-height: 1.5;
     }
 
@@ -256,6 +256,15 @@
     }
 
     .tab-panel.hidden, .sub-panel.hidden { display: none; }
+
+    /* La barre de boutons flottante est fixée à 18 px du bas et mesure
+       environ 46 px de haut. Sans réserve d'espace, elle recouvre le dernier
+       bloc de chaque page : le titre « Informations médicales » du formulaire
+       de création disparaissait derrière elle à chaque saisie.
+       Une seule section prévoyait cette réserve ; elle vaut maintenant pour
+       toutes. Sur mobile la barre est masquée, la réserve n'a plus lieu d'être. */
+    .tab-panel { padding-bottom: 96px; }
+    @media (max-width: 860px) { .tab-panel { padding-bottom: 24px; } }
 
     /* ===== Hero ===== */
     .hero {
@@ -309,12 +318,12 @@
       color: #c4b5fd;
       text-transform: uppercase;
       letter-spacing: 1.3px;
-      font-size: 10px;
+      font-size:11.5px;
       font-weight: 800;
     }
 
     .hero-stat strong { display: block; font-size: 24px; margin-top: 4px; font-weight: 800; font-family: 'Sora', sans-serif; }
-    .hero-stat span { display: block; color: #cbd5e1; font-size: 11px; margin-top: 2px; }
+    .hero-stat span { display: block; color: #cbd5e1; font-size:11.5px; margin-top: 2px; }
 
     .hero-illustration {
       position: relative;
@@ -426,7 +435,7 @@
     .kpi-card.k-rose .kpi-icon { background: var(--rose-soft); color: var(--rose); }
     .kpi-card.k-emerald .kpi-icon { background: var(--emerald-soft); color: var(--emerald); }
 
-    .kpi-card small { color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; font-size: 10px; font-weight: 700; }
+    .kpi-card small { color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; font-size:11.5px; font-weight: 700; }
     .kpi-card strong { display: block; font-size: 28px; margin-top: 4px; letter-spacing: -1px; font-family: 'Sora', sans-serif; font-weight: 800; }
     .kpi-card span { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; }
 
@@ -521,7 +530,7 @@
     .status {
       border-radius: 999px;
       padding: 4px 9px;
-      font-size: 10px;
+      font-size:11.5px;
       font-weight: 800;
       white-space: nowrap;
       text-transform: uppercase;
@@ -533,7 +542,7 @@
     .status.alert { background: var(--rose-soft); color: #9f1239; }
 
     .progress-row { margin-top: 9px; }
-    .progress-info { display: flex; justify-content: space-between; color: var(--muted); font-size: 10.5px; margin-bottom: 4px; font-weight: 600; }
+    .progress-info { display: flex; justify-content: space-between; color: var(--muted); font-size:11.5px; margin-bottom: 4px; font-weight: 600; }
     .progress-bar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
     .progress-fill { height: 100%; border-radius: 999px; background: var(--gradient-cool); }
 
@@ -582,7 +591,7 @@
       padding: 14px;
     }
 
-    .risk-chip small { color: #9a3412; text-transform: uppercase; letter-spacing: 1.3px; font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 6px; }
+    .risk-chip small { color: #9a3412; text-transform: uppercase; letter-spacing: 1.3px; font-size:11.5px; font-weight: 800; display: flex; align-items: center; gap: 6px; }
     .risk-chip strong { display: block; color: #7c2d12; margin-top: 7px; font-size: 17px; font-weight: 800; }
     .risk-chip p { margin-top: 6px; color: #9a3412; font-size: 12.5px; line-height: 1.5; }
 
@@ -606,9 +615,9 @@
       opacity: 0.06;
     }
 
-    .info-box small { color: var(--muted); text-transform: uppercase; letter-spacing: 0.9px; font-size: 9.5px; font-weight: 800; }
+    .info-box small { color: var(--muted); text-transform: uppercase; letter-spacing: 0.9px; font-size:11.5px; font-weight: 800; }
     .info-box strong { display: block; margin-top: 5px; font-size: 17px; font-weight: 800; font-family: 'Sora', sans-serif; }
-    .info-box .delta { color: var(--emerald); font-size: 10.5px; margin-top: 3px; font-weight: 700; }
+    .info-box .delta { color: var(--emerald); font-size:11.5px; margin-top: 3px; font-weight: 700; }
     .info-box .delta.down { color: var(--rose); }
 
     .medical-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-top: 14px; }
@@ -630,13 +639,20 @@
       margin-bottom: 11px;
     }
 
+    /* Ces libellés étaient de simples div : cliquer dessus ne plaçait pas le
+       curseur dans le champ, et un lecteur d'écran n'annonçait rien. Devenus
+       de vraies balises label, ils gagnent ces deux comportements.
+       display:block conserve la mise en page d'origine, un label étant
+       autrement en ligne. */
     .control-label {
+      display: block;
       color: var(--muted);
-      font-size: 10px;
+      font-size:11.5px;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 1px;
       margin-bottom: 5px;
+      cursor: pointer;
     }
 
     .svg-chart {
@@ -784,8 +800,8 @@
       display: flex; align-items: center; gap: 7px;
     }
 
-    .timeline-card-item .date { color: var(--muted); font-size: 11px; margin-bottom: 8px; }
-    .timeline-card-item .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; color: #475569; }
+    .timeline-card-item .date { color: var(--muted); font-size:11.5px; margin-bottom: 8px; }
+    .timeline-card-item .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size:11.5px; color: #475569; }
     .timeline-card-item .metrics span { display: block; }
     .timeline-card-item .metrics b { color: var(--ink); font-weight: 700; }
 
@@ -954,7 +970,7 @@
 
     .participant-info { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
     .participant-info strong { font-size: 12px; display: block; }
-    .participant-info span { color: var(--muted); font-size: 10.5px; }
+    .participant-info span { color: var(--muted); font-size:11.5px; }
     .live-dot, .off-dot, .warn-dot { width: 9px; height: 9px; border-radius: 999px; }
     .live-dot { background: var(--emerald); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18); }
     .off-dot { background: #cbd5e1; }
@@ -992,7 +1008,7 @@
     .video-mini-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
     .video-mini-body { padding: 11px; }
     .video-mini-body strong { display: block; font-size: 12.5px; line-height: 1.35; margin-bottom: 8px; font-weight: 700; }
-    .video-tags { display: flex; flex-wrap: wrap; gap: 5px; color: var(--muted); font-size: 10.5px; }
+    .video-tags { display: flex; flex-wrap: wrap; gap: 5px; color: var(--muted); font-size:11.5px; }
     .video-tags span {
       background: white;
       border: 1px solid var(--line);
@@ -1023,7 +1039,7 @@
       background: radial-gradient(circle, rgba(124, 58, 237, 0.3), transparent 70%);
     }
 
-    .visio-room small { color: #a5f3fc; text-transform: uppercase; letter-spacing: 2px; font-size: 11px; font-weight: 800; }
+    .visio-room small { color: #a5f3fc; text-transform: uppercase; letter-spacing: 2px; font-size:11.5px; font-weight: 800; }
     .visio-room h3 { font-size: 26px; margin-top: 10px; max-width: 640px; line-height: 1.18; font-weight: 800; }
     .visio-room p { color: #dbeafe; margin-top: 12px; line-height: 1.6; max-width: 720px; font-size: 13.5px; position: relative; z-index: 1; }
 
@@ -1090,7 +1106,7 @@
       color: #475569;
       text-transform: uppercase;
       letter-spacing: 0.7px;
-      font-size: 10px;
+      font-size:11.5px;
       font-weight: 800;
     }
     tr:hover td { background: var(--soft); }
@@ -1103,7 +1119,7 @@
       padding: 3px 8px; border-radius: 999px;
       background: var(--soft);
       border: 1px solid var(--line);
-      font-size: 10.5px;
+      font-size:11.5px;
       font-weight: 700;
       color: #475569;
     }
@@ -1204,7 +1220,7 @@
 
     .modal-body { padding: 20px 22px; display: grid; gap: 12px; }
     .modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .field-label { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
+    .field-label { color: var(--muted); font-size:11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
 
     .modal-foot {
       padding: 14px 22px 20px;
@@ -1296,7 +1312,7 @@
       background: #eff6ff;
       color: #1d4ed8;
       border: 1px solid #bfdbfe;
-      font-size: 11px;
+      font-size:11.5px;
       font-weight: 800;
     }
 
@@ -1341,7 +1357,7 @@
       text-transform: uppercase;
       letter-spacing: 1px;
     }
-    .modal-section-title span { color: var(--muted); font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 700; }
+    .modal-section-title span { color: var(--muted); font-size:11.5px; text-transform: none; letter-spacing: 0; font-weight: 700; }
 
     .eval-modal { max-width: 1120px; border-radius: 28px; }
     .eval-detail-head {
@@ -1375,7 +1391,7 @@
       padding: 14px;
       min-height: 98px;
     }
-    .detail-kpi small { display: block; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-size: 10px; font-weight: 900; }
+    .detail-kpi small { display: block; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-size:11.5px; font-weight: 900; }
     .detail-kpi strong { display: block; margin-top: 6px; font-size: 25px; font-family: 'Sora', sans-serif; font-weight: 800; letter-spacing: -0.8px; }
     .detail-kpi span { display: block; color: var(--muted); font-size: 11.5px; margin-top: 4px; line-height: 1.35; }
     .detail-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) 360px; gap: 14px; align-items: stretch; margin-bottom: 14px; }
@@ -1396,7 +1412,7 @@
       padding: 11px;
       background: var(--soft);
     }
-    .zone-item small { display:block; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-size: 9.5px; font-weight: 900; }
+    .zone-item small { display:block; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-size:11.5px; font-weight: 900; }
     .zone-item strong { display:block; margin-top: 4px; font-size: 15px; font-weight: 900; }
     .zone-item span { display:block; color: var(--muted); font-size: 11.5px; margin-top: 3px; }
     .detail-table-wrap { max-height: 360px; }
@@ -1412,9 +1428,9 @@
       color: #075985;
       border-left: 1px solid #bae6fd;
       border-right: 1px solid #bae6fd;
-      font-size: 10.5px;
+      font-size:11.5px;
     }
-    .wide-db-table th.visit-field { font-size: 9px; color: #334155; }
+    .wide-db-table th.visit-field { font-size:11.5px; color: #334155; }
     .wide-db-table td.visit-cell { background: rgba(248, 250, 252, 0.72); }
     .wide-db-table td.empty-cell { color: #cbd5e1; text-align: center; }
     .db-banner {
@@ -1504,7 +1520,7 @@
       flex-wrap: wrap;
       gap: 12px;
       margin: 8px 0 10px;
-      font-size: 11px;
+      font-size:11.5px;
       color: var(--muted);
     }
     /* Fix : pastilles de légende homogènes (main + compare identiques) */
@@ -1550,7 +1566,7 @@
       padding: 8px 12px;
       background: linear-gradient(180deg, #f8fafc, #f1f5fb);
       border-bottom: 1px solid var(--line);
-      font-size: 11px;
+      font-size:11.5px;
       font-weight: 800;
       color: #475569;
       text-transform: uppercase;
@@ -1567,7 +1583,7 @@
       color: var(--cyan-deep);
       border-radius: 999px;
       padding: 2px 9px;
-      font-size: 10.5px;
+      font-size:11.5px;
       font-weight: 700;
       border: 1px solid #bae6fd;
     }
@@ -1593,7 +1609,7 @@
       background: #f8fafc;
       color: #64748b;
       text-transform: uppercase;
-      font-size: 9.5px;
+      font-size:11.5px;
       font-weight: 800;
       letter-spacing: 0.6px;
       position: sticky;
@@ -1643,7 +1659,7 @@
       background: #eff6ff;
       color: #1d4ed8;
       border: 1px solid #bfdbfe;
-      font-size: 10.5px;
+      font-size:11.5px;
       text-transform: uppercase;
       letter-spacing: 1.4px;
       font-weight: 900;
@@ -1678,7 +1694,7 @@
       background: linear-gradient(180deg, #ffffff, #f1f5f9);
       border-bottom: 2px solid #cbd5e1;
       color: #334155;
-      font-size: 9.5px;
+      font-size:11.5px;
     }
     .scientific-table td {
       padding: 9px 10px;
@@ -1696,7 +1712,7 @@
     }
     .scientific-table .unit-cell {
       color: #64748b;
-      font-size: 11px;
+      font-size:11.5px;
       font-weight: 700;
       text-align: left;
     }
@@ -1780,7 +1796,7 @@
     .cohort-snapshot-mini small {
       display: block;
       color: var(--muted);
-      font-size: 9.5px;
+      font-size:11.5px;
       text-transform: uppercase;
       letter-spacing: 0.8px;
       font-weight: 900;
@@ -1801,7 +1817,7 @@
       border: 1px solid var(--line);
       border-radius: 999px;
       color: #64748b;
-      font-size: 10.5px;
+      font-size:11.5px;
       font-weight: 800;
     }
 
@@ -1874,7 +1890,7 @@
     }
     .landing-brand small {
       display: block; color: #0f766e; text-transform: uppercase;
-      letter-spacing: 2.6px; font-size: 10.5px; font-weight: 800; margin-bottom: 3px;
+      letter-spacing: 2.6px; font-size:11.5px; font-weight: 800; margin-bottom: 3px;
     }
     .landing-brand strong { display: block; font-size: 16px; font-weight: 800; font-family: 'Sora', sans-serif; line-height: 1.25; }
     .landing-badge {
@@ -1933,7 +1949,7 @@
     }
     .landing-stat small {
       display: block; color: #a5f3fc;
-      font-size: 10.5px; font-weight: 800;
+      font-size:11.5px; font-weight: 800;
       letter-spacing: 1.4px; text-transform: uppercase;
     }
     .landing-stat strong { display: block; font-size: 17px; font-weight: 800; margin-top: 4px; }
@@ -1971,7 +1987,7 @@
     .portal-kicker {
       display: inline-flex; align-items: center; gap: 9px;
       padding: 6px 14px; border-radius: 999px;
-      font-size: 11px; font-weight: 800;
+      font-size:11.5px; font-weight: 800;
       text-transform: uppercase; letter-spacing: 1.4px;
       margin-bottom: 16px;
     }
@@ -2035,7 +2051,7 @@
       color: white; display: flex; align-items: center; justify-content: center;
       font-weight: 800; font-family: 'Sora', sans-serif; font-size: 16px;
     }
-    .patient-id-badge small { display: block; color: #0f766e; text-transform: uppercase; font-size: 10.5px; font-weight: 800; letter-spacing: 1.3px; }
+    .patient-id-badge small { display: block; color: #0f766e; text-transform: uppercase; font-size:11.5px; font-weight: 800; letter-spacing: 1.3px; }
     .patient-id-badge strong { font-size: 18px; font-weight: 800; font-family: 'Sora', sans-serif; }
 
     .patient-hero {
@@ -2045,7 +2061,7 @@
       box-shadow: 0 16px 42px rgba(7, 59, 53, 0.20);
       position: relative; overflow: hidden;
     }
-    .patient-hero small { color: #99f6e4; text-transform: uppercase; letter-spacing: 1.8px; font-size: 11px; font-weight: 800; }
+    .patient-hero small { color: #99f6e4; text-transform: uppercase; letter-spacing: 1.8px; font-size:11.5px; font-weight: 800; }
     .patient-hero h2 { font-size: 28px; font-weight: 800; margin-top: 8px; font-family: 'Sora', sans-serif; letter-spacing: -0.8px; line-height: 1.15; }
     .patient-hero h2 span { background: linear-gradient(120deg, #ccfbf1, #d1fae5); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .patient-hero p { color: #ccfbf1; line-height: 1.6; margin-top: 10px; max-width: 600px; font-size: 14.5px; }
@@ -2152,7 +2168,7 @@
       border-radius: 16px; padding: 16px;
       text-align: center;
     }
-    .pat-metric small { color: #047857; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; }
+    .pat-metric small { color: #047857; font-size:11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; }
     .pat-metric strong { display: block; font-size: 30px; font-family: 'Sora', sans-serif; color: #065f46; margin: 6px 0; }
     .pat-metric span { color: #647873; font-size: 11.5px; }
 
@@ -2200,7 +2216,7 @@
     .visio-tile .vt-name {
       background: rgba(11,21,48,0.7); color: white;
       padding: 3px 9px; border-radius: 99px;
-      font-size: 10.5px; font-weight: 800; backdrop-filter: blur(8px);
+      font-size:11.5px; font-weight: 800; backdrop-filter: blur(8px);
     }
     .visio-tile .vt-status {
       width: 11px; height: 11px; border-radius: 50%;
@@ -2221,7 +2237,7 @@
     }
     .visio-tile .vt-stat { text-align: center; }
     .visio-tile .vt-stat small {
-      display: block; font-size: 8.5px; font-weight: 800;
+      display: block; font-size:11.5px; font-weight: 800;
       text-transform: uppercase; letter-spacing: 0.6px;
       color: #cbd5e1; line-height: 1;
     }
@@ -2238,12 +2254,12 @@
       display: inline-flex; align-items: center; gap: 4px;
       background: rgba(244, 63, 94, 0.95); color: white;
       padding: 3px 8px; border-radius: 99px;
-      font-size: 10px; font-weight: 800;
+      font-size:11.5px; font-weight: 800;
       font-family: 'Sora', sans-serif;
     }
     .visio-tile .vt-hr-pulse::before {
       content: '♥'; animation: visioPulse 1s infinite;
-      font-size: 11px;
+      font-size:11.5px;
     }
 
     /* Vignette patient en visio simplifiée */
@@ -2258,7 +2274,7 @@
     .pat-participant .pp-name {
       position: absolute; bottom: 5px; left: 5px;
       background: rgba(0,0,0,0.6); padding: 2px 7px;
-      border-radius: 99px; font-size: 10px; font-weight: 800;
+      border-radius: 99px; font-size:11.5px; font-weight: 800;
     }
     .pat-participant .pp-cam {
       position: absolute; inset: 0;
@@ -2347,12 +2363,12 @@
         top: 10px !important;
         right: 10px !important;
         padding: 4px 6px 4px 10px !important;
-        font-size: 10.5px !important;
+        font-size:11.5px !important;
         flex-wrap: wrap !important;
         max-width: calc(100vw - 72px) !important;
       }
-      #apiUserBadge button { padding: 3px 8px !important; font-size: 10px !important; min-height: auto !important; }
-      #modeBanner { top: 60px !important; font-size: 11px !important; padding: 6px 12px !important; }
+      #apiUserBadge button { padding: 3px 8px !important; font-size:11.5px !important; min-height: auto !important; }
+      #modeBanner { top: 60px !important; font-size:11.5px !important; padding: 6px 12px !important; }
 
       /* --- Cartes et grilles : tout en colonne unique --- */
       .card, .panel, .kpi-card, .cohort-snapshot-card, .participant-card { padding: 14px !important; }
@@ -2420,7 +2436,7 @@
         flex-direction: column !important;
       }
       #cpetGraphArea { padding: 10px !important; }
-      .cpetGraphTab { padding: 6px 10px !important; font-size: 11px !important; }
+      .cpetGraphTab { padding: 6px 10px !important; font-size:11.5px !important; }
 
       /* --- Empêcher landing screen d'être poussé par la sidebar --- */
       #appLanding, .landing-shell {
@@ -2544,7 +2560,7 @@
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           </div>
           <div>
-            <div style="color:#0f766e; text-transform:uppercase; letter-spacing:3px; font-size:11px; font-weight:800;">Marfan APA</div>
+            <div style="color:#0f766e; text-transform:uppercase; letter-spacing:3px; font-size:11.5px; font-weight:800;">Marfan APA</div>
             <h1 style="font-size:34px; font-weight:800; font-family:'Sora',sans-serif; letter-spacing:-1.2px; margin-top:8px;">Plateforme APA</h1>
             <p style="color:var(--muted); margin-top:10px; font-size:15px; max-width:520px; margin-left:auto; margin-right:auto;">Choisissez votre espace.</p>
           </div>
@@ -2656,7 +2672,7 @@
               </div>
             </div>
             <!-- Mini-vignette du patient (caméra retour, en bas à droite, comme Zoom) -->
-            <div style="position:absolute; bottom:64px; right:14px; width:140px; height:90px; background:linear-gradient(135deg, #0f766e, #14b8a6); border-radius:12px; border:2px solid white; color:white; font-size:11px; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 22px rgba(0,0,0,0.25); z-index:2;">
+            <div style="position:absolute; bottom:64px; right:14px; width:140px; height:90px; background:linear-gradient(135deg, #0f766e, #14b8a6); border-radius:12px; border:2px solid white; color:white; font-size:11.5px; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 22px rgba(0,0,0,0.25); z-index:2;">
               <div style="text-align:center;">
                 <div style="font-size:24px;">📹</div>
                 <div style="font-weight:800; margin-top:3px;" id="patSelfLabel">Votre caméra</div>
@@ -2666,7 +2682,8 @@
               <button class="pat-btn-light" onclick="patToggleMic()" id="patMicBtn">🎙 Micro</button>
               <button class="pat-btn-light" onclick="patToggleCam()" id="patCamBtn">📷 Caméra</button>
               <button class="pat-btn-light" onclick="patToggleParticipants()" id="patParticipantsBtn">👥 Voir les autres</button>
-              <button class="pat-btn-light" onclick="alert('Lever la main / chat à venir')">✋ Lever la main</button>
+              <!-- Retiré : bouton sans effet. Lever la main et le chat sont
+                   déjà disponibles dans la barre d'outils de la salle visio. -->
               <span style="color:#94a3b8; font-size:11.5px; margin-left:auto;" id="patSessionStatus">Hors séance</span>
             </div>
           </div>
@@ -2699,7 +2716,7 @@
             </div>
           </div>
           <div>
-            <div style="font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:7px;">Mon effort perçu (Borg CR10)</div>
+            <div style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:7px;">Mon effort perçu (Borg CR10)</div>
             <div class="pat-borg-grid" id="patBorgGrid"></div>
           </div>
         </article>
@@ -2752,7 +2769,7 @@
           <div id="apiTrainingHistoryEmpty" style="text-align:center; padding:20px; color:var(--muted); display:none;">
             <div style="font-size:28px; margin-bottom:6px;">🏃</div>
             Aucune séance enregistrée pour le moment.<br>
-            <span style="font-size:11px;">Faites votre première séance dans l'onglet "🎥 Séance en visio" : connectez la ceinture, démarrez, puis arrêtez la séance pour générer votre première fiche.</span>
+            <span style="font-size:11.5px;">Faites votre première séance dans l'onglet "🎥 Séance en visio" : connectez la ceinture, démarrez, puis arrêtez la séance pour générer votre première fiche.</span>
           </div>
         </article>
       </section>
@@ -2859,7 +2876,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <strong style="display:block; margin-bottom:5px; font-size:11px;">Maquette autonome</strong>
+        <strong style="display:block; margin-bottom:5px; font-size:11.5px;">Maquette autonome</strong>
         HTML/CSS/JS, sans backend. Évaluations longitudinales illimitées par patient.
       </div>
     </aside>
@@ -2887,7 +2904,7 @@
         <div class="hero">
           <div class="hero-inner">
             <div>
-              <small style="text-transform:uppercase; letter-spacing:2.6px; font-size:11px; font-weight:800; color:#a5f3fc;">Étude clinique · Marfan APA</small>
+              <small style="text-transform:uppercase; letter-spacing:2.6px; font-size:11.5px; font-weight:800; color:#a5f3fc;">Étude clinique · Marfan APA</small>
               <h2 style="margin-top:8px;">Vue d'ensemble <span>de la cohorte</span></h2>
               <p>Résumé synthétique strictement agrégé : statuts cliniques, distribution génétique, tendances moyennes, baseline, dernière évaluation et deltas de cohorte.</p>
               <div class="hero-stats">
@@ -3068,34 +3085,34 @@
 
           <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px;">
             <div>
-              <div class="control-label">Nom *</div>
+              <label class="control-label" for="inv_lastName">Nom *</label>
               <input type="text" id="inv_lastName" placeholder="ex. Dupont" />
             </div>
             <div>
-              <div class="control-label">Prénom *</div>
+              <label class="control-label" for="inv_firstName">Prénom *</label>
               <input type="text" id="inv_firstName" placeholder="ex. Marie" />
             </div>
             <div>
-              <div class="control-label">Email professionnel *</div>
+              <label class="control-label" for="inv_email">Email professionnel *</label>
               <input type="email" id="inv_email" placeholder="marie.dupont@hopital.fr" />
             </div>
             <div>
-              <div class="control-label">Téléphone (optionnel)</div>
+              <label class="control-label" for="inv_phone">Téléphone (optionnel)</label>
               <input type="tel" id="inv_phone" placeholder="06 12 34 56 78" />
             </div>
             <div>
-              <div class="control-label">Service / Établissement</div>
+              <label class="control-label" for="inv_service">Service / Établissement</label>
               <input type="text" id="inv_service" placeholder="ex. Cardiologie — CHU Toulouse" />
             </div>
             <div>
-              <div class="control-label">Spécialité</div>
+              <label class="control-label" for="inv_specialty">Spécialité</label>
               <input type="text" id="inv_specialty" placeholder="ex. Médecin du sport, APA, Cardiologue…" />
             </div>
             <div style="grid-column: 1 / -1;">
               <!-- Le mot de passe par défaut « Marfan!<année> » était prévisible
                    et devait transiter de vive voix ou par message. Le lien par
                    courriel supprime les deux problèmes. -->
-              <div class="control-label">Mot de passe initial <span style="font-weight:600; color:#94a3b8;">— déconseillé</span></div>
+              <label class="control-label" for="inv_initialPassword">Mot de passe initial <span style="font-weight:600; color:#94a3b8;">— déconseillé</span></label>
               <input type="text" id="inv_initialPassword" placeholder="Laisser vide : un lien sera envoyé par courriel" />
               <p style="font-size:11.5px; color:#065f46; margin-top:6px; line-height:1.55; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:9px 11px;">
                 <strong>Laissez ce champ vide.</strong> L'investigateur recevra à son adresse professionnelle
@@ -3158,25 +3175,25 @@
           <div id="cf_docStatut" style="display:none; margin-bottom:14px; padding:11px 13px; border-radius:9px; font-size:12.5px; font-weight:600;"></div>
           <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px;">
             <div>
-              <div class="control-label">Code patient anonymisé *</div>
+              <label class="control-label" for="cf_code">Code patient anonymisé *</label>
               <!-- oninput : dès que le code est saisi à la main, on cesse de le
                    remplacer automatiquement. -->
               <input type="text" id="cf_code" placeholder="MRF-XXX" oninput="this.dataset.auto='0';" />
             </div>
             <div>
-              <div class="control-label">IPP (Identifiant Permanent Patient)</div>
+              <label class="control-label" for="cf_ipp">IPP (Identifiant Permanent Patient)</label>
               <input type="text" id="cf_ipp" placeholder="ex. 12345678" />
             </div>
             <div>
-              <div class="control-label">Nom *</div>
+              <label class="control-label" for="cf_lastName">Nom *</label>
               <input type="text" id="cf_lastName" placeholder="ex. DUPONT" oninput="updateSuggestedInitials()" onblur="this.value = normalizeLastName(this.value); updateSuggestedInitials();" />
             </div>
             <div>
-              <div class="control-label">Prénom *</div>
+              <label class="control-label" for="cf_firstName">Prénom *</label>
               <input type="text" id="cf_firstName" placeholder="ex. Marie" oninput="updateSuggestedInitials()" onblur="this.value = normalizeFirstName(this.value); updateSuggestedInitials();" />
             </div>
             <div>
-              <div class="control-label">Sexe *</div>
+              <label class="control-label" for="cf_sex">Sexe *</label>
               <select id="cf_sex">
                 <option value="">— Choisir —</option>
                 <option value="Femme">Femme</option>
@@ -3185,15 +3202,15 @@
               </select>
             </div>
             <div>
-              <div class="control-label">Date de naissance</div>
+              <label class="control-label" for="cf_dob">Date de naissance</label>
               <input type="date" id="cf_dob" onchange="updateAgeFromDob()" />
             </div>
             <div>
-              <div class="control-label">Âge (années) *</div>
+              <label class="control-label" for="cf_age">Âge (années) *</label>
               <input type="number" id="cf_age" min="0" max="120" placeholder="35" />
             </div>
             <div>
-              <div class="control-label">Email *</div>
+              <label class="control-label" for="cf_email">Email *</label>
               <input type="email" id="cf_email" placeholder="patient@exemple.fr" />
             </div>
           </div>
@@ -3208,23 +3225,23 @@
             </summary>
             <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px; margin-top:14px;">
               <div>
-                <div class="control-label">Initiales (auto-générées)</div>
+                <label class="control-label" for="cf_initials">Initiales (auto-générées)</label>
                 <input type="text" id="cf_initials" placeholder="ex. J.D." maxlength="6" oninput="this.dataset.manual='true';" />
               </div>
               <div>
-                <div class="control-label">Téléphone</div>
+                <label class="control-label" for="cf_phone">Téléphone</label>
                 <input type="tel" id="cf_phone" placeholder="06 12 34 56 78" />
               </div>
               <div>
-                <div class="control-label">Médecin référent</div>
+                <label class="control-label" for="cf_doctor">Médecin référent</label>
                 <input type="text" id="cf_doctor" placeholder="Dr Nom" />
               </div>
               <div>
-                <div class="control-label">Centre de référence</div>
+                <label class="control-label" for="cf_center">Centre de référence</label>
                 <input type="text" id="cf_center" placeholder="ex. CHU Toulouse — Cardiologie" />
               </div>
               <div style="grid-column: 1 / -1;">
-                <div class="control-label">Adresse</div>
+                <label class="control-label" for="cf_address">Adresse</label>
                 <input type="text" id="cf_address" placeholder="Adresse postale" />
               </div>
             </div>
@@ -3240,7 +3257,7 @@
           <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Génétique, diagnostic, antécédents et traitements en cours.</p>
           <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
             <div>
-              <div class="control-label">Gène muté *</div>
+              <label class="control-label" for="cf_gene">Gène muté *</label>
               <select id="cf_gene">
                 <option value="">— Choisir —</option>
                 <option value="FBN1">FBN1</option>
@@ -3256,11 +3273,11 @@
               </select>
             </div>
             <div>
-              <div class="control-label">Date du diagnostic</div>
+              <label class="control-label" for="cf_dxDate">Date du diagnostic</label>
               <input type="date" id="cf_dxDate" />
             </div>
             <div>
-              <div class="control-label">Variant pathogène</div>
+              <label class="control-label" for="cf_variant">Variant pathogène</label>
               <input type="text" id="cf_variant" placeholder="ex. c.1234C>T (p.Arg412Cys)" />
             </div>
           </div>
@@ -3270,15 +3287,15 @@
           </div>
           <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
             <div>
-              <div class="control-label">Date du diagnostic / première constatation</div>
+              <label class="control-label" for="cf_aorticFirstDate">Date du diagnostic / première constatation</label>
               <input type="date" id="cf_aorticFirstDate" />
             </div>
             <div>
-              <div class="control-label">Diamètre à cette date (mm)</div>
+              <label class="control-label" for="cf_aorticFirstValue">Diamètre à cette date (mm)</label>
               <input type="number" step="0.1" id="cf_aorticFirstValue" placeholder="ex. 38.5 — si connu" />
             </div>
             <div>
-              <div class="control-label">Site mesuré</div>
+              <label class="control-label" for="cf_aorticFirstSite">Site mesuré</label>
               <select id="cf_aorticFirstSite">
                 <option value="">— Non précisé —</option>
                 <option value="Sinus de Valsalva">Sinus de Valsalva</option>
@@ -3290,7 +3307,7 @@
               </select>
             </div>
             <div style="grid-column: 1 / -1;">
-              <div class="control-label">Commentaire (facultatif)</div>
+              <label class="control-label" for="cf_aorticFirstComment">Commentaire (facultatif)</label>
               <input type="text" id="cf_aorticFirstComment" placeholder="ex. Mesure issue du compte-rendu du CHU de..., à confirmer" />
             </div>
           </div>
@@ -3300,15 +3317,15 @@
           </div>
           <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
             <div>
-              <div class="control-label">Date (aujourd'hui)</div>
+              <label class="control-label" for="cf_aorticTodayDate">Date (aujourd'hui)</label>
               <input type="date" id="cf_aorticTodayDate" readonly style="background:#f1f5f9; color:#64748b;" />
             </div>
             <div>
-              <div class="control-label">Diamètre du jour (mm)</div>
+              <label class="control-label" for="cf_aorticTodayValue">Diamètre du jour (mm)</label>
               <input type="number" step="0.1" id="cf_aorticTodayValue" placeholder="ex. 39 — si mesuré aujourd'hui" />
             </div>
             <div>
-              <div class="control-label">Site mesuré</div>
+              <label class="control-label" for="cf_aorticTodaySite">Site mesuré</label>
               <select id="cf_aorticTodaySite">
                 <option value="">— Non précisé —</option>
                 <option value="Sinus de Valsalva">Sinus de Valsalva</option>
@@ -3322,19 +3339,19 @@
           </div>
           <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; margin-top:12px;">
             <div style="grid-column: 1 / -1;">
-              <div class="control-label">Antécédents médicaux & chirurgicaux</div>
+              <label class="control-label" for="cf_history">Antécédents médicaux & chirurgicaux</label>
               <textarea id="cf_history" rows="2" placeholder="ex. Chirurgie aorte ascendante 2019, scoliose corrigée 2010..."></textarea>
             </div>
             <div style="grid-column: 1 / -1;">
-              <div class="control-label">Traitements en cours</div>
+              <label class="control-label" for="cf_treatments">Traitements en cours</label>
               <textarea id="cf_treatments" rows="2" placeholder="ex. Bêtabloquant (bisoprolol 5 mg/j), losartan 50 mg/j..."></textarea>
             </div>
             <div>
-              <div class="control-label">Allergies connues</div>
+              <label class="control-label" for="cf_allergies">Allergies connues</label>
               <input type="text" id="cf_allergies" placeholder="ex. Pénicilline" />
             </div>
             <div>
-              <div class="control-label">Tabac</div>
+              <label class="control-label" for="cf_smoking">Tabac</label>
               <select id="cf_smoking">
                 <option value="non">Non-fumeur</option>
                 <option value="ancien">Ex-fumeur</option>
@@ -3342,7 +3359,7 @@
               </select>
             </div>
             <div>
-              <div class="control-label">Activité physique habituelle</div>
+              <label class="control-label" for="cf_baselinePA">Activité physique habituelle</label>
               <select id="cf_baselinePA">
                 <option value="sedentaire">Sédentaire</option>
                 <option value="modere">Modérée</option>
@@ -3385,11 +3402,11 @@
 
           <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; margin-bottom:14px;">
             <div>
-              <div class="control-label">Profession / situation</div>
+              <label class="control-label" for="cf_profession">Profession / situation</label>
               <input type="text" id="cf_profession" placeholder="ex. Enseignante, temps partiel" />
             </div>
             <div>
-              <div class="control-label">Statut clinique</div>
+              <label class="control-label" for="cf_status">Statut clinique</label>
               <select id="cf_status">
                 <option value="Stable">Stable</option>
                 <option value="Surveillance">Surveillance</option>
@@ -3397,41 +3414,41 @@
               </select>
             </div>
             <div>
-              <div class="control-label">Point de vigilance principal</div>
+              <label class="control-label" for="cf_riskFactor">Point de vigilance principal</label>
               <input type="text" id="cf_riskFactor" placeholder="ex. Dilatation aortique" />
             </div>
           </div>
 
           <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px;">
             <div>
-              <div class="control-label">Difficultés ressenties par le patient</div>
+              <label class="control-label" for="cf_difficultes">Difficultés ressenties par le patient</label>
               <textarea id="cf_difficultes" rows="4" placeholder="Essoufflement à l'effort, fatigue, appréhension du sport, douleurs..."></textarea>
             </div>
             <div>
-              <div class="control-label">Attentes et objectifs du patient</div>
+              <label class="control-label" for="cf_objectifsPatient">Attentes et objectifs du patient</label>
               <textarea id="cf_objectifsPatient" rows="4" placeholder="Reprendre une activité régulière, retrouver confiance, marcher sans s'essouffler..."></textarea>
             </div>
             <div>
-              <div class="control-label">Objectifs de la prise en charge</div>
+              <label class="control-label" for="cf_objectifsClinicien">Objectifs de la prise en charge</label>
               <textarea id="cf_objectifsClinicien" rows="4" placeholder="Réentraînement en endurance sous SV1, éducation aux signes d'alerte, adhésion au programme..."></textarea>
             </div>
             <div>
-              <div class="control-label">Précautions et contre-indications APA</div>
+              <label class="control-label" for="cf_incidents">Précautions et contre-indications APA</label>
               <textarea id="cf_incidents" rows="4" placeholder="Éviter Valsalva et efforts maximaux, arrêt si douleur thoracique..."></textarea>
             </div>
             <div style="grid-column: 1 / -1;">
-              <div class="control-label">Notes libres de l'entretien</div>
+              <label class="control-label" for="cf_notes">Notes libres de l'entretien</label>
               <textarea id="cf_notes" rows="3" placeholder="Éléments de contexte, ressenti, points à ne pas oublier..."></textarea>
             </div>
           </div>
 
           <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; margin-top:14px;">
             <div>
-              <div class="control-label">Date d'inclusion dans l'étude</div>
+              <label class="control-label" for="cf_inclusionDate">Date d'inclusion dans l'étude</label>
               <input type="date" id="cf_inclusionDate" />
             </div>
             <div>
-              <div class="control-label">Consentement signé</div>
+              <label class="control-label" for="cf_consent">Consentement signé</label>
               <select id="cf_consent">
                 <option value="oui">✓ Oui</option>
                 <option value="non">✖ Non</option>
@@ -3456,7 +3473,7 @@
             </p>
             <div id="cf_synthInfo" style="display:none;"></div>
             <div id="cf_synthZone" style="display:none;">
-              <div class="control-label">Synthèse d'entrée</div>
+              <label class="control-label" for="cf_synthEntree">Synthèse d'entrée</label>
               <textarea id="cf_synthEntree" rows="6"></textarea>
               <div class="control-label" style="margin-top:10px;">Difficultés et objectifs</div>
               <textarea id="cf_synthObjectifs" rows="6"></textarea>
@@ -3478,7 +3495,7 @@
           <div class="actions">
             <button class="btn-secondary" onclick="switchMainTab('accueil')">← Accueil</button>
             <button class="btn-violet" onclick="openAddEvaluation()">+ Évaluation</button>
-            <button class="btn-primary" onclick="alert('Export PDF à développer')">Exporter</button>
+            <button class="btn-primary" onclick="window.print()" title="Imprimer ou enregistrer en PDF">🖨 Imprimer / PDF</button>
           </div>
         </header>
 
@@ -3543,12 +3560,12 @@
 
           <!-- Filtres légers -->
           <div style="margin:0 22px 12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <span style="font-size:11px; color:var(--muted); font-weight:600;">Filtrer :</span>
-            <button class="apiMedExFilter" data-filter="all" style="padding:5px 12px; border:1px solid #d8dde7; background:#0b1530; color:white; border-radius:99px; font-size:11px; font-weight:600; cursor:pointer;">Tout</button>
-            <button class="apiMedExFilter" data-filter="cpet" style="padding:5px 12px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:99px; font-size:11px; font-weight:600; cursor:pointer;">🫁 CPET</button>
-            <button class="apiMedExFilter" data-filter="pulse_wave" style="padding:5px 12px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:99px; font-size:11px; font-weight:600; cursor:pointer;">💗 Onde de pouls</button>
-            <button class="apiMedExFilter" data-filter="pending" style="padding:5px 12px; border:1px solid #fcd34d; background:white; color:#92400e; border-radius:99px; font-size:11px; font-weight:600; cursor:pointer;">⏳ En attente</button>
-            <button class="apiMedExFilter" data-filter="validated" style="padding:5px 12px; border:1px solid #86efac; background:white; color:#166534; border-radius:99px; font-size:11px; font-weight:600; cursor:pointer;">✓ Validés</button>
+            <span style="font-size:11.5px; color:var(--muted); font-weight:600;">Filtrer :</span>
+            <button class="apiMedExFilter" data-filter="all" style="padding:5px 12px; border:1px solid #d8dde7; background:#0b1530; color:white; border-radius:99px; font-size:11.5px; font-weight:600; cursor:pointer;">Tout</button>
+            <button class="apiMedExFilter" data-filter="cpet" style="padding:5px 12px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:99px; font-size:11.5px; font-weight:600; cursor:pointer;">🫁 CPET</button>
+            <button class="apiMedExFilter" data-filter="pulse_wave" style="padding:5px 12px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:99px; font-size:11.5px; font-weight:600; cursor:pointer;">💗 Onde de pouls</button>
+            <button class="apiMedExFilter" data-filter="pending" style="padding:5px 12px; border:1px solid #fcd34d; background:white; color:#92400e; border-radius:99px; font-size:11.5px; font-weight:600; cursor:pointer;">⏳ En attente</button>
+            <button class="apiMedExFilter" data-filter="validated" style="padding:5px 12px; border:1px solid #86efac; background:white; color:#166534; border-radius:99px; font-size:11.5px; font-weight:600; cursor:pointer;">✓ Validés</button>
           </div>
 
           <!-- Liste des examens -->
@@ -3599,7 +3616,7 @@
               </div>
             </div>
             <div>
-              <div class="control-label">Vue SF-36</div>
+              <label class="control-label" for="sf36DimensionSelect">Vue SF-36</label>
               <select id="sf36DimensionSelect">
                 <option value="all">Vue ensemble</option>
                 <option value="fonction_physique">Fonction physique</option>
@@ -3755,7 +3772,7 @@
               </div>
               <div style="display:flex; gap:9px; align-items:end;">
                 <div>
-                  <div class="control-label">Évaluation cible</div>
+                  <label class="control-label" for="vo2EvalSelect">Évaluation cible</label>
                   <select id="vo2EvalSelect" onchange="renderVo2Analysis()"></select>
                 </div>
                 <label class="btn-gradient" for="vo2FileInput" style="cursor:pointer;">📂 Importer CSV / XLSX</label>
@@ -3791,7 +3808,7 @@
           <div id="vo2AnalysisOutput" style="display:none;">
             <article class="card" style="padding:14px 18px; margin-bottom:14px; background:linear-gradient(135deg, #0b1530, #1e3a8a); color:white; display:flex; justify-content:space-between; align-items:center; gap:14px;">
               <div>
-                <div style="font-size:11px; color:#a5f3fc; text-transform:uppercase; letter-spacing:1.6px; font-weight:800;">Analyse VO₂ détaillée</div>
+                <div style="font-size:11.5px; color:#a5f3fc; text-transform:uppercase; letter-spacing:1.6px; font-weight:800;">Analyse VO₂ détaillée</div>
                 <div style="font-size:17px; font-weight:800; margin-top:3px;">Épreuve d'effort cardiopulmonaire complète</div>
               </div>
               <button class="btn-secondary" onclick="toggleVo2FullView(false)" style="color:var(--ink);">← Retour à la vue simple</button>
@@ -3928,7 +3945,7 @@
 
               <div id="kineticSimControls" style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:14px;">
                 <div>
-                  <div class="control-label">Profil pathologique</div>
+                  <label class="control-label" for="kineticProfile">Profil pathologique</label>
                   <select id="kineticProfile" onchange="renderKineticSimulator()">
                     <option value="healthy_trained">Sujet sain entraîné (τ = 18 s)</option>
                     <option value="healthy" selected>Sujet sain sédentaire (τ = 28 s)</option>
@@ -3954,19 +3971,19 @@
 
               <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px; margin-top:14px;">
                 <div style="text-align:center; padding:12px; background:var(--soft); border:1px solid var(--line); border-radius:12px;">
-                  <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.9px; font-weight:800;">Constante τ</div>
+                  <div style="font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.9px; font-weight:800;">Constante τ</div>
                   <div id="kineticTauValue" style="font-size:24px; font-weight:800; color:#16a34a; font-family:'Sora',sans-serif; margin-top:5px;">28 s</div>
-                  <div id="kineticTauStatus" style="font-size:10.5px; color:var(--muted); margin-top:3px;"></div>
+                  <div id="kineticTauStatus" style="font-size:11.5px; color:var(--muted); margin-top:3px;"></div>
                 </div>
                 <div style="text-align:center; padding:12px; background:var(--soft); border:1px solid var(--line); border-radius:12px;">
-                  <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.9px; font-weight:800;">VO₂ Peak (asymptote)</div>
+                  <div style="font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.9px; font-weight:800;">VO₂ Peak (asymptote)</div>
                   <div id="kineticVo2Peak" style="font-size:24px; font-weight:800; color:#0891b2; font-family:'Sora',sans-serif; margin-top:5px;">1.40 L/min</div>
-                  <div style="font-size:10.5px; color:var(--muted); margin-top:3px;">Steady-state ou asymptote</div>
+                  <div style="font-size:11.5px; color:var(--muted); margin-top:3px;">Steady-state ou asymptote</div>
                 </div>
                 <div style="text-align:center; padding:12px; background:var(--soft); border:1px solid var(--line); border-radius:12px;">
-                  <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.9px; font-weight:800;">Amplitude slow comp.</div>
+                  <div style="font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.9px; font-weight:800;">Amplitude slow comp.</div>
                   <div id="kineticAs" style="font-size:24px; font-weight:800; color:#dc2626; font-family:'Sora',sans-serif; margin-top:5px;">— L/min</div>
-                  <div style="font-size:10.5px; color:var(--muted); margin-top:3px;">Phase III (si intensité &gt; SV₁)</div>
+                  <div style="font-size:11.5px; color:var(--muted); margin-top:3px;">Phase III (si intensité &gt; SV₁)</div>
                 </div>
               </div>
 
@@ -3991,9 +4008,9 @@
               <div style="overflow-x:auto; margin-top:10px;">
                 <table style="width:100%; border-collapse:collapse; font-size:12.5px; min-width:520px;">
                   <thead><tr style="background:#e0f2fe;">
-                    <th style="padding:9px 12px; text-align:left; color:#0c4a6e; font-size:11px; text-transform:uppercase; font-weight:800;">Population</th>
-                    <th style="padding:9px 12px; text-align:center; color:#0c4a6e; font-size:11px; text-transform:uppercase; font-weight:800;">τ (s)</th>
-                    <th style="padding:9px 12px; text-align:left; color:#0c4a6e; font-size:11px; text-transform:uppercase; font-weight:800;">Référence</th>
+                    <th style="padding:9px 12px; text-align:left; color:#0c4a6e; font-size:11.5px; text-transform:uppercase; font-weight:800;">Population</th>
+                    <th style="padding:9px 12px; text-align:center; color:#0c4a6e; font-size:11.5px; text-transform:uppercase; font-weight:800;">τ (s)</th>
+                    <th style="padding:9px 12px; text-align:left; color:#0c4a6e; font-size:11.5px; text-transform:uppercase; font-weight:800;">Référence</th>
                   </tr></thead>
                   <tbody>
                     <tr><td style="padding:8px 12px; border-bottom:1px solid var(--line); font-weight:700;">Adulte sain entraîné</td><td style="padding:8px 12px; border-bottom:1px solid var(--line); text-align:center; font-family:'Sora',sans-serif; font-weight:700; color:#16a34a;">15 – 25</td><td style="padding:8px 12px; border-bottom:1px solid var(--line); color:var(--muted); font-style:italic;">Whipp 1982, Jones 2009</td></tr>
@@ -4039,7 +4056,7 @@
                 <strong>Key insight (recherche clinique) :</strong> le recueil structuré de ces données sous-maximales au sein de bases de données longitudinales permet de cartographier la trajectoire fonctionnelle d'un patient avec une finesse et une sécurité impossibles à atteindre via de simples tests maximaux ponctuels.
               </div>
 
-              <p style="font-size:11px; color:var(--muted); font-style:italic; margin-top:14px; line-height:1.55;">Lectures fondamentales : Wasserman K. <em>Principles of Exercise Testing and Interpretation</em>, 5e éd., Wolters Kluwer 2012. Poole DC, Burnley M, Vanhatalo A, Rossiter HB, Jones AM. Critical Power: An Important Fatigue Threshold in Exercise Physiology. <em>Med Sci Sports Exerc</em> 2016;48(11):2320-34.</p>
+              <p style="font-size:11.5px; color:var(--muted); font-style:italic; margin-top:14px; line-height:1.55;">Lectures fondamentales : Wasserman K. <em>Principles of Exercise Testing and Interpretation</em>, 5e éd., Wolters Kluwer 2012. Poole DC, Burnley M, Vanhatalo A, Rossiter HB, Jones AM. Critical Power: An Important Fatigue Threshold in Exercise Physiology. <em>Med Sci Sports Exerc</em> 2016;48(11):2320-34.</p>
             </article>
           </div>
         </section>
@@ -4057,7 +4074,7 @@
               </div>
               <div style="display:flex; gap:9px; align-items:end;">
                 <div>
-                  <div class="control-label">Évaluation cible</div>
+                  <label class="control-label" for="pulseEvalSelect">Évaluation cible</label>
                   <select id="pulseEvalSelect" onchange="renderPulseAnalysis()"></select>
                 </div>
                 <label class="btn-gradient" for="pulseFileInput" style="cursor:pointer;">📂 Importer CSV</label>
@@ -4093,7 +4110,7 @@
           <div id="pulseAnalysisOutput" style="display:none;">
             <article class="card" style="padding:14px 18px; margin-bottom:14px; background:linear-gradient(135deg, #7f1d1d, #be185d); color:white; display:flex; justify-content:space-between; align-items:center; gap:14px;">
               <div>
-                <div style="font-size:11px; color:#fce7f3; text-transform:uppercase; letter-spacing:1.6px; font-weight:800;">Analyse onde de pouls détaillée</div>
+                <div style="font-size:11.5px; color:#fce7f3; text-transform:uppercase; letter-spacing:1.6px; font-weight:800;">Analyse onde de pouls détaillée</div>
                 <div style="font-size:17px; font-weight:800; margin-top:3px;">pOpmètre — rigidité artérielle complète</div>
               </div>
               <button class="btn-secondary" onclick="togglePulseFullView(false)" style="color:var(--ink);">← Retour à la vue simple</button>
@@ -4111,7 +4128,7 @@
               <div id="pwvGauge" style="position:relative; height:36px; background:linear-gradient(to right,#86efac 0%,#86efac 35%,#fcd34d 35%,#fcd34d 65%,#fca5a5 65%,#fca5a5 100%); border-radius:18px; margin:14px 0 8px; border:1px solid var(--line);">
                 <div id="pwvNeedle" style="position:absolute; top:-6px; width:3px; height:48px; background:var(--ink); border-radius:2px; left:0%;"></div>
               </div>
-              <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:700;">
+              <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); font-weight:700;">
                 <span>4 m/s</span><span>7 m/s</span><span>10 m/s</span><span>13 m/s</span>
               </div>
               <p style="color:var(--muted); font-size:12px; margin-top:8px;">Échelle : vert = normal (&lt; 7) — jaune = élevé (7–10) — rouge = pathologique (&gt; 10 m/s ; seuil ESC 2018 pour cf-PWV).</p>
@@ -4171,7 +4188,10 @@
             <p>Vue large par défaut : une ligne par patient, puis une série de colonnes par visite. Sélectionnez la catégorie ci-dessous pour filtrer l'affichage.</p>
           </div>
           <div class="actions">
-            <button class="btn-secondary" onclick="alert('Import CSV à développer')">⬆ Importer CSV</button>
+            <!-- Retiré : l'import de fichiers se fait dans le dossier du patient
+                 concerné, vue « Documents & examens », où la pièce est rattachée
+                 à la bonne personne. Un import global sans destinataire n'avait
+                 pas de sens clinique. -->
             <button class="btn-primary" onclick="exportCsv()">⬇ Exporter</button>
           </div>
         </header>
@@ -4328,9 +4348,9 @@
         <article class="card library-shell">
           <div class="chart-header"><div><h3>📺 Bibliothèque de vidéos d'entraînement</h3><p>Cliquez une vidéo pour la visionner ci-dessus.</p></div></div>
           <div class="library-filters">
-            <div><div class="control-label">Recherche</div><input id="trainingVideoSearch" type="search" placeholder="Rechercher une vidéo..." /></div>
-            <div><div class="control-label">Catégorie</div><select id="trainingCategory"><option value="">Toutes catégories</option></select></div>
-            <div><div class="control-label">Interval training</div><select id="trainingInterval"><option value="">Tous les IT</option></select></div>
+            <div><label class="control-label" for="trainingVideoSearch">Recherche</label><input id="trainingVideoSearch" type="search" placeholder="Rechercher une vidéo..." /></div>
+            <div><label class="control-label" for="trainingCategory">Catégorie</label><select id="trainingCategory"><option value="">Toutes catégories</option></select></div>
+            <div><label class="control-label" for="trainingInterval">Interval training</label><select id="trainingInterval"><option value="">Tous les IT</option></select></div>
             <button class="btn-secondary" onclick="resetTrainingFilters()">Réinitialiser</button>
           </div>
           <div class="video-grid" id="trainingVideoGrid"></div>
@@ -4340,7 +4360,7 @@
       <!-- ============================== VISIO ============================== -->
       <!-- padding-bottom : la barre de boutons flottante masquait le bas de
            la salle visio, notamment les commandes Jitsi. -->
-      <section id="visio" class="tab-panel hidden" style="padding-bottom:90px;">
+      <section id="visio" class="tab-panel hidden">
         <header class="page-header">
           <div>
             <h2>Séance de groupe</h2>
@@ -4389,13 +4409,13 @@
             <p style="color:var(--muted); font-size:12px; line-height:1.5; margin-bottom:14px;">Synthèse temps réel de la cohorte en visio.</p>
             <div style="display:grid; gap:10px;">
               <div style="background:white; border:1px solid var(--line); border-radius:12px; padding:12px;">
-                <small style="color:var(--muted); font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">Participants connectés</small>
+                <small style="color:var(--muted); font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">Participants connectés</small>
                 <div style="font-size:24px; font-weight:800; font-family:'Sora',sans-serif; margin-top:3px;" id="visioConnectedCount">0 / 20</div>
               </div>
               <!-- Moyennes de cohorte retirées : c'est le suivi patient par
                    patient qui compte pendant une séance, pas l'agrégat. -->
               <div style="background:linear-gradient(135deg, #fee2e2, #fef3c7); border:1px solid #fcd34d; border-radius:12px; padding:12px;">
-                <small style="color:#92400e; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">⚠ Alertes en cours</small>
+                <small style="color:#92400e; font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">⚠ Alertes en cours</small>
                 <div style="font-size:18px; font-weight:800; font-family:'Sora',sans-serif; margin-top:3px; color:#9a3412;" id="visioAlerts">Aucune</div>
               </div>
             </div>
@@ -4403,8 +4423,8 @@
             <!-- Phase 20.2 : mesures réelles, patient par patient -->
             <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line);">
               <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-                <span style="font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:1px;">Par patient</span>
-                <span style="font-size:10px; color:#94a3b8;">actualisé toutes les 5 s</span>
+                <span style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:1px;">Par patient</span>
+                <span style="font-size:11.5px; color:#94a3b8;">actualisé toutes les 5 s</span>
               </div>
               <div id="visioMonitorPatients" style="max-height:320px; overflow-y:auto;">
                 <div style="padding:14px 12px; text-align:center; color:#94a3b8; font-size:11.5px;">
@@ -4483,7 +4503,9 @@
           </div>
           <div class="actions">
             <button class="btn-light" onclick="sendAllCapsulesToAll()">📨 Toutes les capsules à tous</button>
-            <button class="btn-violet" onclick="alert('Ajouter une capsule')">+ Capsule</button>
+            <!-- Retiré : la création de capsules n'est pas implémentée.
+                 Un bouton qui ouvre une boîte de dialogue vide fait douter
+                 du reste de l'interface. -->
           </div>
         </header>
         <div class="edu-grid" id="educationGrid"></div>
@@ -5219,7 +5241,7 @@
     const chip = document.getElementById('currentRoleChip');
     if (chip && currentUser) {
       const b = ROLE_BADGES[currentUser.role];
-      chip.innerHTML = `<span style="background:${b.bg}; color:${b.color}; border:1px solid ${b.border}; padding:4px 10px; border-radius:99px; font-weight:800; font-size:11px;">${b.icon} ${ROLE_LABELS[currentUser.role]}</span>`;
+      chip.innerHTML = `<span style="background:${b.bg}; color:${b.color}; border:1px solid ${b.border}; padding:4px 10px; border-radius:99px; font-weight:800; font-size:11.5px;">${b.icon} ${ROLE_LABELS[currentUser.role]}</span>`;
     }
     // Patient : si le user courant est patient, restreindre l'identité affichée
     if (currentUser && currentUser.role === 'patient' && currentUser.patientId) {
@@ -5301,15 +5323,15 @@
         ? `<span class="pill ok">✓ Actif</span>`
         : `<span class="pill warn">⏸ Inactif</span>`;
       const actions = u.active
-        ? `<button class="btn-secondary" style="padding:5px 9px; font-size:10.5px;" onclick="deactivateUser('${u.id}')">Désactiver</button>`
-        : `<button class="btn-light" style="padding:5px 9px; font-size:10.5px;" onclick="reactivateUser('${u.id}')">Réactiver</button>`;
+        ? `<button class="btn-secondary" style="padding:5px 9px; font-size:11.5px;" onclick="deactivateUser('${u.id}')">Désactiver</button>`
+        : `<button class="btn-light" style="padding:5px 9px; font-size:11.5px;" onclick="reactivateUser('${u.id}')">Réactiver</button>`;
       const loginBtn = u.active
-        ? `<button class="btn-light" style="padding:5px 9px; font-size:10.5px;" onclick="loginAsUser('${u.id}')">→ Se connecter</button>`
+        ? `<button class="btn-light" style="padding:5px 9px; font-size:11.5px;" onclick="loginAsUser('${u.id}')">→ Se connecter</button>`
         : '';
       return `<tr>
         <td><strong>${u.id}</strong></td>
         <td>${u.name}</td>
-        <td><span style="background:${b.bg}; color:${b.color}; border:1px solid ${b.border}; padding:3px 8px; border-radius:99px; font-weight:800; font-size:10.5px;">${b.icon} ${ROLE_LABELS[u.role]}</span></td>
+        <td><span style="background:${b.bg}; color:${b.color}; border:1px solid ${b.border}; padding:3px 8px; border-radius:99px; font-weight:800; font-size:11.5px;">${b.icon} ${ROLE_LABELS[u.role]}</span></td>
         <td>${u.email}</td>
         <td>${liaison}</td>
         <td style="font-size:11.5px; color:var(--muted);">${creatorTxt}</td>
@@ -5877,7 +5899,7 @@
       body += row;
     });
 
-    let nRow = `<tr style="background:#f8fafc;"><td style="text-align:left; font-weight:800; color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:0.6px;">N patients</td>`;
+    let nRow = `<tr style="background:#f8fafc;"><td style="text-align:left; font-weight:800; color:var(--muted); font-size:11.5px; text-transform:uppercase; letter-spacing:0.6px;">N patients</td>`;
     for (let i = 0; i < maxEvals; i++) {
       const s = calcGroupStatsAt('vo2', i);
       nRow += `<td style="color:var(--muted); font-weight:700;">${s ? s.n : 0}</td>`;
@@ -6383,7 +6405,7 @@
           <div style="display:flex; align-items:center; gap:14px;">
             <div style="width:56px; height:56px; border-radius:16px; background:${gradientFor(p.id || '')}; display:flex; align-items:center; justify-content:center; font-weight:800; color:white; font-size:18px;">${initials(p.id || '?')}</div>
             <div style="flex:1; min-width:0;">
-              <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; opacity:0.7;">Fiche patient</div>
+              <div style="font-size:11.5px; text-transform:uppercase; letter-spacing:1px; opacity:0.7;">Fiche patient</div>
               <h3 style="margin:2px 0 0; color:white; font-size:18px;">${fullName}</h3>
               <div style="font-size:12.5px; opacity:0.9; margin-top:2px;">
                 <strong>${p.id || '—'}</strong> · ${p.sex || '?'} · ${p.age || '?'} ans · ${p.gene || '—'}
@@ -6468,7 +6490,7 @@
           <div style="display:flex; gap:12px; padding:10px 0; border-bottom:1px dashed #eef0f5;">
             <div style="width:36px; height:36px; border-radius:10px; background:${a.color}20; color:${a.color}; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">${a.icon}</div>
             <div style="flex:1; min-width:0;">
-              <div style="font-weight:600; font-size:13px; color:#0b1530;">${a.label} ${a.validated ? '<span style="color:#16a34a; font-size:11px;">✓ validé</span>' : ''}</div>
+              <div style="font-weight:600; font-size:13px; color:#0b1530;">${a.label} ${a.validated ? '<span style="color:#16a34a; font-size:11.5px;">✓ validé</span>' : ''}</div>
               <div style="font-size:12px; color:#64748b; margin-top:1px;">${a.detail || ''}</div>
             </div>
             <div style="font-size:11.5px; color:#94a3b8; white-space:nowrap;">${formatDate(a.date)}</div>
@@ -6518,7 +6540,7 @@
     addCard.innerHTML = `
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Ajouter une évaluation
-      <span style="font-size:11px; color:var(--muted-2);">Nombre illimité</span>`;
+      <span style="font-size:11.5px; color:var(--muted-2);">Nombre illimité</span>`;
     addCard.onclick = openAddEvaluation;
     track.appendChild(addCard);
   }
@@ -8267,7 +8289,7 @@
         const sur = f.confiance != null && f.confiance < 0.7;
         return '<tr' + (sur ? ' style="background:#fffbeb;"' : '') + '>' +
                '<td style="padding:3px 7px; white-space:nowrap; color:#64748b;">' + d + '</td>' +
-               '<td style="padding:3px 7px; color:#94a3b8; font-size:10.5px;">' + ech(f.category || '') + '</td>' +
+               '<td style="padding:3px 7px; color:#94a3b8; font-size:11.5px;">' + ech(f.category || '') + '</td>' +
                '<td style="padding:3px 7px;">' + ech(f.label || '') + '</td>' +
                '<td style="padding:3px 7px; font-weight:700; white-space:nowrap;">' + ech(v.trim()) + '</td>' +
                '</tr>';
@@ -8275,7 +8297,7 @@
       lignes.push('<div><strong style="font-size:12px;">Chronologie extraite — ' + faits.length + ' donnée(s)</strong>' +
         '<div style="max-height:260px; overflow-y:auto; margin-top:6px; border:1px solid #e2e8f0; border-radius:8px;">' +
         '<table style="width:100%; border-collapse:collapse; font-size:11.5px;">' + rangs + '</table></div>' +
-        '<p style="margin:6px 0 0; font-size:11px; color:#92400e;">Les lignes sur fond jaune ont une confiance faible : relisez-les en priorité.</p></div>');
+        '<p style="margin:6px 0 0; font-size:11.5px; color:#92400e;">Les lignes sur fond jaune ont une confiance faible : relisez-les en priorité.</p></div>');
     }
 
     if (!lignes.length) return '';
@@ -8789,7 +8811,7 @@
           ? `<span class="pill warn" title="GPAQ en attente">GPAQ ⏳</span>`
           : `<span class="pill ok" title="GPAQ complété">GPAQ ✓</span>`;
         const eduBadge = stats.eduPending > 0
-          ? `<span style="display:inline-block; background:var(--violet-soft); color:var(--violet); border:1px solid #c4b5fd; padding:3px 7px; border-radius:99px; font-size:10px; font-weight:800;" title="Capsules éducation en attente">${stats.eduPending} éducation ⏳</span>`
+          ? `<span style="display:inline-block; background:var(--violet-soft); color:var(--violet); border:1px solid #c4b5fd; padding:3px 7px; border-radius:99px; font-size:11.5px; font-weight:800;" title="Capsules éducation en attente">${stats.eduPending} éducation ⏳</span>`
           : '';
 
         tbody.insertAdjacentHTML('beforeend', `
@@ -8806,9 +8828,9 @@
             <td><span class="status ${p.statusClass}">${p.status}</span></td>
             <td><div style="display:flex; flex-wrap:wrap; gap:4px;">${sf36Badge}${gpaqBadge}${eduBadge}</div></td>
             <td><div style="display:flex; gap:5px; flex-wrap:wrap;">
-              <button class="btn-light" style="padding:5px 8px; font-size:10.5px;" title="Renvoyer SF-36" onclick="sendQuestionnairesToPatient('${p.id}', ['sf36'])">📨 SF-36</button>
-              <button class="btn-light" style="padding:5px 8px; font-size:10.5px;" title="Renvoyer GPAQ" onclick="sendQuestionnairesToPatient('${p.id}', ['gpaq'])">📨 GPAQ</button>
-              <button class="btn-violet" style="padding:5px 8px; font-size:10.5px;" title="Renvoyer les deux" onclick="sendQuestionnairesToPatient('${p.id}', ['sf36','gpaq'])">📨 Les 2</button>
+              <button class="btn-light" style="padding:5px 8px; font-size:11.5px;" title="Renvoyer SF-36" onclick="sendQuestionnairesToPatient('${p.id}', ['sf36'])">📨 SF-36</button>
+              <button class="btn-light" style="padding:5px 8px; font-size:11.5px;" title="Renvoyer GPAQ" onclick="sendQuestionnairesToPatient('${p.id}', ['gpaq'])">📨 GPAQ</button>
+              <button class="btn-violet" style="padding:5px 8px; font-size:11.5px;" title="Renvoyer les deux" onclick="sendQuestionnairesToPatient('${p.id}', ['sf36','gpaq'])">📨 Les 2</button>
             </div></td>
           </tr>`);
       });
@@ -9207,40 +9229,40 @@
           </div>
 
           <!-- Suivi des 3 étapes -->
-          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:5px; margin-top:14px; font-size:10px;">
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:5px; margin-top:14px; font-size:11.5px;">
             <div style="background:#ecfeff; border:1px solid #67e8f9; border-radius:8px; padding:7px; text-align:center;">
-              <div style="font-size:8px; color:#0369a1; font-weight:800; text-transform:uppercase;">Pré-Q</div>
+              <div style="font-size:11.5px; color:#0369a1; font-weight:800; text-transform:uppercase;">Pré-Q</div>
               <strong style="color:#0c4a6e; font-size:13px; display:block; margin-top:3px;">${preCompleted}/${patients.length}</strong>
-              <div style="font-size:9px; color:var(--muted);">${preAvg !== null ? 'Ø ' + preAvg + '/100' : '—'}</div>
+              <div style="font-size:11.5px; color:var(--muted);">${preAvg !== null ? 'Ø ' + preAvg + '/100' : '—'}</div>
             </div>
             <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:7px; text-align:center;">
-              <div style="font-size:8px; color:#065f46; font-weight:800; text-transform:uppercase;">Vidéo</div>
+              <div style="font-size:11.5px; color:#065f46; font-weight:800; text-transform:uppercase;">Vidéo</div>
               <strong style="color:#065f46; font-size:13px; display:block; margin-top:3px;">${videoDone}/${patients.length}</strong>
-              <div style="font-size:9px; color:var(--muted);">vue</div>
+              <div style="font-size:11.5px; color:var(--muted);">vue</div>
             </div>
             <div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:8px; padding:7px; text-align:center;">
-              <div style="font-size:8px; color:#92400e; font-weight:800; text-transform:uppercase;">Post-Q</div>
+              <div style="font-size:11.5px; color:#92400e; font-weight:800; text-transform:uppercase;">Post-Q</div>
               <strong style="color:#92400e; font-size:13px; display:block; margin-top:3px;">${postCompleted}/${patients.length}</strong>
-              <div style="font-size:9px; color:var(--muted);">${postAvg !== null ? 'Ø ' + postAvg + '/100' : '—'}</div>
+              <div style="font-size:11.5px; color:var(--muted);">${postAvg !== null ? 'Ø ' + postAvg + '/100' : '—'}</div>
             </div>
             <div style="background:linear-gradient(135deg, #d1fae5, #ecfdf5); border:1px solid #6ee7b7; border-radius:8px; padding:7px; text-align:center;">
-              <div style="font-size:8px; color:#065f46; font-weight:800; text-transform:uppercase;">Validé</div>
+              <div style="font-size:11.5px; color:#065f46; font-weight:800; text-transform:uppercase;">Validé</div>
               <strong style="color:#065f46; font-size:13px; display:block; margin-top:3px;">${validated}/${patients.length}</strong>
-              <div style="font-size:9px; color:var(--muted);">${delta !== null ? (delta > 0 ? '+' : '') + delta + ' pts' : '—'}</div>
+              <div style="font-size:11.5px; color:var(--muted);">${delta !== null ? (delta > 0 ? '+' : '') + delta + ' pts' : '—'}</div>
             </div>
           </div>
 
           <!-- Aperçu des questionnaires -->
           <div style="display:flex; gap:5px; margin-top:10px;">
-            <button class="btn-light" style="flex:1; padding:6px 8px; font-size:10.5px;" onclick="previewQuestionnaire('${c.id}','pre')">👁 Pré (${c.preQuestionnaire.items}q)</button>
-            <button class="btn-light" style="flex:1; padding:6px 8px; font-size:10.5px;" onclick="previewQuestionnaire('${c.id}','post')">👁 Post (${c.postQuestionnaire.items}q)</button>
+            <button class="btn-light" style="flex:1; padding:6px 8px; font-size:11.5px;" onclick="previewQuestionnaire('${c.id}','pre')">👁 Pré (${c.preQuestionnaire.items}q)</button>
+            <button class="btn-light" style="flex:1; padding:6px 8px; font-size:11.5px;" onclick="previewQuestionnaire('${c.id}','post')">👁 Post (${c.postQuestionnaire.items}q)</button>
           </div>
 
           <!-- Actions -->
           <div style="margin-top:auto; padding-top:12px; display:flex; flex-direction:column; gap:6px;">
             <div style="display:flex; gap:5px;">
-              <button class="btn-light" style="flex:1; padding:7px 10px; font-size:11px;" onclick="sendCapsuleToPatient('${c.id}','pre')">📨 1 patient</button>
-              <button class="btn-violet" style="flex:1; padding:7px 10px; font-size:11px;" onclick="sendCapsuleToAll('${c.id}','pre')">📨 Envoyer à tous</button>
+              <button class="btn-light" style="flex:1; padding:7px 10px; font-size:11.5px;" onclick="sendCapsuleToPatient('${c.id}','pre')">📨 1 patient</button>
+              <button class="btn-violet" style="flex:1; padding:7px 10px; font-size:11.5px;" onclick="sendCapsuleToAll('${c.id}','pre')">📨 Envoyer à tous</button>
             </div>
             <button class="btn-gradient" style="width:100%; justify-content:center; padding:9px 10px; font-size:12px;" onclick="openEducationTracking('${c.id}')">📊 Voir le suivi détaillé</button>
           </div>
@@ -9272,16 +9294,16 @@
           <div style="overflow-x:auto;">
             <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
               <thead><tr>
-                <th style="background:#f8fafc; padding:9px 11px; text-align:left; border-bottom:1px solid var(--line); font-size:10.5px; text-transform:uppercase; font-weight:800; color:#475569;">Patient</th>
-                <th style="background:#f8fafc; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:10.5px; text-transform:uppercase; font-weight:800; color:#475569;">Envoyé</th>
-                <th style="background:#ecfeff; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:10.5px; text-transform:uppercase; font-weight:800; color:#0369a1;">1. Pré-Q</th>
-                <th style="background:#ecfeff; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:10.5px; text-transform:uppercase; font-weight:800; color:#0369a1;">Score pré</th>
-                <th style="background:#ecfdf5; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:10.5px; text-transform:uppercase; font-weight:800; color:#065f46;">2. Vidéo</th>
-                <th style="background:#fef3c7; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:10.5px; text-transform:uppercase; font-weight:800; color:#92400e;">3. Post-Q</th>
-                <th style="background:#fef3c7; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:10.5px; text-transform:uppercase; font-weight:800; color:#92400e;">Score post</th>
-                <th style="background:#f0fdf4; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:10.5px; text-transform:uppercase; font-weight:800; color:#065f46;">Δ progression</th>
-                <th style="background:#f0fdf4; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:10.5px; text-transform:uppercase; font-weight:800; color:#065f46;">Validé ?</th>
-                <th style="background:#f8fafc; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:10.5px; text-transform:uppercase; font-weight:800; color:#475569;">Action</th>
+                <th style="background:#f8fafc; padding:9px 11px; text-align:left; border-bottom:1px solid var(--line); font-size:11.5px; text-transform:uppercase; font-weight:800; color:#475569;">Patient</th>
+                <th style="background:#f8fafc; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:11.5px; text-transform:uppercase; font-weight:800; color:#475569;">Envoyé</th>
+                <th style="background:#ecfeff; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:11.5px; text-transform:uppercase; font-weight:800; color:#0369a1;">1. Pré-Q</th>
+                <th style="background:#ecfeff; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:11.5px; text-transform:uppercase; font-weight:800; color:#0369a1;">Score pré</th>
+                <th style="background:#ecfdf5; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:11.5px; text-transform:uppercase; font-weight:800; color:#065f46;">2. Vidéo</th>
+                <th style="background:#fef3c7; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:11.5px; text-transform:uppercase; font-weight:800; color:#92400e;">3. Post-Q</th>
+                <th style="background:#fef3c7; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:11.5px; text-transform:uppercase; font-weight:800; color:#92400e;">Score post</th>
+                <th style="background:#f0fdf4; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:11.5px; text-transform:uppercase; font-weight:800; color:#065f46;">Δ progression</th>
+                <th style="background:#f0fdf4; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:11.5px; text-transform:uppercase; font-weight:800; color:#065f46;">Validé ?</th>
+                <th style="background:#f8fafc; padding:9px 11px; text-align:center; border-bottom:1px solid var(--line); font-size:11.5px; text-transform:uppercase; font-weight:800; color:#475569;">Action</th>
               </tr></thead>
               <tbody>
                 ${patients.map(p => {
@@ -9310,8 +9332,8 @@
                     ${cell(`<strong style="color:${deltaColor};">${deltaTxt}</strong>`)}
                     ${cell(validatedCell)}
                     ${cell(rec.preStatus === 'not-sent'
-                      ? `<button class="btn-light" style="padding:4px 8px; font-size:10.5px;" onclick="sendCapsuleTo(['${p.id}'], '${c.id}', 'pre'); openEducationTracking('${c.id}'); document.getElementById('eduTrackingModal').remove();">📨 Envoyer</button>`
-                      : `<button class="btn-light" style="padding:4px 8px; font-size:10.5px;" onclick="sendCapsuleTo(['${p.id}'], '${c.id}', 'pre'); openEducationTracking('${c.id}'); document.getElementById('eduTrackingModal').remove();">🔔 Relancer</button>`)}
+                      ? `<button class="btn-light" style="padding:4px 8px; font-size:11.5px;" onclick="sendCapsuleTo(['${p.id}'], '${c.id}', 'pre'); openEducationTracking('${c.id}'); document.getElementById('eduTrackingModal').remove();">📨 Envoyer</button>`
+                      : `<button class="btn-light" style="padding:4px 8px; font-size:11.5px;" onclick="sendCapsuleTo(['${p.id}'], '${c.id}', 'pre'); openEducationTracking('${c.id}'); document.getElementById('eduTrackingModal').remove();">🔔 Relancer</button>`)}
                   </tr>`;
                 }).join('')}
               </tbody>
@@ -10243,9 +10265,9 @@
 
   function kpiTile(label, value, unit) {
     return `<div style="background:var(--soft); border:1px solid var(--line); border-radius:14px; padding:13px; text-align:center;">
-      <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.9px; font-weight:800;">${label}</div>
+      <div style="font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.9px; font-weight:800;">${label}</div>
       <div style="font-size:21px; font-weight:800; color:var(--ink); margin-top:5px; font-family:'Sora',sans-serif;">${value == null ? '—' : value}</div>
-      <div style="font-size:10.5px; color:var(--muted); margin-top:2px;">${unit || ''}</div>
+      <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">${unit || ''}</div>
     </div>`;
   }
 
@@ -10264,7 +10286,7 @@
 
   function renderVo2Meta(subject, test) {
     const row = (label, val) => `<div style="background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:8px 10px;">
-      <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; font-weight:800;">${label}</div>
+      <div style="font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; font-weight:800;">${label}</div>
       <div style="font-weight:700; margin-top:3px;">${val == null || val === '' ? '—' : val}</div>
     </div>`;
     $('vo2Meta').innerHTML = [
@@ -10543,15 +10565,15 @@
       { label: 'VO₂max',  time: th.vo2maxTime, color: '#7c3aed' }
     ];
     const headerHtml = `<thead><tr>
-      <th style="background:#e0f2fe; color:#0c4a6e; padding:8px 10px; border-bottom:1px solid var(--line); text-align:left; font-weight:800; font-size:10.5px; text-transform:uppercase; letter-spacing:0.6px;">Point</th>
-      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:10.5px; text-transform:uppercase;">Temps</th>
-      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:10.5px; text-transform:uppercase;">VO₂</th>
-      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:10.5px; text-transform:uppercase;">Watts</th>
-      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:10.5px; text-transform:uppercase;">FC</th>
-      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:10.5px; text-transform:uppercase;">%FCmax</th>
-      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:10.5px; text-transform:uppercase;">%VO₂max</th>
-      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:10.5px; text-transform:uppercase;">METs</th>
-      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:10.5px; text-transform:uppercase;">QR</th>
+      <th style="background:#e0f2fe; color:#0c4a6e; padding:8px 10px; border-bottom:1px solid var(--line); text-align:left; font-weight:800; font-size:11.5px; text-transform:uppercase; letter-spacing:0.6px;">Point</th>
+      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:11.5px; text-transform:uppercase;">Temps</th>
+      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:11.5px; text-transform:uppercase;">VO₂</th>
+      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:11.5px; text-transform:uppercase;">Watts</th>
+      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:11.5px; text-transform:uppercase;">FC</th>
+      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:11.5px; text-transform:uppercase;">%FCmax</th>
+      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:11.5px; text-transform:uppercase;">%VO₂max</th>
+      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:11.5px; text-transform:uppercase;">METs</th>
+      <th style="background:#e0f2fe; padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; font-size:11.5px; text-transform:uppercase;">QR</th>
     </tr></thead>`;
     const bodyHtml = rows.map(r => {
       const idx = indexAtTime(s.t, r.time);
@@ -10870,9 +10892,9 @@
       ['Fréquence d\'échantillonnage estimée', fs + ' Hz', '']
     ];
     $('pulseDetailsTable').innerHTML = `<thead><tr>
-      <th style="background:#e0f2fe; color:#0c4a6e; padding:8px 10px; text-align:left; font-weight:800; font-size:10.5px; text-transform:uppercase;">Paramètre</th>
-      <th style="background:#e0f2fe; padding:8px 10px; text-align:right; font-weight:800; font-size:10.5px; text-transform:uppercase;">Valeur</th>
-      <th style="background:#e0f2fe; padding:8px 10px; text-align:left; font-weight:800; font-size:10.5px; text-transform:uppercase;">Interprétation</th>
+      <th style="background:#e0f2fe; color:#0c4a6e; padding:8px 10px; text-align:left; font-weight:800; font-size:11.5px; text-transform:uppercase;">Paramètre</th>
+      <th style="background:#e0f2fe; padding:8px 10px; text-align:right; font-weight:800; font-size:11.5px; text-transform:uppercase;">Valeur</th>
+      <th style="background:#e0f2fe; padding:8px 10px; text-align:left; font-weight:800; font-size:11.5px; text-transform:uppercase;">Interprétation</th>
     </tr></thead><tbody>${rows.map(r => `<tr>
       <td style="padding:8px 10px; border-bottom:1px solid var(--line); font-weight:700;">${r[0]}</td>
       <td style="padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; font-variant-numeric:tabular-nums;">${r[1]}</td>
@@ -10913,7 +10935,7 @@
   function pwvClassification(pwv) {
     if (pwv < 7) return '<span class="pill ok">Normal</span>';
     if (pwv < 10) return '<span class="pill warn">Élevé</span>';
-    return '<span style="display:inline-flex; padding:3px 8px; border-radius:999px; background:#fee2e2; color:#991b1b; font-size:10.5px; font-weight:800; border:1px solid #fecaca;">Pathologique</span>';
+    return '<span style="display:inline-flex; padding:3px 8px; border-radius:999px; background:#fee2e2; color:#991b1b; font-size:11.5px; font-weight:800; border:1px solid #fecaca;">Pathologique</span>';
   }
 
   $('patientSearch').addEventListener('input', e => renderPatientList(e.target.value));
@@ -11198,7 +11220,7 @@
                  style="width:64px; height:36px; object-fit:cover; border-radius:5px; flex:0 0 auto;">
             <span style="flex:1; min-width:0;">
               <span style="display:block; font-size:12.5px; font-weight:700; color:#0b1530;">${v.title || ''}</span>
-              <span style="display:block; font-size:11px; color:#64748b;">${v.category || ''}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}</span>
+              <span style="display:block; font-size:11.5px; color:#64748b;">${v.category || ''}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}</span>
             </span>
           </button>`).join('')
       : '<div style="padding:16px; text-align:center; color:#94a3b8; font-size:12.5px; font-style:italic;">Aucune vidéo disponible dans votre bibliothèque.</div>';
@@ -11356,7 +11378,7 @@
       zone.innerHTML = `
         <div style="padding:14px 12px; text-align:center; color:#94a3b8; font-size:11.5px; line-height:1.5;">
           Aucun patient connecté en séance.<br>
-          <span style="font-size:11px;">Les mesures s'affichent dès qu'un patient rejoint la salle et démarre sa séance avec sa ceinture cardiaque.</span>
+          <span style="font-size:11.5px;">Les mesures s'affichent dès qu'un patient rejoint la salle et démarre sa séance avec sa ceinture cardiaque.</span>
         </div>`;
       return;
     }
@@ -11379,22 +11401,22 @@
         <div style="padding:9px 11px; border-radius:9px; background:${z.alerte ? '#fef2f2' : '#f8fafc'}; border:1px solid ${z.alerte ? '#fecaca' : '#e8edf6'}; margin-bottom:6px;">
           <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:5px;">
             <strong style="font-size:12px; color:#0b1530;">${s.patient_id}</strong>
-            <span style="font-size:10.5px; color:#64748b;">⏱ ${fmtDuree(s.duree_s)}</span>
+            <span style="font-size:11.5px; color:#64748b;">⏱ ${fmtDuree(s.duree_s)}</span>
           </div>
 
           <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:5px;">
             <div>
-              <div style="font-size:9.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.3px;">FC</div>
-              <div style="font-size:14px; font-weight:800; color:${z.c};">${s.fc != null ? s.fc : '—'}<span style="font-size:9px; font-weight:600;"> bpm</span></div>
-              ${z.pct != null ? `<div style="font-size:9.5px; color:${z.c}; font-weight:700;">${z.pct} % du pic</div>` : ''}
+              <div style="font-size:11.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.3px;">FC</div>
+              <div style="font-size:14px; font-weight:800; color:${z.c};">${s.fc != null ? s.fc : '—'}<span style="font-size:11.5px; font-weight:600;"> bpm</span></div>
+              ${z.pct != null ? `<div style="font-size:11.5px; color:${z.c}; font-weight:700;">${z.pct} % du pic</div>` : ''}
             </div>
             <div>
-              <div style="font-size:9.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.3px;">PA est.</div>
+              <div style="font-size:11.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.3px;">PA est.</div>
               <div style="font-size:14px; font-weight:800; color:#475569;">${s.pa_estimee != null ? s.pa_estimee : '—'}</div>
             </div>
             <div>
-              <div style="font-size:9.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.3px;">Énergie</div>
-              <div style="font-size:14px; font-weight:800; color:#059669;">${s.kcal != null ? s.kcal : '—'}<span style="font-size:9px; font-weight:600;"> kcal</span></div>
+              <div style="font-size:11.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.3px;">Énergie</div>
+              <div style="font-size:14px; font-weight:800; color:#059669;">${s.kcal != null ? s.kcal : '—'}<span style="font-size:11.5px; font-weight:600;"> kcal</span></div>
             </div>
           </div>
 
@@ -11405,15 +11427,15 @@
                                                  #dc2626 ${pos(seuils.sv2)}%, #b91c1c 100%);">
             ${curseur != null ? `<div style="position:absolute; top:-2px; left:${curseur}%; width:3px; height:11px; background:#0b1530; border-radius:2px; box-shadow:0 0 0 1.5px white;"></div>` : ''}
           </div>
-          <div style="display:flex; justify-content:space-between; font-size:8.5px; color:#94a3b8; margin-top:2px;">
+          <div style="display:flex; justify-content:space-between; font-size:11.5px; color:#94a3b8; margin-top:2px;">
             <span>SV1 ${seuils.sv1}</span>
             <span>SV2 ${seuils.sv2}</span>
             <span>Pic ${seuils.pic}</span>
           </div>
 
           <div style="margin-top:4px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
-            <span style="font-size:10.5px; font-weight:700; color:${z.c};">${z.l}${z.alerte ? ' ⚠' : ''}</span>
-            <span style="font-size:9px; color:${seuils.mesure ? '#059669' : '#f59e0b'};" title="${seuils.mesure ? 'Seuils issus du test d\'effort du patient' : 'Aucun test d\'effort disponible : seuils estimés par la formule 220 − âge'}">
+            <span style="font-size:11.5px; font-weight:700; color:${z.c};">${z.l}${z.alerte ? ' ⚠' : ''}</span>
+            <span style="font-size:11.5px; color:${seuils.mesure ? '#059669' : '#f59e0b'};" title="${seuils.mesure ? 'Seuils issus du test d\'effort du patient' : 'Aucun test d\'effort disponible : seuils estimés par la formule 220 − âge'}">
               ${seuils.mesure ? '✓ seuils mesurés' : '≈ seuils estimés'}
             </span>
           </div>
@@ -11481,9 +11503,9 @@
                  style="width:64px; height:36px; object-fit:cover; border-radius:5px; flex:0 0 auto;">
             <span style="flex:1; min-width:0;">
               <span style="display:block; font-size:12.5px; font-weight:700; color:#0b1530;">${v.title || ''}</span>
-              <span style="display:block; font-size:11px; color:#64748b;">${v.category || ''}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}</span>
+              <span style="display:block; font-size:11.5px; color:#64748b;">${v.category || ''}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}</span>
             </span>
-            <span style="font-size:11px; color:#f97316; font-weight:700; white-space:nowrap;">Ouvrir ↗</span>
+            <span style="font-size:11.5px; color:#f97316; font-weight:700; white-space:nowrap;">Ouvrir ↗</span>
           </button>`).join('')
       : '<div style="padding:14px; text-align:center; color:#94a3b8; font-size:12.5px; font-style:italic;">Aucune vidéo dans votre bibliothèque. Ajoutez-en depuis l\'onglet Entraînement, ou collez une adresse ci-dessous.</div>';
 
@@ -11608,7 +11630,7 @@
              style="width:100%; height:96px; object-fit:cover; display:block;">
         <span style="display:block; padding:8px 9px 9px;">
           <span style="display:block; font-size:12px; font-weight:700; color:#0b1530; line-height:1.35; max-height:32px; overflow:hidden;">${(v.title || '').replace(/</g, '&lt;')}</span>
-          <span style="display:block; font-size:10.5px; color:#f97316; font-weight:700; margin-top:4px;">Ouvrir ↗</span>
+          <span style="display:block; font-size:11.5px; color:#f97316; font-weight:700; margin-top:4px;">Ouvrir ↗</span>
         </span>
       </button>`).join('');
     bande.querySelectorAll('[data-seance-yid]').forEach(b => {
@@ -12004,17 +12026,17 @@
       if (rec.preStatus === 'not-sent') {
         step1Html = `<div style="${stepStyle('locked')} padding:12px; border-radius:12px; text-align:center;">
           <div style="font-size:18px; margin-bottom:3px;">🔒</div>
-          <div style="font-size:11px; font-weight:800;">En attente d'envoi</div>
-          <div style="font-size:10px; color:#94aaa5; margin-top:2px;">Par votre équipe</div>
+          <div style="font-size:11.5px; font-weight:800;">En attente d'envoi</div>
+          <div style="font-size:11.5px; color:#94aaa5; margin-top:2px;">Par votre équipe</div>
         </div>`;
       } else if (rec.preStatus === 'pending') {
         step1Html = `<div style="${stepStyle('pending')} padding:12px; border-radius:12px; text-align:center;">
-          <div style="font-size:11px; font-weight:800; margin-bottom:6px;">⏳ À compléter</div>
-          <button class="pat-btn-light" style="width:100%; font-size:11px; padding:6px;" onclick="patCompleteCapsule('${c.id}','pre')">Faire le quiz</button>
+          <div style="font-size:11.5px; font-weight:800; margin-bottom:6px;">⏳ À compléter</div>
+          <button class="pat-btn-light" style="width:100%; font-size:11.5px; padding:6px;" onclick="patCompleteCapsule('${c.id}','pre')">Faire le quiz</button>
         </div>`;
       } else {
         step1Html = `<div style="${stepStyle('completed')} padding:12px; border-radius:12px; text-align:center;">
-          <div style="font-size:11px; font-weight:800;">✓ Fait</div>
+          <div style="font-size:11.5px; font-weight:800;">✓ Fait</div>
           <div style="font-size:14px; font-weight:800; font-family:'Sora',sans-serif; margin-top:2px;">${rec.preScore}/100</div>
         </div>`;
       }
@@ -12024,18 +12046,18 @@
       if (rec.preStatus !== 'completed') {
         step2Html = `<div style="${stepStyle('locked')} padding:12px; border-radius:12px; text-align:center;">
           <div style="font-size:18px; margin-bottom:3px;">🔒</div>
-          <div style="font-size:11px; font-weight:800;">Verrouillé</div>
-          <div style="font-size:10px; color:#94aaa5; margin-top:2px;">Faire le quiz d'abord</div>
+          <div style="font-size:11.5px; font-weight:800;">Verrouillé</div>
+          <div style="font-size:11.5px; color:#94aaa5; margin-top:2px;">Faire le quiz d'abord</div>
         </div>`;
       } else if (!rec.videoWatched) {
         step2Html = `<div style="${stepStyle('pending')} padding:12px; border-radius:12px; text-align:center;">
-          <div style="font-size:11px; font-weight:800; margin-bottom:6px;">▶ ${c.duration}</div>
-          <button class="pat-btn-light" style="width:100%; font-size:11px; padding:6px;" onclick="patWatchVideo('${c.id}')">Voir la vidéo</button>
+          <div style="font-size:11.5px; font-weight:800; margin-bottom:6px;">▶ ${c.duration}</div>
+          <button class="pat-btn-light" style="width:100%; font-size:11.5px; padding:6px;" onclick="patWatchVideo('${c.id}')">Voir la vidéo</button>
         </div>`;
       } else {
         step2Html = `<div style="${stepStyle('completed')} padding:12px; border-radius:12px; text-align:center;">
           <div style="font-size:14px;">✓ Vidéo vue</div>
-          <div style="font-size:10px; margin-top:2px;">${formatDate(rec.videoWatchedDate)}</div>
+          <div style="font-size:11.5px; margin-top:2px;">${formatDate(rec.videoWatchedDate)}</div>
         </div>`;
       }
 
@@ -12044,17 +12066,17 @@
       if (rec.postStatus === 'locked') {
         step3Html = `<div style="${stepStyle('locked')} padding:12px; border-radius:12px; text-align:center;">
           <div style="font-size:18px; margin-bottom:3px;">🔒</div>
-          <div style="font-size:11px; font-weight:800;">Verrouillé</div>
-          <div style="font-size:10px; color:#94aaa5; margin-top:2px;">Regarder la vidéo</div>
+          <div style="font-size:11.5px; font-weight:800;">Verrouillé</div>
+          <div style="font-size:11.5px; color:#94aaa5; margin-top:2px;">Regarder la vidéo</div>
         </div>`;
       } else if (rec.postStatus === 'pending') {
         step3Html = `<div style="${stepStyle('pending')} padding:12px; border-radius:12px; text-align:center;">
-          <div style="font-size:11px; font-weight:800; margin-bottom:6px;">⏳ Quiz final</div>
-          <button class="pat-btn-light" style="width:100%; font-size:11px; padding:6px;" onclick="patCompleteCapsule('${c.id}','post')">Faire le quiz</button>
+          <div style="font-size:11.5px; font-weight:800; margin-bottom:6px;">⏳ Quiz final</div>
+          <button class="pat-btn-light" style="width:100%; font-size:11.5px; padding:6px;" onclick="patCompleteCapsule('${c.id}','post')">Faire le quiz</button>
         </div>`;
       } else {
         step3Html = `<div style="${stepStyle('completed')} padding:12px; border-radius:12px; text-align:center;">
-          <div style="font-size:11px; font-weight:800;">✓ Fait</div>
+          <div style="font-size:11.5px; font-weight:800;">✓ Fait</div>
           <div style="font-size:14px; font-weight:800; font-family:'Sora',sans-serif; margin-top:2px;">${rec.postScore}/100</div>
         </div>`;
       }
@@ -12065,11 +12087,11 @@
         validBadge = rec.validated
           ? `<div style="background:linear-gradient(135deg, #d1fae5, #ecfdf5); border:1px solid #6ee7b7; padding:10px 14px; border-radius:12px; margin-top:12px; text-align:center;">
               <strong style="color:#065f46;">🎉 Thématique validée</strong>
-              <div style="font-size:11px; color:#047857; margin-top:2px;">Score final ${rec.postScore}/100 (seuil ${EDU_VALIDATION_THRESHOLD})</div>
+              <div style="font-size:11.5px; color:#047857; margin-top:2px;">Score final ${rec.postScore}/100 (seuil ${EDU_VALIDATION_THRESHOLD})</div>
             </div>`
           : `<div style="background:linear-gradient(135deg, #fef3c7, #fff7ed); border:1px solid #fcd34d; padding:10px 14px; border-radius:12px; margin-top:12px; text-align:center;">
               <strong style="color:#92400e;">⚠ Non validée</strong>
-              <div style="font-size:11px; color:#9a3412; margin-top:2px;">${rec.postScore}/100 (seuil ${EDU_VALIDATION_THRESHOLD}). Vous pouvez revisionner la vidéo.</div>
+              <div style="font-size:11.5px; color:#9a3412; margin-top:2px;">${rec.postScore}/100 (seuil ${EDU_VALIDATION_THRESHOLD}). Vous pouvez revisionner la vidéo.</div>
             </div>`;
       }
 
@@ -12082,15 +12104,15 @@
           <p>${c.description}</p>
           <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-top:10px;">
             <div>
-              <div style="font-size:9px; color:#94aaa5; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; text-align:center; margin-bottom:4px;">1. Diagnostique</div>
+              <div style="font-size:11.5px; color:#94aaa5; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; text-align:center; margin-bottom:4px;">1. Diagnostique</div>
               ${step1Html}
             </div>
             <div>
-              <div style="font-size:9px; color:#94aaa5; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; text-align:center; margin-bottom:4px;">2. Vidéo</div>
+              <div style="font-size:11.5px; color:#94aaa5; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; text-align:center; margin-bottom:4px;">2. Vidéo</div>
               ${step2Html}
             </div>
             <div>
-              <div style="font-size:9px; color:#94aaa5; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; text-align:center; margin-bottom:4px;">3. Sommatif</div>
+              <div style="font-size:11.5px; color:#94aaa5; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; text-align:center; margin-bottom:4px;">3. Sommatif</div>
               ${step3Html}
             </div>
           </div>
@@ -12319,10 +12341,10 @@
         </div>
       </div>
       <p style="font-size:12.5px; color:#5a6280; margin:10px 0 16px;">Authentifiez-vous pour accéder aux données patients (PostgreSQL).</p>
-      <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Email</label>
+      <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Email</label>
       <input id="apiLoginEmail" type="email" autocomplete="username" placeholder="admin@marfan-apa.fr"
              style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:12px;">
-      <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Mot de passe</label>
+      <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Mot de passe</label>
       <input id="apiLoginPwd" type="password" autocomplete="current-password" placeholder="••••••••"
              style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:14px;">
       <div id="apiLoginErr" style="display:none; padding:8px 10px; background:#fee2e2; color:#991b1b; border-radius:7px; font-size:11.5px; margin-bottom:10px;"></div>
@@ -12343,7 +12365,7 @@
         <div id="apiOubliMsg" style="display:none; margin-top:9px; padding:9px 11px; border-radius:8px; font-size:12px; line-height:1.5;"></div>
       </div>
       <button id="apiLoginDemo" style="width:100%; padding:9px; margin-top:8px; border:1px solid #d8dde7; border-radius:9px; background:white; color:#5a6280; font-weight:600; font-size:12px; cursor:pointer;">Continuer en mode démo (sans API)</button>
-      <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #e3e7ef; font-size:10.5px; color:#8b91a8; line-height:1.55;">
+      <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #e3e7ef; font-size:11.5px; color:#8b91a8; line-height:1.55;">
         Comptes de test :<br>
         admin@marfan-apa.fr / ChangezMoiTresTresFortement123!<br>
         j.martin@bichat.fr / Principal!2024<br>
@@ -12361,9 +12383,9 @@
   <!-- Bouton déconnexion + toggles Démo/Pseudonymisation (Phase 12.2) -->
   <div id="apiUserBadge" style="display:none; position:fixed; top:10px; right:14px; z-index:9991; background:rgba(255,255,255,0.96); border:1px solid #e3e7ef; border-radius:999px; padding:6px 8px 6px 14px; font-size:11.5px; color:#0b1530; box-shadow:0 6px 18px rgba(0,0,0,0.08); display:none; gap:8px; align-items:center;">
     <span id="apiUserName" style="font-weight:700;"></span>
-    <button id="btnDemoMode" title="Basculer entre patients réels et patients de démonstration" style="border:1px solid #e2e8f0; background:white; color:#64748b; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:600; cursor:pointer; display:none;">🎭 Démo : off</button>
-    <button id="btnPseudoMode" title="Masquer les identités (nom, email, téléphone) pour présentation" style="border:1px solid #e2e8f0; background:white; color:#64748b; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:600; cursor:pointer; display:none;">🔒 Pseudo : off</button>
-    <button id="apiLogoutBtn" style="border:none; background:#f3f6fb; color:#5a6280; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:600; cursor:pointer;">Déconnexion</button>
+    <button id="btnDemoMode" title="Basculer entre patients réels et patients de démonstration" style="border:1px solid #e2e8f0; background:white; color:#64748b; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer; display:none;">🎭 Démo : off</button>
+    <button id="btnPseudoMode" title="Masquer les identités (nom, email, téléphone) pour présentation" style="border:1px solid #e2e8f0; background:white; color:#64748b; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer; display:none;">🔒 Pseudo : off</button>
+    <button id="apiLogoutBtn" style="border:none; background:#f3f6fb; color:#5a6280; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer;">Déconnexion</button>
   </div>
 
   <!-- Bandeau d'alerte quand un mode est actif (Phase 12.2) -->
@@ -12380,19 +12402,19 @@
         </div>
       </div>
       <p style="font-size:12.5px; color:#5a6280; margin:10px 0 16px; line-height:1.55;">Pour des raisons de sécurité, vous devez définir un nouveau mot de passe personnel avant d'accéder à la plateforme.</p>
-      <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Ancien mot de passe (date de naissance JJ/MM/AAAA)</label>
+      <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Ancien mot de passe (date de naissance JJ/MM/AAAA)</label>
       <input id="apiChangeOldPwd" type="password" autocomplete="current-password" placeholder="25/09/1980"
              style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:12px;">
-      <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Nouveau mot de passe</label>
+      <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Nouveau mot de passe</label>
       <input id="apiChangeNewPwd" type="password" autocomplete="new-password" placeholder="Min. 8 caractères, 1 lettre + 1 chiffre/spécial"
              style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:12px;">
-      <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Confirmer le nouveau mot de passe</label>
+      <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Confirmer le nouveau mot de passe</label>
       <input id="apiChangeNewPwd2" type="password" autocomplete="new-password" placeholder="Saisissez-le à nouveau"
              style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:14px;">
       <div id="apiChangeErr" style="display:none; padding:8px 10px; background:#fee2e2; color:#991b1b; border-radius:7px; font-size:11.5px; margin-bottom:10px;"></div>
       <div id="apiChangeOk" style="display:none; padding:8px 10px; background:#d1fae5; color:#065f46; border-radius:7px; font-size:11.5px; margin-bottom:10px;"></div>
       <button id="apiChangeBtn" style="width:100%; padding:11px; border:none; border-radius:9px; background:linear-gradient(135deg,#ef4444,#f97316); color:white; font-weight:700; font-size:13.5px; cursor:pointer;">Valider et continuer</button>
-      <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #e3e7ef; font-size:10.5px; color:#8b91a8; line-height:1.55;">
+      <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #e3e7ef; font-size:11.5px; color:#8b91a8; line-height:1.55;">
         Règles : minimum 8 caractères, au moins 1 lettre et (1 chiffre ou 1 caractère spécial). Différent de votre date de naissance et de votre ancien mot de passe.
       </div>
     </div>
@@ -12702,7 +12724,7 @@
           </div>
           <div style="padding:10px 12px;">
             <div style="font-weight:700; font-size:12.5px; color:var(--ink); line-height:1.3; margin-bottom:4px;">${v.title}</div>
-            <div style="font-size:10.5px; color:var(--muted);">${v.category || '—'}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}${v.interval_label ? ' · ' + v.interval_label : ''}</div>
+            <div style="font-size:11.5px; color:var(--muted);">${v.category || '—'}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}${v.interval_label ? ' · ' + v.interval_label : ''}</div>
           </div>`;
         card.onclick = () => playPatientVideo(yid, v.title);
         grid.appendChild(card);
@@ -12765,8 +12787,8 @@
         resume.style.display = 'block';
         resume.innerHTML =
           '<span style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;">' +
-          (info.minutes ? '<span style="background:#059669; color:white; padding:2px 9px; border-radius:99px; font-size:11px; font-weight:700;">⏱ ' + info.minutes + ' min</span>' : '') +
-          '<span style="background:' + (niv ? niv.c : '#64748b') + '; color:white; padding:2px 9px; border-radius:99px; font-size:11px; font-weight:700;">Ressenti ' + info.borg + '/10</span>' +
+          (info.minutes ? '<span style="background:#059669; color:white; padding:2px 9px; border-radius:99px; font-size:11.5px; font-weight:700;">⏱ ' + info.minutes + ' min</span>' : '') +
+          '<span style="background:' + (niv ? niv.c : '#64748b') + '; color:white; padding:2px 9px; border-radius:99px; font-size:11.5px; font-weight:700;">Ressenti ' + info.borg + '/10</span>' +
           (niv ? '<span style="color:#047857; font-size:11.5px; font-weight:600;">' + niv.l + '</span>' : '') +
           '</span>';
       }
@@ -12821,14 +12843,14 @@
           <div class="apiProgramHeader" data-program-header="${p.id}" style="padding:14px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg,#fff7ed,#ffedd5); border-bottom:1px solid var(--line);">
             <div style="flex:1;">
               <div style="display:flex; align-items:center; gap:8px; margin-bottom:3px;">
-                <span data-program-tag style="font-size:11px; font-weight:800; color:#9a3412; text-transform:uppercase; letter-spacing:0.4px;">Séance prescrite${date ? ' · ' + date : ''}</span>
+                <span data-program-tag style="font-size:11.5px; font-weight:800; color:#9a3412; text-transform:uppercase; letter-spacing:0.4px;">Séance prescrite${date ? ' · ' + date : ''}</span>
               </div>
               <strong style="font-size:15px; color:#0b1530; display:block; margin-bottom:3px;">${p.title}</strong>
               ${p.description ? `<div style="font-size:12px; color:#6b7390;">${p.description}</div>` : ''}
               <div data-program-resume style="display:none; margin-top:6px;"></div>
             </div>
             <div style="text-align:right; margin-left:14px;">
-              <span data-program-badge style="background:white; color:#9a3412; padding:4px 10px; border-radius:99px; font-size:11px; font-weight:700;">${(p.videos || []).length} vidéo(s)</span>
+              <span data-program-badge style="background:white; color:#9a3412; padding:4px 10px; border-radius:99px; font-size:11.5px; font-weight:700;">${(p.videos || []).length} vidéo(s)</span>
               <div class="apiProgramChevron" style="margin-top:6px; color:#9a3412; font-size:18px; transition:transform 0.2s;">▼</div>
             </div>
           </div>
@@ -12858,11 +12880,11 @@
           vidCard.innerHTML = `
             <div style="position:relative; aspect-ratio:16/9; background:#020617;">
               <img src="${thumb}" alt="${v.title}" loading="lazy" style="width:100%; height:100%; object-fit:cover;">
-              <div style="position:absolute; top:5px; left:5px; background:rgba(220,38,38,0.95); color:white; padding:2px 8px; border-radius:99px; font-size:10px; font-weight:700;">▶ ${i+1}</div>
+              <div style="position:absolute; top:5px; left:5px; background:rgba(220,38,38,0.95); color:white; padding:2px 8px; border-radius:99px; font-size:11.5px; font-weight:700;">▶ ${i+1}</div>
             </div>
             <div style="padding:8px 10px;">
               <div style="font-size:11.5px; font-weight:700; color:var(--ink); line-height:1.3;">${v.title}</div>
-              <div style="font-size:10px; color:var(--muted); margin-top:3px;">${v.category || ''}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}</div>
+              <div style="font-size:11.5px; color:var(--muted); margin-top:3px;">${v.category || ''}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}</div>
             </div>`;
           vidCard.onclick = () => playPatientVideo(yid, v.title);
           grid.appendChild(vidCard);
@@ -12941,12 +12963,12 @@
             <div style="padding:20px 24px;">
               <div style="display:flex; gap:12px; margin-bottom:18px; flex-wrap:wrap;">
                 <div style="flex:1; min-width:170px; padding:11px 13px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:9px;">
-                  <div style="font-size:10.5px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.4px;">Date de la séance</div>
+                  <div style="font-size:11.5px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.4px;">Date de la séance</div>
                   <div style="font-size:13.5px; font-weight:700; color:#0b1530; margin-top:3px;">${dateLisible}</div>
-                  <div style="font-size:11px; color:#94a3b8; margin-top:2px;">Renseignée automatiquement</div>
+                  <div style="font-size:11.5px; color:#94a3b8; margin-top:2px;">Renseignée automatiquement</div>
                 </div>
                 <div style="flex:1; min-width:170px;">
-                  <label style="display:block; font-size:10.5px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px;">Durée réalisée (minutes) *</label>
+                  <label style="display:block; font-size:11.5px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px;">Durée réalisée (minutes) *</label>
                   <input type="number" id="cr10Duree" min="1" max="300" step="1" placeholder="ex. 10"
                     style="width:100%; padding:11px; border:1px solid #cbd5e1; border-radius:9px; font-size:16px; font-weight:700; box-sizing:border-box;">
                 </div>
@@ -13105,7 +13127,7 @@
         'cancelled':   { bg:'#fee2e2', color:'#991b1b', label:'Annulée' }
       };
       const s = map[status] || map['completed'];
-      return `<span style="background:${s.bg}; color:${s.color}; padding:2px 8px; border-radius:99px; font-size:10.5px; font-weight:700;">${s.label}</span>`;
+      return `<span style="background:${s.bg}; color:${s.color}; padding:2px 8px; border-radius:99px; font-size:11.5px; font-weight:700;">${s.label}</span>`;
     }
 
     async function loadTrainingHistory(role) {
@@ -13142,7 +13164,7 @@
                 <div style="display:flex; gap:8px; align-items:center; margin-bottom:4px;">
                   <strong style="color:var(--ink); font-size:13px;">${formatSessionDate(s.started_at)}</strong>
                   ${trainingStatusBadge(s.status)}
-                  ${s.borg_cr10 != null ? `<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:99px; font-size:10.5px; font-weight:700;">Borg ${s.borg_cr10}/10</span>` : ''}
+                  ${s.borg_cr10 != null ? `<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:99px; font-size:11.5px; font-weight:700;">Borg ${s.borg_cr10}/10</span>` : ''}
                 </div>
                 <div style="font-size:11.5px; color:var(--muted);">
                   ⏱ ${formatDurationSec(s.duration_s)} · ${hrLine}${paLine ? ' · ' + paLine : ''} · 🔥 ${totalEn}
@@ -13271,7 +13293,7 @@
           const bg = i % 2 ? '#eef2f9' : '#f3f6fb';
           VARS.forEach((v, vi) => {
             const sep = vi === 0 ? 'border-left:2px solid #d8dde7;' : '';
-            header += `<th style="text-align:right; padding:8px 6px; background:${bg}; ${sep} font-size:10.5px;">T${i}_${v.label}</th>`;
+            header += `<th style="text-align:right; padding:8px 6px; background:${bg}; ${sep} font-size:11.5px;">T${i}_${v.label}</th>`;
           });
         }
         header += '<th style="text-align:center; padding:8px 6px; position:sticky; right:0; background:#f3f6fb;">Fiches</th>';
@@ -13310,18 +13332,18 @@
           // Boutons "fiche" pour chaque séance
           row += `<td style="padding:6px 6px; text-align:center; position:sticky; right:0; background:${ri % 2 ? '#fafbfd' : 'white'};">`;
           row += sessions.map(s =>
-            `<button onclick="window.__openTrainingFiche(${s.id})" title="T${sessions.indexOf(s)+1} : ${fmtDate(s.started_at)}" style="padding:2px 6px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:5px; font-size:10px; cursor:pointer; margin:1px;">T${sessions.indexOf(s)+1}</button>`
+            `<button onclick="window.__openTrainingFiche(${s.id})" title="T${sessions.indexOf(s)+1} : ${fmtDate(s.started_at)}" style="padding:2px 6px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:5px; font-size:11.5px; cursor:pointer; margin:1px;">T${sessions.indexOf(s)+1}</button>`
           ).join('');
           row += '</td></tr>';
           return row;
         }).join('');
 
         wrap.innerHTML = `
-          <table style="border-collapse:collapse; font-size:11px; min-width:100%;">
+          <table style="border-collapse:collapse; font-size:11.5px; min-width:100%;">
             <thead style="color:#0b1530;">${header}</thead>
             <tbody>${body}</tbody>
           </table>
-          <div style="margin-top:8px; font-size:10.5px; color:#8b91a8; font-style:italic;">
+          <div style="margin-top:8px; font-size:11.5px; color:#8b91a8; font-style:italic;">
             Format <strong>wide</strong> : 1 ligne par patient, ses séances en colonnes T1, T2, T3... (ordre chronologique). PA estimée à partir de la FC, pas une mesure médicale. Scroll horizontal si le tableau dépasse.
           </div>`;
       }
@@ -13611,16 +13633,16 @@
             <!-- Bloc TITRE + CONSIGNES (en haut de la modale) -->
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
               <div>
-                <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:3px;">Titre de la séance *</label>
+                <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:3px;">Titre de la séance *</label>
                 <input id="apiAssignTitle" placeholder="Ex : Séance 1 — Cardio doux" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:13px;">
               </div>
               <div>
-                <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:3px;">Description courte (optionnel)</label>
+                <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:3px;">Description courte (optionnel)</label>
                 <input id="apiAssignDescription" placeholder="Ex : Programme semaine 1 — initiation" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:13px;">
               </div>
             </div>
             <div style="margin-bottom:14px;">
-              <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:3px;">Consignes / observations pour le patient (optionnel)</label>
+              <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:3px;">Consignes / observations pour le patient (optionnel)</label>
               <textarea id="apiAssignInstructions" rows="2" placeholder="Ex : À faire 3 fois par semaine. Prendre 2 min de récupération entre chaque vidéo. Stopper si douleur thoracique." style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:13px; font-family:inherit; resize:vertical;"></textarea>
             </div>
 
@@ -13631,8 +13653,8 @@
                   <strong style="font-size:13px; color:#0b1530;">Vidéos disponibles (${videos.length})</strong>
                   <div style="display:flex; gap:6px; align-items:center;">
                     <input id="apiAssignVideoSearch" type="search" placeholder="Filtrer…" style="padding:5px 9px; border:1px solid #d8dde7; border-radius:6px; font-size:11.5px; width:140px;">
-                    <button id="apiAssignVideoAll" style="padding:4px 9px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-weight:600; font-size:10.5px; cursor:pointer;">Tout cocher</button>
-                    <button id="apiAssignVideoNone" style="padding:4px 9px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-weight:600; font-size:10.5px; cursor:pointer;">Décocher</button>
+                    <button id="apiAssignVideoAll" style="padding:4px 9px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-weight:600; font-size:11.5px; cursor:pointer;">Tout cocher</button>
+                    <button id="apiAssignVideoNone" style="padding:4px 9px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-weight:600; font-size:11.5px; cursor:pointer;">Décocher</button>
                   </div>
                 </div>
                 <div id="apiAssignVideoGrid" style="max-height:380px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:8px;">
@@ -13644,8 +13666,8 @@
                         <input type="checkbox" class="apiAssignVideoCb" data-video-id="${v.id}" style="position:absolute; top:5px; left:5px; z-index:2; width:18px; height:18px;">
                         <img src="${thumb}" alt="${v.title}" loading="lazy" style="width:100%; height:90px; object-fit:cover; display:block;">
                         <div style="padding:6px 8px;">
-                          <div style="font-size:11px; font-weight:700; color:#0b1530; line-height:1.25;">${v.title}</div>
-                          <div style="font-size:10px; color:#6b7390; margin-top:2px;">${v.category || '—'}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}</div>
+                          <div style="font-size:11.5px; font-weight:700; color:#0b1530; line-height:1.25;">${v.title}</div>
+                          <div style="font-size:11.5px; color:#6b7390; margin-top:2px;">${v.category || '—'}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}</div>
                         </div>
                       </label>`;
                   }).join('')}
@@ -13657,8 +13679,8 @@
                 <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
                   <strong style="font-size:13px; color:#0b1530;">Patients (${patientsList.length})</strong>
                   <div style="display:flex; gap:6px; align-items:center;">
-                    <button id="apiAssignPatAll" style="padding:4px 9px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-weight:600; font-size:10.5px; cursor:pointer;">Tout</button>
-                    <button id="apiAssignPatNone" style="padding:4px 9px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-weight:600; font-size:10.5px; cursor:pointer;">Aucun</button>
+                    <button id="apiAssignPatAll" style="padding:4px 9px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-weight:600; font-size:11.5px; cursor:pointer;">Tout</button>
+                    <button id="apiAssignPatNone" style="padding:4px 9px; border:1px solid #d8dde7; background:white; color:#0b1530; border-radius:6px; font-weight:600; font-size:11.5px; cursor:pointer;">Aucun</button>
                   </div>
                 </div>
                 <div style="max-height:380px; overflow-y:auto;">
@@ -13831,9 +13853,9 @@
                   <div style="display:flex; gap:7px; align-items:center; margin-bottom:3px; flex-wrap:wrap;">
                     <strong style="color:#0b1530; font-size:12.5px;">${s.patient_id}</strong>
                     ${trainingStatusBadge(s.status)}
-                    ${s.borg_cr10 != null ? `<span style="background:#fef3c7; color:#92400e; padding:2px 7px; border-radius:99px; font-size:10px; font-weight:700;">Borg ${s.borg_cr10}/10</span>` : ''}
+                    ${s.borg_cr10 != null ? `<span style="background:#fef3c7; color:#92400e; padding:2px 7px; border-radius:99px; font-size:11.5px; font-weight:700;">Borg ${s.borg_cr10}/10</span>` : ''}
                   </div>
-                  <div style="font-size:11px; color:#6b7390;">
+                  <div style="font-size:11.5px; color:#6b7390;">
                     ${formatSessionDate(s.started_at)} · ⏱ ${formatDurationSec(s.duration_s)}
                     ${s.hr_avg ? ' · FC ' + Math.round(s.hr_avg) + '/' + (s.hr_max || '—') + ' bpm' : ''}
                     ${s.energy_total_kcal ? ' · 🔥 ' + Number(s.energy_total_kcal).toFixed(1) + ' kcal' : ''}
@@ -13871,23 +13893,23 @@
           <div style="background:white; border-radius:14px; padding:24px 28px; width:440px; max-width:92vw; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
             <div style="font-size:16px; font-weight:800; color:#0b1530; margin-bottom:6px;">Ajouter une vidéo YouTube</div>
             <p style="font-size:12px; color:#6b7390; margin-bottom:14px;">Collez l'URL YouTube ou l'ID de la vidéo. Visible par tous les utilisateurs par défaut.</p>
-            <label style="font-size:11px; font-weight:600; color:#4a5070;">URL ou ID YouTube</label>
+            <label style="font-size:11.5px; font-weight:600; color:#4a5070;">URL ou ID YouTube</label>
             <input id="addvid_url" placeholder="https://youtu.be/XXXXXXXXXXX" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
-            <label style="font-size:11px; font-weight:600; color:#4a5070;">Titre</label>
+            <label style="font-size:11.5px; font-weight:600; color:#4a5070;">Titre</label>
             <input id="addvid_title" placeholder="Ex : Cardio 10/5 (3 min)" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
-            <label style="font-size:11px; font-weight:600; color:#4a5070;">Catégorie</label>
+            <label style="font-size:11.5px; font-weight:600; color:#4a5070;">Catégorie</label>
             <input id="addvid_cat" placeholder="Renforcement musculaire, Ceinture abdominale..." style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
             <div style="display:flex; gap:8px;">
               <div style="flex:1;">
-                <label style="font-size:11px; font-weight:600; color:#4a5070;">Intervalle</label>
+                <label style="font-size:11.5px; font-weight:600; color:#4a5070;">Intervalle</label>
                 <input id="addvid_interval" placeholder="10/5" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
               </div>
               <div style="flex:1;">
-                <label style="font-size:11px; font-weight:600; color:#4a5070;">Durée (min)</label>
+                <label style="font-size:11.5px; font-weight:600; color:#4a5070;">Durée (min)</label>
                 <input id="addvid_dur" type="number" placeholder="4" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
               </div>
             </div>
-            <div id="addvid_err" style="display:none; padding:7px 9px; background:#fee2e2; color:#991b1b; border-radius:6px; font-size:11px; margin-bottom:8px;"></div>
+            <div id="addvid_err" style="display:none; padding:7px 9px; background:#fee2e2; color:#991b1b; border-radius:6px; font-size:11.5px; margin-bottom:8px;"></div>
             <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
               <button id="addvid_cancel" style="padding:8px 14px; border:1px solid #d8dde7; background:white; color:#5a6280; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">Annuler</button>
               <button id="addvid_ok" style="padding:8px 14px; border:none; background:linear-gradient(135deg,#4f8cff,#7c5cff); color:white; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer;">Ajouter</button>
@@ -13952,7 +13974,7 @@
         'cancelled':  { bg:'#fee2e2', color:'#991b1b', label:'Annulée' }
       };
       const s = map[status] || map['scheduled'];
-      return `<span style="background:${s.bg}; color:${s.color}; padding:2px 8px; border-radius:99px; font-size:10.5px; font-weight:700;">${s.label}</span>`;
+      return `<span style="background:${s.bg}; color:${s.color}; padding:2px 8px; border-radius:99px; font-size:11.5px; font-weight:700;">${s.label}</span>`;
     }
 
     // Injecte le dispositif dans les onglets "Entraînement avec vidéo" et "Entraînement libre"
@@ -14033,7 +14055,7 @@
               </div>
               ${(s.status === 'scheduled' || s.status === 'in_progress') && s.meeting_link
                 ? `<button class="pat-btn-success" onclick="window.__joinVisioInline(${s.id}, '${s.meeting_link.replace(/'/g,'')}', '${(s.title||'Séance').replace(/'/g,'')}')">▶ Rejoindre</button>`
-                : (s.status === 'completed' ? '<span style="font-size:11px; color:var(--muted);">Terminée</span>' : '')}
+                : (s.status === 'completed' ? '<span style="font-size:11.5px; color:var(--muted);">Terminée</span>' : '')}
             </div>
           `).join('')}`;
       }
@@ -14074,31 +14096,31 @@
           <div style="display:flex; flex-direction:column; gap:4px;">
             <button class="apiBtnConnectBelt pat-btn-secondary" style="padding:14px; font-size:13px;">⌁ Connecter la ceinture</button>
             <button onclick="bleAfficherTousAppareils()" type="button"
-              style="border:none; background:transparent; color:#64748b; font-size:11px; text-decoration:underline; cursor:pointer; padding:2px;">Ma ceinture n'apparaît pas — afficher tous les appareils</button>
+              style="border:none; background:transparent; color:#64748b; font-size:11.5px; text-decoration:underline; cursor:pointer; padding:2px;">Ma ceinture n'apparaît pas — afficher tous les appareils</button>
           </div>
           <button class="apiBtnStartSession pat-btn-success" style="padding:14px; font-size:13px;">▶ Démarrer la séance</button>
           <button class="apiBtnStopSession pat-btn-secondary" disabled style="padding:14px; font-size:13px; background:#fee2e2; color:#991b1b; opacity:0.4;">■ Arrêter la séance</button>
         </div>
         <div class="apiTrainingMetrics" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; opacity:0.5; pointer-events:none;">
           <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; border:1.5px solid #e3e7ef; background:white;">
-            <small style="display:block; font-size:11px; color:#6b7390; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Fréquence cardiaque</small>
+            <small style="display:block; font-size:11.5px; color:#6b7390; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Fréquence cardiaque</small>
             <strong class="apiMetricHr" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#0b1530;">--</strong>
-            <span style="font-size:11px; color:#6b7390;">bpm</span>
+            <span style="font-size:11.5px; color:#6b7390;">bpm</span>
           </div>
           <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; background:linear-gradient(135deg,#fff1f2,#fef3c7); border:1.5px solid #fda4af;">
-            <small style="display:block; font-size:11px; color:#9a3412; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">PA estimée</small>
+            <small style="display:block; font-size:11.5px; color:#9a3412; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">PA estimée</small>
             <strong class="apiMetricPa" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#9a3412;">--</strong>
-            <span style="font-size:11px; color:#9a3412;">mmHg · estimée</span>
+            <span style="font-size:11.5px; color:#9a3412;">mmHg · estimée</span>
           </div>
           <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; background:linear-gradient(135deg,#f0fdf4,#ecfdf5); border:1.5px solid #86efac;">
-            <small style="display:block; font-size:11px; color:#065f46; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Énergie cumulée</small>
+            <small style="display:block; font-size:11.5px; color:#065f46; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Énergie cumulée</small>
             <strong class="apiMetricEnergy" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#065f46;">--</strong>
-            <span style="font-size:11px; color:#065f46;">kcal</span>
+            <span style="font-size:11.5px; color:#065f46;">kcal</span>
           </div>
           <div class="pat-metric" style="padding:14px; border-radius:12px; text-align:center; background:linear-gradient(135deg,#eff6ff,#dbeafe); border:1.5px solid #93c5fd;">
-            <small style="display:block; font-size:11px; color:#1e40af; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Durée</small>
+            <small style="display:block; font-size:11.5px; color:#1e40af; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Durée</small>
             <strong class="apiMetricDuration" style="display:block; font-size:32px; font-family:'Sora',sans-serif; color:#1e40af;">00:00</strong>
-            <span style="font-size:11px; color:#1e40af;">mm:ss</span>
+            <span style="font-size:11.5px; color:#1e40af;">mm:ss</span>
           </div>
         </div>
         <div class="apiZoneCard" style="margin-top:14px; padding:14px; background:#fafbfd; border-radius:10px; opacity:0.5; pointer-events:none;">
@@ -14117,10 +14139,10 @@
             </div>
             <div class="apiZoneCursor" style="position:absolute; top:-2px; left:0%; transform:translateX(-50%); width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-top:10px solid #0b1530; transition:left 0.4s ease;"></div>
           </div>
-          <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:#94a3b8; font-weight:600;">
+          <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:11.5px; color:#94a3b8; font-weight:600;">
             <span>50%</span><span>60%</span><span>70%</span><span>80%</span><span>90%</span><span>100%</span>
           </div>
-          <div class="apiZoneFCmax" style="margin-top:8px; font-size:10.5px; color:#94a3b8; text-align:right;"></div>
+          <div class="apiZoneFCmax" style="margin-top:8px; font-size:11.5px; color:#94a3b8; text-align:right;"></div>
         </div>
         <div class="apiTrainingHint" style="margin-top:10px; padding:8px 11px; background:#fffbeb; color:#92400e; font-size:11.5px; border-radius:6px; display:none;"></div>
       `;
@@ -14529,7 +14551,7 @@
         <div id="apiBorgBackdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.85); z-index:10001; display:flex; align-items:center; justify-content:center; padding:20px;">
           <div style="background:white; border-radius:14px; padding:24px 28px; width:560px; max-width:96vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
             <div style="font-size:17px; font-weight:800; color:#0b1530; margin-bottom:6px;">🏁 Fin de séance</div>
-            <div style="display:inline-block; background:#f3f6fb; color:#5a6280; padding:3px 9px; border-radius:99px; font-size:11px; font-weight:700; margin-bottom:14px;">Type : ${typeLabel}</div>
+            <div style="display:inline-block; background:#f3f6fb; color:#5a6280; padding:3px 9px; border-radius:99px; font-size:11.5px; font-weight:700; margin-bottom:14px;">Type : ${typeLabel}</div>
 
             <!-- 1. Borg CR10 -->
             <label style="display:block; font-size:12px; font-weight:700; color:#0b1530; margin-bottom:4px;">1. Ressenti d'effort (Borg CR10) *</label>
@@ -14656,7 +14678,7 @@
             </div>
             <div id="apiSumChartTitle" style="font-size:13px; color:#0b1530; font-weight:700; margin-bottom:4px;">📈 Fréquence cardiaque (bpm)</div>
             <canvas id="apiSumChartMain" height="160"></canvas>
-            <div id="apiSumZoneLegend" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; font-size:10.5px;"></div>
+            <div id="apiSumZoneLegend" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; font-size:11.5px;"></div>
 
             <h4 style="font-size:13px; color:#0b1530; margin:18px 0 6px;">🍩 Répartition cardio (temps passé par zone)</h4>
             <div style="display:grid; grid-template-columns:200px 1fr; gap:14px; align-items:center;">
@@ -14670,7 +14692,7 @@
               <tr style="background:#fafbfd;"><td style="padding:6px;">PA est. (mmHg)</td><td style="text-align:right;">${session.pa_estimated_min || '—'}</td><td style="text-align:right;">${session.pa_estimated_avg ? Math.round(session.pa_estimated_avg) : '—'}</td><td style="text-align:right;">${session.pa_estimated_max || '—'}</td></tr>
               <tr><td style="padding:6px;">Énergie totale (kcal)</td><td colspan="3" style="text-align:right;">${session.energy_total_kcal ? Number(session.energy_total_kcal).toFixed(2) : '—'}</td></tr>
             </table>
-            <p style="margin-top:10px; font-size:10.5px; color:#8b91a8; font-style:italic;">La pression artérielle affichée est <strong>estimée</strong> à partir de la fréquence cardiaque. Ce n'est pas une mesure médicale directe.</p>
+            <p style="margin-top:10px; font-size:11.5px; color:#8b91a8; font-style:italic;">La pression artérielle affichée est <strong>estimée</strong> à partir de la fréquence cardiaque. Ce n'est pas une mesure médicale directe.</p>
           </div>
         </div>`;
       document.body.insertAdjacentHTML('beforeend', html);
@@ -15014,7 +15036,7 @@
             <div style="margin-bottom:6px;"><strong>Backup v${manifest.backupVersion}</strong> · schéma ${manifest.schemaVersion}</div>
             <div style="margin-bottom:6px;">Générée le <strong>${new Date(manifest.generatedAt).toLocaleString('fr-FR')}</strong> par ${(manifest.generatedBy && manifest.generatedBy.name) || '?'}</div>
             <div style="margin-bottom:8px;">${integrityLine} · ${summary.totalRows} ligne(s) au total</div>
-            <table style="width:100%; font-size:11px;">${tableLines}</table>
+            <table style="width:100%; font-size:11.5px;">${tableLines}</table>
             ${summary.missingTables.length ? '<div style="margin-top:6px; color:#92400e;">Tables manquantes : ' + summary.missingTables.join(', ') + '</div>' : ''}`;
           resEl.style.display = 'block';
           restoreBtn.disabled = false;
@@ -15078,30 +15100,30 @@
             <div style="font-size:16px; font-weight:800; color:#0b1530; margin-bottom:6px;">Planifier une séance de visio</div>
             <p style="font-size:12px; color:#6b7390; margin-bottom:14px;">Tous les patients invités verront la séance dans leur espace.</p>
 
-            <label style="font-size:11px; font-weight:600; color:#4a5070;">Titre *</label>
+            <label style="font-size:11.5px; font-weight:600; color:#4a5070;">Titre *</label>
             <input id="cv_title" placeholder="Séance APA hebdomadaire" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
 
-            <label style="font-size:11px; font-weight:600; color:#4a5070;">Description (optionnel)</label>
+            <label style="font-size:11.5px; font-weight:600; color:#4a5070;">Description (optionnel)</label>
             <textarea id="cv_desc" rows="2" placeholder="Objectifs, consignes..." style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px; font-family:inherit; resize:vertical;"></textarea>
 
             <div style="display:flex; gap:8px;">
               <div style="flex:2;">
-                <label style="font-size:11px; font-weight:600; color:#4a5070;">Date et heure *</label>
+                <label style="font-size:11.5px; font-weight:600; color:#4a5070;">Date et heure *</label>
                 <input id="cv_when" type="datetime-local" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
               </div>
               <div style="flex:1;">
-                <label style="font-size:11px; font-weight:600; color:#4a5070;">Durée (min)</label>
+                <label style="font-size:11.5px; font-weight:600; color:#4a5070;">Durée (min)</label>
                 <input id="cv_dur" type="number" min="5" max="240" placeholder="45" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
               </div>
             </div>
 
-            <label style="font-size:11px; font-weight:600; color:#4a5070;">Lien de visio (Jitsi, Zoom, Teams...)</label>
+            <label style="font-size:11.5px; font-weight:600; color:#4a5070;">Lien de visio (Jitsi, Zoom, Teams...)</label>
             <input id="cv_link" placeholder="https://meet.jit.si/marfan-XXXX" style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">
 
-            <label style="font-size:11px; font-weight:600; color:#4a5070;">Patients invités (Ctrl+clic pour plusieurs)</label>
+            <label style="font-size:11.5px; font-weight:600; color:#4a5070;">Patients invités (Ctrl+clic pour plusieurs)</label>
             <select id="cv_patients" multiple size="6" style="width:100%; padding:7px 9px; border:1px solid #d8dde7; border-radius:8px; margin:3px 0 10px; font-size:13px;">${patientOptions}</select>
 
-            <div id="cv_err" style="display:none; padding:7px 9px; background:#fee2e2; color:#991b1b; border-radius:6px; font-size:11px; margin-bottom:8px;"></div>
+            <div id="cv_err" style="display:none; padding:7px 9px; background:#fee2e2; color:#991b1b; border-radius:6px; font-size:11.5px; margin-bottom:8px;"></div>
             <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
               <button id="cv_cancel" style="padding:8px 14px; border:1px solid #d8dde7; background:white; color:#5a6280; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">Annuler</button>
               <button id="cv_ok" style="padding:8px 14px; border:none; background:linear-gradient(135deg,#10b981,#059669); color:white; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer;">Planifier</button>
@@ -15195,7 +15217,7 @@
         list.innerHTML = `<div style="text-align:center; padding:30px; color:var(--muted); background:#fafbfd; border-radius:10px;">
           <div style="font-size:36px; margin-bottom:8px; opacity:0.4;">📋</div>
           <div style="font-size:13px;">${_medExCache.length === 0 ? 'Aucun examen importé pour ce patient' : 'Aucun examen dans cette catégorie'}</div>
-          ${_medExCache.length === 0 ? '<div style="font-size:11px; margin-top:4px;">Glissez un fichier dans la zone violette ci-dessus pour commencer.</div>' : ''}
+          ${_medExCache.length === 0 ? '<div style="font-size:11.5px; margin-top:4px;">Glissez un fichier dans la zone violette ci-dessus pour commencer.</div>' : ''}
         </div>`;
         return;
       }
@@ -15216,7 +15238,7 @@
         'incomplete':               { bg:'#fef3c7', color:'#92400e', label:'⚠ Données incomplètes' }
       };
       const s = map[status] || map['parsed'];
-      return `<span style="background:${s.bg}; color:${s.color}; padding:2px 9px; border-radius:99px; font-size:10.5px; font-weight:700;">${s.label}</span>`;
+      return `<span style="background:${s.bg}; color:${s.color}; padding:2px 9px; border-radius:99px; font-size:11.5px; font-weight:700;">${s.label}</span>`;
     }
 
     function renderExamCard(exam) {
@@ -15242,14 +15264,14 @@
           { k:'FC max',  v: s.hr_max != null ? Math.round(s.hr_max) + ' bpm' : null },
           { k:'Puissance', v: s.power_max != null ? Math.round(s.power_max) + ' W' : null }
         ].filter(x => x.v);
-        keyValues = kv.map(x => `<span style="display:inline-block; padding:3px 9px; background:#f3f6fb; border-radius:6px; font-size:11px; margin-right:6px;"><strong style="color:#0b1530;">${x.k}</strong> <span style="color:#475569;">${x.v}</span></span>`).join('');
+        keyValues = kv.map(x => `<span style="display:inline-block; padding:3px 9px; background:#f3f6fb; border-radius:6px; font-size:11.5px; margin-right:6px;"><strong style="color:#0b1530;">${x.k}</strong> <span style="color:#475569;">${x.v}</span></span>`).join('');
       } else if (exam.exam_type === 'pulse_wave') {
         const kv = [
           { k:'VOP',          v: s.ftpwv != null ? s.ftpwv + ' m/s' : null },
           { k:'PA centrale',  v: s.csp != null ? s.csp + '/' + (s.cdp != null ? s.cdp : '?') + ' mmHg' : null },
           { k:'FC',           v: s.heart_rate != null ? s.heart_rate + ' bpm' : null }
         ].filter(x => x.v);
-        keyValues = kv.map(x => `<span style="display:inline-block; padding:3px 9px; background:#f3f6fb; border-radius:6px; font-size:11px; margin-right:6px;"><strong style="color:#0b1530;">${x.k}</strong> <span style="color:#475569;">${x.v}</span></span>`).join('');
+        keyValues = kv.map(x => `<span style="display:inline-block; padding:3px 9px; background:#f3f6fb; border-radius:6px; font-size:11.5px; margin-right:6px;"><strong style="color:#0b1530;">${x.k}</strong> <span style="color:#475569;">${x.v}</span></span>`).join('');
       }
 
       return `
@@ -15261,13 +15283,13 @@
               <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
                 <span style="font-size:18px;">${t.icon}</span>
                 <strong style="font-size:13.5px; color:var(--ink);">${t.label}</strong>
-                <span style="color:var(--muted); font-size:11px;">·</span>
+                <span style="color:var(--muted); font-size:11.5px;">·</span>
                 <span style="color:var(--muted); font-size:11.5px;">${date}</span>
                 ${statusBadgeExam(exam.status)}
               </div>
-              <div>${keyValues || '<span style="font-size:11px; color:var(--muted);">Aucune synthèse disponible</span>'}</div>
+              <div>${keyValues || '<span style="font-size:11.5px; color:var(--muted);">Aucune synthèse disponible</span>'}</div>
             </div>
-            <div style="color:var(--muted); font-size:10.5px; text-align:right;">
+            <div style="color:var(--muted); font-size:11.5px; text-align:right;">
               <div>#${exam.id}</div>
               <div>${exam.file_size_kb ? exam.file_size_kb + ' KB' : ''}</div>
             </div>
@@ -15294,7 +15316,7 @@
 
             <!-- Body (scrollable) -->
             <div style="padding:16px 24px; overflow-y:auto; flex:1;">
-              <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Type d'examen</label>
+              <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Type d'examen</label>
               <select id="medExType" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:12px;">
                 <option value="auto">Auto-détection (recommandé)</option>
                 <option value="cpet">🫁 CPET — Test d'effort cardio-pulmonaire (.xlsx)</option>
@@ -15302,13 +15324,13 @@
                 <option value="other">📄 Autre (stockage brut)</option>
               </select>
 
-              <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Date de l'examen (optionnel)</label>
+              <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Date de l'examen (optionnel)</label>
               <input id="medExDate" type="date" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:12px;">
 
-              <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Fichier (CSV ou XLSX, max 10 MB)</label>
+              <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Fichier (CSV ou XLSX, max 10 MB)</label>
               <input id="medExFile" type="file" accept=".csv,.xlsx,.xls,.txt" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; margin-bottom:14px;">
 
-              <label style="display:block; font-size:11px; font-weight:600; color:#4a5070; margin-bottom:4px;">Notes (optionnel)</label>
+              <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Notes (optionnel)</label>
               <textarea id="medExNotes" rows="2" placeholder="Commentaires sur les conditions d'examen…" style="width:100%; padding:10px; border:1.5px solid #d8dde7; border-radius:8px; font-size:13px; font-family:inherit; resize:vertical; margin-bottom:14px;"></textarea>
 
               <div id="medExPreview" style="display:none; padding:12px; background:#f3f6fb; border-radius:8px; margin-bottom:14px; font-size:12px;"></div>
@@ -15468,7 +15490,7 @@
     function renderPreview(type, result) {
       const s = result.summary || {};
       const errs = (result.errors || []).length
-        ? `<div style="background:#fef3c7; color:#92400e; padding:6px 9px; border-radius:6px; margin-top:6px; font-size:11px;">⚠ ${result.errors.join(' · ')}</div>`
+        ? `<div style="background:#fef3c7; color:#92400e; padding:6px 9px; border-radius:6px; margin-top:6px; font-size:11.5px;">⚠ ${result.errors.join(' · ')}</div>`
         : '';
       let html = '<strong>Aperçu de la synthèse extraite :</strong>';
       const tdL = 'padding:3px 6px; color:#475569; line-height:1.3;';
@@ -15514,7 +15536,7 @@
                   <strong style="white-space:nowrap;">${z.min}–${z.max} bpm</strong>
                 </div>`).join('') +
               `</div>
-              <p style="margin:7px 0 0; font-size:11px; color:#64748b; line-height:1.5;">
+              <p style="margin:7px 0 0; font-size:11.5px; color:#64748b; line-height:1.5;">
                 Bornées par les seuils mesurés, et non par la formule « 220 moins l'âge » —
                 inadaptée sous bêtabloquant, traitement fréquent dans le syndrome de Marfan.
               </p></div>`;
@@ -15604,7 +15626,7 @@
                   <summary style="cursor:pointer; font-size:12px; color:#0b1530; font-weight:600;">📜 Historique des modifications (${exam.modifications.length})</summary>
                   <div style="margin-top:8px; max-height:200px; overflow-y:auto; background:white; border:1px solid var(--line); border-radius:7px; padding:10px;">
                     ${exam.modifications.map(m => `
-                      <div style="font-size:11px; padding:4px 0; border-bottom:1px dashed #eef0f5;">
+                      <div style="font-size:11.5px; padding:4px 0; border-bottom:1px dashed #eef0f5;">
                         <code>${m.field}</code> : <span style="text-decoration:line-through; color:#94a3b8;">${m.old}</span> → <strong>${m.new}</strong>
                         <span style="color:var(--muted); float:right;">${m.at ? new Date(m.at).toLocaleString('fr-FR') : ''} · ${m.by || ''}</span>
                       </div>
@@ -15614,7 +15636,7 @@
               ` : ''}
 
               ${exam.exam_type !== 'cpet' ? `
-                <div style="margin-top:14px; padding:10px; background:#fef3c7; border-radius:8px; font-size:11px; color:#92400e;">
+                <div style="margin-top:14px; padding:10px; background:#fef3c7; border-radius:8px; font-size:11.5px; color:#92400e;">
                   ⏳ <strong>Aperçu graphique</strong> bientôt disponible pour ce type d'examen (onde de pouls, etc.).
                 </div>
               ` : ''}
@@ -15794,7 +15816,7 @@
               <div>
                 <div style="font-size:${plein ? '22px' : '17px'}; font-weight:800; color:#0b1530;">📋 ${def.title}</div>
                 <p style="font-size:${plein ? '13px' : '12px'}; color:#6b7390; margin-top:4px;">${def.description} · ~${def.estimatedMinutes} min</p>
-                ${item.mandatory ? '<span style="display:inline-block; margin-top:6px; background:#fee2e2; color:#991b1b; padding:3px 9px; border-radius:99px; font-size:10.5px; font-weight:700;">OBLIGATOIRE</span>' : ''}
+                ${item.mandatory ? '<span style="display:inline-block; margin-top:6px; background:#fee2e2; color:#991b1b; padding:3px 9px; border-radius:99px; font-size:11.5px; font-weight:700;">OBLIGATOIRE</span>' : ''}
               </div>
               ${item.mandatory ? '' : '<button id="apiQClose" style="border:none; background:#f3f6fb; color:#5a6280; padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer;">Plus tard</button>'}
             </div>
@@ -16334,7 +16356,7 @@
 
       if (info) {
         info.innerHTML = '📊 <strong>Tableau unifié</strong> — Sections : ' +
-          selected.map(s => `<span style="background:${s.color}; color:white; padding:1px 7px; border-radius:99px; font-size:10.5px; font-weight:700;">${s.short}</span>`).join(' ') +
+          selected.map(s => `<span style="background:${s.color}; color:white; padding:1px 7px; border-radius:99px; font-size:11.5px; font-weight:700;">${s.short}</span>`).join(' ') +
           ' · <strong>' + patients.length + '</strong> patient(s) · <strong>' + cols.length + '</strong> colonne(s) · cellules vides = "—"';
       }
 
@@ -16349,7 +16371,7 @@
         const sec = c.section;
         const bg = c.sticky ? '#f3f6fb' : (sec ? sec.color + '22' : '#f3f6fb');
         const stickyStyle = c.sticky ? 'position:sticky; left:0; background:#0b1530; color:white; z-index:2;' : '';
-        header += `<th style="text-align:left; padding:9px 10px; ${stickyStyle} background:${c.sticky ? '#0b1530' : bg}; ${c.sticky ? 'color:white;' : 'color:#0b1530;'} font-size:10.5px; font-weight:700; white-space:nowrap;">${c.label}</th>`;
+        header += `<th style="text-align:left; padding:9px 10px; ${stickyStyle} background:${c.sticky ? '#0b1530' : bg}; ${c.sticky ? 'color:white;' : 'color:#0b1530;'} font-size:11.5px; font-weight:700; white-space:nowrap;">${c.label}</th>`;
       });
       header += '</tr>';
 
@@ -16560,7 +16582,7 @@
           const bg = i % 2 ? '#eef2f9' : '#f3f6fb';
           cfg.cols.forEach((c, ci) => {
             const sep = ci === 0 ? 'border-left:2px solid #d8dde7;' : '';
-            header += `<th style="text-align:right; padding:8px 6px; background:${bg}; ${sep} font-size:10.5px;">T${i}_${c.label}</th>`;
+            header += `<th style="text-align:right; padding:8px 6px; background:${bg}; ${sep} font-size:11.5px;">T${i}_${c.label}</th>`;
           });
         }
         header += '</tr>';
@@ -16583,7 +16605,7 @@
               if (cfg.type === 'gpaq' && c.key === 'LEVEL') {
                 cellBg = val === 'high' ? 'background:#dcfce7;' : val === 'moderate' ? 'background:#fef9c3;' : val === 'low' ? 'background:#fee2e2;' : '';
               }
-              row += `<td style="padding:6px 6px; text-align:right; ${sep} ${cellBg} font-size:11px;">${val}</td>`;
+              row += `<td style="padding:6px 6px; text-align:right; ${sep} ${cellBg} font-size:11.5px;">${val}</td>`;
             });
           }
           row += '</tr>';
@@ -16591,11 +16613,11 @@
         }).join('');
 
         wrap.innerHTML = `
-          <table style="border-collapse:collapse; font-size:11px; min-width:100%;">
+          <table style="border-collapse:collapse; font-size:11.5px; min-width:100%;">
             <thead style="color:#0b1530;">${header}</thead>
             <tbody>${body}</tbody>
           </table>
-          <div style="margin-top:8px; font-size:10.5px; color:#8b91a8; font-style:italic;">
+          <div style="margin-top:8px; font-size:11.5px; color:#8b91a8; font-style:italic;">
             Tn = n-ème questionnaire complété par le patient (ordre chronologique). Scroll horizontal si débordement.
           </div>`;
       }
@@ -16713,7 +16735,7 @@
               }).join('')}
             </tbody>
           </table>
-          <p style="font-size:10.5px; color:#8b91a8; font-style:italic; margin-top:6px;">
+          <p style="font-size:11.5px; color:#8b91a8; font-style:italic; margin-top:6px;">
             Codes : PF = Fonctionnement physique · RP = Rôle physique · BP = Douleurs · GH = Santé générale · VT = Vitalité · SF = Vie sociale · RE = Rôle émotionnel · MH = Santé mentale. Scores 0-100 (plus haut = meilleur).
           </p>`;
       }
@@ -16753,7 +16775,7 @@
               }).join('')}
             </tbody>
           </table>
-          <p style="font-size:10.5px; color:#8b91a8; font-style:italic; margin-top:6px;">
+          <p style="font-size:11.5px; color:#8b91a8; font-style:italic; margin-top:6px;">
             Unité : MET-min/semaine. Recommandation OMS : ≥600 (modéré) ; ≥3000 (élevé).
           </p>`;
       }
