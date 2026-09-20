@@ -12,26 +12,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase30-0"></script>
+  <script src="api-client.js?v=phase30-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase30-0"></script>
+  <script src="questionnaires-defs.js?v=phase30-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase30-0"></script>
+  <script src="medical-parsers.js?v=phase30-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase30-0"></script>
-  <script src="cpet-analyse.js?v=phase30-0"></script>
+  <script src="cpet-graph-preview.js?v=phase30-1"></script>
+  <script src="cpet-analyse.js?v=phase30-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase30-0"></script>
-  <script src="medical-record-ui.js?v=phase30-0"></script>
+  <script src="pdf-extractor.js?v=phase30-1"></script>
+  <script src="medical-record-ui.js?v=phase30-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase30-0"></script>
-  <script src="synthese-ui.js?v=phase30-0"></script>
-  <script src="entretien-ui.js?v=phase30-0"></script>
+  <script src="aortic-consultations.js?v=phase30-1"></script>
+  <script src="synthese-ui.js?v=phase30-1"></script>
+  <script src="entretien-ui.js?v=phase30-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase30-0"></script>
-  <script src="visio-jitsi.js?v=phase30-0"></script>
-  <script src="video-pilotee.js?v=phase30-0"></script>
+  <script src="document-import.js?v=phase30-1"></script>
+  <script src="visio-jitsi.js?v=phase30-1"></script>
+  <script src="video-pilotee.js?v=phase30-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3496,7 +3496,8 @@
           <button class="subtab-button" data-dgroup="aorte" data-subtab="patient-aorte">❤️ Aorte</button>
           <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-physio">📊 Évaluations</button>
           <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-questionnaires">📝 SF-36 &amp; GPAQ</button>
-          <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-comparaisons">🎯 Comparaisons</button>
+          <!-- Onglet « Comparaisons » retiré : la comparaison patient / groupe
+               est déjà sous chaque graphique de la vue Évaluations. -->
           <button class="subtab-button" data-dgroup="documents">📄 Documents &amp; examens</button>
         </div>
 
@@ -3720,10 +3721,10 @@
               <div class="chart-header"><div><h3>Dilatation de l'aorte</h3><p>Suivi longitudinal avec validation investigateur.</p></div></div>
               <svg class="svg-chart" id="aortaChart" viewBox="0 0 520 240" preserveAspectRatio="xMidYMid meet"></svg>
             </article>
-            <article class="card chart-card">
-              <div class="chart-header"><div><h3>Vigilance médicale</h3><p>Aorte, génétique, capacité fonctionnelle, incidents.</p></div></div>
-              <svg class="svg-chart" id="riskChart" viewBox="0 0 520 240" preserveAspectRatio="xMidYMid meet"></svg>
-            </article>
+            <!-- Carte « Vigilance médicale » retirée : quatre barres de
+                 pourcentages sans unité ni seuil de référence, dont on ne
+                 pouvait rien conclure. Le suivi aortique juste à gauche et le
+                 statut clinique du dossier donnent l'information utile. -->
           </div>
         </section>
 
@@ -6757,6 +6758,18 @@
       return { label: ev.label, date: ev.date, stats, patientVal, delta };
     });
 
+    // Quand tous les patients partagent la même valeur, la courbe bleue du
+    // groupe passe exactement sous la noire du patient : elle semble absente.
+    // Le signaler évite de conclure à un affichage défaillant.
+    const confondues = rows.length && rows.every(r =>
+      r.stats && r.stats.n > 1 && r.stats.sd === 0);
+    const avertissement = confondues
+      ? '<div style="padding:9px 12px; background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; ' +
+        'font-size:11.5px; line-height:1.5;">La courbe du groupe se superpose exactement à celle du ' +
+        'patient : tous les patients de la cohorte partagent la même valeur à chaque temps ' +
+        '(écart-type nul). Elle est donc invisible sur le graphique.</div>'
+      : '';
+
     let body = '';
     rows.forEach(r => {
       const s = r.stats;
@@ -6779,6 +6792,7 @@
         <span>📊 Données du groupe — ${METRIC_LABELS[key] || key}</span>
         <span class="pill-mode">${COMPARE_LABELS[mode] || mode}</span>
       </div>
+      ${avertissement}
       <div class="group-stats-table-wrap">
         <table>
           <thead>
@@ -9376,10 +9390,17 @@
     document.querySelectorAll('.sub-panel').forEach(p => p.classList.add('hidden'));
     if (panneau && $(panneau)) $(panneau).classList.remove('hidden');
 
-    // Le tableau de mini-graphiques n'a de sens qu'avec les évaluations.
+    // Le tableau de mini-graphiques ne s'affiche que dans la vue Évaluations.
+    //
+    // Il était visible aussi sous « SF-36 & GPAQ » : on retrouvait donc les
+    // mêmes courbes VO₂ et Force en haut des deux onglets, et le panneau
+    // propre à chacun passait sous la ligne de flottaison. D'où l'impression,
+    // justifiée, que les deux onglets affichaient la même chose.
     const board = $('dossierGraphBoard');
-    if (board && groupe === 'evaluations') {
-      board.style.display = ['patient-vo2', 'patient-pulse'].includes(panneau) ? 'none' : '';
+    if (board) {
+      const avecTableau = groupe === 'evaluations' &&
+                          !['patient-vo2', 'patient-pulse', 'patient-questionnaires'].includes(panneau);
+      board.style.display = avecTableau ? '' : 'none';
     }
     if (panneau === 'patient-vo2') { syncEvalSelectors(); renderVo2Analysis(); }
     if (panneau === 'patient-pulse') { syncEvalSelectors(); renderPulseAnalysis(); }
