@@ -15,6 +15,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const rateLimit = require('express-rate-limit');
 const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE } = require('../middleware/auth');
 const { sendMail, mailerStatus, activationEmail, resetEmail } = require('../config/mailer');
@@ -210,7 +211,20 @@ router.post('/complete', async (req, res, next) => {
 const DELAI_MIN_S = 60;
 const VALIDITE_RESET_H = parseInt(process.env.RESET_TTL_HOURS, 10) || 1;
 
-router.post('/oubli', async (req, res, next) => {
+// Le délai d'une minute par compte, plus bas, empêche d'inonder une boîte
+// donnée. Cette limite-ci empêche autre chose : parcourir une longue liste
+// d'adresses depuis la même machine pour deviner qui est suivi ici.
+const limiteOubli = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json({
+    error: "Trop de demandes. Patientez une quinzaine de minutes, ou contactez votre référent."
+  })
+});
+
+router.post('/oubli', limiteOubli, async (req, res, next) => {
   const reponse = {
     ok: true,
     message: "Si un compte existe avec cette adresse, un lien vient d'y être envoyé. " +

@@ -6,14 +6,63 @@
  */
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const rateLimit = require('express-rate-limit');
 const { query } = require('../config/database');
 const { signToken, requireAuth } = require('../middleware/auth');
 const { validateNewPassword } = require('../utils/account-helpers');
 
 const router = express.Router();
 
+// ============================================================
+// Limitation des tentatives de connexion
+// ------------------------------------------------------------
+// La limite générale du serveur — 200 requêtes par quart d'heure, toutes
+// routes confondues — ne protège pas réellement cette page : elle autorise
+// près de 20 000 essais de mot de passe par jour, de quoi trouver un mot de
+// passe faible sans difficulté.
+//
+// skipSuccessfulRequests : seuls les échecs sont comptés. Une personne qui se
+// connecte normalement, même plusieurs fois dans la journée, n'est jamais
+// gênée ; seules les tentatives infructueuses consomment le quota.
+//
+// Le comptage se fait par adresse réseau. Ce n'est pas infaillible — une
+// attaque distribuée sur plusieurs adresses y échappe — mais cela élimine le
+// cas courant : un script qui essaie des milliers de mots de passe depuis
+// une seule machine.
+// ============================================================
+const limiteConnexion = rateLimit({
+  windowMs: parseInt(process.env.LOGIN_WINDOW_MS, 10) || 15 * 60 * 1000,
+  max: parseInt(process.env.LOGIN_MAX_ATTEMPTS, 10) || 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    // Message volontairement sobre : on n'indique pas si l'adresse essayée
+    // existe, ni combien d'essais il reste.
+    res.status(429).json({
+      error: "Trop de tentatives de connexion. Patientez une quinzaine de minutes, " +
+             "ou utilisez « Mot de passe oublié ? » pour en définir un nouveau."
+    });
+  }
+});
+
+/**
+ * Même limite sur le changement de mot de passe : il exige l'ancien mot de
+ * passe, et constitue donc une seconde porte pour le deviner.
+ */
+const limiteChangement = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json({
+    error: "Trop de tentatives. Patientez une quinzaine de minutes."
+  })
+});
+
 /** POST /api/auth/login — Connexion par email + mot de passe */
-router.post('/login', async (req, res, next) => {
+router.post('/login', limiteConnexion, async (req, res, next) => {
   try {
     const { email, password } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: 'Email et mot de passe requis' });
@@ -84,7 +133,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
  *   - newPassword : ≥ 8 caractères, ≠ ancien, ≠ date de naissance JJ/MM/AAAA, 1 lettre + (1 chiffre ou 1 spécial)
  *   - Après succès : must_change_password passe à false, last_login mis à jour, action loggée
  */
-router.post('/change-password', requireAuth, async (req, res, next) => {
+router.post('/change-password', limiteChangement, requireAuth, async (req, res, next) => {
   try {
     const { oldPassword, newPassword } = req.body || {};
     if (!oldPassword || !newPassword) {
