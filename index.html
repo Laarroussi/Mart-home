@@ -12,26 +12,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase29-0"></script>
+  <script src="api-client.js?v=phase30-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase29-0"></script>
+  <script src="questionnaires-defs.js?v=phase30-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase29-0"></script>
+  <script src="medical-parsers.js?v=phase30-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase29-0"></script>
-  <script src="cpet-analyse.js?v=phase29-0"></script>
+  <script src="cpet-graph-preview.js?v=phase30-0"></script>
+  <script src="cpet-analyse.js?v=phase30-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase29-0"></script>
-  <script src="medical-record-ui.js?v=phase29-0"></script>
+  <script src="pdf-extractor.js?v=phase30-0"></script>
+  <script src="medical-record-ui.js?v=phase30-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase29-0"></script>
-  <script src="synthese-ui.js?v=phase29-0"></script>
-  <script src="entretien-ui.js?v=phase29-0"></script>
+  <script src="aortic-consultations.js?v=phase30-0"></script>
+  <script src="synthese-ui.js?v=phase30-0"></script>
+  <script src="entretien-ui.js?v=phase30-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase29-0"></script>
-  <script src="visio-jitsi.js?v=phase29-0"></script>
-  <script src="video-pilotee.js?v=phase29-0"></script>
+  <script src="document-import.js?v=phase30-0"></script>
+  <script src="visio-jitsi.js?v=phase30-0"></script>
+  <script src="video-pilotee.js?v=phase30-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2949,10 +2949,8 @@
             <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
             <small>Évaluations</small><strong id="kpiEvals">0</strong><span>Total longitudinal</span>
           </article>
-          <article class="kpi-card k-rose">
-            <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-            <small>Alertes</small><strong id="kpiAlerts">0</strong><span>Surveillance médicale</span>
-          </article>
+          <!-- Carte « Alertes » retirée : elle reprenait le compte des patients
+               en statut Alerte, déjà lisible ailleurs, sans permettre d'agir. -->
           <article class="kpi-card k-emerald">
             <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
             <small>Adhérence</small><strong id="kpiAdherence">0%</strong><span>Moyenne cohorte</span>
@@ -2960,20 +2958,10 @@
         </section>
 
         <!-- ============================ COHORTE — APERÇU ============================ -->
-        <section class="chart-grid" style="grid-template-columns: 1.1fr 0.9fr; margin-bottom: 16px;">
-          <article class="card" style="padding: 18px;">
-            <div class="chart-header" style="margin-bottom:14px;">
-              <div>
-                <h3 style="font-size:17px; font-weight:800; display:flex; align-items:center; gap:8px;">
-                  <span class="icon-bg cyan"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg></span>
-                  Statut clinique de la cohorte
-                </h3>
-                <p style="color:var(--muted); font-size:13px; margin-top:4px;">Répartition par niveau de vigilance.</p>
-              </div>
-            </div>
-            <div id="cohortStatusBars"></div>
-          </article>
-
+        <!-- Le bloc « Statut clinique de la cohorte » a été retiré : trois barres
+             de répartition Stable / Surveillance / Alerte qui n'ouvraient sur
+             aucune action. La distribution par gène occupe désormais la largeur. -->
+        <section class="chart-grid" style="grid-template-columns: 1fr; margin-bottom: 16px;">
           <article class="card" style="padding: 18px;">
             <div class="chart-header" style="margin-bottom:14px;">
               <div>
@@ -5677,18 +5665,21 @@
   // === KPI
   // ============================================================
   function initKpis() {
-    const totalEvals = patients.reduce((sum, p) => sum + p.evaluations.length, 0);
-    const avgAdherence = Math.round(patients.reduce((sum, p) => sum + p.progress, 0) / patients.length);
-    const alerts = patients.filter(p => p.statusClass === 'alert').length;
+    const totalEvals = patients.reduce((sum, p) => sum + (p.evaluations || []).length, 0);
+    // Cohorte vide : la division donnait NaN, affiché tel quel à l'écran.
+    // Une moyenne sans effectif n'existe pas — on affiche un tiret.
+    const adherence = patients.length
+      ? Math.round(patients.reduce((sum, p) => sum + (p.progress || 0), 0) / patients.length) + ' %'
+      : '—';
 
-    $('kpiPatients').textContent = patients.length;
-    $('kpiEvals').textContent = totalEvals;
-    $('kpiAlerts').textContent = alerts;
-    $('kpiAdherence').textContent = avgAdherence + '%';
+    const poser = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+    poser('kpiPatients', patients.length);
+    poser('kpiEvals', totalEvals);
+    poser('kpiAdherence', adherence);
 
-    $('heroPatients').textContent = patients.length;
-    $('heroEvals').textContent = totalEvals;
-    $('heroAdherence').textContent = avgAdherence + '%';
+    poser('heroPatients', patients.length);
+    poser('heroEvals', totalEvals);
+    poser('heroAdherence', adherence);
   }
 
   // ============================================================
@@ -12384,7 +12375,11 @@
   <div id="apiUserBadge" style="display:none; position:fixed; top:10px; right:14px; z-index:9991; background:rgba(255,255,255,0.96); border:1px solid #e3e7ef; border-radius:999px; padding:6px 8px 6px 14px; font-size:11.5px; color:#0b1530; box-shadow:0 6px 18px rgba(0,0,0,0.08); display:none; gap:8px; align-items:center;">
     <span id="apiUserName" style="font-weight:700;"></span>
     <button id="btnDemoMode" title="Basculer entre patients réels et patients de démonstration" style="border:1px solid #e2e8f0; background:white; color:#64748b; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer; display:none;">🎭 Démo : off</button>
-    <button id="btnPseudoMode" title="Masquer les identités (nom, email, téléphone) pour présentation" style="border:1px solid #e2e8f0; background:white; color:#64748b; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer; display:none;">🔒 Pseudo : off</button>
+    <!-- Ce bouton était masqué en permanence, donc le mode pseudonymisé
+         inatteignable. Il est désormais visible pour le personnel soignant :
+         c'est lui qui masque les identités dans la base de données avant une
+         présentation ou un export. -->
+    <button id="btnPseudoMode" title="Masquer nom, prénom, IPP et coordonnées — utile pour présenter ou exporter" style="border:1px solid #e2e8f0; background:white; color:#64748b; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer;">🔒 Pseudo : off</button>
     <button id="apiLogoutBtn" style="border:none; background:#f3f6fb; color:#5a6280; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer;">Déconnexion</button>
   </div>
 
@@ -16107,6 +16102,23 @@
 
       selectedSections.forEach(sec => {
         if (sec.id === 'clinical') {
+          // Identité civile. Elle manquait complètement : la base n'affichait
+          // que le code d'étude, impossible de savoir de qui il s'agissait
+          // sans ouvrir chaque dossier.
+          //
+          // Le masquage suit le bouton « 🔒 Pseudo » de l'en-tête : activé, ces
+          // trois colonnes sont remplacées par des points. Il est relu à chaque
+          // rendu du tableau, donc basculer le mode met l'affichage à jour.
+          const masque = () => !!(window.AppModes && window.AppModes.pseudoMode);
+          const iden = (p, cle) => {
+            if (masque()) return '••••••';
+            const c = p.civil || {};
+            const v = c[cle];
+            return (v == null || v === '') ? '—' : v;
+          };
+          cols.push({ key:'nom',    label:'NOM',    section:sec, get: p => iden(p, 'lastName') });
+          cols.push({ key:'prenom', label:'PRÉNOM', section:sec, get: p => iden(p, 'firstName') });
+          cols.push({ key:'ipp',    label:'IPP',    section:sec, get: p => iden(p, 'ipp') });
           cols.push({ key:'sex', label:'SEXE', section:sec, get: p => p.sex || '—' });
           cols.push({ key:'age', label:'AGE', section:sec, get: p => p.age != null ? p.age : '—' });
           cols.push({ key:'gene', label:'GÈNE', section:sec, get: p => p.gene || '—' });
@@ -16332,6 +16344,11 @@
       };
       return { patients: filtered, maxByPatient };
     }
+
+    // Exposée globalement : le bouton de pseudonymisation vit dans un autre
+    // bloc de script et ne pouvait pas l'appeler. Sans cela, activer le
+    // masquage laissait les noms affichés dans le tableau.
+    window.renderUnifiedTable = renderUnifiedTable;
 
     function renderUnifiedTable() {
       const card = document.getElementById('apiDbUnifiedCard');
@@ -17185,6 +17202,9 @@
         if (typeof renderPatientFile === 'function') renderPatientFile();
         if (typeof renderCohortOverview === 'function') renderCohortOverview();
         if (typeof renderDbTable === 'function') renderDbTable('');
+        // Le tableau unifié est celui réellement affiché : sans cet appel, les
+        // noms restaient visibles après activation du masquage.
+        if (typeof window.renderUnifiedTable === 'function') window.renderUnifiedTable();
       });
     }
 
