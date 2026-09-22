@@ -5,6 +5,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { query, transaction } = require('../config/database');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { exigerMotif, journaliser, MOTIFS } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -208,13 +209,30 @@ router.patch('/:id', requireAuth, requireRole('principal_admin', 'investigator')
       }
     }
     if (!fields.length) return res.status(400).json({ error: 'Rien à modifier' });
+
+    const avant = await query('SELECT * FROM patients WHERE id = $1', [req.params.id]);
+    if (!avant.rows.length) return res.status(404).json({ error: 'Patient introuvable' });
+    let motif;
+    try { motif = exigerMotif(req.body); }
+    catch (e) { return res.status(400).json({ error: e.message, motifs: MOTIFS }); }
+
     params.push(req.params.id);
     const { rows } = await query(
       `UPDATE patients SET ${fields.join(', ')} WHERE id = $${params.length} RETURNING *`,
       params
     );
     if (!rows.length) return res.status(404).json({ error: 'Patient introuvable' });
-    res.json({ patient: rows[0] });
+
+    let journalises = [];
+    try {
+      journalises = await journaliser({
+        table: 'patients', id: req.params.id, patientId: req.params.id,
+        avant: avant.rows[0], apres: rows[0],
+        motif, user: req.user, ip: req.ip
+      });
+    } catch (e) { console.warn('[audit] patient :', e.message); }
+
+    res.json({ patient: rows[0], audit: { champs: journalises } });
   } catch (err) { next(err); }
 });
 

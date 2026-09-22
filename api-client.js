@@ -255,6 +255,13 @@
       donnees: (patientId)       => request('GET',  `/synthese/${patientId}/donnees`)
     },
 
+    /** ===== Journal des modifications (bonnes pratiques cliniques) ===== */
+    audit: {
+      motifs:  ()                     => request('GET', '/audit/motifs'),
+      dossier: (patientId, limite)    => request('GET', `/audit/${patientId}` + (limite ? '?limite=' + limite : '')),
+      valeur:  (table, id, champ)     => request('GET', `/audit/valeur/${table}/${id}/${encodeURIComponent(champ)}`)
+    },
+
     /** ===== Mot de passe oublié (route publique, sans jeton) ===== */
     motDePasseOublie: (email) => request('POST', '/activation/oubli', { email }),
 

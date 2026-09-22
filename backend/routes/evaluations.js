@@ -4,6 +4,7 @@
 const express = require('express');
 const { query } = require('../config/database');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { exigerMotif, journaliser, MOTIFS } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -83,13 +84,38 @@ router.patch('/by-id/:id', requireAuth, requireRole('principal_admin', 'investig
       }
     }
     if (!fields.length) return res.status(400).json({ error: 'Rien à modifier' });
+
+    // État avant modification : c'est lui qui sera conservé au journal.
+    // Sans cette lecture préalable, la valeur d'origine serait perdue au
+    // moment même où l'on écrit la nouvelle.
+    const avant = await query('SELECT * FROM evaluations WHERE id = $1', [req.params.id]);
+    if (!avant.rows.length) return res.status(404).json({ error: 'Évaluation introuvable' });
+
+    // Motif exigé AVANT d'écrire : une correction sans justification est
+    // refusée, elle n'atteint jamais la base.
+    let motif;
+    try { motif = exigerMotif(req.body); }
+    catch (e) { return res.status(400).json({ error: e.message, motifs: MOTIFS }); }
+
     params.push(req.params.id);
     const { rows } = await query(
       `UPDATE evaluations SET ${fields.join(', ')} WHERE id = $${params.length} RETURNING *`,
       params
     );
     if (!rows.length) return res.status(404).json({ error: 'Évaluation introuvable' });
-    res.json({ evaluation: rows[0] });
+
+    let journalises = [];
+    try {
+      journalises = await journaliser({
+        table: 'evaluations', id: req.params.id,
+        patientId: avant.rows[0].patient_id,
+        avant: avant.rows[0], apres: rows[0],
+        motif, user: req.user, ip: req.ip,
+        ignorer: ['vo2_data', 'pulse_data']   // volumineux, sans intérêt au journal
+      });
+    } catch (e) { console.warn('[audit] évaluation :', e.message); }
+
+    res.json({ evaluation: rows[0], audit: { champs: journalises } });
   } catch (err) { next(err); }
 });
 

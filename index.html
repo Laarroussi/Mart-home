@@ -12,26 +12,27 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase31-0"></script>
+  <script src="api-client.js?v=phase32-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase31-0"></script>
+  <script src="questionnaires-defs.js?v=phase32-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase31-0"></script>
+  <script src="medical-parsers.js?v=phase32-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase31-0"></script>
-  <script src="cpet-analyse.js?v=phase31-0"></script>
+  <script src="cpet-graph-preview.js?v=phase32-0"></script>
+  <script src="cpet-analyse.js?v=phase32-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase31-0"></script>
-  <script src="medical-record-ui.js?v=phase31-0"></script>
+  <script src="pdf-extractor.js?v=phase32-0"></script>
+  <script src="medical-record-ui.js?v=phase32-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase31-0"></script>
-  <script src="synthese-ui.js?v=phase31-0"></script>
-  <script src="entretien-ui.js?v=phase31-0"></script>
+  <script src="aortic-consultations.js?v=phase32-0"></script>
+  <script src="synthese-ui.js?v=phase32-0"></script>
+  <script src="audit-ui.js?v=phase32-0"></script>
+  <script src="entretien-ui.js?v=phase32-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase31-0"></script>
-  <script src="visio-jitsi.js?v=phase31-0"></script>
-  <script src="video-pilotee.js?v=phase31-0"></script>
+  <script src="document-import.js?v=phase32-0"></script>
+  <script src="visio-jitsi.js?v=phase32-0"></script>
+  <script src="video-pilotee.js?v=phase32-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3517,6 +3518,11 @@
         <!-- Phase 12.4 : Chronologie des actes réalisés -->
         <div id="patientActsTimelineMount" data-dgroup="documents"></div>
 
+        <!-- Phase 32 : journal des corrections, exigé par les bonnes pratiques
+             cliniques. Placé avec les documents : c'est la même logique de
+             traçabilité — d'où vient la donnée, qui l'a touchée. -->
+        <div id="auditHistoriqueMount" data-dgroup="documents"></div>
+
         <!-- ============================================================ -->
         <!-- === Dossier médical structuré (Phase 12.1) === -->
         <!-- === Identité, antécédents, objectifs, points clés, import PDF === -->
@@ -6406,6 +6412,14 @@
     // Phase 12.4 : injecte la carte d'identité + timeline actes en haut du dossier
     try { renderPatientIdentityCard(); } catch (e) { console.warn('[dossier] carte identité', e); }
     try { renderPatientTimelineActs(); } catch (e) { console.warn('[dossier] timeline actes', e); }
+
+    // Phase 32 : journal des modifications du dossier
+    try {
+      if (window.AuditUI && document.getElementById('auditHistoriqueMount')
+          && !(selectedPatient.demo && !selectedPatient._fromApi)) {
+        window.AuditUI.monterHistorique('auditHistoriqueMount', selectedPatient.id);
+      }
+    } catch (e) { console.warn('[audit] montage échoué', e); }
 
     // Phase 24 : synthèse clinique en trois rubriques
     try {
@@ -17238,6 +17252,16 @@
           window.patients = finalList;
         }
         window.patients._fromApi = true;
+
+        // Mode démonstration sans patient fictif en base : on restaure la
+        // cohorte de vingt patients du navigateur. La base a été purgée de ses
+        // données d'essai, et il serait absurde d'y réinjecter des patients
+        // fictifs uniquement pour alimenter une démonstration.
+        if (demoOn && !window.patients.length && Array.isArray(window.__cohorteDemo)) {
+          window.__cohorteDemo.forEach(p => window.patients.push(p));
+          window.patients._fromApi = false;
+          console.log('[modes] cohorte de démonstration restaurée :', window.patients.length, 'patient(s)');
+        }
         console.log('[modes] reload OK :', window.patients.length, 'patient(s) — demo=' + demoParam);
         // Reset selected patient si absent
         if (typeof selectedPatient !== 'undefined' && (!selectedPatient || !window.patients.some(x => x.id === selectedPatient.id))) {
@@ -17360,6 +17384,13 @@
       // donc il devrait déjà être visible comme variable globale même sans window.patients)
       if (typeof patients !== 'undefined' && !window.patients) {
         try { window.patients = patients; } catch (_) {}
+      }
+      // Copie de la cohorte fictive, avant toute réponse du serveur.
+      // Le rechargement par mode vide window.patients pour y placer ce que
+      // renvoie l'API : la cohorte de démonstration, qui ne vit qu'en mémoire,
+      // était perdue sans retour possible.
+      if (typeof patients !== 'undefined' && !window.__cohorteDemo) {
+        try { window.__cohorteDemo = patients.slice(); } catch (_) {}
       }
 
       installCreatePatientHook();

@@ -16,6 +16,7 @@ const express = require('express');
 const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE } = require('../middleware/auth');
 const { synchroniser } = require('../utils/sync-evaluations');
+const { exigerMotif, journaliser, MOTIFS } = require('../utils/audit');
 const { analyserTexte, analyserEcho, analyserIdentite, ocrDocument, transcrireAudio,
         pseudonymiser, statutIA, CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO } = require('../config/ai');
 
@@ -272,6 +273,14 @@ router.patch('/:patient_id/:id', requireAuth, async (req, res, next) => {
       if (req.body[k] !== undefined) { params.push(req.body[k]); sets.push(`${k} = $${params.length}`); }
     });
     if (!sets.length) return res.status(400).json({ error: 'Rien à modifier' });
+
+    const avant = await query('SELECT * FROM medical_timeline WHERE id=$1 AND patient_id=$2',
+      [req.params.id, req.params.patient_id]);
+    if (!avant.rows.length) return res.status(404).json({ error: 'Fait introuvable' });
+    let motif;
+    try { motif = exigerMotif(req.body); }
+    catch (e) { return res.status(400).json({ error: e.message, motifs: MOTIFS }); }
+
     params.push(req.params.id, req.params.patient_id);
     const { rows } = await query(
       `UPDATE medical_timeline SET ${sets.join(', ')}
@@ -279,7 +288,19 @@ router.patch('/:patient_id/:id', requireAuth, async (req, res, next) => {
       params
     );
     if (!rows.length) return res.status(404).json({ error: 'Fait introuvable' });
-    res.json({ fait: rows[0] });
+
+    let journalises = [];
+    try {
+      journalises = await journaliser({
+        table: 'medical_timeline', id: req.params.id,
+        patientId: req.params.patient_id,
+        avant: avant.rows[0], apres: rows[0],
+        motif, user: req.user, ip: req.ip,
+        ignorer: ['source_extrait', 'created_by']
+      });
+    } catch (e) { console.warn('[audit] chronologie :', e.message); }
+
+    res.json({ fait: rows[0], audit: { champs: journalises } });
   } catch (err) { next(err); }
 });
 
@@ -289,9 +310,29 @@ router.patch('/:patient_id/:id', requireAuth, async (req, res, next) => {
 router.delete('/:patient_id/:id', requireAuth, async (req, res, next) => {
   try {
     if (!peutEcrire(req.user)) return res.status(403).json({ error: 'Accès interdit' });
+    const avant = await query('SELECT * FROM medical_timeline WHERE id=$1 AND patient_id=$2',
+      [req.params.id, req.params.patient_id]);
+    if (!avant.rows.length) return res.status(404).json({ error: 'Introuvable' });
+    let motif;
+    try { motif = exigerMotif(req.body || {}); }
+    catch (e) { return res.status(400).json({ error: e.message, motifs: MOTIFS }); }
+
     const r = await query('DELETE FROM medical_timeline WHERE id=$1 AND patient_id=$2',
       [req.params.id, req.params.patient_id]);
     if (!r.rowCount) return res.status(404).json({ error: 'Introuvable' });
+
+    try {
+      const vide = {};
+      Object.keys(avant.rows[0]).forEach(k => { vide[k] = null; });
+      await journaliser({
+        table: 'medical_timeline', id: req.params.id,
+        patientId: req.params.patient_id,
+        avant: avant.rows[0], apres: vide,
+        motif, user: req.user, ip: req.ip, operation: 'suppression',
+        ignorer: ['source_extrait', 'created_by']
+      });
+    } catch (e) { console.warn('[audit] suppression fait :', e.message); }
+
     res.json({ success: true });
   } catch (err) { next(err); }
 });

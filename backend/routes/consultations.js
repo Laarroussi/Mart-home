@@ -18,6 +18,7 @@ const express = require('express');
 const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE } = require('../middleware/auth');
 const { synchroniser } = require('../utils/sync-evaluations');
+const { exigerMotif, journaliser, MOTIFS } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -168,6 +169,15 @@ router.patch('/:patient_id/:id', requireAuth, async (req, res, next) => {
       if (b[k] !== undefined) { params.push(b[k]); sets.push(`${k} = $${params.length}`); }
     });
     if (!sets.length) return res.status(400).json({ error: 'Aucun champ à modifier' });
+
+    // Lecture de l'état d'origine avant écrasement, et motif exigé.
+    const avant = await query('SELECT * FROM consultations WHERE id=$1 AND patient_id=$2',
+      [req.params.id, req.params.patient_id]);
+    if (!avant.rows.length) return res.status(404).json({ error: 'Consultation introuvable' });
+    let motif;
+    try { motif = exigerMotif(b); }
+    catch (e) { return res.status(400).json({ error: e.message, motifs: MOTIFS }); }
+
     params.push(req.user.id); sets.push(`updated_by = $${params.length}`);
     sets.push(`updated_at = NOW()`);
     params.push(req.params.id, req.params.patient_id);
@@ -178,7 +188,19 @@ router.patch('/:patient_id/:id', requireAuth, async (req, res, next) => {
       params
     );
     if (!rows.length) return res.status(404).json({ error: 'Consultation introuvable' });
-    res.json({ consultation: rows[0] });
+
+    let journalises = [];
+    try {
+      journalises = await journaliser({
+        table: 'consultations', id: req.params.id,
+        patientId: req.params.patient_id,
+        avant: avant.rows[0], apres: rows[0],
+        motif, user: req.user, ip: req.ip,
+        ignorer: ['updated_by', 'sessions_summary']
+      });
+    } catch (e) { console.warn('[audit] consultation :', e.message); }
+
+    res.json({ consultation: rows[0], audit: { champs: journalises } });
   } catch (err) { next(err); }
 });
 
@@ -187,9 +209,33 @@ router.patch('/:patient_id/:id', requireAuth, async (req, res, next) => {
 // ============================================================
 router.delete('/:patient_id/:id', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN), async (req, res, next) => {
   try {
+    // Une suppression est une modification comme une autre : elle doit
+    // laisser une trace de ce qui a disparu, sinon la donnée s'évapore sans
+    // que rien n'en témoigne.
+    const avant = await query('SELECT * FROM consultations WHERE id=$1 AND patient_id=$2',
+      [req.params.id, req.params.patient_id]);
+    if (!avant.rows.length) return res.status(404).json({ error: 'Introuvable' });
+    let motif;
+    try { motif = exigerMotif(req.body || {}); }
+    catch (e) { return res.status(400).json({ error: e.message, motifs: MOTIFS }); }
+
     const r = await query('DELETE FROM consultations WHERE id=$1 AND patient_id=$2',
       [req.params.id, req.params.patient_id]);
     if (!r.rowCount) return res.status(404).json({ error: 'Introuvable' });
+
+    try {
+      // apres = tous les champs à null : le journal montre ce qui existait.
+      const vide = {};
+      Object.keys(avant.rows[0]).forEach(k => { vide[k] = null; });
+      await journaliser({
+        table: 'consultations', id: req.params.id,
+        patientId: req.params.patient_id,
+        avant: avant.rows[0], apres: vide,
+        motif, user: req.user, ip: req.ip, operation: 'suppression',
+        ignorer: ['updated_by', 'sessions_summary']
+      });
+    } catch (e) { console.warn('[audit] suppression consultation :', e.message); }
+
     res.json({ success: true });
   } catch (err) { next(err); }
 });
