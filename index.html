@@ -12,27 +12,27 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase34-6"></script>
+  <script src="api-client.js?v=phase35-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase34-6"></script>
+  <script src="questionnaires-defs.js?v=phase35-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase34-6"></script>
+  <script src="medical-parsers.js?v=phase35-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase34-6"></script>
-  <script src="cpet-analyse.js?v=phase34-6"></script>
+  <script src="cpet-graph-preview.js?v=phase35-0"></script>
+  <script src="cpet-analyse.js?v=phase35-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase34-6"></script>
-  <script src="medical-record-ui.js?v=phase34-6"></script>
+  <script src="pdf-extractor.js?v=phase35-0"></script>
+  <script src="medical-record-ui.js?v=phase35-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase34-6"></script>
-  <script src="synthese-ui.js?v=phase34-6"></script>
-  <script src="audit-ui.js?v=phase34-6"></script>
-  <script src="entretien-ui.js?v=phase34-6"></script>
+  <script src="aortic-consultations.js?v=phase35-0"></script>
+  <script src="synthese-ui.js?v=phase35-0"></script>
+  <script src="audit-ui.js?v=phase35-0"></script>
+  <script src="entretien-ui.js?v=phase35-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase34-6"></script>
-  <script src="visio-jitsi.js?v=phase34-6"></script>
-  <script src="video-pilotee.js?v=phase34-6"></script>
+  <script src="document-import.js?v=phase35-0"></script>
+  <script src="visio-jitsi.js?v=phase35-0"></script>
+  <script src="video-pilotee.js?v=phase35-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -645,6 +645,36 @@
        de vraies balises label, ils gagnent ces deux comportements.
        display:block conserve la mise en page d'origine, un label étant
        autrement en ligne. */
+    /* ============================================================
+       Parcours guidé de création — onglets d'étape
+       ------------------------------------------------------------
+       Les quatre repères du haut servent à se situer : on voit où l'on
+       est, et ce qui reste. Ils sont cliquables, parce qu'un parcours
+       qui interdit de revenir en arrière agace plus qu'il ne protège.
+       ============================================================ */
+    .cf-etape {
+      flex: 1 1 150px;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #64748b;
+      cursor: pointer;
+      text-align: center;
+      transition: all .18s ease;
+    }
+    .cf-etape:hover { border-color: #7dd3fc; color: #0369a1; }
+    .cf-etape.active {
+      background: linear-gradient(135deg, #0891b2, #14b8a6);
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(8,145,178,.28);
+    }
+    .cf-etape.faite { color: #0f766e; border-color: #99f6e4; background: #f0fdfa; }
+    @media (max-width: 760px) { .cf-etape { flex: 1 1 100%; } }
+
     .control-label {
       display: block;
       color: var(--muted);
@@ -3138,352 +3168,390 @@
         <header class="page-header">
           <div>
             <h2>Création fiche patient</h2>
-            <p>Renseignez ici l'ensemble des informations civiles, médicales et la première évaluation (Baseline) pour créer un nouveau compte patient dans la cohorte.</p>
+            <p>Versez d'abord les pièces du dossier : le formulaire se remplit tout seul, et la synthèse s'écrit à partir de ce qui a été lu.</p>
           </div>
           <div class="actions">
-            <button class="btn-secondary" onclick="resetCreationForm()">Réinitialiser</button>
-            <button class="btn-secondary" onclick="switchMainTab('accueil')">← Annuler</button>
+            <button class="btn-secondary" onclick="resetCreationForm()">Recommencer</button>
+            <button class="btn-secondary" onclick="switchMainTab('accueil')">← Quitter</button>
             <button class="btn-secondary" id="cf_pdfBtnTop" onclick="generatePatientPdfFromForm()" style="display:none;">📄 Générer PDF</button>
-            <button class="btn-gradient" onclick="createPatientFromForm()">✓ Valider et enregistrer</button>
           </div>
         </header>
 
-        <!-- Message de feedback -->
+        <!-- ============================================================
+             PARCOURS GUIDÉ EN QUATRE ÉTAPES
+             ------------------------------------------------------------
+             L'ancienne page présentait quarante-quatre champs d'un seul
+             tenant. On commençait par saisir une identité à la main, puis on
+             versait éventuellement un document — l'inverse de l'ordre naturel,
+             puisque le document contient déjà l'identité.
+             Le parcours suit maintenant le déroulé réel d'une inclusion :
+             les pièces, ce qu'on en tire, l'entretien, la synthèse.
+             ============================================================ -->
+        <div class="card" style="padding:14px 18px; margin-bottom:16px;">
+          <div id="cfEtapes" style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button type="button" class="cf-etape active" data-etape="1">1 · Pièces du dossier</button>
+            <button type="button" class="cf-etape" data-etape="2">2 · Vérification</button>
+            <button type="button" class="cf-etape" data-etape="3">3 · Entretien</button>
+            <button type="button" class="cf-etape" data-etape="4">4 · Synthèse</button>
+          </div>
+          <div style="margin-top:10px; height:4px; background:#e2e8f0; border-radius:99px; overflow:hidden;">
+            <div id="cfProgression" style="height:100%; width:25%; background:linear-gradient(90deg,#0891b2,#14b8a6); transition:width .25s ease;"></div>
+          </div>
+        </div>
+
         <div id="creationFeedback" style="display:none;"></div>
 
-        <!-- Section 1 : Identité civile -->
-        <section class="card" style="padding:20px; margin-bottom:16px;">
-          <h3 style="font-size:17px; font-weight:800; display:flex; align-items:center; gap:9px; margin-bottom:6px;">
-            <span class="icon-bg cyan"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-            Identité civile
-          </h3>
-          <p style="color:var(--muted); font-size:13px; margin-bottom:12px;">Code patient anonymisé suggéré automatiquement. Modifiable.</p>
+        <!-- ================= ÉTAPE 1 — PIÈCES ================= -->
+        <section class="cf-panneau" data-panneau="1">
+          <article class="card" style="padding:22px;">
+            <h3 style="font-size:17px; font-weight:800; margin-bottom:6px;">📎 Pièces du dossier</h3>
+            <p style="color:var(--muted); font-size:13px; margin-bottom:16px; line-height:1.6;">
+              Compte rendu de consultation, échocardiographie, épreuve d'effort, courrier, compte rendu génétique.
+              Chaque pièce est lue et vient compléter la fiche. Vous pouvez en verser plusieurs à la suite.
+            </p>
 
-          <!-- Phase 17 : pré-remplissage à partir d'un compte-rendu -->
-          <div style="margin-bottom:16px; padding:12px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid #3b82f6; border-radius:10px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-            <div style="flex:1; min-width:230px;">
-              <strong style="font-size:13px; color:#1e40af; display:block;">Gagner du temps : partir d'un compte-rendu</strong>
-              <span style="font-size:12px; color:#3b5a8f;">Compte rendu, épreuve d'effort, échocardiographie, courrier, photo — ou un <b>enregistrement audio</b> d'entretien, qui sera transcrit. Les dates, mesures et traitements sont lus automatiquement et le formulaire pré-rempli.</span>
-            </div>
             <input type="file" id="cf_docImport" style="display:none"
               accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.tif,.tiff,.heic,.heif,.mp3,.m4a,.wav,.ogg,.opus,.webm,.aac,.flac,application/pdf,text/*,image/*,audio/*">
-            <button type="button" onclick="document.getElementById('cf_docImport').click()"
-              style="padding:10px 18px; border:none; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white; border-radius:9px; font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap;">⬆️ Verser un document</button>
-          </div>
-          <div id="cf_docStatut" style="display:none; margin-bottom:14px; padding:11px 13px; border-radius:9px; font-size:12.5px; font-weight:600;"></div>
-          <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px;">
-            <div>
-              <label class="control-label" for="cf_code">Code patient anonymisé *</label>
-              <!-- oninput : dès que le code est saisi à la main, on cesse de le
-                   remplacer automatiquement. -->
-              <input type="text" id="cf_code" placeholder="MRF-XXX" oninput="this.dataset.auto='0';" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_ipp">IPP (Identifiant Permanent Patient)</label>
-              <input type="text" id="cf_ipp" placeholder="ex. 12345678" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_lastName">Nom *</label>
-              <input type="text" id="cf_lastName" placeholder="ex. DUPONT" oninput="updateSuggestedInitials()" onblur="this.value = normalizeLastName(this.value); updateSuggestedInitials();" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_firstName">Prénom *</label>
-              <input type="text" id="cf_firstName" placeholder="ex. Marie" oninput="updateSuggestedInitials()" onblur="this.value = normalizeFirstName(this.value); updateSuggestedInitials();" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_sex">Sexe *</label>
-              <select id="cf_sex">
-                <option value="">— Choisir —</option>
-                <option value="Femme">Femme</option>
-                <option value="Homme">Homme</option>
-                <option value="Autre">Autre</option>
-              </select>
-            </div>
-            <div>
-              <label class="control-label" for="cf_dob">Date de naissance</label>
-              <input type="date" id="cf_dob" onchange="updateAgeFromDob()" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_age">Âge (années) *</label>
-              <input type="number" id="cf_age" min="0" max="120" placeholder="35" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_email">Email *</label>
-              <input type="email" id="cf_email" placeholder="patient@exemple.fr" />
-            </div>
-          </div>
 
-          <!-- Coordonnées et rattachement : utiles au dossier, inutiles à
-               l'inclusion. Repliés, ils laissent à l'écran les seuls champs
-               qui conditionnent la création du compte. L'email reste visible
-               au-dessus : c'est par lui que le patient reçoit son accès. -->
-          <details style="margin-top:14px; border-top:1px solid var(--line); padding-top:12px;">
-            <summary style="cursor:pointer; font-weight:700; font-size:13.5px; color:#0b1530; list-style:none;">
-              📇 Coordonnées et rattachement <span style="font-weight:600; color:#94a3b8; font-size:12px;">— facultatif</span>
-            </summary>
-            <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px; margin-top:14px;">
+            <div onclick="document.getElementById('cf_docImport').click()"
+                 style="border:2px dashed #7dd3fc; background:linear-gradient(180deg,#f0f9ff,#ecfeff); border-radius:16px; padding:34px 22px; text-align:center; cursor:pointer;">
+              <div style="font-size:42px; margin-bottom:8px;">📄</div>
+              <strong style="font-size:16px; color:#0369a1; display:block;">Verser un document</strong>
+              <span style="font-size:12.5px; color:#0369a1; opacity:.85;">PDF, photo, tableur, ou enregistrement audio — 10 Mo maximum</span>
+            </div>
+
+            <div id="cf_docStatut" style="display:none;"></div>
+            <div id="cfPiecesListe" style="margin-top:14px;"></div>
+
+            <div style="margin-top:18px; padding:12px 15px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; font-size:12.5px; color:#475569; line-height:1.6;">
+              Aucune pièce sous la main ? Vous pouvez passer directement à l'étape suivante et tout saisir à la main.
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; margin-top:18px;">
+              <button type="button" class="btn-gradient" onclick="cfAllerEtape(2)">Vérifier les informations →</button>
+            </div>
+          </article>
+        </section>
+
+        <!-- ================= ÉTAPE 2 — VÉRIFICATION ================= -->
+        <section class="cf-panneau" data-panneau="2" style="display:none;">
+          <article class="card" style="padding:22px; margin-bottom:16px;">
+            <h3 style="font-size:17px; font-weight:800; margin-bottom:6px;">👤 Identité</h3>
+            <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Ce qui a été lu dans les pièces est déjà rempli. Vérifiez, corrigez, complétez.</p>
+
+            <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px;">
               <div>
-                <label class="control-label" for="cf_initials">Initiales (auto-générées)</label>
-                <input type="text" id="cf_initials" placeholder="ex. J.D." maxlength="6" oninput="this.dataset.manual='true';" />
+                <label class="control-label" for="cf_code">Code patient *</label>
+                <input type="text" id="cf_code" placeholder="MRF-XXX" oninput="this.dataset.auto='0';" />
               </div>
               <div>
-                <label class="control-label" for="cf_phone">Téléphone</label>
-                <input type="tel" id="cf_phone" placeholder="06 12 34 56 78" />
+                <label class="control-label" for="cf_ipp">IPP</label>
+                <input type="text" id="cf_ipp" placeholder="ex. 12345678" />
               </div>
               <div>
-                <label class="control-label" for="cf_doctor">Médecin référent</label>
-                <input type="text" id="cf_doctor" placeholder="Dr Nom" />
+                <label class="control-label" for="cf_lastName">Nom *</label>
+                <input type="text" id="cf_lastName" placeholder="ex. DUPONT" />
               </div>
               <div>
-                <label class="control-label" for="cf_center">Centre de référence</label>
-                <input type="text" id="cf_center" placeholder="ex. CHU Toulouse — Cardiologie" />
+                <label class="control-label" for="cf_firstName">Prénom *</label>
+                <input type="text" id="cf_firstName" placeholder="ex. Marie" />
+              </div>
+              <div>
+                <label class="control-label" for="cf_sex">Sexe *</label>
+                <select id="cf_sex">
+                  <option value="">— Choisir —</option>
+                  <option value="Femme">Femme</option>
+                  <option value="Homme">Homme</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
+              <div>
+                <label class="control-label" for="cf_dob">Date de naissance</label>
+                <input type="date" id="cf_dob" />
+              </div>
+              <div>
+                <label class="control-label" for="cf_age">Âge *</label>
+                <input type="number" id="cf_age" min="0" max="120" placeholder="35" />
+              </div>
+              <div>
+                <label class="control-label" for="cf_email">Email *</label>
+                <input type="email" id="cf_email" placeholder="patient@exemple.fr" />
+              </div>
+            </div>
+
+            <details style="margin-top:14px; border-top:1px solid var(--line); padding-top:12px;">
+              <summary style="cursor:pointer; font-weight:700; font-size:13px; color:#0b1530; list-style:none;">
+                📇 Compléter la fiche <span style="font-weight:600; color:#94a3b8; font-size:12px;">— coordonnées, centre, mode de vie</span>
+              </summary>
+              <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px; margin-top:14px;">
+                <div>
+                  <label class="control-label" for="cf_initials">Initiales</label>
+                  <input type="text" id="cf_initials" placeholder="ex. J.D." maxlength="6" oninput="this.dataset.manual='true';" />
+                </div>
+                <div>
+                  <label class="control-label" for="cf_phone">Téléphone</label>
+                  <input type="tel" id="cf_phone" placeholder="06 12 34 56 78" />
+                </div>
+                <div>
+                  <label class="control-label" for="cf_doctor">Médecin référent</label>
+                  <input type="text" id="cf_doctor" placeholder="Dr Nom" />
+                </div>
+                <div>
+                  <label class="control-label" for="cf_center">Centre de référence</label>
+                  <input type="text" id="cf_center" placeholder="ex. CHU Toulouse — Cardiologie" />
+                </div>
+                <div style="grid-column: 1 / -1;">
+                  <label class="control-label" for="cf_address">Adresse</label>
+                  <input type="text" id="cf_address" placeholder="Adresse postale" />
+                </div>
+                <div>
+                  <label class="control-label" for="cf_allergies">Allergies</label>
+                  <input type="text" id="cf_allergies" placeholder="Aucune connue" />
+                </div>
+                <div>
+                  <label class="control-label" for="cf_smoking">Tabac</label>
+                  <select id="cf_smoking">
+                    <option value="non">Non-fumeur</option>
+                    <option value="ancien">Ex-fumeur</option>
+                    <option value="actif">Fumeur actif</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="control-label" for="cf_baselinePA">Activité physique habituelle</label>
+                  <select id="cf_baselinePA">
+                    <option value="sedentaire">Sédentaire</option>
+                    <option value="modere">Modérée</option>
+                    <option value="active">Active</option>
+                    <option value="sportive">Sportive</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+          </article>
+
+          <article class="card" style="padding:22px;">
+            <h3 style="font-size:17px; font-weight:800; margin-bottom:16px;">🧬 Génétique et aorte</h3>
+
+            <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
+              <div>
+                <label class="control-label" for="cf_gene">Gène muté *</label>
+                <select id="cf_gene">
+                  <option value="">— Choisir —</option>
+                  <option value="FBN1">FBN1</option>
+                  <option value="TGFBR1">TGFBR1</option>
+                  <option value="TGFBR2">TGFBR2</option>
+                  <option value="SMAD3">SMAD3</option>
+                  <option value="TGFB2">TGFB2</option>
+                  <option value="TGFB3">TGFB3</option>
+                  <option value="ACTA2">ACTA2</option>
+                  <option value="MYH11">MYH11</option>
+                  <option value="Autre">Autre</option>
+                  <option value="Inconnu">Inconnu / non-testé</option>
+                </select>
+              </div>
+              <div>
+                <label class="control-label" for="cf_dxDate">Date du diagnostic</label>
+                <input type="date" id="cf_dxDate" />
+              </div>
+              <div>
+                <label class="control-label" for="cf_variant">Variant pathogène</label>
+                <input type="text" id="cf_variant" placeholder="ex. c.1234C&gt;T (p.Arg412Cys)" />
+              </div>
+            </div>
+
+            <div style="margin-top:18px; padding-top:14px; border-top:1px dashed var(--line);">
+              <strong style="font-size:13.5px; color:#b91c1c;">❤️ Diagnostic initial — dilatation aortique</strong>
+              <p style="color:var(--muted); font-size:12.5px; margin:4px 0 12px; line-height:1.55;">
+                Première mesure connue, à la date du diagnostic. Laissez vide si elle n'est pas connue :
+                ce champ n'est jamais rempli avec la date du jour.
+              </p>
+              <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
+                <div>
+                  <label class="control-label" for="cf_aorticFirstDate">Date de la première mesure</label>
+                  <input type="date" id="cf_aorticFirstDate" />
+                </div>
+                <div>
+                  <label class="control-label" for="cf_aorticFirstValue">Diamètre (mm)</label>
+                  <input type="number" step="0.1" id="cf_aorticFirstValue" placeholder="ex. 38.5" />
+                </div>
+                <div>
+                  <label class="control-label" for="cf_aorticFirstSite">Site mesuré</label>
+                  <select id="cf_aorticFirstSite">
+                    <option value="">— Non précisé —</option>
+                    <option value="Sinus de Valsalva">Sinus de Valsalva</option>
+                    <option value="Anneau aortique">Anneau aortique</option>
+                    <option value="Jonction sino-tubulaire">Jonction sino-tubulaire</option>
+                    <option value="Aorte ascendante">Aorte ascendante</option>
+                    <option value="Crosse aortique">Crosse aortique</option>
+                    <option value="Aorte descendante">Aorte descendante</option>
+                  </select>
+                </div>
+                <div style="grid-column: 1 / -1;">
+                  <label class="control-label" for="cf_aorticFirstComment">Commentaire</label>
+                  <input type="text" id="cf_aorticFirstComment" placeholder="ex. mesure issue du compte rendu du CHU de…" />
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:18px; padding-top:14px; border-top:1px dashed var(--line);">
+              <strong style="font-size:13.5px; color:#7c3aed;">📅 Évaluation du jour</strong>
+              <p style="color:var(--muted); font-size:12.5px; margin:4px 0 12px; line-height:1.55;">
+                Si un diamètre est mesuré aujourd'hui, il devient l'évaluation actuelle et la première consultation de l'historique.
+              </p>
+              <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
+                <div>
+                  <label class="control-label" for="cf_aorticTodayDate">Date</label>
+                  <input type="date" id="cf_aorticTodayDate" readonly />
+                </div>
+                <div>
+                  <label class="control-label" for="cf_aorticTodayValue">Diamètre du jour (mm)</label>
+                  <input type="number" step="0.1" id="cf_aorticTodayValue" placeholder="ex. 39" />
+                </div>
+                <div>
+                  <label class="control-label" for="cf_aorticTodaySite">Site mesuré</label>
+                  <select id="cf_aorticTodaySite">
+                    <option value="">— Non précisé —</option>
+                    <option value="Sinus de Valsalva">Sinus de Valsalva</option>
+                    <option value="Anneau aortique">Anneau aortique</option>
+                    <option value="Jonction sino-tubulaire">Jonction sino-tubulaire</option>
+                    <option value="Aorte ascendante">Aorte ascendante</option>
+                    <option value="Crosse aortique">Crosse aortique</option>
+                    <option value="Aorte descendante">Aorte descendante</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <details style="margin-top:16px; border-top:1px solid var(--line); padding-top:12px;">
+              <summary style="cursor:pointer; font-weight:700; font-size:13px; color:#0b1530; list-style:none;">
+                🩺 Antécédents et traitements <span style="font-weight:600; color:#94a3b8; font-size:12px;">— souvent extraits des pièces</span>
+              </summary>
+              <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; margin-top:14px;">
+                <div>
+                  <label class="control-label" for="cf_history">Antécédents médicaux et chirurgicaux</label>
+                  <textarea id="cf_history" rows="3" placeholder="ex. Chirurgie aorte ascendante 2019, scoliose corrigée 2010…"></textarea>
+                </div>
+                <div>
+                  <label class="control-label" for="cf_treatments">Traitements en cours</label>
+                  <textarea id="cf_treatments" rows="3" placeholder="ex. Bisoprolol 5 mg/j, losartan 50 mg/j"></textarea>
+                </div>
+              </div>
+            </details>
+
+            <div style="display:flex; justify-content:space-between; margin-top:18px;">
+              <button type="button" class="btn-secondary" onclick="cfAllerEtape(1)">← Pièces</button>
+              <button type="button" class="btn-gradient" onclick="cfAllerEtape(3)">Entretien →</button>
+            </div>
+          </article>
+        </section>
+
+        <!-- ================= ÉTAPE 3 — ENTRETIEN ================= -->
+        <section class="cf-panneau" data-panneau="3" style="display:none;">
+          <article class="card" style="padding:22px;">
+            <h3 style="font-size:17px; font-weight:800; margin-bottom:6px;">🗣 Entretien</h3>
+            <p style="color:var(--muted); font-size:13px; margin-bottom:16px; line-height:1.6;">
+              Ce que le patient exprime ne se trouve dans aucun compte rendu. Enregistrez l'entretien, ou saisissez directement.
+            </p>
+
+            <div id="creationEntretienMount" style="margin-bottom:18px;"></div>
+
+            <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; margin-bottom:14px;">
+              <div>
+                <label class="control-label" for="cf_profession">Profession / situation</label>
+                <input type="text" id="cf_profession" placeholder="ex. Enseignante, temps partiel" />
+              </div>
+              <div>
+                <label class="control-label" for="cf_status">Statut clinique</label>
+                <select id="cf_status">
+                  <option value="Stable">Stable</option>
+                  <option value="Surveillance">Surveillance</option>
+                  <option value="Alerte">Alerte</option>
+                </select>
+              </div>
+              <div>
+                <label class="control-label" for="cf_riskFactor">Point de vigilance principal</label>
+                <input type="text" id="cf_riskFactor" placeholder="ex. Dilatation aortique" />
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px;">
+              <div>
+                <label class="control-label" for="cf_difficultes">Difficultés ressenties</label>
+                <textarea id="cf_difficultes" rows="4" placeholder="Essoufflement à l'effort, fatigue, appréhension du sport…"></textarea>
+              </div>
+              <div>
+                <label class="control-label" for="cf_objectifsPatient">Attentes du patient</label>
+                <textarea id="cf_objectifsPatient" rows="4" placeholder="Reprendre une activité régulière, retrouver confiance…"></textarea>
+              </div>
+              <div>
+                <label class="control-label" for="cf_objectifsClinicien">Objectifs de la prise en charge</label>
+                <textarea id="cf_objectifsClinicien" rows="4" placeholder="Réentraînement en endurance sous SV1, éducation aux signes d'alerte…"></textarea>
+              </div>
+              <div>
+                <label class="control-label" for="cf_incidents">Précautions et contre-indications</label>
+                <textarea id="cf_incidents" rows="4" placeholder="Éviter Valsalva et efforts maximaux, arrêt si douleur thoracique…"></textarea>
               </div>
               <div style="grid-column: 1 / -1;">
-                <label class="control-label" for="cf_address">Adresse</label>
-                <input type="text" id="cf_address" placeholder="Adresse postale" />
+                <label class="control-label" for="cf_notes">Notes libres</label>
+                <textarea id="cf_notes" rows="3" placeholder="Éléments de contexte, points à ne pas oublier…"></textarea>
               </div>
             </div>
-          </details>
+
+            <div style="display:flex; justify-content:space-between; margin-top:18px;">
+              <button type="button" class="btn-secondary" onclick="cfAllerEtape(2)">← Vérification</button>
+              <button type="button" class="btn-gradient" onclick="cfAllerEtape(4)">Synthèse →</button>
+            </div>
+          </article>
         </section>
 
-        <!-- Section 2 : Informations médicales -->
-        <section class="card" style="padding:20px; margin-bottom:16px;">
-          <h3 style="font-size:17px; font-weight:800; display:flex; align-items:center; gap:9px; margin-bottom:6px;">
-            <span class="icon-bg violet"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
-            Informations médicales
-          </h3>
-          <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Génétique, diagnostic, antécédents et traitements en cours.</p>
-          <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
-            <div>
-              <label class="control-label" for="cf_gene">Gène muté *</label>
-              <select id="cf_gene">
-                <option value="">— Choisir —</option>
-                <option value="FBN1">FBN1</option>
-                <option value="TGFBR1">TGFBR1</option>
-                <option value="TGFBR2">TGFBR2</option>
-                <option value="SMAD3">SMAD3</option>
-                <option value="TGFB2">TGFB2</option>
-                <option value="TGFB3">TGFB3</option>
-                <option value="ACTA2">ACTA2</option>
-                <option value="MYH11">MYH11</option>
-                <option value="Autre">Autre</option>
-                <option value="Inconnu">Inconnu / non-testé</option>
-              </select>
-            </div>
-            <div>
-              <label class="control-label" for="cf_dxDate">Date du diagnostic</label>
-              <input type="date" id="cf_dxDate" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_variant">Variant pathogène</label>
-              <input type="text" id="cf_variant" placeholder="ex. c.1234C>T (p.Arg412Cys)" />
-            </div>
-          </div>
-          <div style="margin:18px 0 10px; padding-top:14px; border-top:1px dashed #e2e8f0;">
-            <h4 style="margin:0 0 3px; font-size:13.5px; font-weight:800; color:#991b1b; display:flex; align-items:center; gap:6px;">🫀 Diagnostic initial Marfan — dilatation aortique</h4>
-            <p style="color:var(--muted); font-size:12px; margin-bottom:12px;">Sinus de Valsalva / racine aortique, à la date du diagnostic ou de la première constatation connue. Laisser vide si non connu — ce champ n'est jamais rempli automatiquement avec la date du jour.</p>
-          </div>
-          <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
-            <div>
-              <label class="control-label" for="cf_aorticFirstDate">Date du diagnostic / première constatation</label>
-              <input type="date" id="cf_aorticFirstDate" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_aorticFirstValue">Diamètre à cette date (mm)</label>
-              <input type="number" step="0.1" id="cf_aorticFirstValue" placeholder="ex. 38.5 — si connu" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_aorticFirstSite">Site mesuré</label>
-              <select id="cf_aorticFirstSite">
-                <option value="">— Non précisé —</option>
-                <option value="Sinus de Valsalva">Sinus de Valsalva</option>
-                <option value="Anneau aortique">Anneau aortique</option>
-                <option value="Jonction sino-tubulaire">Jonction sino-tubulaire</option>
-                <option value="Aorte ascendante">Aorte ascendante</option>
-                <option value="Crosse aortique">Crosse aortique</option>
-                <option value="Aorte descendante">Aorte descendante</option>
-              </select>
-            </div>
-            <div style="grid-column: 1 / -1;">
-              <label class="control-label" for="cf_aorticFirstComment">Commentaire (facultatif)</label>
-              <input type="text" id="cf_aorticFirstComment" placeholder="ex. Mesure issue du compte-rendu du CHU de..., à confirmer" />
-            </div>
-          </div>
-          <div style="margin:16px 0 10px; padding-top:14px; border-top:1px dashed #e2e8f0;">
-            <h4 style="margin:0 0 3px; font-size:13.5px; font-weight:800; color:#7c3aed;">📅 Évaluation du jour — consultation initiale</h4>
-            <p style="color:var(--muted); font-size:12px; margin-bottom:12px;">Si un diamètre est mesuré aujourd'hui (jour de création du dossier), il devient l'« Évaluation actuelle » et apparaît comme première consultation dans l'historique — en plus de la ligne « Diagnostic initial » ci-dessus.</p>
-          </div>
-          <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
-            <div>
-              <label class="control-label" for="cf_aorticTodayDate">Date (aujourd'hui)</label>
-              <input type="date" id="cf_aorticTodayDate" readonly style="background:#f1f5f9; color:#64748b;" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_aorticTodayValue">Diamètre du jour (mm)</label>
-              <input type="number" step="0.1" id="cf_aorticTodayValue" placeholder="ex. 39 — si mesuré aujourd'hui" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_aorticTodaySite">Site mesuré</label>
-              <select id="cf_aorticTodaySite">
-                <option value="">— Non précisé —</option>
-                <option value="Sinus de Valsalva">Sinus de Valsalva</option>
-                <option value="Anneau aortique">Anneau aortique</option>
-                <option value="Jonction sino-tubulaire">Jonction sino-tubulaire</option>
-                <option value="Aorte ascendante">Aorte ascendante</option>
-                <option value="Crosse aortique">Crosse aortique</option>
-                <option value="Aorte descendante">Aorte descendante</option>
-              </select>
-            </div>
-          </div>
-          <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; margin-top:12px;">
-            <div style="grid-column: 1 / -1;">
-              <label class="control-label" for="cf_history">Antécédents médicaux & chirurgicaux</label>
-              <textarea id="cf_history" rows="2" placeholder="ex. Chirurgie aorte ascendante 2019, scoliose corrigée 2010..."></textarea>
-            </div>
-            <div style="grid-column: 1 / -1;">
-              <label class="control-label" for="cf_treatments">Traitements en cours</label>
-              <textarea id="cf_treatments" rows="2" placeholder="ex. Bêtabloquant (bisoprolol 5 mg/j), losartan 50 mg/j..."></textarea>
-            </div>
-            <div>
-              <label class="control-label" for="cf_allergies">Allergies connues</label>
-              <input type="text" id="cf_allergies" placeholder="ex. Pénicilline" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_smoking">Tabac</label>
-              <select id="cf_smoking">
-                <option value="non">Non-fumeur</option>
-                <option value="ancien">Ex-fumeur</option>
-                <option value="actif">Fumeur actif</option>
-              </select>
-            </div>
-            <div>
-              <label class="control-label" for="cf_baselinePA">Activité physique habituelle</label>
-              <select id="cf_baselinePA">
-                <option value="sedentaire">Sédentaire</option>
-                <option value="modere">Modérée</option>
-                <option value="active">Active</option>
-                <option value="sportive">Sportive</option>
-              </select>
-            </div>
-          </div>
-        </section>
-
-        <!-- Section 3 : Statut clinique & vigilance — repliée par défaut.
-             Ces champs ne sont pas nécessaires pour inclure un patient : ils
-             se complètent à la première consultation. Les laisser ouverts
-             allongeait le formulaire sans rien rendre obligatoire. -->
-        <!-- ============================================================
-             ENTRETIEN & PRISE EN CHARGE  (Phase 25)
-             ------------------------------------------------------------
-             Remplace les anciens blocs « Statut clinique & vigilance » et
-             « Notes investigateur ». Ce que le clinicien saisit ici part
-             directement dans la synthèse : c'est la matière que l'IA ne
-             peut pas déduire d'un compte rendu — ce que la personne dit,
-             ce qu'elle vit, ce qu'on vise avec elle.
-             Les champs conservés de l'ancienne version (adhérence,
-             altérations, commentaire de risque) restent présents mais
-             masqués : ils alimentent la fiche patient et leur retrait
-             casserait l'enregistrement.
-             ============================================================ -->
-        <section class="card" style="padding:20px; margin-bottom:16px;">
-          <h3 style="font-size:17px; font-weight:800; display:flex; align-items:center; gap:9px; margin-bottom:6px;">
-            <span class="icon-bg amber">🗣</span>
-            Entretien &amp; prise en charge
-          </h3>
-          <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">
-            Ce que vous notez ici nourrit la synthèse clinique : difficultés exprimées, attentes, objectifs, précautions.
-          </p>
-
-          <!-- Enregistrement de l'entretien : les champs ci-dessous se
-               remplissent à partir de ce qui a été dit. -->
-          <div id="creationEntretienMount" style="margin-bottom:18px;"></div>
-
-          <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; margin-bottom:14px;">
-            <div>
-              <label class="control-label" for="cf_profession">Profession / situation</label>
-              <input type="text" id="cf_profession" placeholder="ex. Enseignante, temps partiel" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_status">Statut clinique</label>
-              <select id="cf_status">
-                <option value="Stable">Stable</option>
-                <option value="Surveillance">Surveillance</option>
-                <option value="Alerte">Alerte</option>
-              </select>
-            </div>
-            <div>
-              <label class="control-label" for="cf_riskFactor">Point de vigilance principal</label>
-              <input type="text" id="cf_riskFactor" placeholder="ex. Dilatation aortique" />
-            </div>
-          </div>
-
-          <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px;">
-            <div>
-              <label class="control-label" for="cf_difficultes">Difficultés ressenties par le patient</label>
-              <textarea id="cf_difficultes" rows="4" placeholder="Essoufflement à l'effort, fatigue, appréhension du sport, douleurs..."></textarea>
-            </div>
-            <div>
-              <label class="control-label" for="cf_objectifsPatient">Attentes et objectifs du patient</label>
-              <textarea id="cf_objectifsPatient" rows="4" placeholder="Reprendre une activité régulière, retrouver confiance, marcher sans s'essouffler..."></textarea>
-            </div>
-            <div>
-              <label class="control-label" for="cf_objectifsClinicien">Objectifs de la prise en charge</label>
-              <textarea id="cf_objectifsClinicien" rows="4" placeholder="Réentraînement en endurance sous SV1, éducation aux signes d'alerte, adhésion au programme..."></textarea>
-            </div>
-            <div>
-              <label class="control-label" for="cf_incidents">Précautions et contre-indications APA</label>
-              <textarea id="cf_incidents" rows="4" placeholder="Éviter Valsalva et efforts maximaux, arrêt si douleur thoracique..."></textarea>
-            </div>
-            <div style="grid-column: 1 / -1;">
-              <label class="control-label" for="cf_notes">Notes libres de l'entretien</label>
-              <textarea id="cf_notes" rows="3" placeholder="Éléments de contexte, ressenti, points à ne pas oublier..."></textarea>
-            </div>
-          </div>
-
-          <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; margin-top:14px;">
-            <div>
-              <label class="control-label" for="cf_inclusionDate">Date d'inclusion dans l'étude</label>
-              <input type="date" id="cf_inclusionDate" />
-            </div>
-            <div>
-              <label class="control-label" for="cf_consent">Consentement signé</label>
-              <select id="cf_consent">
-                <option value="oui">✓ Oui</option>
-                <option value="non">✖ Non</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Conservés pour la fiche patient, sans encombrer l'écran -->
-          <input type="hidden" id="cf_adherence" value="75" />
-          <input type="hidden" id="cf_riskComment" value="" />
-          <input type="hidden" id="cf_alterations" value="" />
-
-          <!-- ===== Synthèse rédigée par l'IA ===== -->
-          <div style="margin-top:20px; border-top:1px solid var(--line); padding-top:16px;">
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
-              <strong style="font-size:14px;">🧠 Synthèse clinique</strong>
+        <!-- ================= ÉTAPE 4 — SYNTHÈSE ================= -->
+        <section class="cf-panneau" data-panneau="4" style="display:none;">
+          <article class="card" style="padding:22px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px;">
+              <h3 style="font-size:17px; font-weight:800;">🧠 Synthèse clinique</h3>
               <button type="button" class="btn-secondary" id="cf_synthBtn" onclick="redigerSyntheseCreation()" style="margin-left:auto;">✨ Rédiger la synthèse</button>
             </div>
-            <p style="color:var(--muted); font-size:12.5px; margin:0 0 10px; line-height:1.55;">
-              L'IA reprend le document versé et ce que vous venez de saisir. Relisez, corrigez si besoin :
-              la synthèse est enregistrée avec la fiche quand vous validez.
+            <p style="color:var(--muted); font-size:13px; margin-bottom:14px; line-height:1.6;">
+              Rédigée à partir des pièces versées et de l'entretien. Relisez, corrigez :
+              elle est enregistrée avec la fiche et vous en êtes l'auteur.
             </p>
+
             <div id="cf_synthInfo" style="display:none;"></div>
             <div id="cf_synthZone" style="display:none;">
               <label class="control-label" for="cf_synthEntree">Synthèse d'entrée</label>
-              <textarea id="cf_synthEntree" rows="6"></textarea>
-              <div class="control-label" style="margin-top:10px;">Difficultés et objectifs</div>
-              <textarea id="cf_synthObjectifs" rows="6"></textarea>
+              <textarea id="cf_synthEntree" rows="7"></textarea>
+              <label class="control-label" for="cf_synthObjectifs" style="margin-top:12px;">Difficultés et objectifs</label>
+              <textarea id="cf_synthObjectifs" rows="7"></textarea>
             </div>
-          </div>
-        </section>
 
-        <div class="actions" style="justify-content:flex-end; gap:10px;">
-          <button class="btn-secondary" onclick="resetCreationForm()">Réinitialiser</button>
-          <button class="btn-secondary" id="cf_pdfBtn" onclick="generatePatientPdfFromForm()" style="display:none;">📄 Générer le PDF du dossier</button>
-          <button class="btn-gradient" onclick="createPatientFromForm()">✓ Valider et enregistrer le patient</button>
-        </div>
+            <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; margin-top:18px; padding-top:14px; border-top:1px solid var(--line);">
+              <div>
+                <label class="control-label" for="cf_inclusionDate">Date d'inclusion</label>
+                <input type="date" id="cf_inclusionDate" />
+              </div>
+              <div>
+                <label class="control-label" for="cf_consent">Consentement signé</label>
+                <select id="cf_consent">
+                  <option value="oui">✓ Oui</option>
+                  <option value="non">✖ Non</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Conservés pour la fiche patient, sans encombrer l'écran -->
+            <input type="hidden" id="cf_adherence" value="75" />
+            <input type="hidden" id="cf_riskComment" value="" />
+            <input type="hidden" id="cf_alterations" value="" />
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; gap:12px; flex-wrap:wrap;">
+              <button type="button" class="btn-secondary" onclick="cfAllerEtape(3)">← Entretien</button>
+              <span style="display:flex; gap:9px; align-items:center;">
+                <button class="btn-secondary" id="cf_pdfBtn" onclick="generatePatientPdfFromForm()" style="display:none;">📄 Générer le PDF</button>
+                <button class="btn-gradient" onclick="createPatientFromForm()" style="font-size:14.5px; padding:12px 22px;">✓ Valider et créer le dossier</button>
+              </span>
+            </div>
+          </article>
+        </section>
       </section>
 
       <!-- ============================== DOSSIER ============================== -->
@@ -5633,6 +5701,9 @@
     if (tabId === 'listing') renderPatientTable($('tableSearch') ? $('tableSearch').value : '');
     if (tabId === 'creation') {
       initCreationForm();
+      // Le formulaire s'ouvre toujours sur les pièces : c'est de là que part
+      // tout le reste du dossier.
+      try { cfAllerEtape(1); } catch (_) {}
       // L'entretien se mène au moment de l'inclusion : le bloc doit être
       // présent dès l'ouverture du formulaire, sans fiche encore créée.
       try {
@@ -7421,6 +7492,77 @@
     const pdfBtnTop = $('cf_pdfBtnTop'); if (pdfBtnTop) pdfBtnTop.style.display = 'none';
   }
 
+  // ============================================================
+  // Phase 35 — Parcours guidé de création du dossier
+  // ------------------------------------------------------------
+  // L'écran présentait quarante-quatre champs d'un coup, et demandait de
+  // saisir à la main une identité que les documents contiennent déjà.
+  // Le parcours suit maintenant l'ordre réel d'une inclusion : on verse les
+  // pièces, on vérifie ce qui en a été tiré, on mène l'entretien, on relit
+  // la synthèse. Rien n'est perdu entre les étapes : c'est un seul
+  // formulaire, dont on n'affiche qu'une partie à la fois.
+  // ============================================================
+  let cfEtapeCourante = 1;
+
+  function cfAllerEtape(n) {
+    n = Math.max(1, Math.min(4, Number(n) || 1));
+    cfEtapeCourante = n;
+    document.querySelectorAll('#creation .cf-panneau').forEach(p => {
+      p.style.display = (Number(p.dataset.panneau) === n) ? '' : 'none';
+    });
+    document.querySelectorAll('#creation .cf-etape').forEach(b => {
+      const e = Number(b.dataset.etape);
+      b.classList.toggle('active', e === n);
+      b.classList.toggle('faite', e < n);
+    });
+    const barre = document.getElementById('cfProgression');
+    if (barre) barre.style.width = (n * 25) + '%';
+    // L'étape suivante commence en haut de page, pas au milieu de la
+    // précédente : sans cela on croyait l'écran inchangé.
+    try {
+      const sec = document.getElementById('creation');
+      if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (_) {}
+  }
+  window.cfAllerEtape = cfAllerEtape;
+
+  // Les repères du haut sont cliquables dans les deux sens.
+  document.querySelectorAll('#creation .cf-etape').forEach(b => {
+    b.addEventListener('click', () => cfAllerEtape(b.dataset.etape));
+  });
+
+  /**
+   * Trace des pièces versées.
+   *
+   * On peut verser plusieurs documents à la suite ; le bandeau de statut ne
+   * montre que le dernier. Sans cette liste, on ne savait plus ce qui avait
+   * déjà été lu, et on reversait deux fois le même compte rendu.
+   */
+  function cfAjouterPiece(nom, nbChamps, nbFaits) {
+    const z = document.getElementById('cfPiecesListe');
+    if (!z) return;
+    if (!z.dataset.pret) {
+      z.innerHTML = '<div style="font-size:12px; font-weight:700; color:#475569; ' +
+                    'text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;">' +
+                    'Pièces lues</div><div id="cfPiecesLignes"></div>';
+      z.dataset.pret = '1';
+    }
+    const lignes = document.getElementById('cfPiecesLignes');
+    if (!lignes) return;
+    const ech = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const d = document.createElement('div');
+    d.style.cssText = 'display:flex; align-items:center; gap:10px; padding:9px 12px; ' +
+                      'background:#f0fdfa; border:1px solid #99f6e4; border-radius:9px; ' +
+                      'margin-bottom:6px; font-size:12.5px;';
+    d.innerHTML = '<span>✓</span><strong style="flex:1; min-width:0; overflow:hidden; ' +
+                  'text-overflow:ellipsis; white-space:nowrap;">' + ech(nom) + '</strong>' +
+                  '<span style="color:#0f766e; white-space:nowrap;">' +
+                  nbChamps + ' champ(s)' +
+                  (nbFaits ? ' · ' + nbFaits + ' donnée(s)' : '') + '</span>';
+    lignes.appendChild(d);
+  }
+  window.cfAjouterPiece = cfAjouterPiece;
+
   function resetCreationForm() {
     const ids = ['cf_code','cf_lastName','cf_firstName','cf_ipp','cf_center',
                  'cf_sex','cf_dob','cf_age','cf_initials','cf_email','cf_phone','cf_doctor','cf_address',
@@ -7451,7 +7593,10 @@
     if (impStatut) { impStatut.style.display = 'none'; impStatut.innerHTML = ''; }
     window._faitsAImporter = null;
     window._echoAImporter = null;
+    const zp = document.getElementById('cfPiecesListe');
+    if (zp) { zp.innerHTML = ''; delete zp.dataset.pret; }
     initCreationForm();
+    cfAllerEtape(1);
     // Sans retour visible, le bouton semblait sans effet.
     try { toast('↻ Formulaire réinitialisé.', 'info', 3000); } catch (_) {}
   }
@@ -8329,7 +8474,19 @@
       }
 
       // Les faits restants seront rattachés au patient après validation de la fiche
-      window._faitsAImporter = { code, faits };
+      // Plusieurs pièces peuvent être versées à la suite : remplacer la liste
+      // aurait fait perdre les données du document précédent. On cumule, en
+      // écartant les doublons exacts (même date, même libellé, même valeur).
+      (function cumuler() {
+        const anc = (window._faitsAImporter && window._faitsAImporter.code === code)
+          ? (window._faitsAImporter.faits || []) : [];
+        const cle = x => [x.event_date || '', x.category || '', x.label || '', x.value_num == null ? '' : x.value_num].join('|');
+        const vus = new Set(anc.map(cle));
+        const fusion = anc.slice();
+        faits.forEach(x => { const k = cle(x); if (!vus.has(k)) { vus.add(k); fusion.push(x); } });
+        window._faitsAImporter = { code, faits: fusion };
+      })();
+      try { cfAjouterPiece(f.name || 'Document', n, faits.length); } catch (_) {}
 
       // Aperçu du détail : le clinicien doit pouvoir lire ce qui a été extrait
       // AVANT de valider, et non le découvrir dans le dossier après coup.
