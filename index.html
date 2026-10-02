@@ -12,27 +12,27 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase34-3"></script>
+  <script src="api-client.js?v=phase34-4"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase34-3"></script>
+  <script src="questionnaires-defs.js?v=phase34-4"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase34-3"></script>
+  <script src="medical-parsers.js?v=phase34-4"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase34-3"></script>
-  <script src="cpet-analyse.js?v=phase34-3"></script>
+  <script src="cpet-graph-preview.js?v=phase34-4"></script>
+  <script src="cpet-analyse.js?v=phase34-4"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase34-3"></script>
-  <script src="medical-record-ui.js?v=phase34-3"></script>
+  <script src="pdf-extractor.js?v=phase34-4"></script>
+  <script src="medical-record-ui.js?v=phase34-4"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase34-3"></script>
-  <script src="synthese-ui.js?v=phase34-3"></script>
-  <script src="audit-ui.js?v=phase34-3"></script>
-  <script src="entretien-ui.js?v=phase34-3"></script>
+  <script src="aortic-consultations.js?v=phase34-4"></script>
+  <script src="synthese-ui.js?v=phase34-4"></script>
+  <script src="audit-ui.js?v=phase34-4"></script>
+  <script src="entretien-ui.js?v=phase34-4"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase34-3"></script>
-  <script src="visio-jitsi.js?v=phase34-3"></script>
-  <script src="video-pilotee.js?v=phase34-3"></script>
+  <script src="document-import.js?v=phase34-4"></script>
+  <script src="visio-jitsi.js?v=phase34-4"></script>
+  <script src="video-pilotee.js?v=phase34-4"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -8940,7 +8940,9 @@
         : '';
     }
 
-    const visibles = patients
+    // Même source que le tableau de la base : une seule liste fait foi.
+    const cohorte = (window.patients && window.patients.length) ? window.patients : patients;
+    const visibles = cohorte
       .filter(p => [p.id, p.sex, p.gene, p.status].join(' ').toLowerCase().includes(norm));
 
     if (!visibles.length) {
@@ -8955,7 +8957,6 @@
     }
 
     visibles
-      .filter(p => [p.id, p.sex, p.gene, p.status].join(' ').toLowerCase().includes(norm))
       .forEach(p => {
         const lastEv = last(p.evaluations);
         const stats = notifStats(p);
@@ -12696,12 +12697,20 @@
         // Sinon, avec demo=false, le seed reste visible.
         const adapted = apiPatients.map(p => adaptApiPatient(p));
         // On mute le tableau existant en place pour préserver la référence const patients
-        if (Array.isArray(window.patients)) {
-          window.patients.length = 0;
-          adapted.forEach(p => window.patients.push(p));
-        } else {
-          window.patients = adapted;
+        // On MUTE toujours un tableau existant, jamais de remplacement.
+        //
+        // Le script principal déclare « const patients » : c'est une liaison de
+        // portée script, que window.patients référence. Remplacer
+        // window.patients par un nouveau tableau rompt ce lien — et à partir de
+        // là, le tableau de la base lit une liste et le listing patients en lit
+        // une autre. C'est exactement ce qui faisait disparaître les patients
+        // du listing alors qu'ils s'affichaient ailleurs.
+        if (!Array.isArray(window.patients)) {
+          window.patients = (typeof patients !== 'undefined' && Array.isArray(patients))
+            ? patients : [];
         }
+        window.patients.length = 0;
+        adapted.forEach(p => window.patients.push(p));
         // Applique la pseudonymisation si active
         if (typeof window.applyPseudonymization === 'function') {
           const masked = window.applyPseudonymization(window.patients);
@@ -17351,12 +17360,12 @@
         const finalList = (typeof window.applyPseudonymization === 'function')
           ? window.applyPseudonymization(adapted) : adapted;
         // MUTE le tableau existant en place (préserve la référence const/let patients partout)
-        if (Array.isArray(window.patients)) {
-          window.patients.length = 0;
-          finalList.forEach(p => window.patients.push(p));
-        } else {
-          window.patients = finalList;
+        if (!Array.isArray(window.patients)) {
+          window.patients = (typeof patients !== 'undefined' && Array.isArray(patients))
+            ? patients : [];
         }
+        window.patients.length = 0;
+        finalList.forEach(p => window.patients.push(p));
         window.patients._fromApi = true;
 
         // Mode démonstration sans patient fictif en base : on restaure la
