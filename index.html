@@ -12,27 +12,27 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase34-2"></script>
+  <script src="api-client.js?v=phase34-3"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase34-2"></script>
+  <script src="questionnaires-defs.js?v=phase34-3"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase34-2"></script>
+  <script src="medical-parsers.js?v=phase34-3"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase34-2"></script>
-  <script src="cpet-analyse.js?v=phase34-2"></script>
+  <script src="cpet-graph-preview.js?v=phase34-3"></script>
+  <script src="cpet-analyse.js?v=phase34-3"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase34-2"></script>
-  <script src="medical-record-ui.js?v=phase34-2"></script>
+  <script src="pdf-extractor.js?v=phase34-3"></script>
+  <script src="medical-record-ui.js?v=phase34-3"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase34-2"></script>
-  <script src="synthese-ui.js?v=phase34-2"></script>
-  <script src="audit-ui.js?v=phase34-2"></script>
-  <script src="entretien-ui.js?v=phase34-2"></script>
+  <script src="aortic-consultations.js?v=phase34-3"></script>
+  <script src="synthese-ui.js?v=phase34-3"></script>
+  <script src="audit-ui.js?v=phase34-3"></script>
+  <script src="entretien-ui.js?v=phase34-3"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase34-2"></script>
-  <script src="visio-jitsi.js?v=phase34-2"></script>
-  <script src="video-pilotee.js?v=phase34-2"></script>
+  <script src="document-import.js?v=phase34-3"></script>
+  <script src="visio-jitsi.js?v=phase34-3"></script>
+  <script src="video-pilotee.js?v=phase34-3"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2914,7 +2914,7 @@
               <h2 style="margin-top:8px;">Vue d'ensemble <span>de la cohorte</span></h2>
               <p>Résumé synthétique strictement agrégé : statuts cliniques, distribution génétique, tendances moyennes, baseline, dernière évaluation et deltas de cohorte.</p>
               <div class="hero-stats">
-                <div class="hero-stat"><small>Patients</small><strong id="heroPatients">0</strong><span>Cohorte de démo</span></div>
+                <div class="hero-stat"><small>Patients</small><strong id="heroPatients">0</strong><span id="heroPatientsSub">Patients inclus</span></div>
                 <div class="hero-stat"><small>Évaluations</small><strong id="heroEvals">0</strong><span>Total enregistré</span></div>
                 <div class="hero-stat"><small>Adhérence</small><strong id="heroAdherence">0%</strong><span>Moyenne cohorte</span></div>
               </div>
@@ -2949,7 +2949,7 @@
         <section class="kpi-grid">
           <article class="kpi-card k-cyan">
             <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
-            <small>Patients inclus</small><strong id="kpiPatients">20</strong><span>Cohorte de démonstration</span>
+            <small>Patients inclus</small><strong id="kpiPatients">0</strong><span id="kpiPatientsSub">Patients inclus</span>
           </article>
           <article class="kpi-card k-violet">
             <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
@@ -5708,6 +5708,12 @@
       : '—';
 
     const poser = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+    // Le sous-titre annonçait « cohorte de démonstration » en permanence,
+    // y compris sur de vrais patients. Il suit désormais le mode réel.
+    const libelle = (window.AppModes && window.AppModes.demoMode)
+      ? 'Cohorte de démonstration' : 'Patients inclus';
+    poser('kpiPatientsSub', libelle);
+    poser('heroPatientsSub', libelle);
     poser('kpiPatients', patients.length);
     poser('kpiEvals', totalEvals);
     poser('kpiAdherence', adherence);
@@ -12708,6 +12714,7 @@
         // Phase 14d : chaque rendu est isolé — une erreur sur l'un ne doit pas
         // empêcher les suivants (c'est ce qui laissait le dossier patient figé
         // sur « Aucun patient » alors que la liste était bien chargée).
+        const echecsRendu = [];
         [['initKpis', () => initKpis()],
          ['initQuickSelect', () => initQuickSelect()],
          ['renderPatientList', () => renderPatientList && renderPatientList('')],
@@ -12718,13 +12725,42 @@
          // l'affichage d'avant le chargement (état vide + carte du patient précédent).
          ['renderPatientFile', () => typeof renderPatientFile === 'function' && renderPatientFile()]
         ].forEach(([nom, fn]) => {
-          try { fn(); } catch (e) { console.warn('[api] rendu ' + nom + ' échoué :', e && e.message); }
+          try { fn(); }
+          catch (e) {
+            console.warn('[api] rendu ' + nom + ' échoué :', e && e.message);
+            // Un rendu qui échoue laissait un écran vide sans explication :
+            // les patients étaient chargés, mais invisibles. On le dit.
+            echecsRendu.push(nom + ' (' + ((e && e.message) || 'erreur') + ')');
+          }
         });
+        if (echecsRendu.length) signalerEchecsRendu(echecsRendu, adapted.length);
         return adapted.length;
       } catch (e) {
         console.warn('Chargement patients API échoué :', e.message);
         return 0;
       }
+    }
+
+    /**
+     * Signale qu'une partie de l'interface n'a pas pu s'afficher.
+     *
+     * Jusqu'ici ces échecs n'apparaissaient que dans la console : on voyait un
+     * listing vide alors que les patients étaient bien chargés, sans la
+     * moindre indication. Une bannière vaut mieux qu'un écran muet.
+     */
+    function signalerEchecsRendu(noms, nbPatients) {
+      var vieux = document.getElementById('bandeauEchecRendu');
+      if (vieux) vieux.remove();
+      var d = document.createElement('div');
+      d.id = 'bandeauEchecRendu';
+      d.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:10100; padding:11px 18px; ' +
+        'background:#fef2f2; border-bottom:2px solid #dc2626; color:#991b1b; font-size:12.5px; ' +
+        'line-height:1.5; text-align:center;';
+      d.innerHTML = '<strong>' + nbPatients + ' patient(s) chargé(s), mais une partie de l\'affichage a échoué.</strong> ' +
+        'Zones concernées : ' + noms.join(', ') + '.' +
+        '<button onclick="location.reload()" style="margin-left:10px; padding:3px 11px; border:1px solid #dc2626; background:white; color:#991b1b; border-radius:7px; font-weight:700; font-size:11.5px; cursor:pointer;">Recharger</button>' +
+        '<button onclick="this.parentNode.remove()" style="margin-left:6px; padding:3px 11px; border:1px solid #fecaca; background:white; color:#991b1b; border-radius:7px; font-size:11.5px; cursor:pointer;">Masquer</button>';
+      document.body.appendChild(d);
     }
 
     // Normalise un rôle API vers le modèle 3-rôles du frontend
