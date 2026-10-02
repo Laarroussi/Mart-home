@@ -91,7 +91,18 @@ function mountRoutes(prefix) {
   app.use(prefix + '/synthese',        require('./routes/synthese'));
   app.use(prefix + '/entretien',       require('./routes/entretien'));
   app.use(prefix + '/audit',           require('./routes/audit'));
-  app.use(prefix + '/pieces',          require('./routes/pieces'));
+  // Versement de pièces par les participants — DÉSACTIVÉ.
+  //
+  // La fonction est entièrement écrite (backend/routes/pieces.js, pieces-ui.js,
+  // migration 022) mais n'est pas exposée : décision de ne pas ouvrir le dépôt
+  // de documents aux participants pour l'instant.
+  //
+  // La route reste commentée plutôt que supprimée : la laisser active sans sa
+  // table en base ferait échouer toute requête par une erreur SQL, et la
+  // supprimer obligerait à tout réécrire en cas de changement d'avis.
+  // Pour réactiver : décommenter la ligne, passer la migration 022, et
+  // rétablir les points de montage signalés dans index.html.
+  // app.use(prefix + '/pieces',          require('./routes/pieces'));
 }
 mountRoutes('/api');   // mode local dev OU Passenger qui garde le préfixe
 mountRoutes('');       // mode Passenger qui strippe le préfixe URI
