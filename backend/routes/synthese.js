@@ -75,13 +75,15 @@ router.get('/:patient_id', requireAuth, async (req, res, next) => {
     verifierAcces(req, req.params.patient_id);
     const r = await query(
       `SELECT patient_id, entree, objectifs, suivi_activite, bilan_entretien,
-              generee_le, maj_le, maj_par
+              generee_le, maj_le, maj_par,
+              validee, validee_le, validee_par, validee_par_nom
          FROM syntheses WHERE patient_id = $1`,
       [req.params.patient_id]
     );
     res.json(r.rows[0] || {
       patient_id: req.params.patient_id,
-      entree: '', objectifs: '', suivi_activite: '', bilan_entretien: ''
+      entree: '', objectifs: '', suivi_activite: '', bilan_entretien: '',
+      validee: false
     });
   } catch (err) { next(err); }
 });
@@ -101,7 +103,13 @@ router.post('/:patient_id', requireAuth, staff, async (req, res, next) => {
               suivi_activite  = EXCLUDED.suivi_activite,
               bilan_entretien = EXCLUDED.bilan_entretien,
               maj_le          = NOW(),
-              maj_par         = EXCLUDED.maj_par
+              maj_par         = EXCLUDED.maj_par,
+              -- Toute modification annule la validation : elle portait sur
+              -- un texte précis, pas sur un document qui continue d'évoluer.
+              validee         = FALSE,
+              validee_le      = NULL,
+              validee_par     = NULL,
+              validee_par_nom = NULL
       RETURNING *`,
       [req.params.patient_id, entree || '', objectifs || '', suivi_activite || '',
        bilan_entretien || '', req.user.id]
@@ -272,6 +280,51 @@ async function assemblerDossier(patientId) {
 
   return d;
 }
+
+// ============================================================
+// POST /:patient_id/valider — l'investigateur assume la synthèse
+// ------------------------------------------------------------
+// Le texte validé est celui qui était à l'écran : on le réenregistre dans la
+// même opération. Sans cela, on pourrait valider une version et en afficher
+// une autre.
+// ============================================================
+router.post('/:patient_id/valider', requireAuth, staff, async (req, res, next) => {
+  try {
+    const { entree, objectifs, suivi_activite, bilan_entretien } = req.body || {};
+    if (!String(entree || '').trim() && !String(objectifs || '').trim()) {
+      return res.status(400).json({
+        error: "Une synthèse vide ne peut pas être validée. Rédigez-la d'abord."
+      });
+    }
+    const r = await query(
+      `INSERT INTO syntheses (patient_id, entree, objectifs, suivi_activite, bilan_entretien,
+                              maj_le, maj_par, validee, validee_le, validee_par, validee_par_nom)
+            VALUES ($1,$2,$3,$4,$5, NOW(), $6, TRUE, NOW(), $6, $7)
+       ON CONFLICT (patient_id) DO UPDATE
+          SET entree          = EXCLUDED.entree,
+              objectifs       = EXCLUDED.objectifs,
+              suivi_activite  = EXCLUDED.suivi_activite,
+              bilan_entretien = EXCLUDED.bilan_entretien,
+              maj_le          = NOW(),
+              maj_par         = EXCLUDED.maj_par,
+              validee         = TRUE,
+              validee_le      = NOW(),
+              validee_par     = EXCLUDED.validee_par,
+              validee_par_nom = EXCLUDED.validee_par_nom
+      RETURNING *`,
+      [req.params.patient_id, entree || '', objectifs || '', suivi_activite || '',
+       bilan_entretien || '', req.user.id, req.user.name || req.user.id]
+    );
+    // La version validée est archivée : on doit pouvoir retrouver le texte
+    // exact qui a été assumé, même s'il est modifié ensuite.
+    await query(
+      `INSERT INTO syntheses_versions (patient_id, entree, objectifs, suivi_activite, origine, cree_par)
+       VALUES ($1, $2, $3, $4, 'manuel', $5)`,
+      [req.params.patient_id, entree || '', objectifs || '', suivi_activite || '', req.user.id]
+    ).catch(() => {});
+    res.json(r.rows[0]);
+  } catch (err) { next(err); }
+});
 
 // ============================================================
 // GET /:patient_id/donnees — ce que verra l'IA

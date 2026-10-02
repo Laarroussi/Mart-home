@@ -12,27 +12,27 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase33-1"></script>
+  <script src="api-client.js?v=phase34-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase33-1"></script>
+  <script src="questionnaires-defs.js?v=phase34-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase33-1"></script>
+  <script src="medical-parsers.js?v=phase34-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase33-1"></script>
-  <script src="cpet-analyse.js?v=phase33-1"></script>
+  <script src="cpet-graph-preview.js?v=phase34-1"></script>
+  <script src="cpet-analyse.js?v=phase34-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase33-1"></script>
-  <script src="medical-record-ui.js?v=phase33-1"></script>
+  <script src="pdf-extractor.js?v=phase34-1"></script>
+  <script src="medical-record-ui.js?v=phase34-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase33-1"></script>
-  <script src="synthese-ui.js?v=phase33-1"></script>
-  <script src="audit-ui.js?v=phase33-1"></script>
-  <script src="entretien-ui.js?v=phase33-1"></script>
+  <script src="aortic-consultations.js?v=phase34-1"></script>
+  <script src="synthese-ui.js?v=phase34-1"></script>
+  <script src="audit-ui.js?v=phase34-1"></script>
+  <script src="entretien-ui.js?v=phase34-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase33-1"></script>
-  <script src="visio-jitsi.js?v=phase33-1"></script>
-  <script src="video-pilotee.js?v=phase33-1"></script>
+  <script src="document-import.js?v=phase34-1"></script>
+  <script src="visio-jitsi.js?v=phase34-1"></script>
+  <script src="video-pilotee.js?v=phase34-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3062,6 +3062,10 @@
             <p>Crée un compte avec rôle <strong>Investigateur</strong>. L'investigateur pourra ensuite créer les fiches patients de sa cohorte.</p>
           </div>
           <div class="actions">
+            <!-- Si le courriel n'arrive pas, le compte existe mais reste
+                 inutilisable. Ce bouton est la seule façon de réparer sans
+                 passer par la base. -->
+            <button class="btn-secondary" onclick="renvoyerLienInvestigateur()" title="Si l'investigateur n'a pas reçu son courriel">📨 Renvoyer le lien</button>
             <button class="btn-secondary" onclick="resetInvestForm()">Réinitialiser</button>
             <button class="btn-secondary" onclick="switchMainTab('accueil')">← Annuler</button>
             <button class="btn-gradient" onclick="createInvestAccountFromForm()">✓ Créer le compte investigateur</button>
@@ -8566,6 +8570,30 @@
     else if (type === 'error') { el.style.background = '#fee2e2'; el.style.color = '#991b1b'; el.style.border = '1px solid #fca5a5'; }
     else { el.style.background = '#dbeafe'; el.style.color = '#1e40af'; el.style.border = '1px solid #93c5fd'; }
   }
+
+  /**
+   * Renvoie un lien d'activation à un compte déjà créé.
+   * Nécessaire quand le courriel initial n'est pas arrivé : sans cela, le
+   * compte existe en base mais personne ne peut s'y connecter.
+   */
+  window.renvoyerLienInvestigateur = async function () {
+    var saisi = ($('inv_email') && $('inv_email').value || '').trim();
+    var email = prompt("Renvoyer un lien de création de mot de passe.\n\nAdresse du compte concerné :", saisi);
+    if (email == null) return;
+    email = email.trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      showInvestFeedback('✖ Adresse non valide.', 'error');
+      return;
+    }
+    try {
+      var r = await window.MarfanAPI.renvoyerActivation(email);
+      showInvestFeedback(
+        '✅ Nouveau lien envoyé à <code>' + (r.email_masque || email) + '</code>.<br>' +
+        "<em>Il est valable 48 heures et annule le précédent.</em>", 'success');
+    } catch (e) {
+      showInvestFeedback('✖ Renvoi impossible : ' + ((e && e.message) || 'erreur inconnue'), 'error');
+    }
+  };
 
   async function createInvestAccountFromForm() {
     // Garde-fou côté UI (vérifié aussi côté backend)

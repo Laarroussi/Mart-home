@@ -95,6 +95,40 @@ router.get('/status', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVEST
 // ============================================================
 // POST /send/:patient_id — (re)envoi du lien d'activation (staff)
 // ============================================================
+/**
+ * POST /renvoyer — renvoie un lien d'activation à N'IMPORTE QUEL compte
+ * Body : { email }
+ *
+ * La route /send/:patient_id ne cherche que des comptes de rôle « patient ».
+ * Si le courriel d'un investigateur n'arrivait pas — adresse mal saisie,
+ * serveur indisponible — son compte existait mais restait inutilisable, et
+ * aucune commande de l'interface ne permettait de réparer.
+ *
+ * Réservé à l'administrateur principal : renvoyer un lien d'activation
+ * revient à ouvrir l'accès à un compte.
+ */
+router.post('/renvoyer', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN),
+  async (req, res, next) => {
+    try {
+      const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+      if (!email) return res.status(400).json({ error: 'Adresse e-mail requise.' });
+
+      const { rows } = await query(
+        'SELECT id, name, email, role, patient_id, active FROM users WHERE email = $1', [email]);
+      if (!rows.length) return res.status(404).json({ error: 'Aucun compte avec cette adresse.' });
+      const u = rows[0];
+      if (u.active === false) return res.status(409).json({ error: 'Ce compte est désactivé.' });
+
+      const r = await creerEtEnvoyerLien({
+        userId: u.id, patientId: u.patient_id || null, email: u.email,
+        prenom: (u.name || '').trim().split(' ')[0] || null,
+        createdBy: req.user.id
+      });
+      if (!r.ok) return res.status(502).json({ error: "Envoi impossible : " + r.error });
+      res.json({ success: true, role: u.role, email_masque: r.email_masque, mode: r.mode });
+    } catch (err) { next(err); }
+  });
+
 router.post('/send/:patient_id', requireAuth,
   requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR), async (req, res, next) => {
     try {

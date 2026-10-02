@@ -252,6 +252,8 @@
       // Rédaction avant que la fiche existe : on transmet le dossier assemblé
       // par le navigateur (document versé + entretien saisi).
       brouillon: (dossier)      => request('POST', '/synthese/brouillon', { dossier }),
+      // Validation explicite : l'investigateur assume le texte affiché.
+      valider:   (patientId, data) => request('POST', `/synthese/${patientId}/valider`, data),
       donnees: (patientId)       => request('GET',  `/synthese/${patientId}/donnees`)
     },
 
@@ -276,6 +278,9 @@
 
     /** ===== Mot de passe oublié (route publique, sans jeton) ===== */
     motDePasseOublie: (email) => request('POST', '/activation/oubli', { email }),
+
+    /** Renvoi d'un lien d'activation à n'importe quel compte (admin principal) */
+    renvoyerActivation: (email) => request('POST', '/activation/renvoyer', { email }),
 
     /** ===== Entretien patient : enregistrement transcrit puis analysé ===== */
     entretien: {

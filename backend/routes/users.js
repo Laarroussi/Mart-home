@@ -75,7 +75,7 @@ router.post('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATO
   try {
     let {
       role, firstName, lastName, birth_date, email,
-      phone, service, patient_id,
+      phone, service, specialty, patient_id,
       // Compat ancien format :
       name, password
     } = req.body || {};
@@ -137,12 +137,13 @@ router.post('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATO
 
     const { rows } = await query(
       `INSERT INTO users (id, role, name, username, email, password_hash, phone, service,
-                          birth_date, patient_id, created_by, must_change_password)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-       RETURNING id, role, name, username, email, phone, service, birth_date, patient_id,
+                          specialty, birth_date, patient_id, created_by, must_change_password)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       RETURNING id, role, name, username, email, phone, service, specialty, birth_date, patient_id,
                  created_at, must_change_password`,
       [id, role, name, username, email.toLowerCase(), password_hash,
-       phone || null, service || null, birth_date || null, patient_id || null, req.user.id, mustChange]
+       phone || null, service || null, specialty || null,
+       birth_date || null, patient_id || null, req.user.id, mustChange]
     );
     await query(
       'INSERT INTO notification_log (user_id, action, details, ip_address) VALUES ($1, $2, $3, $4)',

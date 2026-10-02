@@ -58,7 +58,8 @@
           '<p style="margin:3px 0 0; font-size:12px; opacity:.93;">Rédigée à partir du dossier, relue et validée par vous.</p>' +
         '</div>' +
         '<button id="synGenBtn" class="btn-light" style="font-weight:700;">✨ Rédiger avec l\'IA</button>' +
-        '<button id="synSaveBtn" class="btn-light" style="font-weight:700;">💾 Enregistrer</button>' +
+        '<button id="synSaveBtn" class="btn-light" style="font-weight:700;">💾 Enregistrer le brouillon</button>' +
+        '<button id="synValidBtn" class="btn-light" style="font-weight:700; background:#065f46; color:white; border-color:#065f46;">✓ Valider la synthèse</button>' +
       '</div>' +
 
 
@@ -66,6 +67,7 @@
         // L'entretien précède la rédaction : on l'enregistre, on relit ce qui
         // en a été tiré, puis seulement on fait rédiger la synthèse.
         '<div id="dossierEntretienMount" style="margin-bottom:18px;"></div>' +
+        '<div id="synEtat" style="margin-bottom:14px;"></div>' +
         '<div id="synInfo" style="display:none; margin-bottom:14px; padding:11px 14px; border-radius:10px; font-size:12.5px; line-height:1.55;"></div>' +
 
         RUBRIQUES.map(function (r) {
@@ -131,6 +133,31 @@
     z.innerHTML = html;
   }
 
+  /**
+   * Bandeau d'état : brouillon ou validé, par qui et quand.
+   *
+   * Sans cette distinction visible, rien ne séparait un texte rédigé par un
+   * modèle et enregistré sans relecture d'un document assumé par un
+   * professionnel. La différence compte dès que la synthèse quitte l'écran.
+   */
+  function majEtat(s) {
+    var z = el('synEtat');
+    if (!z) return;
+    if (s && s.validee) {
+      var qui = s.validee_par_nom || s.validee_par || '—';
+      var quand = s.validee_le ? new Date(s.validee_le).toLocaleString('fr-FR') : '';
+      z.innerHTML = '<div style="padding:10px 14px; background:#ecfdf5; border:1px solid #a7f3d0; ' +
+        'border-left:4px solid #065f46; border-radius:10px; font-size:12.5px; color:#065f46; line-height:1.55;">' +
+        '<strong>✓ Synthèse validée</strong> par ' + esc(qui) + (quand ? ' le ' + esc(quand) : '') + '.<br>' +
+        '<span style="opacity:.85;">Toute modification la ramènera à l\'état de brouillon.</span></div>';
+    } else {
+      z.innerHTML = '<div style="padding:10px 14px; background:#fffbeb; border:1px solid #fde68a; ' +
+        'border-left:4px solid #f59e0b; border-radius:10px; font-size:12.5px; color:#92400e; line-height:1.55;">' +
+        '<strong>Brouillon — non validé.</strong> Relisez le texte, puis cliquez sur ' +
+        '« Valider la synthèse » pour l\'assumer sous votre nom.</div>';
+    }
+  }
+
   function majMeta(s) {
     var m = el('synMeta');
     if (!m) return;
@@ -183,6 +210,7 @@
       _etat = syntheseDemo(d);
       ecrireChamps();
       majMeta(null);
+      var ze = el('synEtat'); if (ze) ze.innerHTML = '';
       info("<strong>Patient de démonstration.</strong> Cette synthèse est un exemple généré " +
            "à partir des données affichées ; elle n'est ni enregistrée ni transmise à l'IA.", 'alerte');
       return;
@@ -197,6 +225,7 @@
       };
       ecrireChamps();
       majMeta(s);
+      majEtat(s);
     } catch (e) {
       info("Synthèse non chargée : " + esc(e && e.message ? e.message : ''), 'erreur');
     }
@@ -214,7 +243,8 @@
     try {
       var s = await window.MarfanAPI.synthese.save(_patientId, _etat);
       majMeta(s);
-      note('💾 Synthèse enregistrée.', 'success');
+      majEtat(s);
+      note('💾 Brouillon enregistré.', 'success');
       info('', null);
     } catch (e) {
       info("Enregistrement impossible : " + esc(e && e.message ? e.message : ''), 'erreur');
@@ -288,6 +318,43 @@
   }
 
   /**
+   * Validation : l'investigateur assume le texte affiché.
+   *
+   * Le texte est renvoyé avec la demande, et non simplement marqué validé en
+   * base : sans cela, on pourrait valider une version et en afficher une autre
+   * si une modification non enregistrée traînait à l'écran.
+   */
+  async function valider() {
+    if (_chargement) return;
+    if (patientDemo()) {
+      info("Patient de démonstration : rien n'est enregistré.", 'alerte');
+      return;
+    }
+    lireChamps();
+    if (!(_etat.entree || '').trim() && !(_etat.objectifs || '').trim()) {
+      info("Une synthèse vide ne peut pas être validée. Rédigez-la d'abord.", 'erreur');
+      return;
+    }
+    if (!confirm("Valider cette synthèse sous votre nom ?\n\n" +
+                 "Votre nom et la date seront enregistrés. Vous pourrez toujours la modifier " +
+                 "ensuite, mais elle redeviendra alors un brouillon.")) return;
+
+    var b = el('synValidBtn');
+    if (b) { b.disabled = true; b.textContent = '✓ Validation…'; }
+    try {
+      var s = await window.MarfanAPI.synthese.valider(_patientId, _etat);
+      majMeta(s);
+      majEtat(s);
+      info('', null);
+      note('✓ Synthèse validée.', 'success');
+    } catch (e) {
+      info("Validation impossible : " + esc(e && e.message ? e.message : ''), 'erreur');
+    } finally {
+      if (b) { b.disabled = false; b.textContent = '✓ Valider la synthèse'; }
+    }
+  }
+
+  /**
    * Affiche le panneau pour un patient donné.
    * Réservé au personnel soignant : un patient ne voit pas sa synthèse
    * clinique, qui contient des éléments de pronostic.
@@ -303,6 +370,7 @@
     hote.innerHTML = gabarit();
     var g = el('synGenBtn'); if (g) g.addEventListener('click', generer);
     var s = el('synSaveBtn'); if (s) s.addEventListener('click', enregistrer);
+    var v = el('synValidBtn'); if (v) v.addEventListener('click', valider);
     // Entretien enregistré : ce qui en est retenu alimente le bilan
     // d'entretien juste en dessous, qui nourrit à son tour la synthèse.
     try {
