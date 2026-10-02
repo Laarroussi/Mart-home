@@ -12,27 +12,27 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase34-1"></script>
+  <script src="api-client.js?v=phase34-2"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase34-1"></script>
+  <script src="questionnaires-defs.js?v=phase34-2"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase34-1"></script>
+  <script src="medical-parsers.js?v=phase34-2"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase34-1"></script>
-  <script src="cpet-analyse.js?v=phase34-1"></script>
+  <script src="cpet-graph-preview.js?v=phase34-2"></script>
+  <script src="cpet-analyse.js?v=phase34-2"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase34-1"></script>
-  <script src="medical-record-ui.js?v=phase34-1"></script>
+  <script src="pdf-extractor.js?v=phase34-2"></script>
+  <script src="medical-record-ui.js?v=phase34-2"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase34-1"></script>
-  <script src="synthese-ui.js?v=phase34-1"></script>
-  <script src="audit-ui.js?v=phase34-1"></script>
-  <script src="entretien-ui.js?v=phase34-1"></script>
+  <script src="aortic-consultations.js?v=phase34-2"></script>
+  <script src="synthese-ui.js?v=phase34-2"></script>
+  <script src="audit-ui.js?v=phase34-2"></script>
+  <script src="entretien-ui.js?v=phase34-2"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase34-1"></script>
-  <script src="visio-jitsi.js?v=phase34-1"></script>
-  <script src="video-pilotee.js?v=phase34-1"></script>
+  <script src="document-import.js?v=phase34-2"></script>
+  <script src="visio-jitsi.js?v=phase34-2"></script>
+  <script src="video-pilotee.js?v=phase34-2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4539,6 +4539,9 @@
           </div>
         </header>
         <article class="card" style="padding:16px;">
+          <!-- Averti quand le mode démonstration masque les vrais patients :
+               sans cela, un patient réellement créé semble avoir disparu. -->
+          <div id="listingAvertDemo" style="display:none;"></div>
           <div class="search-box" style="padding:0 0 14px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="left:12px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="tableSearch" placeholder="Filtrer : nom, code, gène, statut..." />
@@ -5624,6 +5627,10 @@
     }
     if (tabId === 'training') renderTrainingVideos();
     if (tabId === 'database') renderDbTable();
+    // Le listing n'était redessiné qu'à la création d'un patient ou au
+    // rechargement de la cohorte. Si l'un de ces appels échouait, le tableau
+    // restait figé sur un état ancien sans que rien ne le signale.
+    if (tabId === 'listing') renderPatientTable($('tableSearch') ? $('tableSearch').value : '');
     if (tabId === 'creation') {
       initCreationForm();
       // L'entretien se mène au moment de l'inclusion : le bloc doit être
@@ -8911,7 +8918,37 @@
     const tbody = $('patientTable');
     const norm = filter.toLowerCase();
     tbody.innerHTML = '';
-    patients
+
+    // Mode démonstration : la cohorte affichée est fictive, les vrais
+    // patients sont masqués. C'est la première raison pour laquelle un
+    // patient qu'on vient de créer « n'apparaît pas ».
+    const demoActif = !!(window.AppModes && window.AppModes.demoMode);
+    const avert = $('listingAvertDemo');
+    if (avert) {
+      avert.style.display = demoActif ? 'block' : 'none';
+      avert.innerHTML = demoActif
+        ? '<div style="margin-bottom:12px; padding:11px 14px; background:#fffbeb; border:1px solid #fde68a; ' +
+          'border-left:4px solid #f59e0b; border-radius:10px; font-size:12.5px; color:#92400e; line-height:1.55;">' +
+          '<strong>🎭 Mode démonstration actif.</strong> Vous voyez une cohorte fictive. ' +
+          'Vos patients réels sont masqués — désactivez « Démo » en haut à droite pour les afficher.</div>'
+        : '';
+    }
+
+    const visibles = patients
+      .filter(p => [p.id, p.sex, p.gene, p.status].join(' ').toLowerCase().includes(norm));
+
+    if (!visibles.length) {
+      tbody.innerHTML = '<tr><td colspan="12" style="padding:28px; text-align:center; color:var(--muted); font-size:13px;">' +
+        (demoActif
+          ? "Aucun patient fictif ne correspond au filtre. Désactivez le mode démonstration pour voir vos patients réels."
+          : (norm
+              ? "Aucun patient ne correspond à « " + norm.replace(/</g, '&lt;') + " »."
+              : "Aucun patient enregistré. Créez-en un depuis « Création fiche patient ».")) +
+        '</td></tr>';
+      return;
+    }
+
+    visibles
       .filter(p => [p.id, p.sex, p.gene, p.status].join(' ').toLowerCase().includes(norm))
       .forEach(p => {
         const lastEv = last(p.evaluations);
