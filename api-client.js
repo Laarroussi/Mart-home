@@ -255,6 +255,18 @@
       donnees: (patientId)       => request('GET',  `/synthese/${patientId}/donnees`)
     },
 
+    /** ===== Pièces versées par les participants ===== */
+    pieces: {
+      // Côté patient : dépôt et suivi
+      deposer:  (data)        => request('POST', '/pieces/mes-documents', data),
+      mesPieces:()            => request('GET',  '/pieces/mes-documents'),
+      // Côté soignant : file d'attente et relecture
+      aValider: ()            => request('GET',  '/pieces/a-valider'),
+      detail:   (id)          => request('GET',  `/pieces/${id}`),
+      valider:  (id, data)    => request('POST', `/pieces/${id}/valider`, data),
+      rejeter:  (id, motif)   => request('POST', `/pieces/${id}/rejeter`, { motif })
+    },
+
     /** ===== Journal des modifications (bonnes pratiques cliniques) ===== */
     audit: {
       motifs:  ()                     => request('GET', '/audit/motifs'),
