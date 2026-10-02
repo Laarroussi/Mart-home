@@ -12,27 +12,28 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase35-0"></script>
+  <script src="api-client.js?v=phase36-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase35-0"></script>
+  <script src="questionnaires-defs.js?v=phase36-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase35-0"></script>
+  <script src="medical-parsers.js?v=phase36-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase35-0"></script>
-  <script src="cpet-analyse.js?v=phase35-0"></script>
+  <script src="cpet-graph-preview.js?v=phase36-0"></script>
+  <script src="cpet-analyse.js?v=phase36-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase35-0"></script>
-  <script src="medical-record-ui.js?v=phase35-0"></script>
+  <script src="pdf-extractor.js?v=phase36-0"></script>
+  <script src="medical-record-ui.js?v=phase36-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase35-0"></script>
-  <script src="synthese-ui.js?v=phase35-0"></script>
-  <script src="audit-ui.js?v=phase35-0"></script>
-  <script src="entretien-ui.js?v=phase35-0"></script>
+  <script src="aortic-consultations.js?v=phase36-0"></script>
+  <script src="synthese-ui.js?v=phase36-0"></script>
+  <script src="audit-ui.js?v=phase36-0"></script>
+  <script src="entretien-ui.js?v=phase36-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase35-0"></script>
-  <script src="visio-jitsi.js?v=phase35-0"></script>
-  <script src="video-pilotee.js?v=phase35-0"></script>
+  <script src="document-import.js?v=phase36-0"></script>
+  <script src="visio-jitsi.js?v=phase36-0"></script>
+  <script src="video-pilotee.js?v=phase36-0"></script>
+  <script src="fiche-apa.js?v=phase36-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -652,6 +653,18 @@
        est, et ce qui reste. Ils sont cliquables, parce qu'un parcours
        qui interdit de revenir en arrière agace plus qu'il ne protège.
        ============================================================ */
+    .cf-modalite {
+      padding: 5px 11px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+    }
+    .cf-modalite:hover { border-color: #7dd3fc; color: #0369a1; background: #f0f9ff; }
+
     .cf-etape {
       flex: 1 1 150px;
       padding: 9px 12px;
@@ -3277,6 +3290,18 @@
                 <label class="control-label" for="cf_email">Email *</label>
                 <input type="email" id="cf_email" placeholder="patient@exemple.fr" />
               </div>
+              <div>
+                <label class="control-label" for="cf_height">Taille (cm)</label>
+                <input type="number" id="cf_height" min="80" max="230" step="0.5" placeholder="188" />
+              </div>
+              <div>
+                <label class="control-label" for="cf_weight">Poids (kg)</label>
+                <input type="number" id="cf_weight" min="20" max="250" step="0.1" placeholder="72" />
+              </div>
+              <div>
+                <label class="control-label" for="cf_profession">Profession</label>
+                <input type="text" id="cf_profession" placeholder="ex. Enseignante, temps partiel" />
+              </div>
             </div>
 
             <details style="margin-top:14px; border-top:1px solid var(--line); padding-top:12px;">
@@ -3455,11 +3480,7 @@
 
             <div id="creationEntretienMount" style="margin-bottom:18px;"></div>
 
-            <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; margin-bottom:14px;">
-              <div>
-                <label class="control-label" for="cf_profession">Profession / situation</label>
-                <input type="text" id="cf_profession" placeholder="ex. Enseignante, temps partiel" />
-              </div>
+            <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; margin-bottom:14px;">
               <div>
                 <label class="control-label" for="cf_status">Statut clinique</label>
                 <select id="cf_status">
@@ -3524,7 +3545,23 @@
               <textarea id="cf_synthObjectifs" rows="7"></textarea>
             </div>
 
-            <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; margin-top:18px; padding-top:14px; border-top:1px solid var(--line);">
+            <div style="margin-top:18px; padding-top:14px; border-top:1px solid var(--line);">
+              <label class="control-label" for="cf_modalites">Modalités proposées</label>
+              <input type="text" id="cf_modalites" placeholder="ex. séances supervisées en visioconférence, endurance et renforcement musculaire" />
+              <div id="cfModalitesChoix" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
+                <button type="button" class="cf-modalite" data-mod="séances supervisées">séances supervisées</button>
+                <button type="button" class="cf-modalite" data-mod="séances en visioconférence">en visioconférence</button>
+                <button type="button" class="cf-modalite" data-mod="séances en autonomie">en autonomie</button>
+                <button type="button" class="cf-modalite" data-mod="endurance">endurance</button>
+                <button type="button" class="cf-modalite" data-mod="renforcement musculaire">renforcement musculaire</button>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; margin-top:16px;">
+              <div>
+                <label class="control-label" for="cf_apaStart">Date d'entrée dans le programme APA</label>
+                <input type="date" id="cf_apaStart" />
+              </div>
               <div>
                 <label class="control-label" for="cf_inclusionDate">Date d'inclusion</label>
                 <input type="date" id="cf_inclusionDate" />
@@ -3546,6 +3583,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; gap:12px; flex-wrap:wrap;">
               <button type="button" class="btn-secondary" onclick="cfAllerEtape(3)">← Entretien</button>
               <span style="display:flex; gap:9px; align-items:center;">
+                <button class="btn-secondary" id="cf_ficheBtn" onclick="apercuFicheCreation()">🖨 Aperçu de la fiche</button>
                 <button class="btn-secondary" id="cf_pdfBtn" onclick="generatePatientPdfFromForm()" style="display:none;">📄 Générer le PDF</button>
                 <button class="btn-gradient" onclick="createPatientFromForm()" style="font-size:14.5px; padding:12px 22px;">✓ Valider et créer le dossier</button>
               </span>
@@ -7485,6 +7523,8 @@
     if ($('cf_inclusionDate') && !$('cf_inclusionDate').value) $('cf_inclusionDate').value = new Date().toISOString().slice(0, 10);
     // Phase 13.4 : date de l'évaluation du jour toujours = aujourd'hui (lecture seule)
     if ($('cf_aorticTodayDate')) $('cf_aorticTodayDate').value = new Date().toISOString().slice(0, 10);
+    // L'entrée dans le programme est le jour de l'inclusion, sauf correction.
+    if ($('cf_apaStart') && !$('cf_apaStart').value) $('cf_apaStart').value = new Date().toISOString().slice(0, 10);
     const fb = $('creationFeedback');
     if (fb) fb.style.display = 'none';
     // Masque le bouton PDF tant que le patient n'est pas créé
@@ -7563,6 +7603,50 @@
   }
   window.cfAjouterPiece = cfAjouterPiece;
 
+  // ============================================================
+  // Phase 36 — Modalités de prise en charge
+  // ------------------------------------------------------------
+  // Cinq puces plutôt qu'une liste de cases : elles composent la phrase que
+  // le soignant aurait écrite lui-même, et il reste libre de la reformuler.
+  // Recliquer une puce la retire — sans quoi une faute de clic obligeait à
+  // tout retaper.
+  // ============================================================
+  document.querySelectorAll('#cfModalitesChoix .cf-modalite').forEach(b => {
+    b.addEventListener('click', () => {
+      const champ = $('cf_modalites');
+      if (!champ) return;
+      const mot = b.dataset.mod || '';
+      const parts = (champ.value || '').split(',').map(x => x.trim()).filter(Boolean);
+      const i = parts.findIndex(x => x.toLowerCase() === mot.toLowerCase());
+      if (i >= 0) parts.splice(i, 1); else parts.push(mot);
+      champ.value = parts.join(', ');
+    });
+  });
+
+  /**
+   * Aperçu imprimable de la fiche, avant même que le dossier existe.
+   *
+   * On relit toujours mieux un document dans sa mise en page définitive que
+   * dans les champs qui l'ont produit : c'est là qu'on voit qu'une rubrique
+   * est trop longue, ou qu'une information essentielle manque au bandeau.
+   */
+  window.apercuFicheCreation = function () {
+    if (!window.FicheAPA) { alert('Module de fiche indisponible. Rechargez la page.'); return; }
+    const v = id => { const e = $(id); return e ? (e.value || '').trim() : ''; };
+    window.FicheAPA.imprimer({
+      code: v('cf_code'),
+      nom: v('cf_lastName'), prenom: v('cf_firstName'),
+      ipp: v('cf_ipp'), dob: v('cf_dob'), age: v('cf_age'), sexe: v('cf_sex'),
+      taille_cm: v('cf_height'), poids_kg: v('cf_weight'),
+      profession: v('cf_profession'),
+      gene: v('cf_gene'), variant: v('cf_variant'),
+      date_entree_apa: v('cf_apaStart'),
+      histoire: v('cf_synthEntree'),
+      difficultes: v('cf_synthObjectifs'),
+      modalites: v('cf_modalites')
+    });
+  };
+
   function resetCreationForm() {
     const ids = ['cf_code','cf_lastName','cf_firstName','cf_ipp','cf_center',
                  'cf_sex','cf_dob','cf_age','cf_initials','cf_email','cf_phone','cf_doctor','cf_address',
@@ -7586,7 +7670,8 @@
     // Phase 25 : les champs d'entretien et la synthèse font partie du
     // formulaire — les oublier laissait les notes du patient précédent.
     ['cf_profession', 'cf_difficultes', 'cf_objectifsPatient', 'cf_objectifsClinicien',
-     'cf_synthEntree', 'cf_synthObjectifs'].forEach(id => { if ($(id)) $(id).value = ''; });
+     'cf_synthEntree', 'cf_synthObjectifs', 'cf_height', 'cf_weight',
+     'cf_apaStart', 'cf_modalites'].forEach(id => { if ($(id)) $(id).value = ''; });
     ['cf_synthZone', 'cf_synthInfo'].forEach(id => { if ($(id)) $(id).style.display = 'none'; });
     // Le bandeau vert de l'import restait affiché : on repart d'un écran net.
     const impStatut = document.getElementById('cf_docStatut');
@@ -7929,7 +8014,13 @@
         email: $('cf_email').value,
         phone: $('cf_phone').value,
         doctor: $('cf_doctor').value,
-        address: $('cf_address').value
+        address: $('cf_address').value,
+        // Phase 36 : la profession, la taille et le poids figurent en tête de
+        // la fiche d'entrée. Elles étaient saisies mais jamais enregistrées —
+        // la synthèse les perdait dès la fiche créée.
+        profession: ($('cf_profession') && $('cf_profession').value) || '',
+        heightCm: ($('cf_height') && parseFloat($('cf_height').value)) || null,
+        weightKg: ($('cf_weight') && parseFloat($('cf_weight').value)) || null
       },
       medical: {
         dxDate: $('cf_dxDate').value,
@@ -7943,7 +8034,9 @@
       study: {
         inclusionDate: $('cf_inclusionDate').value,
         consent: $('cf_consent').value,
-        notes: $('cf_notes').value
+        notes: $('cf_notes').value,
+        apaStart: ($('cf_apaStart') && $('cf_apaStart').value) || '',
+        modalites: ($('cf_modalites') && $('cf_modalites').value) || ''
       },
       // Phase 12.1.6 : tableau d'évaluations vide à la création ; les évaluations seront
       // alimentées automatiquement par les imports CPET/Pulse Wave depuis le Dossier patient.
@@ -8599,9 +8692,12 @@
     const identite = {
       nom: val('cf_lastName'), prenom: val('cf_firstName'),
       sexe: val('cf_sex'), age: val('cf_age'),
+      date_naissance: val('cf_dob'),
+      taille_cm: val('cf_height'), poids_kg: val('cf_weight'),
       profession: val('cf_profession'),
       pathologie: 'Syndrome de Marfan',
-      gene: val('cf_gene'), variant: val('cf_variant')
+      gene: val('cf_gene'), variant: val('cf_variant'),
+      date_entree_apa: val('cf_apaStart')
     };
     Object.keys(identite).forEach(k => { if (!identite[k]) delete identite[k]; });
     if (Object.keys(identite).length > 1) dossier.identite = identite;
@@ -8618,6 +8714,9 @@
 
     if (val('cf_history'))    dossier.antecedents = val('cf_history');
     if (val('cf_treatments')) dossier.traitements = val('cf_treatments');
+    if (val('cf_baselinePA')) dossier.activite_physique_habituelle = val('cf_baselinePA');
+    if (val('cf_smoking') && val('cf_smoking') !== 'non') dossier.tabac = val('cf_smoking');
+    if (val('cf_modalites')) dossier.modalites_proposees = val('cf_modalites');
 
     const entretien = {
       difficultes_ressenties: val('cf_difficultes'),

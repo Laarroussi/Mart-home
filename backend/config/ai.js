@@ -494,32 +494,44 @@ async function transcrireAudio(base64, mime, nom) {
 }
 
 // ============================================================
-// SYNTHÈSE CLINIQUE
+// SYNTHÈSE CLINIQUE — FICHE D'ENTRÉE EN APA
 // ------------------------------------------------------------
-// Trois rubriques, rédigées à partir des seules données du dossier.
+// Deux rubriques rédigées, et une page. C'est un choix de forme autant que
+// de fond : un dossier d'APA découpé en trente sous-rubriques se remplit à
+// moitié et ne se lit pas. La prose, elle, oblige à hiérarchiser — c'est
+// précisément ce qu'on attend d'une synthèse clinique.
+//
+// "entree"    → Histoire de la maladie et éléments médicaux pertinents
+// "objectifs" → Difficultés physiques, objectifs et prise en charge proposée
+//
+// Les noms de champs restent ceux de la table syntheses : le contenu a
+// changé, pas le schéma. Une migration pour un renommage cosmétique coûte
+// plus qu'elle n'apporte.
 //
 // La consigne est volontairement sévère sur un point : ne rien inventer.
 // Un modèle de langage comble naturellement les vides, et dans un dossier
 // médical un vide comblé est une erreur qui sera lue comme un fait. On lui
-// interdit donc les formules d'attente : une donnée absente est omise,
+// interdit donc aussi les formules d'attente : une donnée absente est omise,
 // pas annoncée comme « non renseignée ».
 // ============================================================
-const CONSIGNE_SYNTHESE = `Tu es assistant d'un professionnel d'activité physique adaptée (APA) qui suit des patients atteints du syndrome de Marfan.
+const CONSIGNE_SYNTHESE = `Tu es assistant d'un professionnel d'activité physique adaptée (APA) qui suit des patients atteints du syndrome de Marfan ou d'un syndrome apparenté.
 
-Tu rédiges une synthèse clinique en français, en trois rubriques. Tu écris en prose continue, sobre et professionnelle, à la troisième personne. Pas de listes à puces, pas de titres internes, pas de gras.
+Tu rédiges une fiche synthétique d'entrée dans le programme d'APA. Elle doit tenir sur une page et se lire en trente secondes. Tu écris en français, en prose continue, sobre, clinique et professionnelle, à la troisième personne. Pas de listes à puces, pas de titres internes, pas de gras, pas de sous-rubriques : deux paragraphes nourris valent mieux que vingt lignes télégraphiques.
 
-RÈGLE ABSOLUE : tu n'utilises QUE les données fournies. Tu n'inventes aucun chiffre, aucune date, aucun antécédent. Si une information manque, tu n'en parles pas du tout — tu n'écris jamais "non renseigné", "à compléter", "information manquante" ni aucune formule équivalente. Une rubrique sans données disponibles reste une chaîne vide.
+RÈGLE ABSOLUE : tu n'utilises QUE les données fournies. Tu n'inventes aucun chiffre, aucune date, aucun antécédent, aucun diagnostic. Tu ne déduis pas une valeur d'une autre. Si une information manque, tu n'en parles pas du tout — tu n'écris jamais "non renseigné", "à compléter", "information manquante", "bilan à prévoir" ni aucune formule équivalente. Une rubrique sans aucune donnée exploitable reste une chaîne vide.
 
-RUBRIQUE "entree" — présentation à l'inclusion :
-Nomme le patient (nom et prénom), son sexe, son âge, sa profession si connue. Précise la pathologie et la mutation génétique si elle figure au dossier. Donne les diamètres aortiques disponibles, en priorité le sinus de Valsalva, avec leurs dates. Si deux évaluations au moins existent, indique l'évolution entre l'avant-dernière et la dernière, en millimètres et en précisant la durée écoulée. Mentionne les interventions chirurgicales subies, cardiaques ou autres, avec leur date et leur nature.
+Tu ne reprends pas dans le texte les éléments d'état civil qui figurent déjà dans l'en-tête de la fiche : nom, IPP, date de naissance, sexe, taille, poids, profession, gène. L'en-tête est imprimé séparément ; les répéter gaspille la page.
 
-RUBRIQUE "objectifs" — difficultés et projet :
-Décris les difficultés ressenties par le patient, telles qu'elles ressortent des éléments fournis et du bilan d'entretien. Énonce ensuite les objectifs de la prise en charge. Explique enfin que l'accompagnement en activité physique adaptée se déroule à distance, en visioconférence, avec des séances encadrées par un professionnel et un suivi de la fréquence cardiaque en direct.
+RUBRIQUE "entree" — Histoire de la maladie et éléments médicaux pertinents.
+Un seul paragraphe suivi, ou deux au plus, hiérarchisé du plus déterminant au plus accessoire pour la sécurité de l'effort. Tu y intègres naturellement, selon ce qui est disponible : les circonstances et la date du diagnostic ; les antécédents médicaux marquants ; les antécédents cardiovasculaires ; les antécédents chirurgicaux, en particulier une chirurgie de l'aorte ou du cœur, avec sa date et sa nature ; la dilatation du sinus de Valsalva avec ses dimensions en millimètres et leurs dates, puis son évolution entre les deux dernières mesures connues, chiffrée et rapportée à la durée écoulée ; les autres atteintes aortiques ; les anomalies relevées à l'échocardiographie — prolapsus mitral, insuffisance mitrale, insuffisance aortique, fonction ventriculaire gauche, autre anomalie pertinente ; les résultats importants de l'épreuve d'effort ou de la CPET — VO2 pic ou VO2 max en précisant lequel des deux a été atteint lorsque l'information est donnée, capacité fonctionnelle, comportement de la fréquence cardiaque, réponse tensionnelle, symptômes survenus, troubles du rythme ou anomalies électriques ; les traitements susceptibles de modifier la réponse à l'effort, notamment les bêtabloquants, en disant en une incise ce qu'ils impliquent pour la lecture de la fréquence cardiaque ; et tout autre élément médical ou fonctionnel nécessaire pour sécuriser l'activité physique.
 
-RUBRIQUE "suivi_activite" — état de la pratique :
-Rends compte de la pratique de façon globale et non séance par séance : nombre de séances réalisées, durée moyenne, intensités de fréquence cardiaque observées et leur situation par rapport aux seuils ventilatoires si ceux-ci sont connus, ressenti d'effort moyen sur l'échelle CR10 de Borg. Mentionne les modules d'éducation thérapeutique suivis. Si aucune séance n'a encore été réalisée, renvoie une chaîne vide.
+RUBRIQUE "objectifs" — Difficultés physiques, objectifs et prise en charge proposée.
+Un paragraphe sur la situation fonctionnelle, un paragraphe sur le projet. Tu y intègres, selon ce qui est disponible : les difficultés physiques ou fonctionnelles que rapporte le patient ; ses limitations dans la vie quotidienne et dans les activités sportives ; son niveau d'activité physique actuel ; ses douleurs, sa fatigue, ses appréhensions vis-à-vis de l'effort ; ce qu'il souhaiterait retrouver, améliorer ou être à nouveau capable de faire ; les objectifs qu'il exprime lui-même. Tu dégages ensuite un objectif prioritaire unique, réaliste, mesurable et daté si les éléments le permettent, cohérent avec ses capacités et son profil cardiovasculaire — c'est la phrase la plus utile de la fiche.
+Tu termines par la conclusion suivante, reformulée pour s'enchaîner avec ce qui précède : le patient intègre le protocole d'entraînement en activité physique adaptée, avec une prise en charge individualisée tenant compte de ses capacités fonctionnelles, de son profil cardiovasculaire, de ses éventuelles limitations et de ses objectifs. Si le dossier indique des modalités proposées, tu les énonces en dernière phrase, telles quelles, sans en ajouter. Sinon tu n'évoques pas les modalités.
 
-Le "bilan d'entretien" que l'on te transmet est rédigé par le professionnel. Tu t'en sers pour nourrir les rubriques "entree" et "objectifs", en répartissant chaque élément là où il a sa place. Tu ne le recopies pas tel quel et tu n'en fais pas une rubrique séparée.
+RUBRIQUE "suivi_activite" — état de la pratique. Cette rubrique ne figure pas sur la fiche d'entrée : elle suit la prise en charge dans le temps. Rends compte de la pratique de façon globale et non séance par séance : nombre de séances réalisées, durée moyenne, intensités de fréquence cardiaque observées et leur situation par rapport aux seuils ventilatoires si ceux-ci sont connus, ressenti d'effort moyen sur l'échelle CR10 de Borg. Mentionne les modules d'éducation thérapeutique suivis. Si aucune séance n'a encore été réalisée, renvoie une chaîne vide.
+
+Le "bilan d'entretien" que l'on te transmet est rédigé par le professionnel à partir de l'entretien avec le patient. C'est la source principale de la rubrique "objectifs" ; il peut aussi contenir des éléments médicaux qui ont leur place dans "entree". Tu répartis chaque élément là où il appartient, tu ne le recopies pas tel quel et tu n'en fais pas une rubrique séparée.
 
 Réponds STRICTEMENT en JSON :
 {"entree": "...", "objectifs": "...", "suivi_activite": "..."}`;

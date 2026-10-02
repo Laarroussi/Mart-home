@@ -141,17 +141,32 @@ async function assemblerDossier(patientId) {
     const pat = p.rows[0];
     const civil = pat.civil || {};
     const med = pat.medical || {};
+    const etude = pat.study || {};
     d.identite = {
       code_etude: pat.id,
       nom: civil.lastName || civil.nom || null,
       prenom: civil.firstName || civil.prenom || null,
+      ipp: civil.ipp || null,
+      date_naissance: civil.dob || null,
       sexe: pat.sex || null,
       age: pat.age || null,
+      taille_cm: civil.heightCm || null,
+      poids_kg: civil.weightKg || null,
       profession: civil.profession || civil.metier || null,
       pathologie: med.pathologie || 'Syndrome de Marfan',
       gene: pat.gene || med.gene || null,
-      mutation: med.mutation || null
+      mutation: med.mutation || med.variant || null,
+      date_diagnostic: med.dxDate || null,
+      date_entree_apa: etude.apaStart || etude.inclusionDate || null
     };
+    // Éléments de mode de vie et traitements : ils changent la lecture de la
+    // fréquence cardiaque à l'effort, donc la prescription des zones.
+    if (med.treatments) d.traitements = med.treatments;
+    if (med.history)    d.antecedents_saisis = med.history;
+    if (med.allergies)  d.allergies = med.allergies;
+    if (med.smoking && med.smoking !== 'non') d.tabac = med.smoking;
+    if (med.baselinePA) d.activite_physique_habituelle = med.baselinePA;
+    if (etude.modalites) d.modalites_proposees = etude.modalites;
     // On retire les clés vides : rien ne doit ressembler à un trou à combler.
     Object.keys(d.identite).forEach(k => { if (d.identite[k] == null) delete d.identite[k]; });
   }
@@ -210,11 +225,27 @@ async function assemblerDossier(patientId) {
   }
 
   // --- Échocardiographies : sites aortiques mesurés --------------------
+  // Les diamètres ne disent rien du prolapsus mitral, d'une insuffisance
+  // valvulaire ou de la fonction ventriculaire : ces éléments ne vivent que
+  // dans les paragraphes descriptifs du compte rendu. Les omettre privait la
+  // synthèse de tout ce qui conditionne la sécurité de l'effort.
   const echo = await query(
-    `SELECT exam_date, sinus_valsalva_mm, aorte_ascendante_mm, aorte_max_mm, aorte_site_max, fevg_bp_pct
+    `SELECT exam_date, sinus_valsalva_mm, aorte_ascendante_mm, aorte_max_mm,
+            aorte_site_max, fevg_bp_pct, fe_teicholz_pct,
+            valve_mitrale_texte, valve_aortique_texte, valve_tricuspide_texte,
+            vg_texte, vd_texte, gros_vaisseaux_texte, conclusion
        FROM echo_reports WHERE patient_id = $1
       ORDER BY exam_date DESC NULLS LAST LIMIT 3`, [patientId]).catch(() => ({ rows: [] }));
-  if (echo.rows.length) d.echocardiographies = echo.rows;
+  if (echo.rows.length) {
+    d.echocardiographies = echo.rows.map(r => {
+      const o = {};
+      Object.keys(r).forEach(k => {
+        const v = r[k];
+        if (v !== null && v !== undefined && String(v).trim() !== '') o[k] = v;
+      });
+      return o;
+    });
+  }
 
   // --- Activité physique réalisée : moyennes, jamais le détail ---------
   const s = await query(
@@ -235,27 +266,64 @@ async function assemblerDossier(patientId) {
     });
   }
 
-  // --- Seuils ventilatoires, pour situer les intensités ----------------
+  // --- Épreuve d'effort : seuils, mais aussi facteurs pronostiques -------
+  // On transmet la nature du pic (VO2 max confirmé par un plateau, ou VO2
+  // pic) plutôt que de laisser le modèle trancher : la distinction a des
+  // conséquences cliniques et ne se devine pas depuis une valeur isolée.
   const ev = await query(
-    `SELECT eval_date, vo2, sv1, sv2, fc_max, thresholds
+    `SELECT eval_date, label, note, vo2, sv1, sv2, watts, fc_max,
+            ve_vco2_slope, thresholds
        FROM evaluations WHERE patient_id = $1
       ORDER BY eval_date DESC NULLS LAST LIMIT 1`, [patientId]).catch(() => ({ rows: [] }));
   if (ev.rows.length) {
     const e = ev.rows[0];
     const t = e.thresholds || {};
-    const seuils = {};
-    if (e.eval_date) seuils.date_epreuve = e.eval_date;
-    if (t.sv1Fc) seuils.sv1_fc = t.sv1Fc;
-    if (t.sv2Fc) seuils.sv2_fc = t.sv2Fc;
-    if (t.fcPeak || e.fc_max) seuils.fc_pic = t.fcPeak || e.fc_max;
-    if (e.vo2 != null) seuils.vo2_pic = Number(e.vo2);
-    if (e.sv1 != null) seuils.sv1_vo2 = Number(e.sv1);
-    if (e.sv2 != null) seuils.sv2_vo2 = Number(e.sv2);
-    // Une seule date ne constitue pas un seuil : on n'envoie le bloc que s'il
-    // contient au moins une mesure exploitable.
-    if (Object.keys(seuils).filter(k => k !== 'date_epreuve').length) {
-      d.seuils_ventilatoires = seuils;
+    const ep = {};
+    const met = (k, v) => { if (v !== null && v !== undefined && v !== '') ep[k] = v; };
+    met('date_epreuve', e.eval_date);
+    met('intitule', e.label);
+    met('nature_du_pic', t.natureVo2 === 'VO2max'
+      ? 'VO2 max — effort maximal confirmé par un plateau de consommation'
+      : (t.natureVo2 === 'VO2pic' ? 'VO2 pic — effort maximal non confirmé' : null));
+    met('criteres_de_maximalite', t.criteres || null);
+    met('vo2_pic_ml_kg_min', e.vo2 != null ? Number(e.vo2) : null);
+    met('sv1_vo2_l_min', e.sv1 != null ? Number(e.sv1) : null);
+    met('sv2_vo2_l_min', e.sv2 != null ? Number(e.sv2) : null);
+    met('sv1_fc', t.sv1Fc); met('sv2_fc', t.sv2Fc);
+    met('fc_repos', t.fcRepos);
+    met('fc_pic', t.fcPeak || e.fc_max);
+    met('watts_pic', e.watts);
+    met('ve_vco2_pente', e.ve_vco2_slope != null ? Number(e.ve_vco2_slope) : (t.veVco2Pente || null));
+    met('oues_ml_min', t.oues); met('oues_par_kg', t.ouesParKg);
+    met('zones_entrainement_fc', t.zones || null);
+    met('commentaire', e.note);
+    if (Object.keys(ep).filter(k => k !== 'date_epreuve' && k !== 'intitule').length) {
+      d.epreuve_effort = ep;
+      // Conservé sous son ancien nom : d'autres appels lisent cette clé.
+      d.seuils_ventilatoires = {
+        date_epreuve: ep.date_epreuve, sv1_fc: ep.sv1_fc, sv2_fc: ep.sv2_fc,
+        fc_pic: ep.fc_pic, vo2_pic: ep.vo2_pic_ml_kg_min,
+        sv1_vo2: ep.sv1_vo2_l_min, sv2_vo2: ep.sv2_vo2_l_min
+      };
+      Object.keys(d.seuils_ventilatoires).forEach(k => {
+        if (d.seuils_ventilatoires[k] == null) delete d.seuils_ventilatoires[k];
+      });
     }
+  }
+
+  // --- Symptômes, troubles du rythme et autres faits datés --------------
+  // Ce que l'épreuve d'effort a révélé d'anormal n'est pas chiffré : il est
+  // décrit. Ces lignes viennent de la lecture des comptes rendus.
+  const faits = await query(
+    `SELECT event_date, category, label, detail
+       FROM medical_timeline
+      WHERE patient_id = $1 AND statut <> 'rejete'
+        AND category IN ('traitement', 'diagnostic', 'examen', 'biologie', 'autre')
+      ORDER BY event_date ASC NULLS LAST LIMIT 60`, [patientId]).catch(() => ({ rows: [] }));
+  if (faits.rows.length) {
+    d.faits_cliniques = faits.rows.map(f => ({
+      date: f.event_date, categorie: f.category, libelle: f.label, detail: f.detail
+    }));
   }
 
   // --- Éducation thérapeutique suivie ----------------------------------

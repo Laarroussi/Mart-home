@@ -40,13 +40,16 @@
     if (typeof window.toast === 'function') window.toast(msg, type || 'info', 6000);
   }
 
+  // Les deux premières rubriques composent la fiche d'entrée imprimable, une
+  // page que l'on glisse dans le dossier hospitalier. La troisième n'y figure
+  // pas : elle décrit la pratique et se réécrit à chaque consultation.
   var RUBRIQUES = [
-    { cle: 'entree', titre: "Synthèse d'entrée", icone: '📋',
-      aide: "Identité, pathologie et gène, profession, diamètres aortiques et leur évolution, interventions." },
-    { cle: 'objectifs', titre: 'Difficultés et objectifs', icone: '🎯',
-      aide: "Ce que le patient ressent, ce que vous visez avec lui, et l'organisation de l'activité physique adaptée à distance." },
+    { cle: 'entree', titre: 'Histoire de la maladie et éléments médicaux pertinents', icone: '📋',
+      aide: "Circonstances du diagnostic, antécédents, chirurgie aortique, sinus de Valsalva et son évolution, anomalies échographiques, résultats de l'épreuve d'effort, traitements influençant la réponse à l'effort. Un texte suivi, pas une liste." },
+    { cle: 'objectifs', titre: 'Difficultés physiques, objectifs et prise en charge proposée', icone: '🎯',
+      aide: "Difficultés et limitations rapportées, niveau d'activité actuel, douleurs, fatigue, appréhensions, ce que le patient souhaite retrouver, un objectif prioritaire mesurable, puis la prise en charge proposée et ses modalités." },
     { cle: 'suivi_activite', titre: "Suivi de l'activité physique", icone: '📈',
-      aide: "Nombre de séances, durée moyenne, intensités, ressenti CR10, éducation thérapeutique. À régénérer à chaque consultation." }
+      aide: "Hors fiche d'entrée. Nombre de séances, durée moyenne, intensités, ressenti CR10, éducation thérapeutique. À régénérer à chaque consultation." }
   ];
 
   function gabarit() {
@@ -60,6 +63,7 @@
         '<button id="synGenBtn" class="btn-light" style="font-weight:700;">✨ Rédiger avec l\'IA</button>' +
         '<button id="synSaveBtn" class="btn-light" style="font-weight:700;">💾 Enregistrer le brouillon</button>' +
         '<button id="synValidBtn" class="btn-light" style="font-weight:700; background:#065f46; color:white; border-color:#065f46;">✓ Valider la synthèse</button>' +
+        '<button id="synFicheBtn" class="btn-light" style="font-weight:700;">🖨 Fiche d\'entrée</button>' +
       '</div>' +
 
 
@@ -261,8 +265,46 @@
     evolution_derniere: 'évolution du dernier diamètre', operations: 'interventions',
     echocardiographies: 'échocardiographies', activite_physique: 'séances réalisées',
     seuils_ventilatoires: 'seuils ventilatoires', education_therapeutique: 'éducation thérapeutique',
+    epreuve_effort: "épreuve d'effort", faits_cliniques: 'faits relevés dans les documents',
+    traitements: 'traitements', antecedents_saisis: 'antécédents saisis',
+    activite_physique_habituelle: 'activité physique habituelle', tabac: 'tabac',
+    allergies: 'allergies', modalites_proposees: 'modalités proposées',
     bilan_entretien: "bilan d'entretien"
   };
+
+  /**
+   * Impression de la fiche d'entrée en APA, sur une page.
+   *
+   * Les données d'état civil viennent de la cohorte chargée en mémoire et non
+   * de la synthèse : la synthèse est de la prose, et répéter le nom ou le
+   * poids dans le texte ferait doublon avec l'en-tête imprimé. La consigne
+   * donnée à l'IA le lui interdit d'ailleurs explicitement.
+   */
+  function imprimerFiche() {
+    if (!window.FicheAPA) {
+      info("Module de fiche indisponible. Rechargez la page.", 'erreur');
+      return;
+    }
+    lireChamps();
+    if (!(_etat.entree || '').trim() && !(_etat.objectifs || '').trim()) {
+      info("Rien à imprimer : les deux rubriques de la fiche sont vides.", 'alerte');
+      return;
+    }
+    var p = (window.patients || []).find(function (x) { return x.id === _patientId; }) || {};
+    var c = p.civil || {}, m = p.medical || {}, e = p.study || {};
+    window.FicheAPA.imprimer({
+      code: p.id || _patientId,
+      nom: c.lastName || c.nom || '', prenom: c.firstName || c.prenom || '',
+      ipp: c.ipp || '', dob: c.dob || '', age: p.age || '', sexe: p.sex || '',
+      taille_cm: c.heightCm || '', poids_kg: c.weightKg || '',
+      profession: c.profession || c.metier || '',
+      gene: p.gene || '', variant: m.variant || '',
+      date_entree_apa: e.apaStart || e.inclusionDate || '',
+      histoire: _etat.entree,
+      difficultes: _etat.objectifs,
+      modalites: e.modalites || ''
+    });
+  }
 
   async function generer() {
     if (_chargement) return;
@@ -371,6 +413,7 @@
     var g = el('synGenBtn'); if (g) g.addEventListener('click', generer);
     var s = el('synSaveBtn'); if (s) s.addEventListener('click', enregistrer);
     var v = el('synValidBtn'); if (v) v.addEventListener('click', valider);
+    var f = el('synFicheBtn'); if (f) f.addEventListener('click', imprimerFiche);
     // Entretien enregistré : ce qui en est retenu alimente le bilan
     // d'entretien juste en dessous, qui nourrit à son tour la synthèse.
     try {
