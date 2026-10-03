@@ -12,28 +12,28 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase36-0"></script>
+  <script src="api-client.js?v=phase37-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase36-0"></script>
+  <script src="questionnaires-defs.js?v=phase37-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase36-0"></script>
+  <script src="medical-parsers.js?v=phase37-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase36-0"></script>
-  <script src="cpet-analyse.js?v=phase36-0"></script>
+  <script src="cpet-graph-preview.js?v=phase37-0"></script>
+  <script src="cpet-analyse.js?v=phase37-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase36-0"></script>
-  <script src="medical-record-ui.js?v=phase36-0"></script>
+  <script src="pdf-extractor.js?v=phase37-0"></script>
+  <script src="medical-record-ui.js?v=phase37-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase36-0"></script>
-  <script src="synthese-ui.js?v=phase36-0"></script>
-  <script src="audit-ui.js?v=phase36-0"></script>
-  <script src="entretien-ui.js?v=phase36-0"></script>
+  <script src="aortic-consultations.js?v=phase37-0"></script>
+  <script src="synthese-ui.js?v=phase37-0"></script>
+  <script src="audit-ui.js?v=phase37-0"></script>
+  <script src="entretien-ui.js?v=phase37-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase36-0"></script>
-  <script src="visio-jitsi.js?v=phase36-0"></script>
-  <script src="video-pilotee.js?v=phase36-0"></script>
-  <script src="fiche-apa.js?v=phase36-0"></script>
+  <script src="document-import.js?v=phase37-0"></script>
+  <script src="visio-jitsi.js?v=phase37-0"></script>
+  <script src="video-pilotee.js?v=phase37-0"></script>
+  <script src="fiche-apa.js?v=phase37-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -5642,6 +5642,36 @@
     {id:'cap-gpaq', title:'Activité physique quotidienne', theme:'GPAQ', duration:'3 min', description:'Comprendre les domaines du GPAQ : travail, déplacements, loisirs et sédentarité.', english:'Daily physical activity', image:'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=720&q=70',
       preQuestionnaire:{ title:'Diagnostique — Avant la vidéo', items:3, questions:['Connaissez-vous le GPAQ ?','Quels domaines mesure-t-il ?','Que mesure-t-on en MET-min ?'] },
       postQuestionnaire:{ title:'Sommatif — Après la vidéo', items:4, questions:['Citez les 4 domaines du GPAQ.','Définissez 1 MET.','Quel volume hebdomadaire d\'AP est recommandé ?','Quel est le seuil de sédentarité ?'] }
+    },
+
+    // ============================================================
+    // Phase 37 — Thématiques du programme d'éducation thérapeutique
+    // ------------------------------------------------------------
+    // Les titres et les questionnaires précèdent le tournage : écrire les
+    // questions d'abord oblige à décider ce que la capsule doit faire
+    // comprendre, et la vidéo se tourne ensuite pour y répondre. L'inverse
+    // produit des questionnaires taillés après coup sur un contenu déjà figé.
+    // Chaque carte porte « Vidéo à venir » tant que le fichier manque.
+    // ============================================================
+    {id:'cap-traitement', title:'Mes traitements et l\'effort', theme:'Bêtabloquants · Sartans', duration:'4 min', description:'Pourquoi votre traitement modifie votre fréquence cardiaque à l\'effort, et ce que cela change pour vos séances.', english:'My medication and exercise', image:'',
+      preQuestionnaire:{ title:'Diagnostique — Avant la vidéo', items:4, questions:['Savez-vous à quoi sert votre bêtabloquant ?','Votre traitement modifie-t-il votre fréquence cardiaque à l\'effort ?','Faut-il prendre son traitement avant une séance ?','Que faire si vous oubliez une prise un jour de séance ?'] },
+      postQuestionnaire:{ title:'Sommatif — Après la vidéo', items:5, questions:['Quel effet le bêtabloquant a-t-il sur la fréquence cardiaque, au repos et au pic ?','Pourquoi vos zones d\'entraînement sont-elles calculées sur vos seuils mesurés, et non sur « 220 moins l\'âge » ?','À quoi sert un sartan comme le losartan dans le syndrome de Marfan ?','Peut-on arrêter son traitement parce qu\'on se sent en forme ?','Pourquoi se relever brusquement après l\'effort peut-il provoquer un malaise ?'] }
+    },
+    {id:'cap-securite', title:'M\'entraîner en sécurité', theme:'Sécurité · Limites', duration:'4 min', description:'Ce qui est permis, ce qui ne l\'est pas, et les signaux qui imposent d\'arrêter la séance sur-le-champ.', english:'Training safely', image:'',
+      preQuestionnaire:{ title:'Diagnostique — Avant la vidéo', items:4, questions:['Savez-vous quelle intensité vous est recommandée ?','Connaissez-vous les efforts qui vous sont contre-indiqués ?','Que faites-vous en cas de douleur thoracique pendant une séance ?','Pouvez-vous vous entraîner seul ou seule ?'] },
+      postQuestionnaire:{ title:'Sommatif — Après la vidéo', items:5, questions:['Citez trois situations qui imposent d\'interrompre immédiatement la séance.','Pourquoi les efforts brefs et maximaux sont-ils déconseillés ?','Quelle place occupent l\'échauffement et le retour au calme ?','Qui prévenir, et dans quel délai, après un incident survenu pendant une séance ?','Un essoufflement progressif en endurance est-il un signe d\'alerte ?'] }
+    },
+    {id:'cap-charge', title:'Qu\'est-ce qu\'une charge lourde ?', theme:'Renforcement · Charges', duration:'4 min', description:'Des repères concrets pour juger si une charge est trop lourde, et travailler sa force sans bloquer sa respiration.', english:'What counts as a heavy load?', image:'',
+      preQuestionnaire:{ title:'Diagnostique — Avant la vidéo', items:4, questions:['Savez-vous à partir de quel poids une charge devient lourde pour vous ?','Connaissez-vous la notion de répétitions maximales ?','Que se passe-t-il dans l\'aorte quand on bloque sa respiration en poussant ?','Portez-vous régulièrement des charges dans votre quotidien ?'] },
+      postQuestionnaire:{ title:'Sommatif — Après la vidéo', items:5, questions:['Comment juger qu\'une charge est trop lourde, sans appareil de mesure ?','Combien de répétitions devez-vous pouvoir enchaîner pour qu\'une charge soit adaptée ?','Pourquoi la manœuvre de Valsalva augmente-t-elle la contrainte sur l\'aorte ?','Comment respirer pendant la phase d\'effort d\'un exercice de force ?','Citez deux gestes du quotidien qui équivalent à une charge lourde.'] }
+    },
+    {id:'cap-discipline', title:'Adapter mon sport plutôt que l\'arrêter', theme:'Sport · Adaptation', duration:'5 min', description:'Transformer une discipline que l\'on aime en une pratique compatible avec le suivi aortique, au lieu d\'y renoncer.', english:'Adapting my sport rather than giving it up', image:'',
+      preQuestionnaire:{ title:'Diagnostique — Avant la vidéo', items:4, questions:['Avez-vous arrêté une activité depuis le diagnostic ?','Savez-vous ce qui rend une discipline à risque dans le syndrome de Marfan ?','Pensez-vous qu\'un sport puisse être adapté plutôt qu\'interdit ?','Quelles disciplines vous ont été déconseillées ?'] },
+      postQuestionnaire:{ title:'Sommatif — Après la vidéo', items:5, questions:['Quels caractères rendent une discipline à risque : contact, effort statique maximal, compétition ?','Citez une adaptation qui vous permettrait de continuer une discipline qui vous tient à cœur.','Pourquoi la compétition pose-t-elle un problème particulier ?','Que faire avant de reprendre une discipline interrompue ?','La plongée sous-marine est-elle compatible, et pour quelle raison ?'] }
+    },
+    {id:'cap-nutrition', title:'Nutrition et activité physique', theme:'Nutrition · Énergie', duration:'4 min', description:'S\'alimenter pour soutenir l\'effort — sans régime restrictif, qui n\'a pas sa place ici.', english:'Nutrition and physical activity', image:'',
+      preQuestionnaire:{ title:'Diagnostique — Avant la vidéo', items:4, questions:['Mangez-vous différemment les jours de séance ?','Pensez-vous qu\'il faille suivre un régime particulier ?','Savez-vous quand boire pendant un effort ?','Connaissez-vous vos besoins en protéines ?'] },
+      postQuestionnaire:{ title:'Sommatif — Après la vidéo', items:5, questions:['Un régime restrictif a-t-il sa place dans le syndrome de Marfan ?','À quel moment prendre son repas par rapport à une séance ?','Quel apport en protéines accompagne un travail de renforcement ?','Comment adapter ses boissons pendant et après l\'effort ?','Quel risque fait courir une perte de poids rapide au moment de la reprise ?'] }
     }
   ];
 
@@ -9657,7 +9687,9 @@
       const postCompleted = postDone;
       return `
       <article class="card edu-card" style="display:flex; flex-direction:column;">
-        <img class="edu-card-img" src="${c.image}" alt="${c.title}" loading="lazy" onerror="this.style.background='var(--gradient-cool)'; this.removeAttribute('src');">
+        ${c.image
+          ? `<img class="edu-card-img" src="${c.image}" alt="${c.title}" loading="lazy" onerror="this.style.background='var(--gradient-cool)'; this.removeAttribute('src');">`
+          : `<div class="edu-card-img" style="background:var(--gradient-cool);"></div>`}
         <div class="edu-card-body" style="flex:1; display:flex; flex-direction:column;">
           <h3>${c.title}</h3>
           <span class="english">EN · ${c.english}</span>
