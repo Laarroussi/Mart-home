@@ -257,6 +257,37 @@
       donnees: (patientId)       => request('GET',  `/synthese/${patientId}/donnees`)
     },
 
+    /** ===== Bilans datés du parcours : entrée, intermédiaires, sortie ===== */
+    bilans: {
+      liste:    (patientId)        => request('GET',  `/bilans/${patientId}`),
+      // Agrégat de la période à venir, consultable avant de faire rédiger.
+      donnees:  (patientId, q)     => request('GET',  `/bilans/${patientId}/donnees` +
+                                        (q ? '?' + new URLSearchParams(q).toString() : '')),
+      creer:    (patientId, data)  => request('POST', `/bilans/${patientId}`, data || {}),
+      enregistrer: (id, data)      => request('PUT',  `/bilans/${id}`, data),
+      valider:  (id, data)         => request('POST', `/bilans/${id}/valider`, data),
+      supprimer:(id)               => request('DELETE', `/bilans/${id}`)
+    },
+
+    /** ===== Études cliniques et cahier d'observation (eCRF) ===== */
+    etudes: {
+      liste:     ()            => request('GET',    '/etudes'),
+      detail:    (id)          => request('GET',    `/etudes/${id}`),
+      creer:     (data)        => request('POST',   '/etudes', data),
+      modifier:  (id, data)    => request('PUT',    `/etudes/${id}`, data),
+      supprimer: (id)          => request('DELETE', `/etudes/${id}`),
+      // Cahier d'observation : chapitres puis variables
+      ajouterSection:   (id, data)  => request('POST',   `/etudes/${id}/sections`, data),
+      modifierSection:  (sid, data) => request('PUT',    `/etudes/sections/${sid}`, data),
+      supprimerSection: (sid)       => request('DELETE', `/etudes/sections/${sid}`),
+      ajouterVariable:  (sid, data) => request('POST',   `/etudes/sections/${sid}/variables`, data),
+      modifierVariable: (vid, data) => request('PUT',    `/etudes/variables/${vid}`, data),
+      supprimerVariable:(vid)       => request('DELETE', `/etudes/variables/${vid}`),
+      // Rattachement d'un patient ; etude_id null = aucune étude
+      rattacher: (patientId, etudeId) =>
+        request('PUT', `/etudes/patients/${patientId}`, { etude_id: etudeId })
+    },
+
     /** ===== Pièces versées par les participants ===== */
     pieces: {
       // Côté patient : dépôt et suivi

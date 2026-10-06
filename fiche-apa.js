@@ -157,6 +157,15 @@
       .fa-pied { font-size: 11.5px; color: #94a3b8; border-top: 1px solid #e8edf4;
         padding-top: 8px; }
 
+      .fa-bilan { margin-top: 20px; }
+      .fa-bilan-tete { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+        padding-bottom: 6px; margin-bottom: 12px; border-bottom: 2px solid #0f766e; }
+      .fa-bilan-titre { font-size: 15px; font-weight: 800; color: #0f766e; margin: 0; }
+      .fa-periode { font-size: 11.5px; color: #64748b; font-weight: 600; }
+      .fa-valide { margin-left: auto; font-size: 11px; font-weight: 700; color: #065f46; }
+      .fa-brouillon { margin-left: auto; font-size: 11px; font-weight: 800; color: #b45309;
+        background: #fffbeb; border: 1px solid #fde68a; border-radius: 5px; padding: 2px 7px; }
+
       /* À l'impression : la fiche seule, sur une page, sans décor. */
       @media print {
         body > *:not(#ficheApaImpression) { display: none !important; }
@@ -164,6 +173,12 @@
         .fiche-apa { border: 0; border-radius: 0; padding: 0; max-width: none;
           font-size: 11pt; line-height: 1.45; }
         .fa-rub p { orphans: 3; widows: 3; }
+        /* Un bilan coupé en deux par un saut de page se relit mal : chacun
+           commence sur sa propre page dès qu'il y en a plusieurs. */
+        .fa-saut { break-before: page; page-break-before: always; }
+        .fa-bilan { break-inside: auto; }
+        .fa-bilan-tete { break-after: avoid; page-break-after: avoid; }
+        .fa-rub h3 { break-after: avoid; page-break-after: avoid; }
         @page { margin: 16mm 15mm; }
       }
     `;
@@ -186,5 +201,98 @@
     window.print();
   }
 
-  window.FicheAPA = { construire, injecterStyle, imprimer };
+  /**
+   * Document multi-bilans : le parcours complet du patient.
+   *
+   * L'en-tête d'identité n'est imprimé qu'une fois, en tête du document. La
+   * répéter avant chaque bilan gonflerait le dossier sans rien apprendre, et
+   * un document de sortie qui fait dix pages n'est pas lu.
+   *
+   * Chaque bilan commence sur une nouvelle page lorsqu'il y en a plusieurs :
+   * on les consulte séparément, et un bilan coupé en deux par un saut de
+   * page se relit mal.
+   */
+  function construireParcours(ident, bilans, options) {
+    ident = ident || {};
+    bilans = bilans || [];
+    options = options || {};
+    const plusieurs = bilans.length > 1;
+
+    const corps = bilans.map((b, i) => {
+      const sections = (b.sections || [])
+        .filter(x => String(x[1] || '').trim())
+        .map(x => {
+          const paras = String(x[1]).split(/\n{2,}|\n/).map(t => t.trim()).filter(Boolean)
+            .map(t => '<p>' + ech(t) + '</p>').join('');
+          return '<section class="fa-rub"><h3>' + ech(x[0]) + '</h3>' + paras + '</section>';
+        }).join('');
+
+      if (!sections) return '';
+
+      const etat = b.brouillon
+        ? '<span class="fa-brouillon">brouillon — non validé</span>'
+        : (b.valide_le
+            ? '<span class="fa-valide">validé le ' + jour(b.valide_le) +
+              (b.auteur ? ' par ' + ech(b.auteur) : '') + '</span>'
+            : '');
+
+      return '<div class="fa-bilan' + (plusieurs && i > 0 ? ' fa-saut' : '') + '">' +
+        '<div class="fa-bilan-tete">' +
+          '<h3 class="fa-bilan-titre">' + ech(b.titre || 'Bilan') + '</h3>' +
+          (b.periode ? '<span class="fa-periode">' + ech(b.periode) + '</span>' : '') +
+          etat +
+        '</div>' + sections + '</div>';
+    }).join('');
+
+    const nom = [ident.nom, ident.prenom].filter(Boolean).join(' ').trim();
+    const age = ageDepuis(ident.dob, ident.age);
+    const champs = [
+      ['IPP', ident.ipp],
+      ['Naissance', ident.dob ? jour(ident.dob) + (age != null ? ' (' + age + ' ans)' : '')
+                              : (age != null ? age + ' ans' : '')],
+      ['Sexe', ident.sexe],
+      ['Taille', ident.taille_cm ? ident.taille_cm + ' cm' : ''],
+      ['Poids', ident.poids_kg ? ident.poids_kg + ' kg' : ''],
+      ['Profession', ident.profession],
+      ['Diagnostic', ident.diagnostic || 'Syndrome de Marfan'],
+      ['Gène', [ident.gene, ident.variant].filter(Boolean).join(' — ')],
+      ['Entrée APA', jour(ident.date_entree_apa)]
+    ].filter(x => x[1] !== '' && x[1] != null);
+
+    return '<article class="fiche-apa">' +
+      '<header class="fa-tete">' +
+        '<div class="fa-titre">' +
+          '<h2>' + (nom ? ech(nom) : 'Dossier patient') + '</h2>' +
+          '<span>' + ech(options.titre || 'Activité physique adaptée') + '</span>' +
+        '</div>' +
+        (ident.code ? '<span class="fa-code">' + ech(ident.code) + '</span>' : '') +
+      '</header>' +
+      '<div class="fa-bandeau">' +
+        champs.map(([k, v]) => '<div class="fa-champ"><span class="fa-k">' + ech(k) +
+          '</span><span class="fa-v">' + ech(v) + '</span></div>').join('') +
+      '</div>' +
+      (ident.modalites
+        ? '<p class="fa-mod"><strong>Modalités :</strong> ' + ech(ident.modalites) + '.</p>'
+        : '') +
+      corps +
+    '</article>';
+  }
+
+  function imprimerParcours(ident, bilans, options) {
+    injecterStyle();
+    let hote = document.getElementById('ficheApaImpression');
+    if (!hote) {
+      hote = document.createElement('div');
+      hote.id = 'ficheApaImpression';
+      document.body.appendChild(hote);
+    }
+    hote.style.display = 'none';
+    hote.innerHTML = construireParcours(ident, bilans, options);
+    window.print();
+  }
+
+  window.FicheAPA = {
+    construire, injecterStyle, imprimer,
+    construireParcours, imprimerParcours
+  };
 })();

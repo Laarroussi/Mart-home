@@ -349,9 +349,32 @@
   // ============================================================
   // Montage
   // ============================================================
+  /**
+   * Monte le bloc d'entretien dans un conteneur.
+   *
+   * Le gabarit emploie des identifiants fixes (entRecBtn, entChrono…). Deux
+   * montages simultanés — un dans la création, un dans le dossier — créaient
+   * donc des identifiants en double : el() renvoyait toujours le premier
+   * trouvé, et les boutons du second bloc ne répondaient plus. Un garde avait
+   * été posé dans l'appelant pour éviter le second montage, ce qui faisait
+   * disparaître l'entretien de la création dès qu'un dossier avait été
+   * ouvert — le défaut constaté.
+   *
+   * La règle est posée ici plutôt que chez l'appelant : un seul bloc vit à la
+   * fois, et monter ailleurs démonte le précédent. Un enregistrement en cours
+   * fait exception, car le perdre serait pire que de refuser le déplacement.
+   */
   function monter(conteneurId, options) {
-    _hote = el(conteneurId);
-    if (!_hote) return;
+    var cible = el(conteneurId);
+    if (!cible) return;
+    if (_hote && _hote !== cible) {
+      if (estEnCours()) {
+        console.warn('[entretien] enregistrement en cours : bloc laissé en place.');
+        return;
+      }
+      _hote.innerHTML = '';
+    }
+    _hote = cible;
     _options = options || {};
     _hote.innerHTML = gabarit();
 

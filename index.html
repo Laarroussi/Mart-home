@@ -2,6 +2,12 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
+  <!-- Safari conserve volontiers une page déjà vue, y compris quand le
+       serveur l'interdit : ces en-têtes doublent la consigne du .htaccess,
+       pour qu'un déploiement de sécurité ne reste pas invisible côté poste. -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Marfan APA — Espace investigateur</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,29 +18,31 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase38-0"></script>
+  <script src="api-client.js?v=phase41-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase38-0"></script>
+  <script src="questionnaires-defs.js?v=phase41-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase38-0"></script>
+  <script src="medical-parsers.js?v=phase41-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase38-0"></script>
-  <script src="cpet-analyse.js?v=phase38-0"></script>
+  <script src="cpet-graph-preview.js?v=phase41-0"></script>
+  <script src="cpet-analyse.js?v=phase41-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase38-0"></script>
-  <script src="medical-record-ui.js?v=phase38-0"></script>
+  <script src="pdf-extractor.js?v=phase41-0"></script>
+  <script src="medical-record-ui.js?v=phase41-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase38-0"></script>
-  <script src="synthese-ui.js?v=phase38-0"></script>
-  <script src="audit-ui.js?v=phase38-0"></script>
-  <script src="entretien-ui.js?v=phase38-0"></script>
+  <script src="aortic-consultations.js?v=phase41-0"></script>
+  <script src="synthese-ui.js?v=phase41-0"></script>
+  <script src="audit-ui.js?v=phase41-0"></script>
+  <script src="entretien-ui.js?v=phase41-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase38-0"></script>
-  <script src="visio-jitsi.js?v=phase38-0"></script>
-  <script src="video-pilotee.js?v=phase38-0"></script>
-  <script src="fiche-apa.js?v=phase38-0"></script>
-  <script src="inactivite.js?v=phase38-0"></script>
+  <script src="document-import.js?v=phase41-0"></script>
+  <script src="visio-jitsi.js?v=phase41-0"></script>
+  <script src="video-pilotee.js?v=phase41-0"></script>
+  <script src="fiche-apa.js?v=phase41-0"></script>
+  <script src="inactivite.js?v=phase41-0"></script>
+  <script src="bilans-ui.js?v=phase41-0"></script>
+  <script src="etudes-ui.js?v=phase41-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -654,6 +662,37 @@
        est, et ce qui reste. Ils sont cliquables, parce qu'un parcours
        qui interdit de revenir en arrière agace plus qu'il ne protège.
        ============================================================ */
+/* ============================================================
+       Dossier patient — onglets au format du parcours de création
+       ------------------------------------------------------------
+       La barre d'origine alignait cinq petites pastilles grises de tailles
+       inégales, qui se lisaient mal et qu'on cherchait du regard. Reprendre
+       exactement la grammaire de la page de création évite d'avoir à
+       réapprendre une seconde interface pour le même geste : choisir une vue.
+       Les sélecteurs sont portés par #dossierVues pour ne pas toucher aux
+       autres barres .subtabs de l'application.
+       ============================================================ */
+    #dossierVues .subtab-button {
+      flex: 1 1 150px;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #64748b;
+      text-align: center;
+      transition: all .18s ease;
+    }
+    #dossierVues .subtab-button:hover { border-color: #7dd3fc; color: #0369a1; }
+    #dossierVues .subtab-button.active {
+      background: linear-gradient(135deg, #0891b2, #14b8a6);
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(8,145,178,.28);
+    }
+    @media (max-width: 760px) { #dossierVues .subtab-button { flex: 1 1 100%; } }
+
     .cf-modalite {
       padding: 5px 11px;
       border: 1px solid var(--line);
@@ -2934,6 +2973,14 @@
           Listing patients
         </button>
 
+        <!-- Phase 41 — Recherche clinique. Placé en fin de section Suivi plutôt
+             que dans une section à part : on y va depuis le suivi, pour savoir
+             de quel protocole relève la file active. -->
+        <button class="tab-button" data-tab="recherche">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.5L5 17a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-7.5V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>
+          Recherche clinique
+        </button>
+
         <div class="nav-section">Séance</div>
         <button class="tab-button" data-tab="training">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
@@ -3621,6 +3668,20 @@
         </section>
       </section>
 
+      <!-- ============================== RECHERCHE CLINIQUE ============================== -->
+      <section id="recherche" class="tab-panel hidden">
+        <header class="page-header">
+          <div>
+            <h2>Recherche clinique</h2>
+            <p>Protocoles, numéros réglementaires, cahiers d'observation et patients inclus.</p>
+          </div>
+          <div class="actions">
+            <button class="btn-secondary" onclick="switchMainTab('accueil')">← Accueil</button>
+          </div>
+        </header>
+        <div id="etudesMount"></div>
+      </section>
+
       <!-- ============================== DOSSIER ============================== -->
       <section id="dossier" class="tab-panel hidden">
         <header class="page-header">
@@ -3636,14 +3697,24 @@
              il fallait faire défiler longuement pour atteindre l'aorte ou les
              documents. Les blocs sont désormais répartis en six vues, chacune
              accessible en un clic. Rien n'a été supprimé. -->
-        <div class="subtabs" id="dossierVues">
-          <button class="subtab-button active" data-dgroup="synthese" data-subtab="patient-synthese">📋 Synthèse</button>
-          <button class="subtab-button" data-dgroup="aorte" data-subtab="patient-aorte">❤️ Aorte</button>
-          <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-physio">📊 Évaluations</button>
-          <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-questionnaires">📝 SF-36 &amp; GPAQ</button>
-          <!-- Onglet « Comparaisons » retiré : la comparaison patient / groupe
-               est déjà sous chaque graphique de la vue Évaluations. -->
-          <button class="subtab-button" data-dgroup="documents">📄 Documents &amp; examens</button>
+        <!-- Phase 39 — Même grammaire visuelle que le parcours de création.
+             Les cinq vues ne forment pas une séquence : on consulte un dossier
+             dans l'ordre que l'on veut. Le trait du bas ne mesure donc pas une
+             progression, il se déplace sous la vue ouverte — repère de
+             position, pas d'avancement. -->
+        <div class="card" style="padding:14px 18px; margin-bottom:16px;">
+          <div class="subtabs" id="dossierVues" style="display:flex; gap:6px; flex-wrap:wrap; margin:0;">
+            <button class="subtab-button active" data-dgroup="synthese" data-subtab="patient-synthese">📋 Synthèse</button>
+            <button class="subtab-button" data-dgroup="aorte" data-subtab="patient-aorte">❤️ Aorte</button>
+            <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-physio">📊 Évaluations</button>
+            <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-questionnaires">📝 SF-36 &amp; GPAQ</button>
+            <!-- Onglet « Comparaisons » retiré : la comparaison patient / groupe
+                 est déjà sous chaque graphique de la vue Évaluations. -->
+            <button class="subtab-button" data-dgroup="documents">📄 Documents &amp; examens</button>
+          </div>
+          <div style="margin-top:10px; height:4px; background:#e2e8f0; border-radius:99px; position:relative; overflow:hidden;">
+            <div id="dossierReperePos" style="position:absolute; top:0; bottom:0; left:0; width:20%; background:linear-gradient(90deg,#0891b2,#14b8a6); border-radius:99px; transition:left .25s ease, width .25s ease;"></div>
+          </div>
         </div>
 
         <!-- Phase 12.4 : Carte d'identité enrichie -->
@@ -3652,6 +3723,12 @@
         <!-- Phase 24 : Synthèse clinique en trois rubriques.
              Placée en tête du dossier : c'est le document qu'on relit en
              premier avant une consultation. -->
+        <!-- Phase 40 — Le parcours : bilan d'entrée, entretiens de suivi menés
+             en cours d'année, bilan de sortie. Placé AVANT la synthèse parce
+             que c'est désormais l'entrée du dossier : on vient y lire où en
+             est le patient, pas seulement d'où il part. -->
+        <div id="bilansMount" data-dgroup="synthese"></div>
+
         <div id="syntheseMount" data-dgroup="synthese"></div>
 
         <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
@@ -5773,6 +5850,7 @@
       visio: ['Séance de groupe', 'Patients en visio, vidéo d\'entraînement diffusée et suivi physiologique.'],
       education: ['Éducation thérapeutique', 'Capsules courtes pour accompagner les patients.'],
       listing: ['Listing patients', 'Vue tabulaire compacte.'],
+      recherche: ['Recherche clinique', 'Études, numéros CPP et NCT, cahiers d\'observation et inclusions.'],
       stats: ['Statistiques', 'Analyses de groupe et exports.'],
       questionnaires: ['Questionnaires', 'SF-36, GPAQ et données déclaratives.'],
       parametres: ['Paramètres', 'Gestion technique et droits d’accès.']
@@ -5796,6 +5874,7 @@
     // rechargement de la cohorte. Si l'un de ces appels échouait, le tableau
     // restait figé sur un état ancien sans que rien ne le signale.
     if (tabId === 'listing') renderPatientTable($('tableSearch') ? $('tableSearch').value : '');
+    if (tabId === 'recherche') { try { if (window.EtudesUI) window.EtudesUI.render(); } catch (e) { console.warn('[etudes] rendu échoué', e); } }
     if (tabId === 'creation') {
       initCreationForm();
       // Le formulaire s'ouvre toujours sur les pièces : c'est de là que part
@@ -5803,9 +5882,11 @@
       try { cfAllerEtape(1); } catch (_) {}
       // L'entretien se mène au moment de l'inclusion : le bloc doit être
       // présent dès l'ouverture du formulaire, sans fiche encore créée.
+      // Le garde « pas déjà monté ailleurs » qui figurait ici faisait
+      // disparaître l'entretien de la création dès qu'un dossier patient
+      // avait été ouvert. C'est le module qui gère maintenant l'unicité.
       try {
-        if (window.EntretienUI && document.getElementById('creationEntretienMount')
-            && !document.getElementById('entRecBtn')) {
+        if (window.EntretienUI && document.getElementById('creationEntretienMount')) {
           window.EntretienUI.monter('creationEntretienMount', { patientId: null });
         }
       } catch (e) { console.warn('[entretien] montage création échoué :', e && e.message); }
@@ -6611,6 +6692,13 @@
       }
     } catch (e) { console.warn('[audit] montage échoué', e); }
 
+    // Phase 40 : parcours — bilans datés d'entrée, de suivi et de sortie
+    try {
+      if (window.BilansUI && document.getElementById('bilansMount')) {
+        window.BilansUI.mount('bilansMount', selectedPatient.id);
+      }
+    } catch (e) { console.warn('[bilans] mount échoué', e); }
+
     // Phase 24 : synthèse clinique en trois rubriques
     try {
       if (window.SyntheseUI && document.getElementById('syntheseMount')) {
@@ -6696,7 +6784,85 @@
             ${row('Date d\'inclusion', study.inclusionDate)}
           </div>
         </div>
+        <!-- Phase 41 — Rattachement à un protocole de recherche.
+             « Aucune étude » est la valeur par défaut et doit le rester :
+             inclure un patient dans un protocole est un acte, pas un état
+             dont on hérite par une case cochée d'avance. -->
+        <div style="padding:13px 20px; border-top:1px solid #eef0f5; background:#f8fafc;
+                    display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <label class="control-label" for="patientEtudeSelect" style="margin:0; white-space:nowrap;">
+            🔬 Étude clinique
+          </label>
+          <select id="patientEtudeSelect" style="flex:1; min-width:220px; max-width:460px;">
+            <option value="">Ne participe à aucune étude</option>
+          </select>
+          <span id="patientEtudeEtat" style="font-size:11.5px; color:#94a3b8;"></span>
+        </div>
       </article>`;
+
+    majListeEtudesPatient(p);
+  }
+
+  /**
+   * Remplit la liste déroulante des études et enregistre le choix.
+   *
+   * Les études sont chargées paresseusement et conservées : la liste ne
+   * change pas d'un patient à l'autre, et la recharger à chaque ouverture de
+   * dossier ferait un appel réseau pour rien.
+   */
+  async function majListeEtudesPatient(p) {
+    const sel = document.getElementById('patientEtudeSelect');
+    const etat = document.getElementById('patientEtudeEtat');
+    if (!sel) return;
+
+    const u = (window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser()) || {};
+    if (u.role === 'patient' || !(window.MarfanAPI && window.MarfanAPI.isAuthenticated())) {
+      const bloc = sel.closest('div');
+      if (bloc) bloc.style.display = 'none';
+      return;
+    }
+
+    try {
+      if (!window.__etudesCache) {
+        const r = await window.MarfanAPI.etudes.liste();
+        window.__etudesCache = r.etudes || [];
+      }
+      const liste = window.__etudesCache;
+      sel.innerHTML = '<option value="">Ne participe à aucune étude</option>' +
+        liste.map(e => {
+          const nom = e.acronyme ? e.acronyme + ' — ' + e.intitule : e.intitule;
+          return `<option value="${e.id}">${String(nom).replace(/</g, '&lt;')}</option>`;
+        }).join('');
+      sel.value = p.etude_id ? String(p.etude_id) : '';
+      if (!liste.length && etat) {
+        etat.textContent = 'Aucune étude enregistrée — créez-en une dans Recherche clinique.';
+      }
+    } catch (e) {
+      if (etat) etat.textContent = 'Études non chargées.';
+      return;
+    }
+
+    if (sel.dataset.branche) return;
+    sel.dataset.branche = '1';
+    sel.addEventListener('change', async () => {
+      const cible = selectedPatient;
+      if (!cible) return;
+      const valeur = sel.value ? Number(sel.value) : null;
+      const avant = cible.etude_id || null;
+      sel.disabled = true;
+      if (etat) { etat.style.color = '#94a3b8'; etat.textContent = 'Enregistrement…'; }
+      try {
+        await window.MarfanAPI.etudes.rattacher(cible.id, valeur);
+        cible.etude_id = valeur;
+        if (etat) { etat.style.color = '#065f46'; etat.textContent = valeur ? '✓ Rattaché' : '✓ Retiré de l\'étude'; }
+        setTimeout(() => { if (etat) etat.textContent = ''; }, 3000);
+      } catch (err) {
+        // Remettre la valeur précédente : un sélecteur qui affiche un état
+        // que le serveur n'a pas enregistré est pire qu'une erreur visible.
+        sel.value = avant ? String(avant) : '';
+        if (etat) { etat.style.color = '#991b1b'; etat.textContent = (err && err.message) || 'Échec'; }
+      } finally { sel.disabled = false; }
+    });
   }
 
   // Phase 12.4 : Timeline chronologique des actes réalisés (évaluations, imports, séances, questionnaires)
@@ -9900,7 +10066,29 @@
     }
     if (panneau === 'patient-vo2') { syncEvalSelectors(); renderVo2Analysis(); }
     if (panneau === 'patient-pulse') { syncEvalSelectors(); renderPulseAnalysis(); }
+    majReperePositionDossier();
   }
+
+  /**
+   * Place le trait sous l'onglet ouvert.
+   *
+   * La position est mesurée sur l'élément plutôt que calculée à partir d'un
+   * rang : les onglets passent à la ligne sur écran étroit, et un calcul en
+   * pourcentage aurait placé le trait sous le vide.
+   */
+  function majReperePositionDossier() {
+    const repere = $('dossierReperePos');
+    const barre = $('dossierVues');
+    if (!repere || !barre) return;
+    const actif = barre.querySelector('.subtab-button.active');
+    if (!actif) { repere.style.width = '0'; return; }
+    const b = barre.getBoundingClientRect();
+    const a = actif.getBoundingClientRect();
+    if (!b.width) return;
+    repere.style.left = Math.max(0, ((a.left - b.left) / b.width) * 100) + '%';
+    repere.style.width = ((a.width / b.width) * 100) + '%';
+  }
+  window.addEventListener('resize', () => { try { majReperePositionDossier(); } catch (_) {} });
   window.afficherVueDossier = afficherVueDossier;
 
   document.querySelectorAll('.subtab-button').forEach(btn => btn.addEventListener('click', () => {
@@ -13027,6 +13215,8 @@
         civil: p.civil || {},
         medical: p.medical || {},
         study: p.study || {},
+        // Phase 41 : protocole de recherche auquel le patient est rattaché
+        etude_id: p.etude_id || null,
         // Phase 12.4 : plus de "Baseline" fictive auto-générée. Un patient sans évaluations
         // affiche un tableau vide et un message "Aucune évaluation enregistrée pour ce patient
         // — importez un CPET/onde de pouls ou remplissez un questionnaire".

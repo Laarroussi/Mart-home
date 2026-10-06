@@ -596,6 +596,105 @@ async function genererSynthese(dossier) {
 }
 
 // ============================================================
+// BILAN INTERMÉDIAIRE ET BILAN DE SORTIE
+// ------------------------------------------------------------
+// Trois rubriques, parce qu'un bilan de suivi répond à trois questions
+// distinctes : qu'est-ce qui a changé médicalement, qu'est-ce qui a été fait,
+// et où va-t-on maintenant. Les mêler donnerait un texte où l'on ne sait plus
+// ce qui relève du constat et ce qui relève de la décision.
+//
+// Deux règles méritent d'être dites ici plutôt que dans le code.
+//
+// La première : ne jamais compter à la place des données. Le nombre de
+// séances, les durées, les intensités et les écarts d'évaluation sont
+// calculés en SQL et transmis déjà faits. Un modèle de langage additionne
+// mal, et un chiffre faux dans un bilan clinique n'est pas une coquille.
+//
+// La seconde : une progression se dit avec sa période. « Le VO2 pic a
+// progressé de 2,1 mL/kg/min en cinq mois » est une information ; « le
+// patient a progressé » n'en est pas une.
+// ============================================================
+const CONSIGNE_BILAN = `Tu es assistant d'un professionnel d'activité physique adaptée (APA) qui suit des patients atteints du syndrome de Marfan ou d'un syndrome apparenté. Tu rédiges un bilan de suivi, à l'occasion d'un entretien mené en cours de programme.
+
+Tu écris en français, en prose continue, sobre et clinique, à la troisième personne. Pas de listes à puces, pas de titres internes, pas de gras. Trois rubriques, un à deux paragraphes chacune.
+
+RÈGLE ABSOLUE : tu n'utilises QUE les données fournies. Tu ne recalcules rien — les nombres de séances, les durées, les moyennes, les écarts entre évaluations te sont donnés déjà calculés, tu les reprends tels quels. Tu n'inventes aucun chiffre, aucune date, aucun ressenti. Si une information manque, tu n'en parles pas du tout : jamais "non renseigné", "à compléter", "données manquantes" ni aucune formule équivalente. Une rubrique sans donnée exploitable reste une chaîne vide.
+
+Tu ne répètes pas l'état civil : il figure dans l'en-tête du document. Tu ne réécris pas non plus l'histoire de la maladie depuis l'origine : le bilan d'entrée est joint au dossier. Tu rapportes ce qui s'est passé PENDANT la période couverte, dont les bornes te sont données.
+
+RUBRIQUE "contexte" — ce qui a changé depuis le bilan précédent.
+Événements médicaux survenus pendant la période : consultation, nouvelle mesure aortique avec sa valeur et sa date, intervention, changement de traitement, incident ou symptôme rapporté. Si une mesure aortique nouvelle existe, donne-la avec son écart par rapport à la précédente et le temps écoulé. Si rien de médical n'est survenu, dis-le en une phrase sobre plutôt que de laisser la rubrique vide — l'absence d'événement est elle-même une information dans un suivi.
+
+RUBRIQUE "activite" — la pratique réalisée.
+C'est le cœur du bilan. Rends compte globalement, jamais séance par séance : nombre de séances réalisées sur la période et régularité, durée moyenne, intensités de fréquence cardiaque observées et leur situation par rapport aux seuils ventilatoires mesurés lorsqu'ils sont connus — en disant si le travail s'est fait sous le premier seuil, entre les deux seuils ou au-delà. Donne le ressenti d'effort moyen sur l'échelle CR10 de Borg et ce qu'il indique de la tolérance. Mentionne les séances interrompues et leur motif s'il est renseigné. Rapporte les modules d'éducation thérapeutique suivis et validés pendant la période, avec leur intitulé. Si aucune séance n'a été réalisée, dis-le simplement, sans commentaire sur les causes que tu ignores.
+
+RUBRIQUE "objectifs" — progression et suite.
+Compare les évaluations refaites pendant la période à celles qui précèdent : VO2 pic, seuils, puissance, force, qualité de vie, selon ce qui est fourni. Chaque écart est donné avec son unité et la durée écoulée. Dis ce qui a progressé, ce qui est stable, ce qui s'est dégradé, sans adoucir ni dramatiser. Reprends ensuite les difficultés et les attentes exprimées par le patient lors de l'entretien, puis l'objectif retenu pour la période suivante — réaliste, mesurable, et formulé de façon que l'on puisse dire au prochain bilan s'il est atteint ou non. Termine en précisant les adaptations décidées pour le programme.
+
+LORSQUE LE BILAN EST DE TYPE "sortie" : la rubrique "objectifs" devient une conclusion de parcours. Tu y récapitules le chemin parcouru depuis l'entrée — en t'appuyant sur les écarts chiffrés fournis entre la première et la dernière évaluation — puis tu formules les recommandations pour la poursuite de l'activité physique en autonomie, et les modalités de surveillance qui restent nécessaires. Tu ne fixes pas d'objectif pour une période suivante qui n'existe pas.
+
+Le "bilan d'entretien" que l'on te transmet est rédigé par le professionnel à partir de l'entretien avec le patient. Tu répartis ses éléments dans les trois rubriques, là où ils ont leur place. Tu ne le recopies pas tel quel.
+
+Réponds STRICTEMENT en JSON :
+{"contexte": "...", "activite": "...", "objectifs": "..."}`;
+
+/**
+ * Rédige un bilan de suivi à partir de l'agrégat déjà calculé par la route.
+ * @param {object} donnees période, séances, éducation, évaluations comparées
+ * @param {string} type 'intermediaire' ou 'sortie'
+ */
+async function genererBilan(donnees, type) {
+  exigerCle();
+  const debut = Date.now();
+  const contenu = JSON.stringify(donnees || {}, null, 1).slice(0, 60000);
+  const entete = type === 'sortie'
+    ? 'Bilan de SORTIE de programme. Dossier :\n\n'
+    : 'Bilan INTERMÉDIAIRE en cours de programme. Dossier :\n\n';
+
+  let rep;
+  try {
+    rep = await fetch(BASE + '/v1/chat/completions', {
+      method: 'POST',
+      headers: entetes(),
+      body: JSON.stringify({
+        model: MODELE,
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: CONSIGNE_BILAN },
+          { role: 'user', content: entete + contenu }
+        ]
+      })
+    });
+  } catch (e) {
+    throw new Error("Service Mistral injoignable : " + e.message);
+  }
+  if (!rep.ok) throw await erreurLisible(rep, "le bilan");
+
+  const data = await rep.json();
+  const brut = data && data.choices && data.choices[0] && data.choices[0].message
+    ? data.choices[0].message.content : '{}';
+  let parsed;
+  try { parsed = JSON.parse(brut); }
+  catch (_) { throw new Error("Réponse de l'IA illisible (JSON invalide)"); }
+
+  const nettoyer = (t) => {
+    let s = String(t || '').trim();
+    if (!s) return '';
+    if (/^(non renseign|aucune information|information manquante|à compléter|données? (non|in)disponibles?)/i.test(s)) return '';
+    return s.slice(0, 6000);
+  };
+
+  return {
+    contexte: nettoyer(parsed.contexte),
+    activite: nettoyer(parsed.activite),
+    objectifs: nettoyer(parsed.objectifs),
+    modele: MODELE,
+    duree_ms: Date.now() - debut
+  };
+}
+
+// ============================================================
 // ENTRETIEN PATIENT — extraction des éléments utiles au dossier
 // ------------------------------------------------------------
 // Un entretien parlé est décousu : digressions, hésitations, allers-retours.
@@ -707,6 +806,7 @@ function statutIA() {
 }
 
 module.exports = {
+  genererBilan,
   analyserTexte, analyserEcho, analyserIdentite, ocrDocument,
   genererSynthese, transcrireAudio, analyserEntretien, CHAMPS_ENTRETIEN,
   pseudonymiser, statutIA, cleActive,
