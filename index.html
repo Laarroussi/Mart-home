@@ -12,28 +12,29 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase37-0"></script>
+  <script src="api-client.js?v=phase38-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase37-0"></script>
+  <script src="questionnaires-defs.js?v=phase38-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase37-0"></script>
+  <script src="medical-parsers.js?v=phase38-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase37-0"></script>
-  <script src="cpet-analyse.js?v=phase37-0"></script>
+  <script src="cpet-graph-preview.js?v=phase38-0"></script>
+  <script src="cpet-analyse.js?v=phase38-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase37-0"></script>
-  <script src="medical-record-ui.js?v=phase37-0"></script>
+  <script src="pdf-extractor.js?v=phase38-0"></script>
+  <script src="medical-record-ui.js?v=phase38-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase37-0"></script>
-  <script src="synthese-ui.js?v=phase37-0"></script>
-  <script src="audit-ui.js?v=phase37-0"></script>
-  <script src="entretien-ui.js?v=phase37-0"></script>
+  <script src="aortic-consultations.js?v=phase38-0"></script>
+  <script src="synthese-ui.js?v=phase38-0"></script>
+  <script src="audit-ui.js?v=phase38-0"></script>
+  <script src="entretien-ui.js?v=phase38-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase37-0"></script>
-  <script src="visio-jitsi.js?v=phase37-0"></script>
-  <script src="video-pilotee.js?v=phase37-0"></script>
-  <script src="fiche-apa.js?v=phase37-0"></script>
+  <script src="document-import.js?v=phase38-0"></script>
+  <script src="visio-jitsi.js?v=phase38-0"></script>
+  <script src="video-pilotee.js?v=phase38-0"></script>
+  <script src="fiche-apa.js?v=phase38-0"></script>
+  <script src="inactivite.js?v=phase38-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2588,6 +2589,34 @@
   </style>
 </head>
 <body class="mode-landing">
+
+<!-- ============================================================
+     Voile de démarrage
+     ------------------------------------------------------------
+     La décision « page d'accueil, interface connectée ou fenêtre de
+     connexion » dépend d'un appel réseau. Tant qu'il n'a pas répondu, la
+     page affichait l'accueil puis basculait : on voyait passer des éléments
+     du site derrière la fenêtre de connexion, parfois des données.
+     Le voile est présent dès le premier pixel et ne se lève qu'une fois la
+     décision prise. Le filet de sécurité de huit secondes évite qu'une
+     panne de script ne laisse l'écran bloqué.
+     ============================================================ -->
+<div id="voileDemarrage" style="position:fixed; inset:0; z-index:100000; background:linear-gradient(135deg,#0b1530,#122a52); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; color:#dbeafe; font-family:-apple-system,'Segoe UI',system-ui,sans-serif;">
+  <div style="width:54px; height:54px; border-radius:15px; background:linear-gradient(135deg,#4f8cff,#7c5cff); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:24px; color:#fff;">M</div>
+  <div style="font-size:14px; font-weight:700; letter-spacing:.02em;">Marfan APA</div>
+  <div style="font-size:12px; opacity:.7;">Connexion sécurisée…</div>
+</div>
+<script>
+  // Si un script échoue plus haut, le voile ne doit pas emprisonner la page.
+  window.__leverVoile = function () {
+    var v = document.getElementById('voileDemarrage');
+    if (!v) return;
+    v.style.transition = 'opacity .22s ease';
+    v.style.opacity = '0';
+    setTimeout(function () { if (v && v.parentNode) v.parentNode.removeChild(v); }, 240);
+  };
+  setTimeout(window.__leverVoile, 8000);
+</script>
 
   <!-- Phase 12.3 : Menu hamburger mobile (visible < 900px) -->
   <button id="mobileMenuBtn" aria-label="Ouvrir le menu">☰</button>
@@ -12857,12 +12886,11 @@
         <div id="apiOubliMsg" style="display:none; margin-top:9px; padding:9px 11px; border-radius:8px; font-size:12px; line-height:1.5;"></div>
       </div>
       <button id="apiLoginDemo" style="width:100%; padding:9px; margin-top:8px; border:1px solid #d8dde7; border-radius:9px; background:white; color:#5a6280; font-weight:600; font-size:12px; cursor:pointer;">Continuer en mode démo (sans API)</button>
-      <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #e3e7ef; font-size:11.5px; color:#8b91a8; line-height:1.55;">
-        Comptes de test :<br>
-        admin@marfan-apa.fr / ChangezMoiTresTresFortement123!<br>
-        j.martin@bichat.fr / Principal!2024<br>
-        mrf-001@example.fr / Patient!2024
-      </div>
+      <!-- Les identifiants de test qui figuraient ici ont été retirés.
+           Un mot de passe affiché sur la page de connexion est un mot de passe
+           public : il circule dans les captures d'écran, les démonstrations et
+           le cache des navigateurs. Les comptes restent les mêmes, ils se
+           saisissent simplement à la main. -->
     </div>
   </div>
 
@@ -17367,6 +17395,8 @@
 
     async function onLoginSuccess(user) {
       hideOverlay();
+      // La session se ferme toute seule après une heure sans activité.
+      try { if (window.Inactivite) window.Inactivite.demarrer(); } catch (_) {}
       // Vérif obligatoire : doit changer son mot de passe ?
       if (user.must_change_password) {
         console.log('[MarfanAPI] Mot de passe initial détecté pour ' + user.email + ' — changement obligatoire.');
@@ -17504,6 +17534,7 @@
     });
 
     document.getElementById('apiLogoutBtn').addEventListener('click', async function () {
+      try { if (window.Inactivite) window.Inactivite.arreter(); } catch (_) {}
       await window.MarfanAPI.logout();
       hideUserBadge();
       window.location.reload();
@@ -17880,6 +17911,7 @@
       if (!up) {
         console.log('[MarfanAPI] Mode démo activé (API down)');
         showDemoBanner();
+        lever();
         return;
       }
 
@@ -17888,18 +17920,50 @@
         const user = await window.MarfanAPI.me();
         if (user) {
           await onLoginSuccess(user);
+          lever();
           return;
         }
       }
       // Sinon : montrer le login
       showOverlay();
+      // Expliquer la coupure plutôt que de laisser croire à un bug : sans ce
+      // message, une session fermée pendant une pause ressemble à une panne.
+      try {
+        const motif = window.Inactivite && window.Inactivite.motifPrecedent();
+        if (motif === 'inactivite') {
+          const e = document.getElementById('apiLoginErr');
+          if (e) {
+            e.style.display = 'block';
+            e.style.background = '#fef3c7';
+            e.style.color = '#92400e';
+            e.textContent = 'Session fermée après ' + window.Inactivite.delaiMinutes +
+              ' minutes sans activité. Reconnectez-vous pour reprendre.';
+          }
+        }
+      } catch (_) {}
+      lever();
+    }
+
+    // Le voile de démarrage ne se lève qu'une fois la décision prise :
+    // page d'accueil, interface connectée ou fenêtre de connexion.
+    function lever() {
+      try { if (typeof window.__leverVoile === 'function') window.__leverVoile(); } catch (_) {}
     }
 
     // Lance le boot après l'init principal (qui tourne sync au load)
+    // Quoi qu'il arrive pendant le démarrage, le voile se lève : une erreur
+    // de script ne doit pas laisser l'écran bloqué sur l'écran d'attente.
+    const demarrer = () => setTimeout(() => {
+      Promise.resolve().then(boot).catch(e => {
+        console.error('[MarfanAPI] Démarrage interrompu :', e);
+        try { showOverlay(); } catch (_) {}
+      }).finally(lever);
+    }, 50);
+
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      setTimeout(boot, 50);
+      demarrer();
     } else {
-      window.addEventListener('DOMContentLoaded', () => setTimeout(boot, 50));
+      window.addEventListener('DOMContentLoaded', demarrer);
     }
   })();
   </script>
