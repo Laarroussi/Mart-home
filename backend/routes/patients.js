@@ -5,6 +5,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { query, transaction } = require('../config/database');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const categories = require('../config/categories');
 const { exigerMotif, journaliser, MOTIFS } = require('../utils/audit');
 
 const router = express.Router();
@@ -50,13 +51,22 @@ router.get('/', requireAuth, async (req, res, next) => {
 router.get('/prochain-code', requireAuth, requireRole('principal_admin', 'investigator'),
   async (req, res, next) => {
     try {
+      // Chaque population a sa propre suite : inclure un patient obèse ne doit
+      // pas avancer le compteur des patients Marfan. Le préfixe est injecté
+      // dans le motif, jamais concaténé depuis la requête du client — il est
+      // d'abord ramené à l'un des codes connus.
+      const cat = categories.normaliser(req.query.categorie);
       const { rows } = await query(
-        `SELECT COALESCE(MAX((regexp_replace(id, '^MRF-?', '', 'i'))::int), 0) AS maxi
+        `SELECT COALESCE(MAX((regexp_replace(id, '^' || $1 || '-?', '', 'i'))::int), 0) AS maxi
            FROM patients
-          WHERE id ~* '^MRF-?[0-9]+$'`
+          WHERE id ~* ('^' || $1 || '-?[0-9]+$')`, [cat]
       );
-      const suivant = (rows[0] ? Number(rows[0].maxi) : 0) + 1;
-      res.json({ code: 'MRF-' + String(suivant).padStart(3, '0'), dernier: rows[0] ? Number(rows[0].maxi) : 0 });
+      const dernier = rows[0] ? Number(rows[0].maxi) : 0;
+      res.json({
+        code: cat + '-' + String(dernier + 1).padStart(3, '0'),
+        categorie: cat,
+        dernier
+      });
     } catch (err) { next(err); }
   });
 
@@ -97,14 +107,17 @@ router.post('/', requireAuth, requireRole('principal_admin', 'investigator'), as
       // 1. Crée la fiche patient
       await client.query(
         `INSERT INTO patients (id, sex, age, gene, aorta, status, status_class, progress, connected,
-                               risk_factor, risk_comment, alterations, incidents, civil, medical, study, created_by, is_demo)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
+                               risk_factor, risk_comment, alterations, incidents, civil, medical, study, created_by, is_demo, categorie)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
         [p.id, p.sex, p.age, p.gene, p.aorta || null,
          p.status || 'Stable', p.statusClass || 'ok', p.progress || 75, p.connected || false,
          p.riskFactor || '', p.riskComment || '',
          p.alterations || [], p.incidents || [],
          JSON.stringify(p.civil || {}), JSON.stringify(p.medical || {}), JSON.stringify(p.study || {}),
-         req.user.id, p.is_demo === true /* défaut : FALSE = vrai patient */]
+         req.user.id, p.is_demo === true /* défaut : FALSE = vrai patient */,
+         // Déduite du préfixe quand elle n'est pas transmise : les deux doivent
+         // toujours concorder, et c'est l'identifiant qui fait foi.
+         categories.normaliser(p.categorie || String(p.id || '').slice(0, 3))]
       );
       // 2. Crée la première évaluation (Baseline)
       if (p.evaluations && p.evaluations.length) {

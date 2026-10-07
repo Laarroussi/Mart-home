@@ -121,7 +121,8 @@
       get:    (id) => request('GET', `/patients/${id}`),
       // Prochain code d'inclusion libre, calculé en base : la liste locale
       // peut être en retard et proposerait alors un code déjà pris.
-      prochainCode: () => request('GET', '/patients/prochain-code'),
+      prochainCode: (categorie) => request('GET', '/patients/prochain-code' +
+                        (categorie ? '?categorie=' + encodeURIComponent(categorie) : '')),
       create: (data) => request('POST', '/patients', data),
       update: (id, data) => request('PATCH', `/patients/${id}`, data)
     },

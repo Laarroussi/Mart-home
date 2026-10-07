@@ -18,31 +18,31 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase41-0"></script>
+  <script src="api-client.js?v=phase42-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase41-0"></script>
+  <script src="questionnaires-defs.js?v=phase42-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase41-0"></script>
+  <script src="medical-parsers.js?v=phase42-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase41-0"></script>
-  <script src="cpet-analyse.js?v=phase41-0"></script>
+  <script src="cpet-graph-preview.js?v=phase42-0"></script>
+  <script src="cpet-analyse.js?v=phase42-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase41-0"></script>
-  <script src="medical-record-ui.js?v=phase41-0"></script>
+  <script src="pdf-extractor.js?v=phase42-0"></script>
+  <script src="medical-record-ui.js?v=phase42-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase41-0"></script>
-  <script src="synthese-ui.js?v=phase41-0"></script>
-  <script src="audit-ui.js?v=phase41-0"></script>
-  <script src="entretien-ui.js?v=phase41-0"></script>
+  <script src="aortic-consultations.js?v=phase42-0"></script>
+  <script src="synthese-ui.js?v=phase42-0"></script>
+  <script src="audit-ui.js?v=phase42-0"></script>
+  <script src="entretien-ui.js?v=phase42-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase41-0"></script>
-  <script src="visio-jitsi.js?v=phase41-0"></script>
-  <script src="video-pilotee.js?v=phase41-0"></script>
-  <script src="fiche-apa.js?v=phase41-0"></script>
-  <script src="inactivite.js?v=phase41-0"></script>
-  <script src="bilans-ui.js?v=phase41-0"></script>
-  <script src="etudes-ui.js?v=phase41-0"></script>
+  <script src="document-import.js?v=phase42-0"></script>
+  <script src="visio-jitsi.js?v=phase42-0"></script>
+  <script src="video-pilotee.js?v=phase42-0"></script>
+  <script src="fiche-apa.js?v=phase42-0"></script>
+  <script src="inactivite.js?v=phase42-0"></script>
+  <script src="bilans-ui.js?v=phase42-0"></script>
+  <script src="etudes-ui.js?v=phase42-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3330,8 +3330,13 @@
 
             <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px;">
               <div>
+                <label class="control-label" for="cf_categorie">Population</label>
+                <select id="cf_categorie"></select>
+              </div>
+              <div>
                 <label class="control-label" for="cf_code">Code patient *</label>
-                <input type="text" id="cf_code" placeholder="MRF-XXX" oninput="this.dataset.auto='0';" />
+                <input type="text" id="cf_code" placeholder="MRF-001" oninput="this.dataset.auto='0';" />
+                <div id="cf_categorieIndice" style="display:none; margin-top:5px; font-size:11.5px; line-height:1.45;"></div>
               </div>
               <div>
                 <label class="control-label" for="cf_ipp">IPP</label>
@@ -7692,13 +7697,88 @@
   // ============================================================
   // === CRÉATION FICHE PATIENT
   // ============================================================
+  // ============================================================
+  // Phase 42 — Populations suivies et numérotation par préfixe
+  // ------------------------------------------------------------
+  // Chaque population a sa propre suite : OBE-001 ne dépend pas du nombre de
+  // patients Marfan déjà inclus. Le catalogue double celui du serveur, qui
+  // reste seul juge — ici il ne sert qu'à remplir la liste déroulante et à
+  // calculer un code de repli quand l'API est injoignable.
+  // ============================================================
+  const CATEGORIES_PATIENT = [
+    { code: 'MRF', libelle: 'Syndrome de Marfan' },
+    { code: 'OBE', libelle: 'Obésité' },
+    { code: 'ICA', libelle: 'Insuffisance cardiaque' },
+    { code: 'DT2', libelle: 'Diabète de type 2' },
+    { code: 'TEM', libelle: 'Témoin sain' },
+    { code: 'AUT', libelle: 'Autre pathologie' }
+  ];
+
+  function categorieChoisie() {
+    const sel = $('cf_categorie');
+    return (sel && sel.value) || 'MRF';
+  }
+
+  function remplirCategories() {
+    const sel = $('cf_categorie');
+    if (!sel || sel.dataset.pret) return;
+    sel.innerHTML = CATEGORIES_PATIENT.map(c =>
+      '<option value="' + c.code + '">' + c.code + ' — ' + c.libelle + '</option>').join('');
+    sel.dataset.pret = '1';
+    sel.addEventListener('change', () => {
+      // Changer de population change le code : on le recalcule même si un
+      // code était déjà affiché, sauf s'il a été saisi à la main.
+      sel.dataset.manuel = '1';
+      indiceCategorie('');
+      window.majProchainCode($('cf_code') && $('cf_code').dataset.auto === '1');
+    });
+  }
+
+  /** Affiche sur quoi repose une proposition de population lue dans un document. */
+  function indiceCategorie(html, ton) {
+    const z = $('cf_categorieIndice');
+    if (!z) return;
+    if (!html) { z.style.display = 'none'; z.innerHTML = ''; return; }
+    z.style.display = 'block';
+    z.style.color = ton === 'alerte' ? '#92400e' : '#0369a1';
+    z.innerHTML = html;
+  }
+
+  /**
+   * Applique la population détectée dans une pièce versée.
+   *
+   * On ne l'impose jamais contre un choix humain : si le clinicien a touché
+   * la liste, sa décision prime. Une détection qui écrase une sélection
+   * manuelle ferait perdre confiance dans l'ensemble du dispositif.
+   */
+  window.appliquerCategorieDetectee = function (det) {
+    const sel = $('cf_categorie');
+    if (!sel || !det || !det.code) return;
+    const ech = t => String(t == null ? '' : t).replace(/</g, '&lt;');
+    const nom = (CATEGORIES_PATIENT.filter(c => c.code === det.code)[0] || {}).libelle || det.code;
+    const motifs = (det.indices || []).map(ech).join(', ');
+
+    if (sel.dataset.manuel === '1' && sel.value !== det.code) {
+      indiceCategorie('Les documents évoquent plutôt <strong>' + ech(nom) + '</strong>' +
+        (motifs ? ' (' + motifs + ')' : '') + '. Votre choix est conservé.', 'alerte');
+      return;
+    }
+    sel.value = det.code;
+    indiceCategorie('Population reconnue : <strong>' + ech(nom) + '</strong>' +
+      (motifs ? ' — ' + motifs : '') +
+      (det.certitude === 'moyenne' ? ' <span style="color:#92400e;">(à confirmer)</span>' : ''));
+    window.majProchainCode($('cf_code') && $('cf_code').dataset.auto === '1');
+  };
+
   function nextPatientCode() {
+    const cat = categorieChoisie();
+    const motif = new RegExp('^' + cat + '-?(\\d+)$', 'i');
     let maxN = 0;
     patients.forEach(p => {
-      const m = p.id.match(/MRF-?(\d+)/i);
+      const m = String(p.id || '').match(motif);
       if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
     });
-    return 'MRF-' + String(maxN + 1).padStart(3, '0');
+    return cat + '-' + String(maxN + 1).padStart(3, '0');
   }
 
   /**
@@ -7715,7 +7795,7 @@
     // On ne remplace pas un code que l'utilisateur a saisi lui-même.
     if (!forcer && champ.value && champ.dataset.auto !== '1') return;
     try {
-      const r = await window.MarfanAPI.patients.prochainCode();
+      const r = await window.MarfanAPI.patients.prochainCode(categorieChoisie());
       if (r && r.code) { champ.value = r.code; champ.dataset.auto = '1'; }
     } catch (e) {
       // Hors ligne ou API indisponible : le calcul local reste un repli utile.
@@ -7737,6 +7817,7 @@
   }
 
   function initCreationForm() {
+    remplirCategories();
     // Pré-remplit le code patient suggéré et la date d'inclusion.
     // Le code définitif vient du serveur ; le calcul local sert d'affichage
     // immédiat le temps de la réponse.
@@ -7892,6 +7973,10 @@
     try { if (window.MedicalRecordUI) window.MedicalRecordUI.clearDraftStorage(); } catch (_) {}
     // Phase 13.2 : réinitialise le mode "initiales manuelles" pour le patient suivant
     if ($('cf_initials')) delete $('cf_initials').dataset.manual;
+    // La population revient à Marfan et redevient « non choisie » : sans cela,
+    // le patient suivant héritait silencieusement du choix du précédent.
+    if ($('cf_categorie')) { $('cf_categorie').value = 'MRF'; delete $('cf_categorie').dataset.manuel; }
+    indiceCategorie('');
     // Phase 25 : les champs d'entretien et la synthèse font partie du
     // formulaire — les oublier laissait les notes du patient précédent.
     ['cf_profession', 'cf_difficultes', 'cf_objectifsPatient', 'cf_objectifsClinicien',
@@ -8216,6 +8301,7 @@
 
     const newPatient = {
       id: code,
+      categorie: categorieChoisie(),
       sex,
       age,
       gene,
@@ -8699,6 +8785,12 @@
       const faits = (prop && prop.faits) || [];
       const ident = (prop && prop.identite) || null;
       const echo = (prop && prop.echo) || null;
+      // Population reconnue dans la pièce : appliquée avant le reste, parce
+      // qu'elle change le code patient, donc l'identifiant auquel tous les
+      // éléments suivants seront rattachés.
+      if (prop && prop.categorie) {
+        try { window.appliquerCategorieDetectee(prop.categorie); } catch (_) {}
+      }
       if (!faits.length && !ident && !echo) {
         statut('Aucune donnée exploitable trouvée dans ce document.', 'err'); return;
       }
@@ -13217,6 +13309,8 @@
         study: p.study || {},
         // Phase 41 : protocole de recherche auquel le patient est rattaché
         etude_id: p.etude_id || null,
+        // Phase 42 : population suivie, qui donne le préfixe de l'identifiant
+        categorie: p.categorie || String(p.id || '').slice(0, 3).toUpperCase(),
         // Phase 12.4 : plus de "Baseline" fictive auto-générée. Un patient sans évaluations
         // affiche un tableau vide et un message "Aucune évaluation enregistrée pour ce patient
         // — importez un CPET/onde de pouls ou remplissez un questionnaire".

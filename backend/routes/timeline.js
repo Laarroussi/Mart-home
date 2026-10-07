@@ -17,6 +17,7 @@ const { query } = require('../config/database');
 const { requireAuth, requireRole, ROLE } = require('../middleware/auth');
 const { synchroniser } = require('../utils/sync-evaluations');
 const { exigerMotif, journaliser, MOTIFS } = require('../utils/audit');
+const categories = require('../config/categories');
 const { analyserTexte, analyserEcho, analyserIdentite, ocrDocument, transcrireAudio,
         pseudonymiser, statutIA, CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO } = require('../config/ai');
 
@@ -196,10 +197,20 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
     const mv = texte.match(/\b([cp]\.[A-Za-z0-9_>+*()-]{3,40})/);
     if (mv) genetique.variant = mv[1];
 
+    // Population suivie : reconnue sur le texte complet, comme le gène et pour
+    // la même raison. La détection est volontairement prudente — elle ne
+    // propose rien dès que deux pathologies sont nommées dans le document, car
+    // choisir dans quel groupe ranger un patient qui relève des deux est une
+    // décision d'inclusion, pas une question de reconnaissance de texte.
+    let categorie = null;
+    try { categorie = categories.detecter(texte); }
+    catch (e) { console.warn('[categorie] détection échouée :', e.message); }
+
     res.json({
       faits: resultat.faits,
       echo,                               // non nul si compte-rendu d'ETT reconnu
       genetique,                          // gène et variant lus dans le document
+      categorie,                          // population proposée, ou null si indécidable
       identite,                           // non nul en mode création de fiche
       identite_erreur: identiteErreur,    // raison lisible si l'identité n'a pas pu être lue
       modele: resultat.modele,
