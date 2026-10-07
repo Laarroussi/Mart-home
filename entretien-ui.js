@@ -36,15 +36,24 @@
   // cher pour peu de gain : un entretien d'inclusion dure rarement plus.
   var DUREE_MAX_S = 25 * 60;
 
+  // `cle: true` marque les quatre éléments qui décident de la prise en charge :
+  // ce que le patient ne peut plus faire, ce qu'il veut retrouver, ce qu'on
+  // vise avec lui, et ce qui doit l'arrêter. Ils sont présentés en premier et
+  // en évidence. Les cinq autres sont du contexte — utile, mais qu'on relit
+  // une fois, pas qu'on décide à partir de lui.
+  //
+  // Sans cette hiérarchie, les neuf blocs se valaient visuellement : on lisait
+  // « Profession » avec la même attention que « Précautions et alertes », et
+  // la relecture durait d'autant plus que rien ne guidait l'œil.
   var CHAMPS = [
-    { cle: 'difficultes',      titre: 'Difficultés ressenties',  cible: 'cf_difficultes' },
-    { cle: 'attentes_patient', titre: 'Attentes du patient',     cible: 'cf_objectifsPatient' },
-    { cle: 'objectifs',        titre: 'Objectifs de prise en charge', cible: 'cf_objectifsClinicien' },
-    { cle: 'precautions',      titre: 'Précautions et alertes',  cible: 'cf_incidents' },
+    { cle: 'difficultes',      titre: 'Difficultés ressenties',  cible: 'cf_difficultes',       majeur: true, icone: '🔸' },
+    { cle: 'attentes_patient', titre: 'Attentes du patient',     cible: 'cf_objectifsPatient',  majeur: true, icone: '🎯' },
+    { cle: 'objectifs',        titre: 'Objectifs de prise en charge', cible: 'cf_objectifsClinicien', majeur: true, icone: '🧭' },
+    { cle: 'precautions',      titre: 'Précautions et alertes',  cible: 'cf_incidents',         majeur: true, icone: '⚠️' },
+    { cle: 'activite_actuelle', titre: 'Activité physique actuelle', cible: null },
     { cle: 'profession',       titre: 'Profession / situation',  cible: 'cf_profession' },
     { cle: 'antecedents',      titre: 'Antécédents évoqués',     cible: 'cf_history' },
     { cle: 'traitements',      titre: 'Traitements évoqués',     cible: 'cf_treatments' },
-    { cle: 'activite_actuelle', titre: 'Activité physique actuelle', cible: null },
     { cle: 'resume',           titre: "Résumé de l'entretien",   cible: null }
   ];
 
@@ -88,7 +97,12 @@
     '<div style="border:1px solid #fed7aa; background:linear-gradient(180deg,#fffbeb,#fff7ed); border-radius:14px; padding:16px 18px;">' +
       '<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;">' +
         '<strong style="font-size:14.5px; color:#0b1530;">🎙 Entretien patient</strong>' +
-        '<span id="entChrono" style="display:none; font-variant-numeric:tabular-nums; font-weight:800; font-size:14px; color:#b91c1c;">0:00</span>' +
+        // Compte à REBOURS et non chronomètre : ce qui intéresse le soignant
+        // pendant un entretien n'est pas depuis combien de temps il parle,
+        // c'est combien de temps il lui reste pour aborder ce qui manque.
+        '<span id="entChrono" style="display:none; font-variant-numeric:tabular-nums; font-weight:800; ' +
+          'font-size:15px; padding:3px 11px; border-radius:99px; background:#ecfdf5; color:#065f46; ' +
+          'border:1px solid #a7f3d0;">25:00</span>' +
         '<span id="entPastille" style="display:none; width:10px; height:10px; border-radius:50%; background:#dc2626;"></span>' +
         '<div style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">' +
           '<button type="button" id="entRecBtn" class="btn-secondary" style="font-weight:700;">⏺ Démarrer l\'enregistrement</button>' +
@@ -156,16 +170,43 @@
     var b = el('entRecBtn');
     if (b) { b.textContent = '⏹ Arrêter et transcrire'; b.classList.add('btn-danger'); }
     var f = el('entFileBtn'); if (f) f.style.display = 'none';
-    if (el('entChrono')) el('entChrono').style.display = 'inline';
+    if (el('entChrono')) {
+      el('entChrono').style.display = 'inline';
+      el('entChrono').textContent = mmss(DUREE_MAX_S);
+    }
     if (el('entPastille')) el('entPastille').style.display = 'inline-block';
     dire("Enregistrement en cours. Parlez normalement — la qualité du micro intégré suffit.", 'alerte');
 
+    var _prevenu5 = false, _prevenu1 = false;
     _minuterie = setInterval(function () {
       var s = (Date.now() - _debut) / 1000;
-      if (el('entChrono')) el('entChrono').textContent = mmss(s);
+      var restant = Math.max(0, DUREE_MAX_S - s);
+      var chrono = el('entChrono');
+      if (chrono) {
+        chrono.textContent = mmss(restant);
+        // La couleur change aux deux moments où le soignant doit adapter son
+        // entretien : cinq minutes pour aborder ce qui manque, une minute
+        // pour conclure. Un simple chiffre ne se remarque pas quand on écoute
+        // quelqu'un parler.
+        var c = restant <= 60   ? ['#fef2f2', '#991b1b', '#fecaca']
+              : restant <= 300  ? ['#fffbeb', '#92400e', '#fde68a']
+                                : ['#ecfdf5', '#065f46', '#a7f3d0'];
+        chrono.style.background = c[0];
+        chrono.style.color = c[1];
+        chrono.style.borderColor = c[2];
+      }
       if (el('entPastille')) el('entPastille').style.opacity = (Math.floor(s) % 2) ? '0.25' : '1';
-      if (s >= DUREE_MAX_S) {
-        note("Durée maximale atteinte (25 minutes) — arrêt automatique.", 'info');
+
+      if (!_prevenu5 && restant <= 300) {
+        _prevenu5 = true;
+        note('⏳ Cinq minutes restantes — pensez à ce qui n\'a pas encore été abordé.', 'info');
+      }
+      if (!_prevenu1 && restant <= 60) {
+        _prevenu1 = true;
+        note('⏳ Une minute restante — concluez l\'entretien.', 'alerte');
+      }
+      if (restant <= 0) {
+        note('Durée maximale atteinte (25 minutes) — arrêt automatique, rien n\'est perdu.', 'info');
         arreter();
       }
     }, 500);
@@ -245,18 +286,50 @@
     if (!zone) return;
     var champs = r.champs || {};
 
-    var lignes = CHAMPS.filter(function (c) { return (champs[c.cle] || '').trim(); }).map(function (c) {
-      return '<div style="margin-bottom:12px; background:white; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px;">' +
-        '<label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">' +
-          '<input type="checkbox" data-ent="' + c.cle + '" checked style="width:16px; height:16px;">' +
-          '<strong style="font-size:12.5px; color:#0b1530;">' + esc(c.titre) + '</strong>' +
+    var remplis = CHAMPS.filter(function (c) { return (champs[c.cle] || '').trim(); });
+
+    /** Un bloc de relecture. Les quatre éléments majeurs sont plus grands,
+     *  encadrés de couleur et rassemblés en tête ; le reste est compact. */
+    function bloc(c) {
+      var maj = !!c.majeur;
+      return '<div style="margin-bottom:' + (maj ? '14px' : '9px') + '; background:white; ' +
+          'border:' + (maj ? '2px solid #99f6e4' : '1px solid #e8edf4') + '; ' +
+          'border-radius:' + (maj ? '12px' : '9px') + '; padding:' + (maj ? '13px 15px' : '9px 11px') + ';' +
+          (maj ? ' box-shadow:0 2px 10px rgba(15,118,110,.07);' : '') + '">' +
+        '<label style="display:flex; align-items:center; gap:8px; margin-bottom:' + (maj ? '8px' : '5px') + '; cursor:pointer;">' +
+          '<input type="checkbox" data-ent="' + c.cle + '" checked style="width:' +
+            (maj ? '18px; height:18px' : '15px; height:15px') + '; accent-color:#0f766e;">' +
+          (maj ? '<span style="font-size:15px;">' + c.icone + '</span>' : '') +
+          '<strong style="font-size:' + (maj ? '14px' : '12px') + '; color:' +
+            (maj ? '#0f766e' : '#64748b') + '; font-weight:' + (maj ? '800' : '700') + ';">' +
+            esc(c.titre) + '</strong>' +
           (c.cible ? '' : '<span style="font-size:10.5px; color:#94a3b8;">— pour la synthèse uniquement</span>') +
         '</label>' +
-        '<textarea data-enttxt="' + c.cle + '" rows="3" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; ' +
-          'border-radius:8px; font-family:inherit; font-size:12.5px; line-height:1.6; resize:vertical; box-sizing:border-box;">' +
+        '<textarea data-enttxt="' + c.cle + '" rows="' + (maj ? '3' : '2') + '" style="width:100%; ' +
+          'padding:' + (maj ? '10px 12px' : '7px 9px') + '; border:1px solid ' + (maj ? '#cbd5e1' : '#e2e8f0') + '; ' +
+          'border-radius:8px; font-family:inherit; font-size:' + (maj ? '13.5px' : '12px') + '; ' +
+          'line-height:1.6; resize:vertical; box-sizing:border-box;' +
+          (maj ? ' font-weight:500; color:#0b1530;' : ' color:#475569;') + '">' +
           esc(champs[c.cle]) + '</textarea>' +
       '</div>';
-    }).join('');
+    }
+
+    var majeurs = remplis.filter(function (c) { return c.majeur; });
+    var mineurs = remplis.filter(function (c) { return !c.majeur; });
+
+    // Le contexte est replié : on le relit une fois, on ne décide pas à partir
+    // de lui. Le laisser déplié noyait les quatre éléments qui comptent.
+    var lignes = majeurs.map(bloc).join('') +
+      (mineurs.length
+        ? '<details style="margin:4px 0 12px;">' +
+            '<summary style="cursor:pointer; font-size:12px; font-weight:700; color:#64748b; ' +
+              'list-style:none; padding:7px 0;">📄 Contexte relevé ' +
+              '<span style="font-weight:600; color:#94a3b8;">— ' + mineurs.length +
+              ' élément(s) : ' + mineurs.map(function (c) { return esc(c.titre.toLowerCase()); }).join(', ') +
+              '</span></summary>' +
+            '<div style="margin-top:8px;">' + mineurs.map(bloc).join('') + '</div>' +
+          '</details>'
+        : '');
 
     if (!lignes) {
       zone.style.display = 'block';
