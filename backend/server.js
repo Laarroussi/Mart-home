@@ -91,6 +91,7 @@ function mountRoutes(prefix) {
   app.use(prefix + '/synthese',        require('./routes/synthese'));
   app.use(prefix + '/bilans',          require('./routes/bilans'));
   app.use(prefix + '/etudes',          require('./routes/etudes'));
+  app.use(prefix + '/questionnaires-libres', require('./routes/questionnaires-libres'));
   app.use(prefix + '/entretien',       require('./routes/entretien'));
   app.use(prefix + '/audit',           require('./routes/audit'));
   // Versement de pièces par les participants — DÉSACTIVÉ.

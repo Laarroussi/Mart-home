@@ -289,6 +289,54 @@
         request('PUT', `/etudes/patients/${patientId}`, { etude_id: etudeId })
     },
 
+    /** ===== Questionnaires libres — espace séparé du suivi clinique ===== */
+    qlibres: {
+      liste:     ()           => request('GET',    '/questionnaires-libres'),
+      detail:    (id)         => request('GET',    `/questionnaires-libres/${id}`),
+      creer:     (data)       => request('POST',   '/questionnaires-libres', data),
+      modifier:  (id, data)   => request('PUT',    `/questionnaires-libres/${id}`, data),
+      supprimer: (id, conf)   => request('DELETE', `/questionnaires-libres/${id}` +
+                                   (conf ? '?confirmer=oui' : '')),
+      ajouterQuestion:  (id, data)  => request('POST',   `/questionnaires-libres/${id}/questions`, data),
+      modifierQuestion: (qid, data) => request('PUT',    `/questionnaires-libres/questions/${qid}`, data),
+      supprimerQuestion:(qid)       => request('DELETE', `/questionnaires-libres/questions/${qid}`),
+      envoyer:   (id, data)   => request('POST',   `/questionnaires-libres/${id}/envoyer`, data),
+      relancer:  (eid)        => request('POST',   `/questionnaires-libres/envois/${eid}/relancer`, {}),
+      annuler:   (eid)        => request('DELETE', `/questionnaires-libres/envois/${eid}`),
+      reponses:  (id)         => request('GET',    `/questionnaires-libres/${id}/reponses`),
+      /**
+       * Télécharge l'export CSV.
+       *
+       * Ouvrir l'URL dans un onglet ne marcherait pas : la route exige le
+       * jeton d'authentification, qu'une navigation n'emporte pas. On récupère
+       * donc le fichier en mémoire avant de déclencher l'enregistrement.
+       */
+      exporter: async (id) => {
+        const token = getToken();
+        const r = await fetch(API_BASE + `/questionnaires-libres/${id}/export`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (!r.ok) {
+          let msg = 'Export impossible';
+          try { const j = await r.json(); if (j && j.error) msg = j.error; } catch (_) {}
+          throw new APIError(r.status, msg);
+        }
+        const blob = await r.blob();
+        const entete = r.headers.get('content-disposition') || '';
+        const m = entete.match(/filename="?([^"]+)"?/);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (m && m[1]) || 'questionnaire-libre.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        // Libérer l'objet tout de suite annulerait le téléchargement sur
+        // certains navigateurs : on laisse passer un instant.
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+      }
+    },
+
     /** ===== Pièces versées par les participants ===== */
     pieces: {
       // Côté patient : dépôt et suivi

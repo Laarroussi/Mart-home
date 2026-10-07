@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Questionnaire</title>
+<!--
+  Page de réponse à un questionnaire libre.
+  =========================================
+
+  Autonome, volontairement. Elle ne charge ni l'application, ni sa feuille de
+  style, ni ses modules : la personne qui ouvre ce lien n'est pas un
+  utilisateur de la plateforme. Elle n'a pas de compte, ne verra jamais le
+  reste du site, et beaucoup répondront depuis un téléphone sur une connexion
+  médiocre. Lui faire télécharger dix-sept mille lignes de code d'une
+  interface d'investigateur serait absurde.
+
+  Rien n'identifie l'établissement ni la pathologie dans cette page. Un lien
+  transféré par erreur, une capture d'écran, un collègue qui regarde par
+  dessus l'épaule — mieux vaut que l'en-tête ne dise rien de plus que
+  nécessaire. Le titre du questionnaire suffit.
+
+  Le jeton passe par la barre d'adresse, c'est inévitable puisqu'il arrive
+  par courriel. Il est donc à usage unique et daté : une fois le formulaire
+  validé, le lien ne rouvre plus rien.
+-->
+<style>
+  :root {
+    --encre: #10233f; --doux: #64748b; --ligne: #e2e8f0;
+    --accent: #0f766e; --accent-clair: #ecfdf5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 60px;
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px; line-height: 1.6; color: var(--encre);
+    background: #f1f5f9;
+  }
+  .feuille {
+    max-width: 680px; margin: 0 auto; background: #fff;
+    border: 1px solid var(--ligne); border-radius: 16px;
+    padding: 30px 32px; box-shadow: 0 10px 40px rgba(16,35,63,.06);
+  }
+  h1 { font-size: 22px; font-weight: 800; margin: 0 0 6px; letter-spacing: -.3px; }
+  .sous { color: var(--doux); font-size: 13.5px; margin: 0 0 20px; }
+  .consigne {
+    background: var(--accent-clair); border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0; padding: 12px 15px; margin-bottom: 24px;
+    font-size: 14px; color: #065f46;
+  }
+  .q { margin-bottom: 22px; padding-bottom: 20px; border-bottom: 1px solid #f1f5f9; }
+  .q:last-of-type { border-bottom: 0; }
+  .q > label.titre { display: block; font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+  .oblig { color: #dc2626; }
+  .aide { color: var(--doux); font-size: 13px; margin: 0 0 10px; }
+  input[type=text], input[type=number], input[type=date], textarea, select {
+    width: 100%; padding: 11px 13px; font-size: 15px; font-family: inherit;
+    border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: var(--encre);
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,118,110,.12);
+  }
+  textarea { resize: vertical; min-height: 96px; }
+  .choix label {
+    display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px;
+    border: 1px solid var(--ligne); border-radius: 10px; margin-bottom: 7px;
+    cursor: pointer; font-size: 14.5px;
+  }
+  .choix label:hover { border-color: #7dd3fc; background: #f8fafc; }
+  .choix input { margin-top: 3px; flex: 0 0 auto; width: 17px; height: 17px; accent-color: var(--accent); }
+  .echelle { display: flex; gap: 6px; flex-wrap: wrap; }
+  .echelle label {
+    flex: 1 1 54px; text-align: center; padding: 10px 4px; border: 1px solid var(--ligne);
+    border-radius: 9px; cursor: pointer; font-weight: 700; font-size: 14px;
+  }
+  .echelle input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .echelle input:checked + span { color: #fff; }
+  .echelle label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.envoyer {
+    width: 100%; padding: 15px; font-size: 16px; font-weight: 800; font-family: inherit;
+    color: #fff; background: var(--accent); border: 0; border-radius: 12px; cursor: pointer;
+    margin-top: 10px;
+  }
+  button.envoyer:disabled { background: #94a3b8; cursor: default; }
+  .msg { padding: 13px 16px; border-radius: 10px; font-size: 14px; margin-bottom: 20px; }
+  .msg.err { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  .msg.ok  { background: var(--accent-clair); border: 1px solid #a7f3d0; color: #065f46; }
+  .centre { text-align: center; padding: 20px 0; }
+  .centre .icone { font-size: 46px; margin-bottom: 10px; }
+  .pied { text-align: center; color: #94a3b8; font-size: 12px; margin-top: 22px; }
+  @media (max-width: 560px) { .feuille { padding: 22px 18px; border-radius: 12px; } }
+</style>
+</head>
+<body>
+<div class="feuille" id="feuille">
+  <div class="centre"><div class="icone">⏳</div><p class="sous">Chargement…</p></div>
+</div>
+<p class="pied">Vos réponses sont transmises directement au professionnel qui vous a adressé ce lien.</p>
+
+<script>
+(function () {
+  'use strict';
+
+  var feuille = document.getElementById('feuille');
+  var jeton = new URLSearchParams(location.search).get('j') || '';
+  var questions = [];
+
+  function ech(t) {
+    return String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function ecran(icone, titre, texte, ton) {
+    feuille.innerHTML = '<div class="centre">' +
+      '<div class="icone">' + icone + '</div>' +
+      '<h1>' + ech(titre) + '</h1>' +
+      '<p class="sous">' + ech(texte) + '</p></div>';
+  }
+
+  // Les messages d'erreur disent ce que la personne peut faire, pas ce que le
+  // serveur a renvoyé. « 410 Gone » n'aide personne à obtenir un nouveau lien.
+  var ETATS = {
+    invalide:      ['🔗', 'Ce lien n’est pas valide',
+                    'Vérifiez que vous l’avez copié en entier, ou demandez-en un nouveau à la personne qui vous l’a envoyé.'],
+    expire:        ['⏰', 'Ce lien a expiré',
+                    'Demandez-en un nouveau à la personne qui vous a adressé ce questionnaire.'],
+    ferme:         ['🔒', 'Ce questionnaire est clos',
+                    'Il n’accepte plus de réponse. Vous pouvez ignorer ce message.'],
+    deja_repondu:  ['✅', 'Vous avez déjà répondu',
+                    'Vos réponses ont bien été enregistrées. Merci.']
+  };
+
+  async function charger() {
+    if (!jeton) { var e = ETATS.invalide; return ecran(e[0], e[1], e[2]); }
+    var r, d;
+    try {
+      r = await fetch('/api/questionnaires-libres/public/' + encodeURIComponent(jeton));
+      d = await r.json().catch(function () { return {}; });
+    } catch (_) {
+      return ecran('📡', 'Connexion impossible',
+        'Vérifiez votre connexion internet, puis rechargez cette page.');
+    }
+    if (!r.ok || d.etat !== 'ouvert') {
+      var k = ETATS[d.etat] || ETATS.invalide;
+      if (d.etat === 'deja_repondu' && d.message_fin) {
+        return ecran('✅', 'Vous avez déjà répondu', d.message_fin);
+      }
+      return ecran(k[0], k[1], k[2]);
+    }
+    questions = d.questions || [];
+    afficher(d);
+  }
+
+  function champ(q) {
+    var id = 'q' + q.id;
+    var choix = String(q.choix || '').split(';').map(function (x) { return x.trim(); }).filter(Boolean);
+
+    switch (q.type) {
+      case 'texte_long':
+        return '<textarea id="' + id + '"></textarea>';
+      case 'nombre':
+        return '<input type="number" id="' + id + '"' +
+          (q.valeur_min != null ? ' min="' + q.valeur_min + '"' : '') +
+          (q.valeur_max != null ? ' max="' + q.valeur_max + '"' : '') + ' step="any">';
+      case 'date':
+        return '<input type="date" id="' + id + '">';
+      case 'oui_non':
+        return '<div class="choix">' +
+          ['Oui', 'Non'].map(function (v) {
+            return '<label><input type="radio" name="' + id + '" value="' + v + '"><span>' + v + '</span></label>';
+          }).join('') + '</div>';
+      case 'choix':
+        return '<div class="choix">' + choix.map(function (v) {
+          return '<label><input type="radio" name="' + id + '" value="' + ech(v) + '"><span>' + ech(v) + '</span></label>';
+        }).join('') + '</div>';
+      case 'choix_multiple':
+        return '<div class="choix">' + choix.map(function (v) {
+          return '<label><input type="checkbox" name="' + id + '" value="' + ech(v) + '"><span>' + ech(v) + '</span></label>';
+        }).join('') + '</div>';
+      case 'echelle': {
+        var a = q.valeur_min != null ? Number(q.valeur_min) : 0;
+        var b = q.valeur_max != null ? Number(q.valeur_max) : 10;
+        var html = '<div class="echelle">';
+        for (var i = a; i <= b && i - a < 21; i++) {
+          html += '<label><input type="radio" name="' + id + '" value="' + i + '"><span>' + i + '</span></label>';
+        }
+        return html + '</div>';
+      }
+      default:
+        return '<input type="text" id="' + id + '">';
+    }
+  }
+
+  function afficher(d) {
+    feuille.innerHTML =
+      '<h1>' + ech(d.titre) + '</h1>' +
+      (d.destinataire ? '<p class="sous">Pour ' + ech(d.destinataire) + '</p>' : '') +
+      (d.description ? '<p class="sous">' + ech(d.description) + '</p>' : '') +
+      (d.consigne ? '<div class="consigne">' + ech(d.consigne) + '</div>' : '') +
+      '<div id="alerte"></div>' +
+      '<form id="form">' +
+        questions.map(function (q) {
+          return '<div class="q" data-q="' + q.id + '">' +
+            '<label class="titre" for="q' + q.id + '">' + ech(q.libelle) +
+              (q.obligatoire ? ' <span class="oblig" title="Réponse attendue">*</span>' : '') + '</label>' +
+            (q.aide ? '<p class="aide">' + ech(q.aide) + '</p>' : '') +
+            champ(q) + '</div>';
+        }).join('') +
+        '<button type="submit" class="envoyer">Valider mes réponses</button>' +
+      '</form>';
+
+    document.getElementById('form').addEventListener('submit', envoyer);
+  }
+
+  function valeurDe(q) {
+    var id = 'q' + q.id;
+    if (q.type === 'choix_multiple') {
+      return Array.prototype.slice
+        .call(document.querySelectorAll('input[name="' + id + '"]:checked'))
+        .map(function (x) { return x.value; });
+    }
+    if (q.type === 'choix' || q.type === 'oui_non' || q.type === 'echelle') {
+      var c = document.querySelector('input[name="' + id + '"]:checked');
+      return c ? c.value : '';
+    }
+    var el = document.getElementById(id);
+    return el ? el.value : '';
+  }
+
+  function alerte(html, ton) {
+    var z = document.getElementById('alerte');
+    if (!z) return;
+    z.innerHTML = html ? '<div class="msg ' + (ton || 'err') + '">' + html + '</div>' : '';
+    if (html) z.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  async function envoyer(ev) {
+    ev.preventDefault();
+    var bouton = ev.target.querySelector('button');
+
+    // Vérification ici d'abord, pour éviter un aller-retour et surtout pour
+    // montrer QUELLES questions manquent, à l'endroit où elles se trouvent.
+    var manquantes = questions.filter(function (q) {
+      if (!q.obligatoire) return false;
+      var v = valeurDe(q);
+      return Array.isArray(v) ? !v.length : !String(v).trim();
+    });
+    if (manquantes.length) {
+      alerte('Il manque une réponse à ' + manquantes.length + ' question' +
+        (manquantes.length > 1 ? 's' : '') + ' : <strong>' +
+        manquantes.map(function (q) { return ech(q.libelle); }).join(', ') + '</strong>.');
+      var premiere = document.querySelector('[data-q="' + manquantes[0].id + '"]');
+      if (premiere) premiere.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    var reponses = {};
+    questions.forEach(function (q) { reponses[q.id] = valeurDe(q); });
+
+    bouton.disabled = true;
+    bouton.textContent = 'Enregistrement…';
+    alerte('');
+    try {
+      var r = await fetch('/api/questionnaires-libres/public/' + encodeURIComponent(jeton), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reponses: reponses })
+      });
+      var d = await r.json().catch(function () { return {}; });
+      if (r.ok && d.etat === 'enregistre') {
+        return ecran('🎉', 'Merci',
+          d.message_fin || 'Vos réponses ont bien été enregistrées. Vous pouvez fermer cette page.');
+      }
+      if (ETATS[d.etat]) { var k = ETATS[d.etat]; return ecran(k[0], k[1], k[2]); }
+      alerte(ech(d.error || 'Enregistrement impossible. Réessayez dans un instant.'));
+    } catch (_) {
+      alerte('Connexion interrompue. Vos réponses sont encore à l’écran : réessayez.');
+    } finally {
+      bouton.disabled = false;
+      bouton.textContent = 'Valider mes réponses';
+    }
+  }
+
+  charger();
+})();
+</script>
+</body>
+</html>

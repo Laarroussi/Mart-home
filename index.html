@@ -18,32 +18,33 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase42-0"></script>
+  <script src="api-client.js?v=phase43-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase42-0"></script>
+  <script src="questionnaires-defs.js?v=phase43-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase42-0"></script>
+  <script src="medical-parsers.js?v=phase43-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase42-0"></script>
-  <script src="cpet-analyse.js?v=phase42-0"></script>
+  <script src="cpet-graph-preview.js?v=phase43-0"></script>
+  <script src="cpet-analyse.js?v=phase43-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase42-0"></script>
-  <script src="medical-record-ui.js?v=phase42-0"></script>
+  <script src="pdf-extractor.js?v=phase43-0"></script>
+  <script src="medical-record-ui.js?v=phase43-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase42-0"></script>
-  <script src="synthese-ui.js?v=phase42-0"></script>
-  <script src="audit-ui.js?v=phase42-0"></script>
-  <script src="entretien-ui.js?v=phase42-0"></script>
+  <script src="aortic-consultations.js?v=phase43-0"></script>
+  <script src="synthese-ui.js?v=phase43-0"></script>
+  <script src="audit-ui.js?v=phase43-0"></script>
+  <script src="entretien-ui.js?v=phase43-0"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase42-0"></script>
-  <script src="visio-jitsi.js?v=phase42-0"></script>
-  <script src="video-pilotee.js?v=phase42-0"></script>
-  <script src="fiche-apa.js?v=phase42-0"></script>
-  <script src="inactivite.js?v=phase42-0"></script>
-  <script src="bilans-ui.js?v=phase42-0"></script>
-  <script src="etudes-ui.js?v=phase42-0"></script>
-  <script src="ville-hopital.js?v=phase42-0"></script>
+  <script src="document-import.js?v=phase43-0"></script>
+  <script src="visio-jitsi.js?v=phase43-0"></script>
+  <script src="video-pilotee.js?v=phase43-0"></script>
+  <script src="fiche-apa.js?v=phase43-0"></script>
+  <script src="inactivite.js?v=phase43-0"></script>
+  <script src="bilans-ui.js?v=phase43-0"></script>
+  <script src="etudes-ui.js?v=phase43-0"></script>
+  <script src="ville-hopital.js?v=phase43-0"></script>
+  <script src="qlibres-ui.js?v=phase43-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2974,6 +2975,15 @@
           Listing patients
         </button>
 
+        <!-- Phase 43 — Questionnaires libres. Distincts du SF-36 et du GPAQ :
+             ceux-ci partent automatiquement aux patients inclus et nourrissent
+             les évaluations ; ceux-là s'adressent à qui l'on veut et vivent
+             dans leurs propres tables. -->
+        <button class="tab-button" data-tab="qlibres">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
+          Questionnaires libres
+        </button>
+
         <!-- Phase 41 — Recherche clinique. Placé en fin de section Suivi plutôt
              que dans une section à part : on y va depuis le suivi, pour savoir
              de quel protocole relève la file active. -->
@@ -3687,6 +3697,20 @@
             </div>
           </article>
         </section>
+      </section>
+
+      <!-- ============================== QUESTIONNAIRES LIBRES ============================== -->
+      <section id="qlibres" class="tab-panel hidden">
+        <header class="page-header">
+          <div>
+            <h2>Questionnaires libres</h2>
+            <p>Vos propres questionnaires, envoyés par courriel. Sans rapport avec les dossiers patients.</p>
+          </div>
+          <div class="actions">
+            <button class="btn-secondary" onclick="switchMainTab('accueil')">← Accueil</button>
+          </div>
+        </header>
+        <div id="qlibresMount"></div>
       </section>
 
       <!-- ============================== RECHERCHE CLINIQUE ============================== -->
@@ -5872,6 +5896,7 @@
       education: ['Éducation thérapeutique', 'Capsules courtes pour accompagner les patients.'],
       listing: ['Listing patients', 'Vue tabulaire compacte.'],
       recherche: ['Recherche clinique', 'Études, numéros CPP et NCT, cahiers d\'observation et inclusions.'],
+      qlibres: ['Questionnaires libres', 'Questionnaires composés et diffusés librement, hors protocole.'],
       stats: ['Statistiques', 'Analyses de groupe et exports.'],
       questionnaires: ['Questionnaires', 'SF-36, GPAQ et données déclaratives.'],
       parametres: ['Paramètres', 'Gestion technique et droits d’accès.']
@@ -5896,6 +5921,7 @@
     // restait figé sur un état ancien sans que rien ne le signale.
     if (tabId === 'listing') renderPatientTable($('tableSearch') ? $('tableSearch').value : '');
     if (tabId === 'recherche') { try { if (window.EtudesUI) window.EtudesUI.render(); } catch (e) { console.warn('[etudes] rendu échoué', e); } }
+    if (tabId === 'qlibres') { try { if (window.QLibresUI) window.QLibresUI.render(); } catch (e) { console.warn('[qlibres] rendu échoué', e); } }
     if (tabId === 'creation') {
       initCreationForm();
       // Le formulaire s'ouvre toujours sur les pièces : c'est de là que part
