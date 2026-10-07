@@ -3340,10 +3340,14 @@
                 <div style="display:flex; gap:8px; align-items:center;">
                   <select id="cf_categorie" style="flex:1 1 auto; min-width:0;"></select>
                   <span style="color:#94a3b8; font-weight:800;">–</span>
-                  <input type="text" id="cf_codeNum" inputmode="numeric" maxlength="4"
-                         style="width:84px; text-align:center; font-weight:700;" />
+                  <input type="text" id="cf_codeNum" readonly tabindex="-1"
+                         style="width:84px; text-align:center; font-weight:800; color:#0b1530;
+                                background:#f1f5f9; border-color:#e2e8f0; cursor:default;" />
                 </div>
                 <input type="hidden" id="cf_code" />
+                <small style="display:block; margin-top:4px; font-size:11px; color:#94a3b8; line-height:1.4;">
+                  Numéro attribué par le serveur, propre à chaque population.
+                </small>
                 <div id="cf_categorieIndice" style="display:none; margin-top:5px; font-size:11.5px; line-height:1.45;"></div>
               </div>
               <div>
@@ -7780,16 +7784,10 @@
       window.majProchainCode($('cf_code') && $('cf_code').dataset.auto === '1');
     });
 
-    const num = $('cf_codeNum');
-    if (num && !num.dataset.pret) {
-      num.dataset.pret = '1';
-      num.addEventListener('input', () => {
-        num.value = num.value.replace(/\D/g, '').slice(0, 4);
-        const code = $('cf_code');
-        if (code) code.dataset.auto = '0';   // saisie humaine : on ne l'écrase plus
-        majCodeAssemble();
-      });
-    }
+    // Le numéro n'est pas saisissable : il est attribué par le serveur, qui
+    // seul connaît le dernier attribué dans cette population. Laisser le
+    // modifier ouvrait la porte aux doublons et aux trous dans la série —
+    // deux défauts qu'on ne découvre qu'au moment de l'analyse, trop tard.
 
     // Le champ hôpital se normalise quand on le quitte, pas pendant la frappe :
     // réécrire sous les doigts déplace le curseur et rend la saisie pénible.
@@ -8054,7 +8052,11 @@
     if ($('cf_initials')) delete $('cf_initials').dataset.manual;
     // La population revient à Marfan et redevient « non choisie » : sans cela,
     // le patient suivant héritait silencieusement du choix du précédent.
-    if ($('cf_categorie')) { $('cf_categorie').value = 'MRF'; delete $('cf_categorie').dataset.manuel; }
+    if ($('cf_categorie')) {
+      $('cf_categorie').value = 'MRF';
+      delete $('cf_categorie').dataset.manuel;
+      $('cf_categorie').disabled = false;   // le verrou ne vaut que pour la fiche éditée
+    }
     if ($('cf_codeNum')) $('cf_codeNum').value = '';
     indiceCategorie('');
     // Phase 25 : les champs d'entretien et la synthèse font partie du
@@ -8724,6 +8726,19 @@
     setTimeout(() => {
       const set = (id, val) => { const el = $(id); if (el && val != null) el.value = val; };
       set('cf_code', p.id);
+      // Modification d'une fiche existante : le code ne change pas. On le
+      // décompose pour l'afficher, et on verrouille la population — en
+      // changer renumérroterait un patient déjà inclus.
+      const mc = String(p.id || '').match(/^([A-Z]{2,4})-?(\d+)$/i);
+      if (mc) {
+        if ($('cf_categorie')) {
+          $('cf_categorie').value = (p.categorie || mc[1]).toUpperCase();
+          $('cf_categorie').dataset.manuel = '1';
+          $('cf_categorie').disabled = true;
+        }
+        if ($('cf_codeNum')) $('cf_codeNum').value = mc[2];
+        if ($('cf_code')) $('cf_code').dataset.auto = '0';
+      }
       set('cf_ipp', civil.ipp);
       set('cf_lastName', normalizeLastName(civil.lastName));
       set('cf_firstName', normalizeFirstName(civil.firstName));
