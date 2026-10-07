@@ -18,6 +18,7 @@ const { requireAuth, requireRole, ROLE } = require('../middleware/auth');
 const { synchroniser } = require('../utils/sync-evaluations');
 const { exigerMotif, journaliser, MOTIFS } = require('../utils/audit');
 const categories = require('../config/categories');
+const { normaliserVille } = require('../config/ville-hopital');
 const { analyserTexte, analyserEcho, analyserIdentite, ocrDocument, transcrireAudio,
         pseudonymiser, statutIA, CHAMPS_NUM_ECHO, CHAMPS_TXT_ECHO } = require('../config/ai');
 
@@ -205,6 +206,14 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
     let categorie = null;
     try { categorie = categories.detecter(texte); }
     catch (e) { console.warn('[categorie] détection échouée :', e.message); }
+
+    // L'établissement est ramené au nom de la ville, en majuscules et sans
+    // accent. Laisser passer « CHU de Toulouse », « C.H.U. Toulouse » et
+    // « Hôpital Rangueil » comptait trois centres là où il n'y en a qu'un.
+    if (identite && identite.centre) {
+      const ville = normaliserVille(identite.centre);
+      if (ville) { identite.centre_source = identite.centre; identite.centre = ville; }
+    }
 
     res.json({
       faits: resultat.faits,

@@ -43,6 +43,7 @@
   <script src="inactivite.js?v=phase42-0"></script>
   <script src="bilans-ui.js?v=phase42-0"></script>
   <script src="etudes-ui.js?v=phase42-0"></script>
+  <script src="ville-hopital.js?v=phase42-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3329,13 +3330,20 @@
             <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Ce qui a été lu dans les pièces est déjà rempli. Vérifiez, corrigez, complétez.</p>
 
             <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px;">
-              <div>
-                <label class="control-label" for="cf_categorie">Population</label>
-                <select id="cf_categorie"></select>
-              </div>
-              <div>
-                <label class="control-label" for="cf_code">Code patient *</label>
-                <input type="text" id="cf_code" placeholder="MRF-001" oninput="this.dataset.auto='0';" />
+              <!-- Population et numéro formaient deux champs voisins qui disaient
+                   la même chose : le code contient déjà le préfixe. Un seul
+                   contrôle désormais — on choisit la population, le numéro
+                   suit. cf_code reste présent, assemblé, car tout le reste du
+                   formulaire et l'enregistrement le lisent. -->
+              <div style="grid-column: 1 / 3;">
+                <label class="control-label" for="cf_categorie">Code patient *</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <select id="cf_categorie" style="flex:1 1 auto; min-width:0;"></select>
+                  <span style="color:#94a3b8; font-weight:800;">–</span>
+                  <input type="text" id="cf_codeNum" inputmode="numeric" maxlength="4"
+                         style="width:84px; text-align:center; font-weight:700;" />
+                </div>
+                <input type="hidden" id="cf_code" />
                 <div id="cf_categorieIndice" style="display:none; margin-top:5px; font-size:11.5px; line-height:1.45;"></div>
               </div>
               <div>
@@ -3403,8 +3411,12 @@
                   <input type="text" id="cf_doctor" placeholder="Dr Nom" />
                 </div>
                 <div>
-                  <label class="control-label" for="cf_center">Centre de référence</label>
-                  <input type="text" id="cf_center" placeholder="ex. CHU Toulouse — Cardiologie" />
+                  <label class="control-label" for="cf_center">Hôpital — ville</label>
+                  <input type="text" id="cf_center" placeholder="TOULOUSE" autocapitalize="characters"
+                         style="text-transform:uppercase;" />
+                  <small style="display:block; margin-top:4px; font-size:11px; color:#94a3b8; line-height:1.4;">
+                    Le nom de la ville seul, en majuscules — sans « CHU », sans nom de service.
+                  </small>
                 </div>
                 <div style="grid-column: 1 / -1;">
                   <label class="control-label" for="cf_address">Adresse</label>
@@ -7719,6 +7731,41 @@
     return (sel && sel.value) || 'MRF';
   }
 
+  /**
+   * Recompose le code complet depuis la population et le numéro.
+   *
+   * cf_code reste la source unique pour tout le reste du formulaire, la
+   * validation et l'enregistrement. L'écran n'affiche plus que les deux
+   * morceaux, mais rien en aval n'a eu à changer.
+   */
+  function majCodeAssemble() {
+    const num = $('cf_codeNum');
+    const code = $('cf_code');
+    if (!code) return;
+    const n = String((num && num.value) || '').replace(/\D/g, '');
+    code.value = n ? categorieChoisie() + '-' + n.padStart(3, '0') : '';
+  }
+  window.majCodeAssemble = majCodeAssemble;
+
+  /**
+   * Nom d'hôpital ramené à la ville, en majuscules et sans accent.
+   *
+   * La règle vit dans ville-hopital.js, chargé aussi par le serveur. Elle a
+   * d'abord été écrite deux fois, une de chaque côté : les deux versions
+   * donnaient des résultats différents sur cinq libellés sur douze, et le
+   * même hôpital comptait pour deux centres selon que la donnée venait d'un
+   * document lu ou d'une saisie à la main.
+   */
+  function normaliserVilleHopital(v) {
+    if (window.VilleHopital && window.VilleHopital.normaliserVille) {
+      return window.VilleHopital.normaliserVille(v);
+    }
+    // Module absent : on se contente de majuscules sans accent plutôt que de
+    // réécrire une règle approximative qui divergerait de celle du serveur.
+    return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  }
+  window.normaliserVilleHopital = normaliserVilleHopital;
+
   function remplirCategories() {
     const sel = $('cf_categorie');
     if (!sel || sel.dataset.pret) return;
@@ -7726,12 +7773,34 @@
       '<option value="' + c.code + '">' + c.code + ' — ' + c.libelle + '</option>').join('');
     sel.dataset.pret = '1';
     sel.addEventListener('change', () => {
-      // Changer de population change le code : on le recalcule même si un
-      // code était déjà affiché, sauf s'il a été saisi à la main.
+      // Changer de population change le numéro de suite : on le redemande au
+      // serveur, car la numérotation est propre à chaque population.
       sel.dataset.manuel = '1';
       indiceCategorie('');
       window.majProchainCode($('cf_code') && $('cf_code').dataset.auto === '1');
     });
+
+    const num = $('cf_codeNum');
+    if (num && !num.dataset.pret) {
+      num.dataset.pret = '1';
+      num.addEventListener('input', () => {
+        num.value = num.value.replace(/\D/g, '').slice(0, 4);
+        const code = $('cf_code');
+        if (code) code.dataset.auto = '0';   // saisie humaine : on ne l'écrase plus
+        majCodeAssemble();
+      });
+    }
+
+    // Le champ hôpital se normalise quand on le quitte, pas pendant la frappe :
+    // réécrire sous les doigts déplace le curseur et rend la saisie pénible.
+    const centre = $('cf_center');
+    if (centre && !centre.dataset.pret) {
+      centre.dataset.pret = '1';
+      centre.addEventListener('blur', () => {
+        const v = normaliserVilleHopital(centre.value);
+        if (v !== centre.value) centre.value = v;
+      });
+    }
   }
 
   /** Affiche sur quoi repose une proposition de population lue dans un document. */
@@ -7792,15 +7861,21 @@
   window.majProchainCode = async function (forcer) {
     const champ = $('cf_code');
     if (!champ) return;
-    // On ne remplace pas un code que l'utilisateur a saisi lui-même.
+    // On ne remplace pas un numéro que l'utilisateur a saisi lui-même.
     if (!forcer && champ.value && champ.dataset.auto !== '1') return;
+    const poser = (code) => {
+      champ.value = code;
+      champ.dataset.auto = '1';
+      const num = $('cf_codeNum');
+      const m = String(code || '').match(/-(\d+)$/);
+      if (num && m) num.value = m[1];
+    };
     try {
       const r = await window.MarfanAPI.patients.prochainCode(categorieChoisie());
-      if (r && r.code) { champ.value = r.code; champ.dataset.auto = '1'; }
+      if (r && r.code) poser(r.code);
     } catch (e) {
       // Hors ligne ou API indisponible : le calcul local reste un repli utile.
-      champ.value = nextPatientCode();
-      champ.dataset.auto = '1';
+      poser(nextPatientCode());
       console.warn('[creation] prochain code depuis le serveur indisponible :', e && e.message);
     }
   };
@@ -7822,8 +7897,12 @@
     // Le code définitif vient du serveur ; le calcul local sert d'affichage
     // immédiat le temps de la réponse.
     if ($('cf_code') && !$('cf_code').value) {
-      $('cf_code').value = nextPatientCode();
+      const provisoire = nextPatientCode();
+      $('cf_code').value = provisoire;
       $('cf_code').dataset.auto = '1';
+      const num = $('cf_codeNum');
+      const m = provisoire.match(/-(\d+)$/);
+      if (num && m) num.value = m[1];
     }
     try { if (typeof window.majProchainCode === 'function') window.majProchainCode(); } catch (_) {}
     if ($('cf_inclusionDate') && !$('cf_inclusionDate').value) $('cf_inclusionDate').value = new Date().toISOString().slice(0, 10);
@@ -7976,6 +8055,7 @@
     // La population revient à Marfan et redevient « non choisie » : sans cela,
     // le patient suivant héritait silencieusement du choix du précédent.
     if ($('cf_categorie')) { $('cf_categorie').value = 'MRF'; delete $('cf_categorie').dataset.manuel; }
+    if ($('cf_codeNum')) $('cf_codeNum').value = '';
     indiceCategorie('');
     // Phase 25 : les champs d'entretien et la synthèse font partie du
     // formulaire — les oublier laissait les notes du patient précédent.
@@ -8811,7 +8891,9 @@
         if (poser('cf_ipp',       ident.ipp))            { n++; details.push('IPP'); }
         if (poser('cf_dob',       ident.date_naissance)) { n++; details.push('date de naissance'); }
         if (poser('cf_sex',       ident.sexe))           { n++; details.push('sexe'); }
-        if (poser('cf_center',    ident.centre))         { n++; details.push('centre'); }
+        // Le serveur renvoie déjà la ville normalisée ; on repasse la règle au
+        // cas où la réponse vienne d'une version antérieure du backend.
+        if (poser('cf_center', normaliserVilleHopital(ident.centre))) { n++; details.push('hôpital'); }
         if (poser('cf_doctor',    ident.medecin))        { n++; details.push('médecin'); }
         // L'âge se recalcule depuis la date de naissance si la fonction existe
         if (ident.date_naissance && typeof updateAgeFromDob === 'function') {
