@@ -132,7 +132,7 @@ router.post('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATO
     }
 
     // Email unique
-    const exists = await query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+    const exists = await query('SELECT id FROM users WHERE lower(email) = lower($1)', [String(email).trim()]);
     if (exists.rows.length) return res.status(409).json({ error: 'Email déjà utilisé' });
 
     if (!password || password.length < 8) {

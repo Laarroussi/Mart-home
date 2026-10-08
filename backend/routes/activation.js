@@ -114,7 +114,8 @@ router.post('/renvoyer', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN),
       if (!email) return res.status(400).json({ error: 'Adresse e-mail requise.' });
 
       const { rows } = await query(
-        'SELECT id, name, email, role, patient_id, active FROM users WHERE email = $1', [email]);
+        'SELECT id, name, email, role, patient_id, active FROM users WHERE lower(email) = lower($1)',
+        [String(email).trim()]);
       if (!rows.length) return res.status(404).json({ error: 'Aucun compte avec cette adresse.' });
       const u = rows[0];
       if (u.active === false) return res.status(409).json({ error: 'Ce compte est désactivé.' });
@@ -211,7 +212,7 @@ router.post('/complete', async (req, res, next) => {
     // à la création (collision d'e-mail), le patient n'aurait pas pu se connecter.
     try {
       const dispo = await query(
-        'SELECT id FROM users WHERE email = $1 AND id <> $2', [t.email, t.user_id]);
+        'SELECT id FROM users WHERE lower(email) = lower($1) AND id <> $2', [t.email, t.user_id]);
       if (!dispo.rows.length) {
         await query('UPDATE users SET email = $1 WHERE id = $2', [t.email, t.user_id]);
       }
@@ -271,7 +272,8 @@ router.post('/oubli', limiteOubli, async (req, res, next) => {
     }
 
     const u = await query(
-      `SELECT id, name, email, patient_id, active FROM users WHERE email = $1 LIMIT 1`, [email]);
+      `SELECT id, name, email, patient_id, active FROM users WHERE lower(email) = lower($1) LIMIT 1`,
+      [String(email).trim()]);
 
     // Adresse inconnue ou compte désactivé : on répond comme si tout allait
     // bien, sans rien envoyer. Le journal, lui, garde la trace.

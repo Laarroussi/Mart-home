@@ -61,7 +61,21 @@ const limiteChangement = rateLimit({
   })
 });
 
-/** POST /api/auth/login — Connexion par email + mot de passe */
+/**
+ * POST /api/auth/login — Connexion par email + mot de passe
+ *
+ * La comparaison d'adresse se fait en minuscules DES DEUX CÔTÉS.
+ * La version précédente mettait la saisie en minuscules puis la comparait à
+ * la valeur stockée telle quelle : une adresse enregistrée avec une capitale
+ * — « Celia@… » au lieu de « celia@… » — rendait le compte définitivement
+ * inaccessible. Aucune ligne n'était trouvée, et le message « Identifiants
+ * invalides » laissait croire à une erreur de mot de passe. Une patiente a
+ * passé deux jours dessus.
+ *
+ * Une adresse électronique est insensible à la casse pour sa partie domaine,
+ * et dans les faits pour sa partie locale chez tous les fournisseurs grand
+ * public. La traiter autrement ne protège rien et exclut des utilisateurs.
+ */
 router.post('/login', limiteConnexion, async (req, res, next) => {
   try {
     const { email, password } = req.body || {};
@@ -70,8 +84,8 @@ router.post('/login', limiteConnexion, async (req, res, next) => {
     const { rows } = await query(
       `SELECT id, role, name, username, email, password_hash, active, patient_id,
               birth_date, must_change_password
-         FROM users WHERE email = $1`,
-      [email.toLowerCase()]
+         FROM users WHERE lower(email) = lower($1)`,
+      [String(email).trim()]
     );
     if (!rows.length) return res.status(401).json({ error: 'Identifiants invalides' });
 

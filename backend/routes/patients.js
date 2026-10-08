@@ -137,7 +137,7 @@ router.post('/', requireAuth, requireRole('principal_admin', 'investigator'), as
       // l'investigateur saisit sa propre adresse. Sans ce garde-fou, la violation de
       // contrainte annulait TOUTE la transaction et le patient n'était jamais créé.
       let patientEmail = (p.civil && p.civil.email) || (p.id.toLowerCase() + '@example.fr');
-      const emailTaken = await client.query('SELECT id FROM users WHERE email = $1', [patientEmail]);
+      const emailTaken = await client.query('SELECT id FROM users WHERE lower(email) = lower($1)', [patientEmail]);
       if (emailTaken.rows.length) {
         patientEmail = p.id.toLowerCase() + '.' + Date.now() + '@marfan-apa.local';
       }
