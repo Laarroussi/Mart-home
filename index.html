@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase45-2"></script>
+  <script src="api-client.js?v=phase46-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase45-2"></script>
+  <script src="questionnaires-defs.js?v=phase46-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase45-2"></script>
+  <script src="medical-parsers.js?v=phase46-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase45-2"></script>
-  <script src="cpet-analyse.js?v=phase45-2"></script>
+  <script src="cpet-graph-preview.js?v=phase46-0"></script>
+  <script src="cpet-analyse.js?v=phase46-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase45-2"></script>
-  <script src="medical-record-ui.js?v=phase45-2"></script>
+  <script src="pdf-extractor.js?v=phase46-0"></script>
+  <script src="medical-record-ui.js?v=phase46-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase45-2"></script>
-  <script src="synthese-ui.js?v=phase45-2"></script>
-  <script src="audit-ui.js?v=phase45-2"></script>
-  <script src="entretien-ui.js?v=phase45-2"></script>
-  <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase45-2"></script>
-  <script src="visio-jitsi.js?v=phase45-2"></script>
-  <script src="video-pilotee.js?v=phase45-2"></script>
-  <script src="fiche-apa.js?v=phase45-2"></script>
-  <script src="inactivite.js?v=phase45-2"></script>
-  <script src="bilans-ui.js?v=phase45-2"></script>
-  <script src="etudes-ui.js?v=phase45-2"></script>
-  <script src="ville-hopital.js?v=phase45-2"></script>
-  <script src="qlibres-ui.js?v=phase45-2"></script>
-  <script src="parametres-ui.js?v=phase45-2"></script>
+  <script src="aortic-consultations.js?v=phase46-0"></script>
+  <script src="synthese-ui.js?v=phase46-0"></script>
+  <script src="audit-ui.js?v=phase46-0"></script>
+  <script src="entretien-ui.js?v=phase46-0"></script>
+  <script src="activation-ui.js?v=phase46-0"></script>
+  <script src="document-import.js?v=phase46-0"></script>
+  <script src="visio-jitsi.js?v=phase46-0"></script>
+  <script src="video-pilotee.js?v=phase46-0"></script>
+  <script src="fiche-apa.js?v=phase46-0"></script>
+  <script src="inactivite.js?v=phase46-0"></script>
+  <script src="bilans-ui.js?v=phase46-0"></script>
+  <script src="etudes-ui.js?v=phase46-0"></script>
+  <script src="ville-hopital.js?v=phase46-0"></script>
+  <script src="qlibres-ui.js?v=phase46-0"></script>
+  <script src="parametres-ui.js?v=phase46-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2731,6 +2731,11 @@
     setTimeout(function () { if (v && v.parentNode) v.parentNode.removeChild(v); }, 240);
   };
   setTimeout(window.__leverVoile, 8000);
+  // Lien d'activation : l'écran dédié s'affiche tout de suite, le voile n'a
+  // plus lieu d'être et le masquerait.
+  try {
+    if (/[?&]activation=/.test(location.search)) setTimeout(window.__leverVoile, 400);
+  } catch (_) {}
 </script>
 
   <!-- Phase 12.3 : Menu hamburger mobile (visible < 900px) -->
@@ -13608,7 +13613,15 @@
     const badge   = document.getElementById('apiUserBadge');
     const userNameEl = document.getElementById('apiUserName');
 
-    function showOverlay() { overlay.style.display = 'flex'; }
+    function showOverlay() {
+      // Une activation en cours a sa propre fenêtre, en plein écran. Ouvrir
+      // celle-ci par-dessous n'apporte rien et, si l'activation échoue à
+      // s'afficher, le patient se retrouve devant un écran de connexion
+      // alors qu'il n'a pas encore de mot de passe — c'est exactement ce
+      // qu'il nous a été rapporté.
+      if (window.__activationEnCours) return;
+      overlay.style.display = 'flex';
+    }
     function hideOverlay() { overlay.style.display = 'none'; }
     function showDemoBanner() { banner.style.display = 'block'; }
     function showUserBadge(u) {

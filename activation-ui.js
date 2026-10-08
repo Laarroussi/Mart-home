@@ -14,16 +14,30 @@
 (function () {
   'use strict';
 
-  function getToken() {
+  const FORME = /^[a-f0-9]{64}$/i;
+
+  function lireParam() {
     try {
-      const p = new URLSearchParams(window.location.search);
-      const t = p.get('activation');
-      return t && /^[a-f0-9]{64}$/i.test(t) ? t : null;
+      return new URLSearchParams(window.location.search).get('activation');
     } catch (_) { return null; }
   }
 
-  const TOKEN = getToken();
-  if (!TOKEN) return; // page normale, on ne fait rien
+  const BRUT = lireParam();
+  // Pas de paramètre : page normale, ce module ne fait rien.
+  if (BRUT === null) return;
+
+  // Un paramètre présent mais mal formé n'est PAS une page normale. Jusqu'ici
+  // ce cas retournait en silence, et le patient tombait sur l'écran de
+  // connexion d'une plateforme où il n'a pas encore de mot de passe — puis
+  // sur « Identifiants invalides », sans qu'aucune piste ne lui soit donnée.
+  // La cause la plus fréquente est un lien coupé par le logiciel de
+  // messagerie : les jetons font 64 caractères et beaucoup de clients
+  // tronquent les adresses longues.
+  const TOKEN = BRUT && FORME.test(BRUT) ? BRUT : null;
+
+  // Signale au reste de l'application qu'une activation est en cours, pour
+  // qu'elle n'ouvre pas sa propre fenêtre de connexion par-dessus.
+  try { window.__activationEnCours = true; } catch (_) {}
 
   // Le lien d'activation est destiné au PATIENT. Si une session est déjà ouverte
   // dans ce navigateur (typiquement celle de l'investigateur qui vient de créer
@@ -183,6 +197,21 @@
   }
 
   async function demarrer() {
+    if (!TOKEN) {
+      // On montre au patient ce qu'on a reçu : s'il voit son lien coupé, il
+      // comprend immédiatement qu'il doit le recopier en entier.
+      const vu = String(BRUT || '');
+      mount(messageErreur('Lien incomplet',
+        'Ce lien d\'activation semble avoir été coupé par votre logiciel de messagerie.<br><br>' +
+        'Revenez à l\'e-mail reçu, <strong>copiez l\'adresse complète</strong> et collez-la dans ' +
+        'la barre d\'adresse de votre navigateur — elle doit se terminer par une longue suite de ' +
+        'lettres et de chiffres.<br><br>' +
+        '<span style="font-size:12px; color:#94a3b8;">Reçu : ' +
+        esc(vu.length > 24 ? vu.slice(0, 24) + '…' : vu) +
+        ' (' + vu.length + ' caractères au lieu de 64)</span><br><br>' +
+        'Si le problème persiste, demandez un nouveau lien à votre référent.'));
+      return;
+    }
     mount('<div style="text-align:center; padding:22px 0; color:#64748b; font-size:13.5px;">Vérification du lien…</div>');
     // api-client.js peut ne pas être encore prêt
     for (let i = 0; i < 40 && !window.MarfanAPI; i++) {
