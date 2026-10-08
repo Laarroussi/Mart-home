@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase46-0"></script>
+  <script src="api-client.js?v=phase46-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase46-0"></script>
+  <script src="questionnaires-defs.js?v=phase46-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase46-0"></script>
+  <script src="medical-parsers.js?v=phase46-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase46-0"></script>
-  <script src="cpet-analyse.js?v=phase46-0"></script>
+  <script src="cpet-graph-preview.js?v=phase46-1"></script>
+  <script src="cpet-analyse.js?v=phase46-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase46-0"></script>
-  <script src="medical-record-ui.js?v=phase46-0"></script>
+  <script src="pdf-extractor.js?v=phase46-1"></script>
+  <script src="medical-record-ui.js?v=phase46-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase46-0"></script>
-  <script src="synthese-ui.js?v=phase46-0"></script>
-  <script src="audit-ui.js?v=phase46-0"></script>
-  <script src="entretien-ui.js?v=phase46-0"></script>
-  <script src="activation-ui.js?v=phase46-0"></script>
-  <script src="document-import.js?v=phase46-0"></script>
-  <script src="visio-jitsi.js?v=phase46-0"></script>
-  <script src="video-pilotee.js?v=phase46-0"></script>
-  <script src="fiche-apa.js?v=phase46-0"></script>
-  <script src="inactivite.js?v=phase46-0"></script>
-  <script src="bilans-ui.js?v=phase46-0"></script>
-  <script src="etudes-ui.js?v=phase46-0"></script>
-  <script src="ville-hopital.js?v=phase46-0"></script>
-  <script src="qlibres-ui.js?v=phase46-0"></script>
-  <script src="parametres-ui.js?v=phase46-0"></script>
+  <script src="aortic-consultations.js?v=phase46-1"></script>
+  <script src="synthese-ui.js?v=phase46-1"></script>
+  <script src="audit-ui.js?v=phase46-1"></script>
+  <script src="entretien-ui.js?v=phase46-1"></script>
+  <script src="activation-ui.js?v=phase46-1"></script>
+  <script src="document-import.js?v=phase46-1"></script>
+  <script src="visio-jitsi.js?v=phase46-1"></script>
+  <script src="video-pilotee.js?v=phase46-1"></script>
+  <script src="fiche-apa.js?v=phase46-1"></script>
+  <script src="inactivite.js?v=phase46-1"></script>
+  <script src="bilans-ui.js?v=phase46-1"></script>
+  <script src="etudes-ui.js?v=phase46-1"></script>
+  <script src="ville-hopital.js?v=phase46-1"></script>
+  <script src="qlibres-ui.js?v=phase46-1"></script>
+  <script src="parametres-ui.js?v=phase46-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13031,11 +13031,54 @@
     document.body.className = 'mode-landing';
     window.scrollTo(0, 0);
   }
+  /**
+   * Garde d'entrée des deux espaces.
+   *
+   * Ces deux fonctions se contentaient de changer la classe du <body>.
+   * N'importe quel visiteur arrivant sur le site pouvait donc cliquer
+   * « Espace investigateur » et parcourir l'intégralité du poste de
+   * pilotage, rempli de la cohorte de démonstration — vingt fiches portant
+   * des noms, des diamètres aortiques et des mesures parfaitement
+   * vraisemblables. Une patiente venue activer son compte s'y est trouvée,
+   * et il n'y a aucune raison qu'elle fasse la différence avec de vraies
+   * données.
+   *
+   * Les données réelles, elles, n'ont jamais été exposées : le serveur
+   * refuse toute requête sans jeton. Ce qui fuyait était l'interface et sa
+   * cohorte fictive. C'est tout de même inacceptable dans un dispositif
+   * clinique, et le fait que ce soit « seulement » fictif ne se voit pas
+   * depuis l'écran.
+   */
+  function sessionOuverte() {
+    try { return !!(window.MarfanAPI && window.MarfanAPI.isAuthenticated()); }
+    catch (_) { return false; }
+  }
+
+  function exigerSession(message) {
+    if (sessionOuverte()) return true;
+    const ov = document.getElementById('apiLoginOverlay');
+    if (ov) {
+      const err = document.getElementById('apiLoginErr');
+      if (err && message) {
+        err.style.display = 'block';
+        err.style.background = '#eff6ff';
+        err.style.color = '#1e40af';
+        err.textContent = message;
+      }
+      ov.style.display = 'flex';
+    } else {
+      alert(message || 'Connectez-vous pour accéder à cet espace.');
+    }
+    return false;
+  }
+
   function goToInvestigator() {
+    if (!exigerSession('Connectez-vous avec votre compte soignant pour accéder au poste de pilotage.')) return;
     document.body.className = 'mode-investigator';
     window.scrollTo(0, 0);
   }
   function goToPatient() {
+    if (!exigerSession('Connectez-vous avec vos identifiants pour accéder à votre espace.')) return;
     document.body.className = 'mode-patient';
     initPatientPortal();
     window.scrollTo(0, 0);
@@ -13520,7 +13563,7 @@
           <div style="font-size:11.5px; color:#6b7390;">Connexion à la plateforme</div>
         </div>
       </div>
-      <p style="font-size:12.5px; color:#5a6280; margin:10px 0 16px;">Authentifiez-vous pour accéder aux données patients (PostgreSQL).</p>
+      <p style="font-size:12.5px; color:#5a6280; margin:10px 0 16px;">Connectez-vous avec vos identifiants pour accéder à votre espace.</p>
       <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Email</label>
       <input id="apiLoginEmail" type="email" autocomplete="username" placeholder="admin@marfan-apa.fr"
              style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:12px;">
@@ -13544,7 +13587,13 @@
         </div>
         <div id="apiOubliMsg" style="display:none; margin-top:9px; padding:9px 11px; border-radius:8px; font-size:12px; line-height:1.5;"></div>
       </div>
-      <button id="apiLoginDemo" style="width:100%; padding:9px; margin-top:8px; border:1px solid #d8dde7; border-radius:9px; background:white; color:#5a6280; font-weight:600; font-size:12px; cursor:pointer;">Continuer en mode démo (sans API)</button>
+      <!-- Le bouton « Continuer en mode démo » a été retiré.
+           Il donnait à n'importe quel visiteur, sans aucune authentification,
+           l'interface complète d'investigateur peuplée de vingt fiches
+           fictives mais vraisemblables. Le mode démonstration reste
+           accessible au personnel connecté, par le bouton « 🎭 Démo » du
+           bandeau. Si l'API est réellement injoignable, afficher un faux
+           poste de pilotage est pire qu'afficher une erreur honnête. -->
       <!-- Les identifiants de test qui figuraient ici ont été retirés.
            Un mot de passe affiché sur la page de connexion est un mot de passe
            public : il circule dans les captures d'écran, les démonstrations et
@@ -18192,17 +18241,10 @@
       }
     });
 
-    document.getElementById('apiLoginDemo').addEventListener('click', function () {
-      // Phase 13.9 : confirmation explicite — ce mode n'enregistre RIEN en base
-      const ok = confirm(
-        'MODE DÉMONSTRATION\n\n' +
-        'Aucune donnée ne sera enregistrée en base : les fiches patients, consultations et mesures ' +
-        'créées resteront uniquement dans ce navigateur et seront perdues au rechargement.\n\n' +
-        'Pour un usage réel, annulez et connectez-vous avec vos identifiants.\n\n' +
-        'Continuer quand même en démonstration ?');
-      if (!ok) return;
-      hideOverlay(); showDemoBanner();
-    });
+    // Le bouton « mode démo » n'existe plus sur l'écran de connexion : son
+    // écouteur est retiré avec lui. getElementById aurait renvoyé null et
+    // levé une exception qui aurait interrompu tout le reste de ce bloc —
+    // y compris le branchement du bouton de déconnexion.
 
     document.getElementById('apiLogoutBtn').addEventListener('click', async function () {
       try { if (window.Inactivite) window.Inactivite.arreter(); } catch (_) {}
