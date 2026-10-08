@@ -28,10 +28,13 @@
 
   var _comptes = [];
   var _filtre = '';
-  var _role = '';
   // Les comptes archivés sont masqués par défaut : la liste quotidienne doit
   // montrer qui travaille, pas l'historique des départs.
   var _voirArchives = false;
+  // Les comptes de démonstration sont exclus par défaut. Mélangés aux comptes
+  // réels dans un écran d'administration, ils font courir le risque d'archiver
+  // ou de réinitialiser le mauvais compte en croyant agir sur une fiction.
+  var _voirDemo = false;
 
   function el(id) { return document.getElementById(id); }
   function esc(t) {
@@ -74,71 +77,110 @@
     return moi && u && moi.id === u.id;
   }
 
+  /**
+   * Une ligne de compte.
+   *
+   * Les actions sont regroupées à droite et de largeur fixe : avec des
+   * boutons de tailles variables selon l'état, la colonne dansait d'une ligne
+   * à l'autre et l'œil ne trouvait plus où cliquer.
+   */
+  function ligne(u) {
+    var r = roleInfo(u.role);
+    var moi = moiMeme(u);
+    return '<tr style="border-top:1px solid var(--line);' + (u.active ? '' : ' background:#fafbfc;') + '">' +
+      '<td style="padding:10px 10px;">' +
+        '<div style="display:flex; align-items:center; gap:9px;">' +
+          '<span style="width:30px; height:30px; border-radius:9px; flex:0 0 auto; display:flex; ' +
+            'align-items:center; justify-content:center; font-size:11px; font-weight:800; ' +
+            'color:' + r.c + '; background:' + r.f + '; border:1px solid ' + r.b + ';">' +
+            esc(((u.name || u.email || '?').trim()[0] || '?').toUpperCase()) + '</span>' +
+          '<div style="min-width:0;">' +
+            '<div style="font-weight:700; color:#0b1530; font-size:13px;">' +
+              esc(u.name || u.username || u.email || u.id) +
+              (moi ? ' <span style="font-size:10px; font-weight:800; color:#0f766e; background:#ecfdf5; ' +
+                     'border:1px solid #a7f3d0; border-radius:5px; padding:1px 6px;">vous</span>' : '') +
+              (u.is_demo ? ' <span style="font-size:10px; font-weight:800; color:#92400e; background:#fffbeb; ' +
+                     'border:1px solid #fde68a; border-radius:5px; padding:1px 6px;">démo</span>' : '') +
+            '</div>' +
+            '<div style="color:#64748b; font-size:11.5px;">' + esc(u.email || '—') +
+              (u.patient_id ? ' · ' + esc(u.patient_id) : '') +
+              (u.service ? ' · ' + esc(u.service) : '') + '</div>' +
+            (u.must_change_password
+              ? '<div style="color:#b45309; font-size:11px; font-weight:700;">mot de passe à changer</div>' : '') +
+          '</div>' +
+        '</div>' +
+      '</td>' +
+      '<td style="padding:10px; color:#64748b; font-size:12px; white-space:nowrap;">' +
+        jour(u.last_login) + '</td>' +
+      '<td style="padding:10px;">' +
+        '<label style="display:inline-flex; align-items:center; gap:7px; white-space:nowrap; ' +
+          'cursor:' + (moi ? 'not-allowed' : 'pointer') + '; font-weight:700; font-size:12px; color:' +
+          (u.active ? '#065f46' : '#94a3b8') + ';"' +
+          (moi ? ' title="Sur votre propre compte, non"' : '') + '>' +
+          '<input type="checkbox" data-actif="' + esc(u.id) + '"' + (u.active ? ' checked' : '') +
+            (moi ? ' disabled' : '') + ' style="width:17px; height:17px; accent-color:#0f766e; cursor:inherit;">' +
+          (u.active ? 'Actif' : 'Archivé') +
+        '</label></td>' +
+      '<td style="padding:10px; text-align:right; white-space:nowrap; width:1%;">' +
+        '<button type="button" data-reset="' + esc(u.id) + '" class="btn-light" ' +
+          'title="Réinitialiser le mot de passe" ' +
+          'style="font-size:12px; padding:5px 10px;">🔑</button>' +
+        (u.active || moi ? '' :
+          ' <button type="button" data-suppr="' + esc(u.id) + '" class="btn-light" ' +
+          'title="Supprimer définitivement" ' +
+          'style="font-size:12px; padding:5px 10px; color:#991b1b;">🗑</button>') +
+      '</td></tr>';
+  }
+
+  function tableau(titre, icone, liste, vide) {
+    if (!liste.length) {
+      return '<div style="margin-bottom:20px;">' +
+        '<h4 style="font-size:13px; font-weight:800; color:#0b1530; margin:0 0 8px;">' +
+          icone + ' ' + esc(titre) + '</h4>' +
+        '<div style="padding:14px 16px; background:#f8fafc; border:1px dashed #cbd5e1; ' +
+          'border-radius:10px; font-size:12.5px; color:#64748b;">' + esc(vide) + '</div></div>';
+    }
+    return '<div style="margin-bottom:20px;">' +
+      '<h4 style="font-size:13px; font-weight:800; color:#0b1530; margin:0 0 8px;">' +
+        icone + ' ' + esc(titre) +
+        ' <span style="font-weight:600; color:#94a3b8;">— ' + liste.length + '</span></h4>' +
+      '<div style="border:1px solid var(--line); border-radius:11px; overflow:hidden;">' +
+      '<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12.5px;">' +
+        '<thead><tr style="text-align:left; color:#64748b; font-size:10.5px; ' +
+          'text-transform:uppercase; letter-spacing:.05em; background:#f8fafc;">' +
+          '<th style="padding:8px 10px;">Compte</th>' +
+          '<th style="padding:8px 10px;">Dernière connexion</th>' +
+          '<th style="padding:8px 10px;">Accès</th>' +
+          '<th style="padding:8px 10px;"></th></tr></thead>' +
+        '<tbody>' + liste.map(ligne).join('') + '</tbody>' +
+      '</table></div></div></div>';
+  }
+
   function dessiner() {
     var z = el('paTable');
     if (!z) return;
 
     var q = _filtre.trim().toLowerCase();
     var liste = _comptes.filter(function (u) {
+      if (u.is_demo && !_voirDemo) return false;
       if (!u.active && !_voirArchives) return false;
-      if (_role && u.role !== _role) return false;
       if (!q) return true;
       return [u.name, u.email, u.username, u.patient_id, u.service]
         .filter(Boolean).join(' ').toLowerCase().indexOf(q) >= 0;
     });
 
-    if (!liste.length) {
-      z.innerHTML = '<div style="padding:18px; background:#f8fafc; border:1px dashed #cbd5e1; ' +
-        'border-radius:10px; font-size:13px; color:#64748b;">Aucun compte ne correspond.</div>';
-      return;
-    }
+    // Deux populations qu'on n'administre pas pour les mêmes raisons :
+    // l'équipe, qu'on gère au cas par cas, et les patients, qu'on parcourt.
+    var equipe = liste.filter(function (u) { return u.role !== 'patient'; });
+    var pat = liste.filter(function (u) { return u.role === 'patient'; });
 
-    z.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12.5px;">' +
-      '<thead><tr style="text-align:left; color:#64748b; font-size:11px; text-transform:uppercase; letter-spacing:.04em;">' +
-        '<th style="padding:8px;">Compte</th><th style="padding:8px;">Rôle</th>' +
-        '<th style="padding:8px;">Dernière connexion</th><th style="padding:8px;">Accès</th>' +
-        '<th style="padding:8px; text-align:right;">Actions</th></tr></thead><tbody>' +
-      liste.map(function (u) {
-        var r = roleInfo(u.role);
-        var moi = moiMeme(u);
-        return '<tr style="border-top:1px solid var(--line);">' +
-          '<td style="padding:9px 8px;">' +
-            '<strong style="color:#0b1530;">' + esc(u.name || u.username || u.email || u.id) + '</strong>' +
-            (moi ? ' <span style="font-size:10.5px; font-weight:800; color:#0f766e; background:#ecfdf5; ' +
-                   'border:1px solid #a7f3d0; border-radius:5px; padding:1px 6px;">vous</span>' : '') +
-            '<div style="color:#64748b; font-size:11.5px;">' + esc(u.email || '—') +
-              (u.patient_id ? ' · dossier ' + esc(u.patient_id) : '') + '</div>' +
-            (u.must_change_password
-              ? '<div style="color:#b45309; font-size:11px; font-weight:700;">mot de passe à changer</div>' : '') +
-          '</td>' +
-          '<td style="padding:9px 8px;"><span style="font-size:10.5px; font-weight:800; text-transform:uppercase; ' +
-            'letter-spacing:.04em; color:' + r.c + '; background:' + r.f + '; border:1px solid ' + r.b + '; ' +
-            'border-radius:6px; padding:3px 8px; white-space:nowrap;">' + esc(r.l) + '</span></td>' +
-          '<td style="padding:9px 8px; color:#475569; white-space:nowrap;">' + jour(u.last_login) + '</td>' +
-          // Une case à cocher plutôt qu'un bouton : l'état se lit d'un coup
-          // d'œil sur toute la colonne, au lieu d'être déduit du libellé d'un
-          // bouton qui annonce l'action inverse de l'état en cours.
-          '<td style="padding:9px 8px;">' +
-            '<label style="display:inline-flex; align-items:center; gap:7px; cursor:' +
-              (moi ? 'not-allowed' : 'pointer') + '; font-weight:700; font-size:12px; color:' +
-              (u.active ? '#065f46' : '#94a3b8') + ';"' +
-              (moi ? ' title="Sur votre propre compte, non"' : '') + '>' +
-              '<input type="checkbox" data-actif="' + esc(u.id) + '"' + (u.active ? ' checked' : '') +
-                (moi ? ' disabled' : '') + ' style="width:17px; height:17px; accent-color:#0f766e; cursor:inherit;">' +
-              (u.active ? 'Actif' : 'Archivé') +
-            '</label></td>' +
-          '<td style="padding:9px 8px; text-align:right; white-space:nowrap;">' +
-            '<button type="button" data-reset="' + esc(u.id) + '" class="btn-light" ' +
-              'style="font-size:11px; padding:4px 9px;">🔑 Mot de passe</button>' +
-            // La suppression n'apparaît que sur un compte déjà archivé. On
-            // archive, on constate que rien ne manque, puis on supprime si
-            // vraiment nécessaire — plutôt que d'offrir l'irréversible à côté
-            // du réversible, au même endroit et de la même taille.
-            (u.active || moi ? '' :
-              ' <button type="button" data-suppr="' + esc(u.id) + '" class="btn-light" ' +
-              'style="font-size:11px; padding:4px 9px; color:#991b1b;">Supprimer définitivement</button>') +
-          '</td></tr>';
-      }).join('') + '</tbody></table></div>';
+    z.innerHTML =
+      tableau("Équipe", '🩺', equipe,
+        q ? 'Aucun membre de l\'équipe ne correspond à cette recherche.'
+          : 'Aucun compte administrateur ni investigateur.') +
+      tableau('Patients', '👤', pat,
+        q ? 'Aucun patient ne correspond à cette recherche.'
+          : 'Aucun compte patient.');
 
     var lier = function (attr, fn) {
       Array.prototype.forEach.call(z.querySelectorAll('[' + attr + ']'), function (b) {
@@ -169,9 +211,16 @@
       _comptes = r.users || [];
       var c = el('paCompte');
       if (c) {
-        var actifs = _comptes.filter(function (u) { return u.active; }).length;
-        var archives = _comptes.length - actifs;
-        c.textContent = actifs + ' actif(s)' + (archives ? ' · ' + archives + ' archivé(s)' : '');
+        // On ne compte que les comptes réels : annoncer « 24 comptes » en
+        // incluant vingt fiches de démonstration donnerait une idée fausse
+        // de la taille de l'équipe et de la file active.
+        var reels = _comptes.filter(function (u) { return !u.is_demo; });
+        var actifs = reels.filter(function (u) { return u.active; }).length;
+        var archives = reels.length - actifs;
+        var demo = _comptes.length - reels.length;
+        c.textContent = actifs + ' actif(s)' +
+          (archives ? ' · ' + archives + ' archivé(s)' : '') +
+          (demo ? ' · ' + demo + ' en démonstration' : '');
       }
       dessiner();
     } catch (e) {
@@ -314,17 +363,18 @@
           '<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">' +
             '<input type="search" id="paRecherche" placeholder="Nom, adresse, dossier…" ' +
               'style="flex:1; min-width:200px;" />' +
-            '<select id="paRole" style="max-width:220px;">' +
-              '<option value="">Tous les rôles</option>' +
-              '<option value="principal_admin">Administrateurs</option>' +
-              '<option value="investigator">Investigateurs</option>' +
-              '<option value="patient">Patients</option>' +
-            '</select>' +
+            // Le filtre par rôle a disparu : les deux tableaux font déjà la
+            // séparation, et un filtre qui vide un tableau entier déroute
+            // plus qu'il n'aide.
             '<label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; ' +
-              'font-size:12.5px; font-weight:700; color:#475569; white-space:nowrap; ' +
-              'padding:0 4px;">' +
+              'font-size:12.5px; font-weight:700; color:#475569; white-space:nowrap; padding:0 4px;">' +
               '<input type="checkbox" id="paArchives" style="width:17px; height:17px; accent-color:#0f766e;">' +
-              'Afficher les comptes archivés' +
+              'Archivés' +
+            '</label>' +
+            '<label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; ' +
+              'font-size:12.5px; font-weight:700; color:#475569; white-space:nowrap; padding:0 4px;">' +
+              '<input type="checkbox" id="paDemo" style="width:17px; height:17px; accent-color:#0f766e;">' +
+              'Comptes de démonstration' +
             '</label>' +
           '</div>' +
           '<div id="paTable"></div>' +
@@ -332,7 +382,9 @@
       hote.dataset.pret = '1';
 
       el('paRecherche').addEventListener('input', function (e) { _filtre = e.target.value; dessiner(); });
-      el('paRole').addEventListener('change', function (e) { _role = e.target.value; dessiner(); });
+      el('paDemo').addEventListener('change', function (e) {
+        _voirDemo = e.target.checked; dessiner();
+      });
       el('paArchives').addEventListener('change', function (e) {
         _voirArchives = e.target.checked; dessiner();
       });

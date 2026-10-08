@@ -26,20 +26,27 @@ const router = express.Router();
 router.get('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR), async (req, res, next) => {
   try {
     const { role, active } = req.query;
-    let sql = `SELECT id, role, name, username, email, phone, service, birth_date, patient_id,
-                      created_by, created_at, active, last_login, must_change_password
-                 FROM users WHERE 1=1`;
+    // is_demo est remonté depuis le dossier rattaché : un compte patient de
+    // démonstration n'a rien à faire au milieu des comptes réels dans l'écran
+    // d'administration, et seul le dossier sait s'il en est un.
+    let sql = `SELECT u.id, u.role, u.name, u.username, u.email, u.phone, u.service,
+                      u.birth_date, u.patient_id, u.created_by, u.created_at, u.active,
+                      u.last_login, u.must_change_password,
+                      COALESCE(p.is_demo, FALSE) AS is_demo
+                 FROM users u
+                 LEFT JOIN patients p ON p.id = u.patient_id
+                WHERE 1=1`;
     const params = [];
     // Investigator est limité aux comptes patient
     if (req.user.role === ROLE.INVESTIGATOR) {
       params.push(ROLE.PATIENT);
-      sql += ` AND role = $${params.length}`;
+      sql += ` AND u.role = $${params.length}`;
     } else if (role) {
       params.push(role);
-      sql += ` AND role = $${params.length}`;
+      sql += ` AND u.role = $${params.length}`;
     }
-    if (active !== undefined) { params.push(active === 'true'); sql += ` AND active = $${params.length}`; }
-    sql += ' ORDER BY created_at DESC';
+    if (active !== undefined) { params.push(active === 'true'); sql += ` AND u.active = $${params.length}`; }
+    sql += ' ORDER BY u.created_at DESC';
     const { rows } = await query(sql, params);
     res.json({ users: rows });
   } catch (err) { next(err); }
