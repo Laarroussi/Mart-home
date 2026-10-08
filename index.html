@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase46-7"></script>
+  <script src="api-client.js?v=phase46-8"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase46-7"></script>
+  <script src="questionnaires-defs.js?v=phase46-8"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase46-7"></script>
+  <script src="medical-parsers.js?v=phase46-8"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase46-7"></script>
-  <script src="cpet-analyse.js?v=phase46-7"></script>
+  <script src="cpet-graph-preview.js?v=phase46-8"></script>
+  <script src="cpet-analyse.js?v=phase46-8"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase46-7"></script>
-  <script src="medical-record-ui.js?v=phase46-7"></script>
+  <script src="pdf-extractor.js?v=phase46-8"></script>
+  <script src="medical-record-ui.js?v=phase46-8"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase46-7"></script>
-  <script src="synthese-ui.js?v=phase46-7"></script>
-  <script src="audit-ui.js?v=phase46-7"></script>
-  <script src="entretien-ui.js?v=phase46-7"></script>
-  <script src="activation-ui.js?v=phase46-7"></script>
-  <script src="document-import.js?v=phase46-7"></script>
-  <script src="visio-jitsi.js?v=phase46-7"></script>
-  <script src="video-pilotee.js?v=phase46-7"></script>
-  <script src="fiche-apa.js?v=phase46-7"></script>
-  <script src="inactivite.js?v=phase46-7"></script>
-  <script src="bilans-ui.js?v=phase46-7"></script>
-  <script src="etudes-ui.js?v=phase46-7"></script>
-  <script src="ville-hopital.js?v=phase46-7"></script>
-  <script src="qlibres-ui.js?v=phase46-7"></script>
-  <script src="parametres-ui.js?v=phase46-7"></script>
+  <script src="aortic-consultations.js?v=phase46-8"></script>
+  <script src="synthese-ui.js?v=phase46-8"></script>
+  <script src="audit-ui.js?v=phase46-8"></script>
+  <script src="entretien-ui.js?v=phase46-8"></script>
+  <script src="activation-ui.js?v=phase46-8"></script>
+  <script src="document-import.js?v=phase46-8"></script>
+  <script src="visio-jitsi.js?v=phase46-8"></script>
+  <script src="video-pilotee.js?v=phase46-8"></script>
+  <script src="fiche-apa.js?v=phase46-8"></script>
+  <script src="inactivite.js?v=phase46-8"></script>
+  <script src="bilans-ui.js?v=phase46-8"></script>
+  <script src="etudes-ui.js?v=phase46-8"></script>
+  <script src="ville-hopital.js?v=phase46-8"></script>
+  <script src="qlibres-ui.js?v=phase46-8"></script>
+  <script src="parametres-ui.js?v=phase46-8"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13643,8 +13643,12 @@
         </div>
       </div>
       <p style="font-size:12.5px; color:#5a6280; margin:10px 0 16px; line-height:1.55;">Pour des raisons de sécurité, vous devez définir un nouveau mot de passe personnel avant d'accéder à la plateforme.</p>
-      <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Ancien mot de passe (date de naissance JJ/MM/AAAA)</label>
-      <input id="apiChangeOldPwd" type="password" autocomplete="current-password" placeholder="25/09/1980"
+      <!-- Le libellé annonçait « (date de naissance JJ/MM/AAAA) », vestige du
+           tout premier système d'identifiants. Il invitait à saisir une date
+           à la place du mot de passe reçu, et le refus qui suivait était
+           incompréhensible. -->
+      <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Mot de passe actuel</label>
+      <input id="apiChangeOldPwd" type="password" autocomplete="current-password" placeholder="Celui que vous venez d'utiliser pour vous connecter"
              style="width:100%; padding:10px 12px; border:1px solid #d8dde7; border-radius:9px; font-size:13.5px; margin-bottom:12px;">
       <label style="display:block; font-size:11.5px; font-weight:600; color:#4a5070; margin-bottom:4px;">Nouveau mot de passe</label>
       <input id="apiChangeNewPwd" type="password" autocomplete="new-password" placeholder="Min. 8 caractères, 1 lettre + 1 chiffre/spécial"
@@ -13656,7 +13660,10 @@
       <div id="apiChangeOk" style="display:none; padding:8px 10px; background:#d1fae5; color:#065f46; border-radius:7px; font-size:11.5px; margin-bottom:10px;"></div>
       <button id="apiChangeBtn" style="width:100%; padding:11px; border:none; border-radius:9px; background:linear-gradient(135deg,#ef4444,#f97316); color:white; font-weight:700; font-size:13.5px; cursor:pointer;">Valider et continuer</button>
       <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #e3e7ef; font-size:11.5px; color:#8b91a8; line-height:1.55;">
-        Règles : minimum 8 caractères, au moins 1 lettre et (1 chiffre ou 1 caractère spécial). Différent de votre date de naissance et de votre ancien mot de passe.
+        <strong>Mot de passe actuel</strong> : celui qui vous a été transmis, ou celui que vous venez
+        d'utiliser pour vous connecter.<br>
+        <strong>Nouveau</strong> : minimum 8 caractères, au moins 1 lettre et (1 chiffre ou 1 caractère
+        spécial). Différent de l'actuel.
       </div>
     </div>
   </div>

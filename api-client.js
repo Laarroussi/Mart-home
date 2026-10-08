@@ -58,7 +58,20 @@
     }
 
     if (!resp.ok) {
-      if (resp.status === 401) clearToken();
+      // Un 401 n'efface la session QUE s'il concerne le jeton actuellement
+      // en place.
+      //
+      // Sans cette condition, la séquence suivante cassait la connexion :
+      // la page, non connectée, lance plusieurs requêtes (bilans, synthèse,
+      // consultations…) qui partent sans jeton ; l'utilisateur se connecte
+      // pendant qu'elles sont en vol ; elles reviennent en 401 APRÈS la
+      // connexion et effacent le jeton tout neuf. L'appel suivant — ici le
+      // changement de mot de passe obligatoire — recevait « Token manquant »
+      // alors que la connexion venait de réussir.
+      //
+      // Comparer le jeton utilisé à celui en place suffit : une réponse
+      // tardive portant un jeton périmé, ou aucun, ne touche plus à rien.
+      if (resp.status === 401 && token && getToken() === token) clearToken();
       const message = (data && data.error) || `Erreur HTTP ${resp.status}`;
       throw new APIError(resp.status, message, data);
     }
