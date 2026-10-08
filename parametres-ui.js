@@ -77,6 +77,29 @@
     try { z.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
   }
 
+  /**
+   * Compte d'essai ?
+   *
+   * Le marqueur is_demo vient du dossier patient : les investigateurs n'en ont
+   * pas, et les fiches créées après la migration qui l'a introduit ne sont pas
+   * marquées. Le filtre ne voyait donc rien, alors que des comptes manifestement
+   * fictifs restaient dans la liste.
+   *
+   * On s'appuie ici sur l'adresse. example.fr, example.com et example.org sont
+   * des domaines réservés par la RFC 2606 précisément pour la documentation et
+   * les essais : aucune adresse réelle n'y existe. C'est un indice sûr, pas une
+   * supposition. On y ajoute le motif « .test@ », une convention locale visible
+   * dans vos comptes.
+   *
+   * Ces comptes sont signalés, PAS supprimés : l'automatisme s'arrête là où
+   * commence le jugement. C'est vous qui décidez de les archiver.
+   */
+  function estEssai(u) {
+    if (u.is_demo) return true;
+    var e = String(u.email || '').toLowerCase();
+    return /@example\.(fr|com|org|net)$/.test(e) || /\.test@/.test(e);
+  }
+
   function moiMeme(u) {
     var moi = (window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser()) || {};
     return moi && u && moi.id === u.id;
@@ -93,30 +116,36 @@
     var r = roleInfo(u.role);
     var moi = moiMeme(u);
     return '<tr style="border-top:1px solid var(--line);' + (u.active ? '' : ' background:#fafbfc;') + '">' +
-      '<td style="padding:10px 10px;">' +
-        '<div style="display:flex; align-items:center; gap:9px;">' +
+      '<td style="padding:10px 10px; overflow:hidden;">' +
+        '<div style="display:flex; align-items:center; gap:9px; min-width:0;">' +
           '<span style="width:30px; height:30px; border-radius:9px; flex:0 0 auto; display:flex; ' +
             'align-items:center; justify-content:center; font-size:11px; font-weight:800; ' +
             'color:' + r.c + '; background:' + r.f + '; border:1px solid ' + r.b + ';">' +
             esc(((u.name || u.email || '?').trim()[0] || '?').toUpperCase()) + '</span>' +
-          '<div style="min-width:0;">' +
+          '<div style="min-width:0; overflow:hidden; text-overflow:ellipsis;">' +
             '<div style="font-weight:700; color:#0b1530; font-size:13px;">' +
               esc(u.name || u.username || u.email || u.id) +
               (moi ? ' <span style="font-size:10px; font-weight:800; color:#0f766e; background:#ecfdf5; ' +
                      'border:1px solid #a7f3d0; border-radius:5px; padding:1px 6px;">vous</span>' : '') +
-              (u.is_demo ? ' <span style="font-size:10px; font-weight:800; color:#92400e; background:#fffbeb; ' +
-                     'border:1px solid #fde68a; border-radius:5px; padding:1px 6px;">démo</span>' : '') +
+              (estEssai(u) ? ' <span style="font-size:10px; font-weight:800; color:#92400e; background:#fffbeb; ' +
+                     'border:1px solid #fde68a; border-radius:5px; padding:1px 6px;">essai</span>' : '') +
             '</div>' +
             '<div style="color:#64748b; font-size:11.5px;">' + esc(u.email || '—') +
               (u.patient_id ? ' · ' + esc(u.patient_id) : '') +
               (u.service ? ' · ' + esc(u.service) : '') + '</div>' +
+            // La date rejoint la fiche du compte : en colonne séparée, elle
+            // poussait les actions hors de l'écran sur une fenêtre ordinaire,
+            // et l'on ne pouvait plus ni archiver ni réinitialiser sans faire
+            // défiler le tableau latéralement — ce que personne ne devine.
+            '<div style="color:#94a3b8; font-size:11px;">' +
+              (u.last_login ? 'Dernière connexion : ' + jour(u.last_login)
+                            : 'Jamais connecté') + '</div>' +
             (u.must_change_password
               ? '<div style="color:#b45309; font-size:11px; font-weight:700;">mot de passe à changer</div>' : '') +
           '</div>' +
         '</div>' +
       '</td>' +
-      '<td style="padding:10px; color:#64748b; font-size:12px; white-space:nowrap;">' +
-        jour(u.last_login) + '</td>' +
+
       '<td style="padding:10px;">' +
         '<label style="display:inline-flex; align-items:center; gap:7px; white-space:nowrap; ' +
           'cursor:' + (moi ? 'not-allowed' : 'pointer') + '; font-weight:700; font-size:12px; color:' +
@@ -150,15 +179,14 @@
         icone + ' ' + esc(titre) +
         ' <span style="font-weight:600; color:#94a3b8;">— ' + liste.length + '</span></h4>' +
       '<div style="border:1px solid var(--line); border-radius:11px; overflow:hidden;">' +
-      '<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12.5px;">' +
+      '<table style="width:100%; border-collapse:collapse; font-size:12.5px; table-layout:fixed;">' +
         '<thead><tr style="text-align:left; color:#64748b; font-size:10.5px; ' +
           'text-transform:uppercase; letter-spacing:.05em; background:#f8fafc;">' +
           '<th style="padding:8px 10px;">Compte</th>' +
-          '<th style="padding:8px 10px;">Dernière connexion</th>' +
-          '<th style="padding:8px 10px;">Accès</th>' +
-          '<th style="padding:8px 10px;"></th></tr></thead>' +
+          '<th style="padding:8px 10px; width:1%; white-space:nowrap;">Accès</th>' +
+          '<th style="padding:8px 10px; width:1%;"></th></tr></thead>' +
         '<tbody>' + liste.map(ligne).join('') + '</tbody>' +
-      '</table></div></div></div>';
+      '</table></div></div>';
   }
 
   function dessiner() {
@@ -167,7 +195,7 @@
 
     var q = _filtre.trim().toLowerCase();
     var liste = _comptes.filter(function (u) {
-      if (u.is_demo && !_voirDemo) return false;
+      if (estEssai(u) && !_voirDemo) return false;
       if (!u.active && !_voirArchives) return false;
       if (!q) return true;
       return [u.name, u.email, u.username, u.patient_id, u.service]
@@ -219,13 +247,13 @@
         // On ne compte que les comptes réels : annoncer « 24 comptes » en
         // incluant vingt fiches de démonstration donnerait une idée fausse
         // de la taille de l'équipe et de la file active.
-        var reels = _comptes.filter(function (u) { return !u.is_demo; });
+        var reels = _comptes.filter(function (u) { return !estEssai(u); });
         var actifs = reels.filter(function (u) { return u.active; }).length;
         var archives = reels.length - actifs;
         var demo = _comptes.length - reels.length;
         c.textContent = actifs + ' actif(s)' +
           (archives ? ' · ' + archives + ' archivé(s)' : '') +
-          (demo ? ' · ' + demo + ' en démonstration' : '');
+          (demo ? ' · ' + demo + ' d\'essai' : '');
       }
       dessiner();
     } catch (e) {
@@ -403,7 +431,7 @@
             '<label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; ' +
               'font-size:12.5px; font-weight:700; color:#475569; white-space:nowrap; padding:0 4px;">' +
               '<input type="checkbox" id="paDemo" style="width:17px; height:17px; accent-color:#0f766e;">' +
-              'Comptes de démonstration' +
+              'Comptes d\'essai' +
             '</label>' +
           '</div>' +
           '<div id="paTable"></div>' +
