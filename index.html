@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase45-0"></script>
+  <script src="api-client.js?v=phase45-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase45-0"></script>
+  <script src="questionnaires-defs.js?v=phase45-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase45-0"></script>
+  <script src="medical-parsers.js?v=phase45-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase45-0"></script>
-  <script src="cpet-analyse.js?v=phase45-0"></script>
+  <script src="cpet-graph-preview.js?v=phase45-1"></script>
+  <script src="cpet-analyse.js?v=phase45-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase45-0"></script>
-  <script src="medical-record-ui.js?v=phase45-0"></script>
+  <script src="pdf-extractor.js?v=phase45-1"></script>
+  <script src="medical-record-ui.js?v=phase45-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase45-0"></script>
-  <script src="synthese-ui.js?v=phase45-0"></script>
-  <script src="audit-ui.js?v=phase45-0"></script>
-  <script src="entretien-ui.js?v=phase45-0"></script>
+  <script src="aortic-consultations.js?v=phase45-1"></script>
+  <script src="synthese-ui.js?v=phase45-1"></script>
+  <script src="audit-ui.js?v=phase45-1"></script>
+  <script src="entretien-ui.js?v=phase45-1"></script>
   <script src="activation-ui.js?v=phase14b"></script>
-  <script src="document-import.js?v=phase45-0"></script>
-  <script src="visio-jitsi.js?v=phase45-0"></script>
-  <script src="video-pilotee.js?v=phase45-0"></script>
-  <script src="fiche-apa.js?v=phase45-0"></script>
-  <script src="inactivite.js?v=phase45-0"></script>
-  <script src="bilans-ui.js?v=phase45-0"></script>
-  <script src="etudes-ui.js?v=phase45-0"></script>
-  <script src="ville-hopital.js?v=phase45-0"></script>
-  <script src="qlibres-ui.js?v=phase45-0"></script>
-  <script src="parametres-ui.js?v=phase45-0"></script>
+  <script src="document-import.js?v=phase45-1"></script>
+  <script src="visio-jitsi.js?v=phase45-1"></script>
+  <script src="video-pilotee.js?v=phase45-1"></script>
+  <script src="fiche-apa.js?v=phase45-1"></script>
+  <script src="inactivite.js?v=phase45-1"></script>
+  <script src="bilans-ui.js?v=phase45-1"></script>
+  <script src="etudes-ui.js?v=phase45-1"></script>
+  <script src="ville-hopital.js?v=phase45-1"></script>
+  <script src="qlibres-ui.js?v=phase45-1"></script>
+  <script src="parametres-ui.js?v=phase45-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3077,6 +3077,12 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
           Séance de groupe
         </button>
+        <button class="tab-button" data-tab="education">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Éducation thérapeutique
+        </button>
+
+        <div class="nav-section">Administration</div>
         <!-- Phase 45 — Paramètres : administration des comptes.
              data-role-required masque l'onglet pour les autres rôles. Ce n'est
              qu'un confort d'interface : la vraie protection est sur le serveur,
@@ -3084,11 +3090,6 @@
         <button class="tab-button" data-tab="parametres" data-role-required="principal_admin" style="display:none;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.35.44.62.79.73H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           Paramètres
-        </button>
-
-        <button class="tab-button" data-tab="education">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-          Éducation thérapeutique
         </button>
 
       </nav>

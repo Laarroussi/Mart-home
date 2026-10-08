@@ -29,6 +29,9 @@
   var _comptes = [];
   var _filtre = '';
   var _role = '';
+  // Les comptes archivés sont masqués par défaut : la liste quotidienne doit
+  // montrer qui travaille, pas l'historique des départs.
+  var _voirArchives = false;
 
   function el(id) { return document.getElementById(id); }
   function esc(t) {
@@ -77,6 +80,7 @@
 
     var q = _filtre.trim().toLowerCase();
     var liste = _comptes.filter(function (u) {
+      if (!u.active && !_voirArchives) return false;
       if (_role && u.role !== _role) return false;
       if (!q) return true;
       return [u.name, u.email, u.username, u.patient_id, u.service]
@@ -92,7 +96,7 @@
     z.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12.5px;">' +
       '<thead><tr style="text-align:left; color:#64748b; font-size:11px; text-transform:uppercase; letter-spacing:.04em;">' +
         '<th style="padding:8px;">Compte</th><th style="padding:8px;">Rôle</th>' +
-        '<th style="padding:8px;">Dernière connexion</th><th style="padding:8px;">État</th>' +
+        '<th style="padding:8px;">Dernière connexion</th><th style="padding:8px;">Accès</th>' +
         '<th style="padding:8px; text-align:right;">Actions</th></tr></thead><tbody>' +
       liste.map(function (u) {
         var r = roleInfo(u.role);
@@ -111,17 +115,28 @@
             'letter-spacing:.04em; color:' + r.c + '; background:' + r.f + '; border:1px solid ' + r.b + '; ' +
             'border-radius:6px; padding:3px 8px; white-space:nowrap;">' + esc(r.l) + '</span></td>' +
           '<td style="padding:9px 8px; color:#475569; white-space:nowrap;">' + jour(u.last_login) + '</td>' +
-          '<td style="padding:9px 8px; font-weight:700; color:' + (u.active ? '#065f46' : '#991b1b') + ';">' +
-            (u.active ? 'Actif' : 'Désactivé') + '</td>' +
+          // Une case à cocher plutôt qu'un bouton : l'état se lit d'un coup
+          // d'œil sur toute la colonne, au lieu d'être déduit du libellé d'un
+          // bouton qui annonce l'action inverse de l'état en cours.
+          '<td style="padding:9px 8px;">' +
+            '<label style="display:inline-flex; align-items:center; gap:7px; cursor:' +
+              (moi ? 'not-allowed' : 'pointer') + '; font-weight:700; font-size:12px; color:' +
+              (u.active ? '#065f46' : '#94a3b8') + ';"' +
+              (moi ? ' title="Sur votre propre compte, non"' : '') + '>' +
+              '<input type="checkbox" data-actif="' + esc(u.id) + '"' + (u.active ? ' checked' : '') +
+                (moi ? ' disabled' : '') + ' style="width:17px; height:17px; accent-color:#0f766e; cursor:inherit;">' +
+              (u.active ? 'Actif' : 'Archivé') +
+            '</label></td>' +
           '<td style="padding:9px 8px; text-align:right; white-space:nowrap;">' +
             '<button type="button" data-reset="' + esc(u.id) + '" class="btn-light" ' +
-              'style="font-size:11px; padding:4px 9px;">🔑 Mot de passe</button> ' +
-            '<button type="button" data-actif="' + esc(u.id) + '" class="btn-light" ' +
-              'style="font-size:11px; padding:4px 9px;"' + (moi ? ' disabled title="Sur votre propre compte, non"' : '') + '>' +
-              (u.active ? 'Désactiver' : 'Réactiver') + '</button> ' +
-            '<button type="button" data-suppr="' + esc(u.id) + '" class="btn-light" ' +
-              'style="font-size:11px; padding:4px 9px; color:#991b1b;"' +
-              (moi ? ' disabled title="Sur votre propre compte, non"' : '') + '>Supprimer</button>' +
+              'style="font-size:11px; padding:4px 9px;">🔑 Mot de passe</button>' +
+            // La suppression n'apparaît que sur un compte déjà archivé. On
+            // archive, on constate que rien ne manque, puis on supprime si
+            // vraiment nécessaire — plutôt que d'offrir l'irréversible à côté
+            // du réversible, au même endroit et de la même taille.
+            (u.active || moi ? '' :
+              ' <button type="button" data-suppr="' + esc(u.id) + '" class="btn-light" ' +
+              'style="font-size:11px; padding:4px 9px; color:#991b1b;">Supprimer définitivement</button>') +
           '</td></tr>';
       }).join('') + '</tbody></table></div>';
 
@@ -132,8 +147,13 @@
       });
     };
     lier('data-reset', reinitialiser);
-    lier('data-actif', basculerActif);
     lier('data-suppr', supprimer);
+    Array.prototype.forEach.call(z.querySelectorAll('[data-actif]'), function (c) {
+      if (c.disabled) return;
+      c.addEventListener('change', function () {
+        basculerActif(c.getAttribute('data-actif'), c.checked, c);
+      });
+    });
   }
 
   function compteDe(id) {
@@ -150,7 +170,8 @@
       var c = el('paCompte');
       if (c) {
         var actifs = _comptes.filter(function (u) { return u.active; }).length;
-        c.textContent = _comptes.length + ' compte(s) · ' + actifs + ' actif(s)';
+        var archives = _comptes.length - actifs;
+        c.textContent = actifs + ' actif(s)' + (archives ? ' · ' + archives + ' archivé(s)' : '');
       }
       dessiner();
     } catch (e) {
@@ -200,19 +221,28 @@
     }
   }
 
-  async function basculerActif(id) {
+  async function basculerActif(id, vers, caseACocher) {
     var u = compteDe(id);
     if (!u) return;
-    var vers = !u.active;
-    if (!confirm((vers ? 'Réactiver' : 'Désactiver') + ' le compte de « ' +
-                 (u.name || u.email || u.id) + ' » ?\n\n' +
-                 (vers ? 'Il pourra de nouveau se connecter.'
-                       : 'Il ne pourra plus se connecter. Ses données restent intactes.'))) return;
+    var nom = u.name || u.email || u.id;
+    var ok = vers
+      ? confirm('Réactiver le compte de « ' + nom + ' » ?\n\nIl pourra de nouveau se connecter.')
+      : confirm('Archiver le compte de « ' + nom + ' » ?\n\n' +
+                'Il ne pourra plus se connecter, mais rien n\'est effacé : ses dossiers, ses\n' +
+                'synthèses et ses validations restent en place et à son nom.\n\n' +
+                'C\'est réversible à tout moment.');
+    if (!ok) {
+      // L'utilisateur a renoncé : la case doit revenir à l'état réel, sinon
+      // elle afficherait un état que le serveur n'a pas enregistré.
+      if (caseACocher) caseACocher.checked = !vers;
+      return;
+    }
     try {
       await window.MarfanAPI.users.update(id, { active: vers });
       await charger();
-      note(vers ? '✓ Compte réactivé.' : '✓ Compte désactivé.', 'success');
+      note(vers ? '✓ Compte réactivé.' : '✓ Compte archivé.', 'success');
     } catch (e) {
+      if (caseACocher) caseACocher.checked = !vers;
       info('Modification impossible : ' + esc(e && e.message), 'erreur');
     }
   }
@@ -274,6 +304,9 @@
             '<button type="button" class="btn-secondary" id="paRecharger" style="margin-left:auto;">↻ Rafraîchir</button>' +
           '</div>' +
           '<p style="color:var(--muted); font-size:12.5px; line-height:1.6; margin-bottom:14px;">' +
+            'Décochez <strong>Actif</strong> pour archiver un compte : il ne peut plus se connecter, ' +
+            'mais rien n\'est effacé et c\'est réversible. La suppression définitive n\'apparaît ' +
+            'qu\'ensuite, sur un compte déjà archivé.<br>' +
             'Vous ne pouvez pas choisir le mot de passe de quelqu\'un : le fixer reviendrait à pouvoir ' +
             'vous connecter à sa place sans que rien ne vous en distingue. Deux chemins sont proposés, ' +
             'et dans les deux le mot de passe final vous reste inconnu.' +
@@ -287,6 +320,12 @@
               '<option value="investigator">Investigateurs</option>' +
               '<option value="patient">Patients</option>' +
             '</select>' +
+            '<label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; ' +
+              'font-size:12.5px; font-weight:700; color:#475569; white-space:nowrap; ' +
+              'padding:0 4px;">' +
+              '<input type="checkbox" id="paArchives" style="width:17px; height:17px; accent-color:#0f766e;">' +
+              'Afficher les comptes archivés' +
+            '</label>' +
           '</div>' +
           '<div id="paTable"></div>' +
         '</article>';
@@ -294,6 +333,9 @@
 
       el('paRecherche').addEventListener('input', function (e) { _filtre = e.target.value; dessiner(); });
       el('paRole').addEventListener('change', function (e) { _role = e.target.value; dessiner(); });
+      el('paArchives').addEventListener('change', function (e) {
+        _voirArchives = e.target.checked; dessiner();
+      });
       el('paRecharger').addEventListener('click', function () { info(''); charger(); });
     }
     charger();
