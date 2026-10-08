@@ -242,4 +242,141 @@ router.patch('/:id', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTI
   } catch (err) { next(err); }
 });
 
+// ============================================================
+// ADMINISTRATION DES COMPTES — réservée à l'administrateur principal
+// ------------------------------------------------------------
+// Ces trois opérations sortent de la gestion courante : elles touchent à
+// l'accès d'autrui. Un investigateur crée et désactive des comptes patients,
+// c'est son travail ; réinitialiser le mot de passe d'un collègue ou
+// supprimer un compte n'en fait pas partie.
+//
+// Sur les mots de passe : l'administrateur ne peut pas en choisir un.
+// Pouvoir fixer le mot de passe de quelqu'un, c'est pouvoir se connecter à sa
+// place sans que rien ne le distingue de lui — et tout ce que ce compte fera
+// ensuite lui sera attribué. On propose donc deux chemins où l'administrateur
+// n'apprend jamais le mot de passe qui finira par être utilisé :
+//   • un lien de réinitialisation, que la personne suit elle-même ;
+//   • un mot de passe provisoire, tiré au hasard, affiché une seule fois et
+//     qui doit être changé à la première connexion.
+// ============================================================
+const adminSeul = requireRole(ROLE.PRINCIPAL_ADMIN);
+
+/** Mot de passe provisoire lisible à l'oral : on le dicte souvent au téléphone. */
+function motDePasseProvisoire() {
+  // Ni I, ni l, ni O, ni 0 : confondus à la lecture comme à la dictée.
+  const lettres = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
+  const chiffres = '23456789';
+  const tirer = (jeu, n) => Array.from(crypto.randomBytes(n))
+    .map(o => jeu[o % jeu.length]).join('');
+  // Format fixe : 4 lettres, tiret, 4 chiffres, tiret, 4 lettres.
+  return tirer(lettres, 4) + '-' + tirer(chiffres, 4) + '-' + tirer(lettres, 4);
+}
+
+/**
+ * POST /api/users/:id/reinitialiser
+ * body : { mode: 'lien' | 'provisoire' }
+ */
+router.post('/:id/reinitialiser', requireAuth, adminSeul, async (req, res, next) => {
+  try {
+    const t = await query(
+      'SELECT id, role, name, email, patient_id FROM users WHERE id = $1', [req.params.id]);
+    if (!t.rows.length) return res.status(404).json({ error: 'Compte introuvable.' });
+    const cible = t.rows[0];
+    const mode = (req.body && req.body.mode) === 'provisoire' ? 'provisoire' : 'lien';
+
+    if (mode === 'lien') {
+      if (!cible.email) {
+        return res.status(400).json({
+          error: "Ce compte n'a pas d'adresse électronique : utilisez un mot de passe provisoire."
+        });
+      }
+      const activation = require('./activation');
+      const r = await activation.creerEtEnvoyerLien({
+        userId: cible.id, patientId: cible.patient_id || null,
+        email: cible.email, prenom: (cible.name || '').split(' ')[0] || null,
+        createdBy: req.user.id, heures: 24
+      });
+      await journaliserAdmin(req, 'reset-lien', cible.id);
+      if (!r || r.ok === false) {
+        // Le lien reste valable même si l'envoi a échoué : on le remonte
+        // plutôt que de laisser l'administrateur recommencer dans le vide.
+        return res.status(207).json({
+          mode: 'lien', envoye: false,
+          avertissement: (r && r.error) || "L'envoi du courriel a échoué.",
+          lien_secours: r && r.lien
+        });
+      }
+      return res.json({ mode: 'lien', envoye: true, email_masque: r.email_masque || null });
+    }
+
+    const clair = motDePasseProvisoire();
+    const hash = await bcrypt.hash(clair, 10);
+    await query(
+      'UPDATE users SET password_hash = $2, must_change_password = TRUE WHERE id = $1',
+      [cible.id, hash]);
+    await journaliserAdmin(req, 'reset-provisoire', cible.id);
+    // Affiché une seule fois : il n'est stocké nulle part en clair, et le
+    // relire exigerait d'en générer un nouveau.
+    res.json({ mode: 'provisoire', mot_de_passe: clair });
+  } catch (err) { next(err); }
+});
+
+/**
+ * DELETE /api/users/:id
+ *
+ * Trois refus, et ils comptent plus que la fonction elle-même :
+ *   • son propre compte — on se verrouillerait dehors en un clic ;
+ *   • le dernier administrateur actif — plus personne ne pourrait administrer ;
+ *   • un compte patient rattaché à un dossier — le dossier perdrait son accès
+ *     sans que rien ne le signale. On le désactive à la place.
+ */
+router.delete('/:id', requireAuth, adminSeul, async (req, res, next) => {
+  try {
+    if (req.params.id === req.user.id) {
+      return res.status(409).json({ error: 'Vous ne pouvez pas supprimer votre propre compte.' });
+    }
+    const t = await query('SELECT id, role, name, email, patient_id FROM users WHERE id = $1',
+      [req.params.id]);
+    if (!t.rows.length) return res.status(404).json({ error: 'Compte introuvable.' });
+    const cible = t.rows[0];
+
+    if (cible.role === ROLE.PRINCIPAL_ADMIN) {
+      const n = await query(
+        `SELECT COUNT(*)::int AS n FROM users WHERE role = $1 AND active = TRUE AND id <> $2`,
+        [ROLE.PRINCIPAL_ADMIN, cible.id]);
+      if (!n.rows[0].n) {
+        return res.status(409).json({
+          error: "C'est le dernier compte administrateur actif. Créez-en un autre avant de supprimer celui-ci."
+        });
+      }
+    }
+
+    if (cible.patient_id && req.query.confirmer !== 'oui') {
+      return res.status(409).json({
+        error: 'Ce compte donne accès au dossier ' + cible.patient_id +
+               '. Le supprimer prive le patient de son espace sans effacer son dossier. ' +
+               'Désactivez-le plutôt, ou confirmez la suppression.',
+        patient_id: cible.patient_id
+      });
+    }
+
+    await journaliserAdmin(req, 'delete-user', cible.id, {
+      role: cible.role, email: cible.email, patient_id: cible.patient_id
+    });
+    await query('DELETE FROM users WHERE id = $1', [cible.id]);
+    res.json({ supprime: true });
+  } catch (err) { next(err); }
+});
+
+/** Trace systématique : une action d'administration sur un compte doit
+ *  laisser une ligne, même quand elle échoue plus loin. */
+async function journaliserAdmin(req, action, cibleId, extra) {
+  try {
+    await query(
+      'INSERT INTO notification_log (user_id, action, details, ip_address) VALUES ($1,$2,$3,$4)',
+      [req.user.id, action,
+       JSON.stringify(Object.assign({ target: cibleId }, extra || {})), req.ip]);
+  } catch (e) { console.warn('[users] journalisation :', e.message); }
+}
+
 module.exports = router;

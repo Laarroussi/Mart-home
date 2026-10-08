@@ -107,7 +107,10 @@
     users: {
       list:   (filters = {}) => request('GET', '/users?' + new URLSearchParams(filters).toString()),
       create: (data) => request('POST', '/users', data),
-      update: (id, data) => request('PATCH', `/users/${id}`, data)
+      update: (id, data) => request('PATCH', `/users/${id}`, data),
+      // Réservé à l'administrateur principal
+      reinitialiser: (id, mode) => request('POST', `/users/${id}/reinitialiser`, { mode: mode }),
+      supprimer: (id, conf) => request('DELETE', `/users/${id}` + (conf ? '?confirmer=oui' : ''))
     },
 
     /** ===== Patients ===== */
