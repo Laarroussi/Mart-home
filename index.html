@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase46-6"></script>
+  <script src="api-client.js?v=phase46-7"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase46-6"></script>
+  <script src="questionnaires-defs.js?v=phase46-7"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase46-6"></script>
+  <script src="medical-parsers.js?v=phase46-7"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase46-6"></script>
-  <script src="cpet-analyse.js?v=phase46-6"></script>
+  <script src="cpet-graph-preview.js?v=phase46-7"></script>
+  <script src="cpet-analyse.js?v=phase46-7"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase46-6"></script>
-  <script src="medical-record-ui.js?v=phase46-6"></script>
+  <script src="pdf-extractor.js?v=phase46-7"></script>
+  <script src="medical-record-ui.js?v=phase46-7"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase46-6"></script>
-  <script src="synthese-ui.js?v=phase46-6"></script>
-  <script src="audit-ui.js?v=phase46-6"></script>
-  <script src="entretien-ui.js?v=phase46-6"></script>
-  <script src="activation-ui.js?v=phase46-6"></script>
-  <script src="document-import.js?v=phase46-6"></script>
-  <script src="visio-jitsi.js?v=phase46-6"></script>
-  <script src="video-pilotee.js?v=phase46-6"></script>
-  <script src="fiche-apa.js?v=phase46-6"></script>
-  <script src="inactivite.js?v=phase46-6"></script>
-  <script src="bilans-ui.js?v=phase46-6"></script>
-  <script src="etudes-ui.js?v=phase46-6"></script>
-  <script src="ville-hopital.js?v=phase46-6"></script>
-  <script src="qlibres-ui.js?v=phase46-6"></script>
-  <script src="parametres-ui.js?v=phase46-6"></script>
+  <script src="aortic-consultations.js?v=phase46-7"></script>
+  <script src="synthese-ui.js?v=phase46-7"></script>
+  <script src="audit-ui.js?v=phase46-7"></script>
+  <script src="entretien-ui.js?v=phase46-7"></script>
+  <script src="activation-ui.js?v=phase46-7"></script>
+  <script src="document-import.js?v=phase46-7"></script>
+  <script src="visio-jitsi.js?v=phase46-7"></script>
+  <script src="video-pilotee.js?v=phase46-7"></script>
+  <script src="fiche-apa.js?v=phase46-7"></script>
+  <script src="inactivite.js?v=phase46-7"></script>
+  <script src="bilans-ui.js?v=phase46-7"></script>
+  <script src="etudes-ui.js?v=phase46-7"></script>
+  <script src="ville-hopital.js?v=phase46-7"></script>
+  <script src="qlibres-ui.js?v=phase46-7"></script>
+  <script src="parametres-ui.js?v=phase46-7"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13926,7 +13926,24 @@
       if (newP.length < 8) { errEl.textContent = 'Le nouveau mot de passe doit faire au moins 8 caractères.'; errEl.style.display = 'block'; return; }
       this.disabled = true; this.textContent = 'Validation…';
       try {
-        await window.MarfanAPI.changePassword(oldP, newP);
+        try {
+          await window.MarfanAPI.changePassword(oldP, newP);
+        } catch (premier) {
+          // « Token manquant » : le jeton a été effacé entre la connexion et
+          // ici. Le stockage est partagé entre les onglets — une déconnexion
+          // ailleurs, une page d'activation rechargée, et il disparaît pour
+          // tout le monde. L'utilisateur, lui, vient de saisir son ancien mot
+          // de passe : il prouve son identité à l'instant même. On rouvre donc
+          // une session avec ce qu'il vient de taper, puis on réessaie une
+          // fois. Faire échouer l'opération ici reviendrait à lui demander de
+          // tout recommencer pour une raison qui ne le concerne pas.
+          const sansJeton = premier && (premier.status === 401 ||
+            /token manquant|non authentifi/i.test(premier.message || ''));
+          const adresse = window.__derniereAdresseConnexion;
+          if (!sansJeton || !adresse) throw premier;
+          await window.MarfanAPI.login(adresse, oldP);
+          await window.MarfanAPI.changePassword(oldP, newP);
+        }
         okEl.textContent = '✓ Mot de passe modifié. Redirection…';
         okEl.style.display = 'block';
         setTimeout(() => {
@@ -18242,6 +18259,9 @@
       this.disabled = true; this.textContent = 'Connexion…';
       try {
         const user = await window.MarfanAPI.login(email, pwd);
+        // Retenue pour le changement de mot de passe obligatoire : l'écran qui
+        // suit doit pouvoir rouvrir une session si le jeton a disparu.
+        window.__derniereAdresseConnexion = email;
         await onLoginSuccess(user);
       } catch (e) {
         errEl.textContent = e.message || 'Échec de la connexion.'; errEl.style.display = 'block';
