@@ -175,7 +175,14 @@
       const libelles = ['Trop court', 'Faible', 'Correct', 'Bon', 'Excellent'];
       const couleurs = ['#94a3b8', '#dc2626', '#f59e0b', '#0891b2', '#16a34a'];
       const i = v.length < min ? 0 : n;
-      force.textContent = v ? 'Robustesse : ' + libelles[i] : 'Au moins ' + min + ' caractères.';
+      // Le nombre de caractères est affiché en permanence. Un refus pour
+      // longueur insuffisante alors que le champ paraît rempli ne se diagnostique
+      // pas autrement : il faut voir ce que la page lit, pas ce qu'on croit avoir
+      // tapé. Un correcteur, un collage incomplet ou un remplissage automatique
+      // suffisent à créer l'écart.
+      force.textContent = v
+        ? 'Robustesse : ' + libelles[i] + ' · ' + v.length + ' caractères'
+        : 'Au moins ' + min + ' caractères.';
       force.style.color = v ? couleurs[i] : '#94a3b8';
     });
 
@@ -201,8 +208,15 @@
     async function envoyer() {
       clearErr();
       const a = p1.value, b = p2.value;
-      if (a.length < min) return erreur('Le mot de passe doit contenir au moins ' + min + ' caractères.');
-      if (a !== b)        return erreur('Les deux mots de passe ne sont pas identiques.');
+      if (a.length < min) {
+        return erreur('Le mot de passe doit contenir au moins ' + min + ' caractères — ' +
+          'celui-ci en compte <strong>' + a.length + '</strong>.' +
+          (a.length === 0
+            ? '<br><span style="font-weight:600;">Le champ est vu comme vide&nbsp;: retapez-le ' +
+              'directement au clavier, sans coller ni remplissage automatique.</span>'
+            : ''));
+      }
+      if (a !== b) return erreur('Les deux mots de passe ne sont pas identiques.');
       btn.disabled = true; btn.textContent = 'Activation en cours…';
       try {
         await window.MarfanAPI.activation.complete(TOKEN, a);
@@ -210,7 +224,11 @@
         mount(succes(info));
       } catch (e) {
         btn.disabled = false; btn.textContent = 'Activer mon espace';
-        erreur(esc((e && e.message) || "L'activation a échoué. Réessayez."));
+        // Marqué « ↩ » pour distinguer un refus du serveur d'une vérification
+        // faite dans la page : les deux disaient la même phrase, et on ne
+        // pouvait pas savoir lequel des deux avait parlé.
+        erreur('<span title="Réponse du serveur">↩</span> ' +
+          esc((e && e.message) || "L'activation a échoué. Réessayez."));
       }
     }
 
