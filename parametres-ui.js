@@ -116,13 +116,13 @@
     var r = roleInfo(u.role);
     var moi = moiMeme(u);
     return '<tr style="border-top:1px solid var(--line);' + (u.active ? '' : ' background:#fafbfc;') + '">' +
-      '<td style="padding:10px 10px; overflow:hidden;">' +
+      '<td style="padding:10px 10px;">' +
         '<div style="display:flex; align-items:center; gap:9px; min-width:0;">' +
           '<span style="width:30px; height:30px; border-radius:9px; flex:0 0 auto; display:flex; ' +
             'align-items:center; justify-content:center; font-size:11px; font-weight:800; ' +
             'color:' + r.c + '; background:' + r.f + '; border:1px solid ' + r.b + ';">' +
             esc(((u.name || u.email || '?').trim()[0] || '?').toUpperCase()) + '</span>' +
-          '<div style="min-width:0; overflow:hidden; text-overflow:ellipsis;">' +
+          '<div style="min-width:0; overflow-wrap:anywhere;">' +
             '<div style="font-weight:700; color:#0b1530; font-size:13px;">' +
               esc(u.name || u.username || u.email || u.id) +
               (moi ? ' <span style="font-size:10px; font-weight:800; color:#0f766e; background:#ecfdf5; ' +
@@ -146,7 +146,7 @@
         '</div>' +
       '</td>' +
 
-      '<td style="padding:10px;">' +
+      '<td style="padding:10px; white-space:nowrap; width:1px;">' +
         '<label style="display:inline-flex; align-items:center; gap:7px; white-space:nowrap; ' +
           'cursor:' + (moi ? 'not-allowed' : 'pointer') + '; font-weight:700; font-size:12px; color:' +
           (u.active ? '#065f46' : '#94a3b8') + ';"' +
@@ -155,7 +155,7 @@
             (moi ? ' disabled' : '') + ' style="width:17px; height:17px; accent-color:#0f766e; cursor:inherit;">' +
           (u.active ? 'Actif' : 'Archivé') +
         '</label></td>' +
-      '<td style="padding:10px; text-align:right; white-space:nowrap; width:1%;">' +
+      '<td style="padding:10px; text-align:right; white-space:nowrap; width:1px;">' +
         '<button type="button" data-reset="' + esc(u.id) + '" class="btn-light" ' +
           'title="Réinitialiser le mot de passe" ' +
           'style="font-size:12px; padding:5px 10px;">🔑</button>' +
@@ -179,12 +179,17 @@
         icone + ' ' + esc(titre) +
         ' <span style="font-weight:600; color:#94a3b8;">— ' + liste.length + '</span></h4>' +
       '<div style="border:1px solid var(--line); border-radius:11px; overflow:hidden;">' +
-      '<table style="width:100%; border-collapse:collapse; font-size:12.5px; table-layout:fixed;">' +
+      // table-layout reste en « auto ». Un essai en « fixed » combiné à des
+      // colonnes déclarées à 1 % les a réduites à néant : la case Actif et le
+      // bouton de mot de passe avaient disparu de l'écran. En auto, width:100%
+      // sur la première colonne lui fait absorber la place restante, et les
+      // deux dernières se dimensionnent sur leur contenu.
+      '<table style="width:100%; border-collapse:collapse; font-size:12.5px;">' +
         '<thead><tr style="text-align:left; color:#64748b; font-size:10.5px; ' +
           'text-transform:uppercase; letter-spacing:.05em; background:#f8fafc;">' +
-          '<th style="padding:8px 10px;">Compte</th>' +
-          '<th style="padding:8px 10px; width:1%; white-space:nowrap;">Accès</th>' +
-          '<th style="padding:8px 10px; width:1%;"></th></tr></thead>' +
+          '<th style="padding:8px 10px; width:100%;">Compte</th>' +
+          '<th style="padding:8px 10px; white-space:nowrap;">Accès</th>' +
+          '<th style="padding:8px 10px; white-space:nowrap;">Actions</th></tr></thead>' +
         '<tbody>' + liste.map(ligne).join('') + '</tbody>' +
       '</table></div></div>';
   }
