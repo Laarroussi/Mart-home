@@ -70,6 +70,11 @@
       'font-size:12.5px; line-height:1.6; background:' + c[0] + '; border:1px solid ' + c[1] +
       '; color:' + c[2] + ';';
     z.innerHTML = html;
+    // Le bandeau vit en tête de page. Quand on agit depuis une ligne du bas du
+    // tableau — ce qui est le cas courant — le résultat s'affichait hors de
+    // l'écran : le mot de passe provisoire était bien généré, mais invisible,
+    // et l'opération paraissait n'avoir rien produit.
+    try { z.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
   }
 
   function moiMeme(u) {
@@ -248,11 +253,35 @@
         // Affiché une seule fois : il n'est stocké nulle part en clair, et le
         // relire exigerait d'en générer un nouveau.
         info('<strong>Mot de passe provisoire pour ' + esc(u.name || u.email) + '</strong><br>' +
-          '<code style="display:inline-block; margin:8px 0; padding:9px 14px; background:#fff; ' +
-          'border:2px solid #0f766e; border-radius:9px; font-size:16px; font-weight:800; ' +
-          'letter-spacing:1px; color:#0b1530;">' + esc(r.mot_de_passe) + '</code><br>' +
+          '<span style="display:inline-flex; align-items:center; gap:10px; margin:10px 0;">' +
+            '<code id="paMdp" style="padding:11px 16px; background:#fff; ' +
+            'border:2px solid #0f766e; border-radius:9px; font-size:18px; font-weight:800; ' +
+            'letter-spacing:1.5px; color:#0b1530; user-select:all;">' + esc(r.mot_de_passe) + '</code>' +
+            '<button type="button" id="paCopier" class="btn-secondary" ' +
+            'style="font-size:12px; white-space:nowrap;">📋 Copier</button>' +
+          '</span><br>' +
+          'Identifiant : <strong>' + esc(u.email || '') + '</strong><br>' +
           'Notez-le maintenant : il n\'est enregistré nulle part en clair et ne pourra pas être relu. ' +
           'La personne devra le changer à sa première connexion.', 'alerte');
+        // Un mot de passe qu'on doit retaper à la main se transmet avec des
+        // fautes : les caractères évitent déjà les confusions, le bouton
+        // supprime le reste du risque.
+        var bc = el('paCopier');
+        if (bc) bc.addEventListener('click', async function () {
+          try {
+            await navigator.clipboard.writeText(r.mot_de_passe);
+            bc.textContent = '✓ Copié';
+          } catch (_) {
+            // Presse-papiers refusé : on sélectionne, l'utilisateur fait Cmd+C.
+            try {
+              var rg = document.createRange();
+              rg.selectNodeContents(el('paMdp'));
+              var sel = window.getSelection();
+              sel.removeAllRanges(); sel.addRange(rg);
+              bc.textContent = 'Sélectionné — Cmd+C';
+            } catch (__) {}
+          }
+        });
       } else if (r.envoye) {
         info('✉️ Lien de réinitialisation envoyé' +
           (r.email_masque ? ' à <strong>' + esc(r.email_masque) + '</strong>' : '') +
