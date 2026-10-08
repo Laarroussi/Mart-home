@@ -159,6 +159,12 @@
       p1.type = t; p2.type = t;
     });
 
+    // Un message d'erreur qui survit à la correction est pire qu'une absence
+    // de message : il contredit l'indicateur de robustesse affiché juste
+    // au-dessus, et la personne renonce en croyant que rien ne passera.
+    // Taper, c'est corriger — l'erreur précédente n'a plus lieu d'être.
+    [p1, p2].forEach(el => el && el.addEventListener('input', clearErr));
+
     if (p1) p1.addEventListener('input', () => {
       const v = p1.value;
       let n = 0;
@@ -172,6 +178,25 @@
       force.textContent = v ? 'Robustesse : ' + libelles[i] : 'Au moins ' + min + ' caractères.';
       force.style.color = v ? couleurs[i] : '#94a3b8';
     });
+
+    if (p2) p2.addEventListener('input', () => {
+      if (!p2.value) { force2(''); return; }
+      force2(p1.value === p2.value
+        ? ['✓ Les deux mots de passe correspondent.', '#16a34a']
+        : ['Les deux mots de passe diffèrent pour le moment.', '#94a3b8']);
+    });
+
+    function force2(etat) {
+      let z = document.getElementById('actConcorde');
+      if (!z) {
+        z = document.createElement('div');
+        z.id = 'actConcorde';
+        z.style.cssText = 'font-size:11.5px; margin:-8px 0 12px;';
+        if (p2 && p2.parentNode) p2.parentNode.insertBefore(z, p2.nextSibling);
+      }
+      z.textContent = etat ? etat[0] : '';
+      z.style.color = etat ? etat[1] : 'transparent';
+    }
 
     async function envoyer() {
       clearErr();
