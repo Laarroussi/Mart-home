@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase48-0"></script>
+  <script src="api-client.js?v=phase49-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase48-0"></script>
+  <script src="questionnaires-defs.js?v=phase49-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase48-0"></script>
+  <script src="medical-parsers.js?v=phase49-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase48-0"></script>
-  <script src="cpet-analyse.js?v=phase48-0"></script>
+  <script src="cpet-graph-preview.js?v=phase49-1"></script>
+  <script src="cpet-analyse.js?v=phase49-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase48-0"></script>
-  <script src="medical-record-ui.js?v=phase48-0"></script>
+  <script src="pdf-extractor.js?v=phase49-1"></script>
+  <script src="medical-record-ui.js?v=phase49-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase48-0"></script>
-  <script src="synthese-ui.js?v=phase48-0"></script>
-  <script src="audit-ui.js?v=phase48-0"></script>
-  <script src="entretien-ui.js?v=phase48-0"></script>
-  <script src="activation-ui.js?v=phase48-0"></script>
-  <script src="document-import.js?v=phase48-0"></script>
-  <script src="visio-jitsi.js?v=phase48-0"></script>
-  <script src="video-pilotee.js?v=phase48-0"></script>
-  <script src="fiche-apa.js?v=phase48-0"></script>
-  <script src="inactivite.js?v=phase48-0"></script>
-  <script src="bilans-ui.js?v=phase48-0"></script>
-  <script src="etudes-ui.js?v=phase48-0"></script>
-  <script src="ville-hopital.js?v=phase48-0"></script>
-  <script src="qlibres-ui.js?v=phase48-0"></script>
-  <script src="parametres-ui.js?v=phase48-0"></script>
+  <script src="aortic-consultations.js?v=phase49-1"></script>
+  <script src="synthese-ui.js?v=phase49-1"></script>
+  <script src="audit-ui.js?v=phase49-1"></script>
+  <script src="entretien-ui.js?v=phase49-1"></script>
+  <script src="activation-ui.js?v=phase49-1"></script>
+  <script src="document-import.js?v=phase49-1"></script>
+  <script src="visio-jitsi.js?v=phase49-1"></script>
+  <script src="video-pilotee.js?v=phase49-1"></script>
+  <script src="fiche-apa.js?v=phase49-1"></script>
+  <script src="inactivite.js?v=phase49-1"></script>
+  <script src="bilans-ui.js?v=phase49-1"></script>
+  <script src="etudes-ui.js?v=phase49-1"></script>
+  <script src="ville-hopital.js?v=phase49-1"></script>
+  <script src="qlibres-ui.js?v=phase49-1"></script>
+  <script src="parametres-ui.js?v=phase49-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -8073,6 +8073,9 @@
   window.majProchainCode = async function (forcer) {
     const champ = $('cf_code');
     if (!champ) return;
+    // Garde-fou de dernier recours : une requête partie avant l'édition peut
+    // revenir pendant. Elle ne doit renuméroter personne.
+    if (window._editingPatientId) return;
     // On ne remplace pas un numéro que l'utilisateur a saisi lui-même.
     if (!forcer && champ.value && champ.dataset.auto !== '1') return;
     const poser = (code) => {
@@ -8105,6 +8108,9 @@
 
   function initCreationForm() {
     remplirCategories();
+    // Édition d'une fiche existante : ni code neuf, ni date du jour. Les
+    // valeurs de la fiche sont posées juste après par __editPatientFile.
+    if (window._editingPatientId) return;
     // Pré-remplit le code patient suggéré et la date d'inclusion.
     // Le code définitif vient du serveur ; le calcul local sert d'affichage
     // immédiat le temps de la réponse.
@@ -8956,11 +8962,34 @@
     const p = (window.patients || []).find(x => x.id === patientId);
     if (!p) { alert('Patient introuvable : ' + patientId); return; }
     const civil = p.civil || {}, medical = p.medical || {}, study = p.study || {};
-    // Bascule sur l'onglet Création
+
+    // Le mode édition est déclaré AVANT la bascule d'onglet, et c'est le
+    // cœur du correctif.
+    //
+    // Jusqu'ici l'ordre était : basculer d'onglet, puis remplir les champs
+    // après un délai. Or la bascule déclenche initCreationForm(), qui demande
+    // au serveur le prochain code libre. Cette requête revient quand elle
+    // revient — parfois après le remplissage — et réécrivait le code par
+    // celui d'un nouveau patient. On croyait modifier MRF-003 et le
+    // formulaire affichait MRF-004 : en enregistrant, on aurait créé une
+    // seconde fiche au lieu de corriger la première.
+    //
+    // Avec le drapeau posé d'abord, initCreationForm sait qu'une fiche est en
+    // cours d'édition et ne va pas chercher de nouveau code.
+    window._editingPatientId = patientId;
     if (typeof switchMainTab === 'function') switchMainTab('creation');
     // Pré-remplit tous les champs après un court délai (le temps que l'onglet s'affiche)
     setTimeout(() => {
       const set = (id, val) => { const el = $(id); if (el && val != null) el.value = val; };
+      // Rien ne distinguait une création d'une modification : même titre,
+      // mêmes boutons. On le dit.
+      try {
+        showCreationFeedback(
+          '✏️ <strong>Modification de la fiche ' + p.id + '</strong> — ' +
+          (civil.lastName || '') + ' ' + (civil.firstName || '') + '.<br>' +
+          'Le code et la population sont verrouillés. « Valider » met à jour cette fiche, ' +
+          'il n\'en crée pas une nouvelle.', 'info');
+      } catch (_) {}
       set('cf_code', p.id);
       // Modification d'une fiche existante : le code ne change pas. On le
       // décompose pour l'afficher, et on verrouille la population — en

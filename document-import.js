@@ -20,6 +20,7 @@
   'use strict';
 
   let _patientId = null;
+  let _conteneurId = null;
   let _faits = [];
   let _echo = null;
   let _docNom = '';
@@ -225,6 +226,7 @@
     const el = document.getElementById(containerId);
     if (!el) return;
     _patientId = patientId;
+    _conteneurId = containerId;
 
     let faits = [];
     try {
@@ -294,7 +296,7 @@
         <div style="padding:14px 20px; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
           <div>
             <h3 style="margin:0; color:white; font-size:15px;">📎 Pièces du dossier médical — ${esc(patientId)}</h3>
-            <p style="margin:3px 0 0; font-size:11.5px; opacity:.92;">PDF, scans, photos, Word, Excel, texte. Les données datées sont extraites, relues par vous, puis classées chronologiquement.</p>
+            <p style="margin:3px 0 0; font-size:11.5px; opacity:.92;">PDF, scans, photos, Word, Excel, texte. Les données datées sont extraites, relues par vous, puis classées chronologiquement. Une épreuve d'effort est reconnue et analysée automatiquement.</p>
           </div>
           <div>
             <input type="file" data-di-input style="display:none"
@@ -315,6 +317,156 @@
   // ============================================================
   // === Traitement d'un fichier ================================
   // ============================================================
+  /**
+   * Ce fichier est-il une épreuve d'effort ?
+   *
+   * On ne se fie pas à l'extension : les logiciels d'épreuve d'effort
+   * exportent couramment un classeur Excel sous le nom « .csv ». On regarde
+   * donc le contenu — la signature d'un classeur, ou les en-têtes de colonnes
+   * qu'aucun compte rendu clinique ne contient.
+   */
+  async function ressembleAUneEpreuveDEffort(file) {
+    const nom = (file.name || '').toLowerCase();
+    if (!/\.(csv|tsv|txt|xlsx?|xlsm)$/i.test(nom)) return false;
+    if (!window.CpetAnalyse || typeof XLSX === 'undefined') return false;
+
+    // Classeur Excel, quelle que soit son extension : signature ZIP « PK ».
+    try {
+      const debut = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+      if (debut[0] === 0x50 && debut[1] === 0x4B) return true;
+    } catch (_) {}
+
+    // Fichier réellement texte : on cherche les colonnes d'un cycle
+    // respiratoire. Trois marqueurs suffisent, aucun ne se trouve dans un
+    // courrier ou un compte rendu.
+    try {
+      const tete = await file.slice(0, 20000).text();
+      const marqueurs = [/\bVO2\b/i, /\bVCO2\b/i, /VE\/VO2/i, /VE\/VCO2/i,
+                         /\bRER\b/i, /\bWatt/i, /\bPhase\b/i, /\bFETO2\b/i];
+      return marqueurs.filter(r => r.test(tete)).length >= 3;
+    } catch (_) { return false; }
+  }
+
+  /**
+   * Une épreuve d'effort versée ici n'est pas un document à lire.
+   *
+   * Auparavant elle partait au lecteur générique, qui la confiait à l'IA pour
+   * en extraire du texte. Le modèle y trouvait des nombres et les interprétait
+   * à sa façon : un export COSMED a ainsi produit un « diamètre aortique de
+   * 45 mm » qui ne figurait nulle part dans le fichier. Une mesure clinique
+   * inventée dans un dossier, à partir d'un examen qui ne la contenait pas.
+   *
+   * Le fichier est donc analysé ici même par le module dédié — VO2 pic, seuils
+   * ventilatoires, OUES, pente VE/VCO2, zones d'entraînement — et aucune
+   * valeur n'est déduite d'une lecture de texte.
+   */
+  async function traiterEpreuveDEffort(file, patientId) {
+    ouvrirAttente("Épreuve d'effort reconnue — analyse des cycles respiratoires…", _docNom);
+
+    let av;
+    try {
+      const ab = await file.arrayBuffer();
+      av = window.CpetAnalyse.analyserClasseur(ab);
+    } catch (e) {
+      majAttente("❌ Analyse impossible : " + ((e && e.message) || 'fichier illisible') +
+                 "\n\nVous pouvez réessayer depuis « Examens médicaux ».", true);
+      return;
+    }
+    if (!av || av.erreur) {
+      majAttente("❌ " + ((av && av.erreur) || "Aucun cycle exploitable.") +
+                 "\n\nAucune donnée n'a été enregistrée.", true);
+      return;
+    }
+
+    // La date du test vient du fichier quand il la porte ; sinon aujourd'hui.
+    const dateTest = dateDuTest(av) || new Date().toISOString().slice(0, 10);
+
+    majAttente("Analyse terminée — enregistrement dans le suivi…");
+
+    // On conserve d'abord le fichier source : une évaluation sans la pièce
+    // dont elle est tirée n'est pas vérifiable.
+    try {
+      const base64 = await versBase64(file);
+      const parse = (window.MedicalParsers && window.MedicalParsers.parseCPETXlsx)
+        ? window.MedicalParsers.parseCPETXlsx(await file.arrayBuffer())
+        : { summary: {}, full: {} };
+      await window.MarfanAPI.medicalExams.create({
+        patient_id: patientId,
+        exam_type: 'cpet',
+        exam_date: dateTest,
+        file_name: file.name || _docNom,
+        file_size_kb: Math.round(file.size / 1024),
+        file_mime: file.type || 'application/octet-stream',
+        raw_file: base64,
+        parsed_summary: Object.assign({}, parse.summary, av),
+        parsed_full: Object.assign({}, parse.full, { analyse_avancee: av }),
+        notes: 'Versé depuis « Documents & examens » du dossier patient.'
+      });
+    } catch (e) {
+      console.warn('[docimport] conservation du fichier CPET :', e && e.message);
+    }
+
+    // Puis l'évaluation : c'est elle qui alimente les graphiques, le tableau
+    // de la base et les zones d'entraînement.
+    try {
+      await window.MarfanAPI.evaluations.create(patientId, {
+        label: "Épreuve d'effort" + (av.sujet && av.sujet.date_test ? ' — ' + av.sujet.date_test : ''),
+        date: dateTest,
+        vo2: av.vo2_pic_ml_kg_min != null ? av.vo2_pic_ml_kg_min : null,
+        sv1: av.sv1_vo2 != null ? Math.round(av.sv1_vo2 / 10) / 100 : null,
+        sv2: av.sv2_vo2 != null ? Math.round(av.sv2_vo2 / 10) / 100 : null,
+        ve_vco2_slope: av.ve_vco2_pente,
+        watts: av.watts_pic,
+        fc_max: av.fc_pic,
+        note: av.nature_vo2 === 'VO2max'
+          ? 'VO₂ max — effort maximal confirmé'
+          : 'VO₂ pic — effort maximal non confirmé',
+        thresholds: {
+          fcRepos: av.fc_repos, fcPeak: av.fc_pic,
+          sv1Fc: av.sv1_fc, sv2Fc: av.sv2_fc,
+          sv1Watts: av.sv1_watts, sv2Watts: av.sv2_watts,
+          sv1Vo2: av.sv1_vo2, sv2Vo2: av.sv2_vo2,
+          oues: av.oues_ml_min, ouesParKg: av.oues_par_kg,
+          veVco2Pente: av.ve_vco2_pente, veVco2R2: av.ve_vco2_r2,
+          natureVo2: av.nature_vo2, criteres: av.criteres_maximalite,
+          zones: av.zones
+        }
+      });
+    } catch (e) {
+      majAttente("❌ Évaluation non créée : " + ((e && e.message) || 'erreur') +
+                 "\n\nLe fichier a été conservé ; l'analyse peut être relancée.", true);
+      return;
+    }
+
+    try { if (typeof loadPatientsFromApi === 'function') await loadPatientsFromApi(); } catch (_) {}
+    try { if (typeof renderDbTable === 'function') renderDbTable(); } catch (_) {}
+
+    const l = v => (v == null ? '—' : v);
+    majAttente(
+      "✅ Épreuve d'effort analysée et enregistrée.\n\n" +
+      (av.nature_vo2 === 'VO2max' ? 'VO₂ max' : 'VO₂ pic') + ' : ' +
+        l(av.vo2_pic_ml_kg_min) + ' mL/kg/min\n' +
+      'Seuils SV1 / SV2 : ' + l(av.sv1_fc) + ' / ' + l(av.sv2_fc) + ' bpm\n' +
+      'Pente VE/VCO₂ : ' + l(av.ve_vco2_pente) + '\n' +
+      'Puissance pic : ' + l(av.watts_pic) + ' W\n\n' +
+      "Les graphiques et les zones d'entraînement sont à jour.", true);
+
+    if (_conteneurId) { try { await mount(_conteneurId, patientId); } catch (_) {} }
+  }
+
+  /** Date du test telle que le fichier la porte, en ISO si on sait la lire. */
+  function dateDuTest(av) {
+    const brut = av && av.sujet && av.sujet.date_test;
+    if (!brut) return null;
+    const m = String(brut).match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+    if (m) {
+      let a = m[3]; if (a.length === 2) a = (Number(a) > 50 ? '19' : '20') + a;
+      return a + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
+    }
+    const iso = String(brut).match(/(\d{4})-(\d{2})-(\d{2})/);
+    return iso ? iso[0] : null;
+  }
+
   async function traiter(file, patientId) {
     _patientId = patientId;
     _docNom = file.name || 'document';
@@ -328,6 +480,30 @@
       alert('Fichier trop volumineux (' + Math.round(file.size / 1048576) + ' Mo). Maximum ' + maxMo + ' Mo.' +
             (estAudioFichier ? '\n\nCela représente environ 25 minutes en qualité voix. Découpez l\'enregistrement, ou réenregistrez en qualité inférieure.' : ''));
       return;
+    }
+
+    // ============================================================
+    // Une épreuve d'effort n'est pas un document à lire : c'est un tableau
+    // de mesures à analyser.
+    //
+    // Versée ici, elle partait au lecteur générique, qui la confiait à l'IA
+    // pour en extraire du texte. Le modèle y trouvait des nombres et les
+    // interprétait à sa façon : un fichier COSMED a ainsi produit un
+    // « diamètre aortique de 45 mm » qui n'existait nulle part. Une donnée
+    // clinique inventée dans un dossier, à partir d'un examen qui n'en
+    // parlait pas.
+    //
+    // On reconnaît donc le format avant d'envoyer quoi que ce soit, et on
+    // oriente vers l'analyse dédiée — celle qui calcule VO2 pic, seuils
+    // ventilatoires, OUES et pente VE/VCO2.
+    // ============================================================
+    try {
+      if (await ressembleAUneEpreuveDEffort(file)) {
+        await traiterEpreuveDEffort(file, patientId);
+        return;
+      }
+    } catch (e) {
+      console.warn('[docimport] détection CPET :', e && e.message);
     }
 
     ouvrirAttente('Lecture du document…', _docNom);
