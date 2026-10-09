@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase47-2"></script>
+  <script src="api-client.js?v=phase47-3"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase47-2"></script>
+  <script src="questionnaires-defs.js?v=phase47-3"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase47-2"></script>
+  <script src="medical-parsers.js?v=phase47-3"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase47-2"></script>
-  <script src="cpet-analyse.js?v=phase47-2"></script>
+  <script src="cpet-graph-preview.js?v=phase47-3"></script>
+  <script src="cpet-analyse.js?v=phase47-3"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase47-2"></script>
-  <script src="medical-record-ui.js?v=phase47-2"></script>
+  <script src="pdf-extractor.js?v=phase47-3"></script>
+  <script src="medical-record-ui.js?v=phase47-3"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase47-2"></script>
-  <script src="synthese-ui.js?v=phase47-2"></script>
-  <script src="audit-ui.js?v=phase47-2"></script>
-  <script src="entretien-ui.js?v=phase47-2"></script>
-  <script src="activation-ui.js?v=phase47-2"></script>
-  <script src="document-import.js?v=phase47-2"></script>
-  <script src="visio-jitsi.js?v=phase47-2"></script>
-  <script src="video-pilotee.js?v=phase47-2"></script>
-  <script src="fiche-apa.js?v=phase47-2"></script>
-  <script src="inactivite.js?v=phase47-2"></script>
-  <script src="bilans-ui.js?v=phase47-2"></script>
-  <script src="etudes-ui.js?v=phase47-2"></script>
-  <script src="ville-hopital.js?v=phase47-2"></script>
-  <script src="qlibres-ui.js?v=phase47-2"></script>
-  <script src="parametres-ui.js?v=phase47-2"></script>
+  <script src="aortic-consultations.js?v=phase47-3"></script>
+  <script src="synthese-ui.js?v=phase47-3"></script>
+  <script src="audit-ui.js?v=phase47-3"></script>
+  <script src="entretien-ui.js?v=phase47-3"></script>
+  <script src="activation-ui.js?v=phase47-3"></script>
+  <script src="document-import.js?v=phase47-3"></script>
+  <script src="visio-jitsi.js?v=phase47-3"></script>
+  <script src="video-pilotee.js?v=phase47-3"></script>
+  <script src="fiche-apa.js?v=phase47-3"></script>
+  <script src="inactivite.js?v=phase47-3"></script>
+  <script src="bilans-ui.js?v=phase47-3"></script>
+  <script src="etudes-ui.js?v=phase47-3"></script>
+  <script src="ville-hopital.js?v=phase47-3"></script>
+  <script src="qlibres-ui.js?v=phase47-3"></script>
+  <script src="parametres-ui.js?v=phase47-3"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13883,7 +13883,11 @@
         if (echecsRendu.length) signalerEchecsRendu(echecsRendu, adapted.length);
         return adapted.length;
       } catch (e) {
-        console.warn('Chargement patients API échoué :', e.message);
+        // Cet échec était avalé dans la console et l'écran affichait
+        // simplement « Aucun patient » — impossible de distinguer une base
+        // vide d'un chargement raté.
+        console.warn('[patients] chargement échoué :', (e && e.message) || e);
+        window.__dernierEchecChargement = (e && e.message) || 'erreur inconnue';
         return 0;
       }
     }
@@ -18219,7 +18223,35 @@
       // Phase 14b : cet onglet fait foi à partir de maintenant
       try { if (typeof window.__memoriserSession === 'function') window.__memoriserSession(); } catch (_) {}
       const role = syncApiUserToCurrentUser(user);
-      const n = await loadPatientsFromApi();
+      let n = await loadPatientsFromApi();
+
+      // Seconde tentative si la première ne rapporte rien.
+      //
+      // Au moment de la connexion, plusieurs requêtes lancées par les modules
+      // sont encore en vol. Certaines reviennent en 401 et, selon l'ordre
+      // d'arrivée, perturbaient la session juste établie — la liste des
+      // patients revenait alors vide, sans erreur visible, et il fallait
+      // basculer le mode Démo pour forcer un nouveau chargement.
+      //
+      // Une base réellement vide répond en quelques millisecondes et la
+      // seconde tentative ne coûte rien. Un chargement raté, lui, est rattrapé.
+      if (!n && role !== 'patient') {
+        await new Promise(r => setTimeout(r, 1200));
+        n = await loadPatientsFromApi();
+        console.log('[patients] seconde tentative :', n, 'patient(s)');
+        if (!n) {
+          const raison = window.__dernierEchecChargement;
+          if (raison) {
+            // On le dit, plutôt que d'afficher « Aucun patient » comme si la
+            // base était vide.
+            try {
+              signalerEchecsRendu(['chargement des patients (' + raison + ')'], 0);
+            } catch (_) {}
+          } else {
+            console.log('[patients] aucun patient en base pour ce mode.');
+          }
+        }
+      }
       const v = await loadVideosFromApi(role);
       const s = await loadVisioSessionsForRole(role);
       injectVideoAdminControls(role);
