@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase47-0"></script>
+  <script src="api-client.js?v=phase47-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase47-0"></script>
+  <script src="questionnaires-defs.js?v=phase47-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase47-0"></script>
+  <script src="medical-parsers.js?v=phase47-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase47-0"></script>
-  <script src="cpet-analyse.js?v=phase47-0"></script>
+  <script src="cpet-graph-preview.js?v=phase47-1"></script>
+  <script src="cpet-analyse.js?v=phase47-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase47-0"></script>
-  <script src="medical-record-ui.js?v=phase47-0"></script>
+  <script src="pdf-extractor.js?v=phase47-1"></script>
+  <script src="medical-record-ui.js?v=phase47-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase47-0"></script>
-  <script src="synthese-ui.js?v=phase47-0"></script>
-  <script src="audit-ui.js?v=phase47-0"></script>
-  <script src="entretien-ui.js?v=phase47-0"></script>
-  <script src="activation-ui.js?v=phase47-0"></script>
-  <script src="document-import.js?v=phase47-0"></script>
-  <script src="visio-jitsi.js?v=phase47-0"></script>
-  <script src="video-pilotee.js?v=phase47-0"></script>
-  <script src="fiche-apa.js?v=phase47-0"></script>
-  <script src="inactivite.js?v=phase47-0"></script>
-  <script src="bilans-ui.js?v=phase47-0"></script>
-  <script src="etudes-ui.js?v=phase47-0"></script>
-  <script src="ville-hopital.js?v=phase47-0"></script>
-  <script src="qlibres-ui.js?v=phase47-0"></script>
-  <script src="parametres-ui.js?v=phase47-0"></script>
+  <script src="aortic-consultations.js?v=phase47-1"></script>
+  <script src="synthese-ui.js?v=phase47-1"></script>
+  <script src="audit-ui.js?v=phase47-1"></script>
+  <script src="entretien-ui.js?v=phase47-1"></script>
+  <script src="activation-ui.js?v=phase47-1"></script>
+  <script src="document-import.js?v=phase47-1"></script>
+  <script src="visio-jitsi.js?v=phase47-1"></script>
+  <script src="video-pilotee.js?v=phase47-1"></script>
+  <script src="fiche-apa.js?v=phase47-1"></script>
+  <script src="inactivite.js?v=phase47-1"></script>
+  <script src="bilans-ui.js?v=phase47-1"></script>
+  <script src="etudes-ui.js?v=phase47-1"></script>
+  <script src="ville-hopital.js?v=phase47-1"></script>
+  <script src="qlibres-ui.js?v=phase47-1"></script>
+  <script src="parametres-ui.js?v=phase47-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -6126,7 +6126,23 @@
     select.innerHTML = patients.map(p => `<option value="${p.id}">${p.id} · ${p.sex || '?'} · ${p.gene || '—'}</option>`).join('');
     // Phase 12.4 : n'ajoute le listener QU'UNE SEULE FOIS (sinon empilement après chaque reload)
     if (!select._changeWired) {
-      select.addEventListener('change', e => setSelectedPatient(e.target.value));
+      select.addEventListener('change', e => {
+        setSelectedPatient(e.target.value);
+        // Choisir un patient dans ce sélecteur, c'est demander à le voir.
+        // Jusqu'ici la sélection était bien prise en compte — le dossier était
+        // redessiné — mais en arrière-plan : depuis l'accueil ou la base de
+        // données, rien ne bougeait à l'écran et l'on croyait que le clic
+        // n'avait servi à rien. On ouvre donc le dossier, sauf si l'on s'y
+        // trouve déjà ou si l'on est sur une vue de cohorte où la sélection
+        // n'a pas à faire changer de page.
+        const vue = document.querySelector('.tab-button.active');
+        const onglet = vue && vue.dataset.tab;
+        const resteSurPlace = ['dossier', 'visio', 'questionnaires', 'education'];
+        if (onglet && resteSurPlace.indexOf(onglet) < 0 && typeof switchMainTab === 'function') {
+          switchMainTab('dossier');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
       select._changeWired = true;
     }
     // Phase 12.4 : resynchronise selectedPatient sur un objet du tableau COURANT.
