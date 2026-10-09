@@ -146,7 +146,7 @@
         '</div>' +
       '</td>' +
 
-      '<td style="padding:10px; white-space:nowrap; width:1px;">' +
+      '<td style="padding:10px; white-space:nowrap; width:1%;">' +
         '<label style="display:inline-flex; align-items:center; gap:7px; white-space:nowrap; ' +
           'cursor:' + (moi ? 'not-allowed' : 'pointer') + '; font-weight:700; font-size:12px; color:' +
           (u.active ? '#065f46' : '#94a3b8') + ';"' +
@@ -155,7 +155,7 @@
             (moi ? ' disabled' : '') + ' style="width:17px; height:17px; accent-color:#0f766e; cursor:inherit;">' +
           (u.active ? 'Actif' : 'Archivé') +
         '</label></td>' +
-      '<td style="padding:10px; text-align:right; white-space:nowrap; width:1px;">' +
+      '<td style="padding:10px; text-align:right; white-space:nowrap; width:1%;">' +
         '<button type="button" data-reset="' + esc(u.id) + '" class="btn-light" ' +
           'title="Réinitialiser le mot de passe" ' +
           'style="font-size:12px; padding:5px 10px;">🔑</button>' +
@@ -187,9 +187,15 @@
       '<table style="width:100%; border-collapse:collapse; font-size:12.5px;">' +
         '<thead><tr style="text-align:left; color:#64748b; font-size:10.5px; ' +
           'text-transform:uppercase; letter-spacing:.05em; background:#f8fafc;">' +
-          '<th style="padding:8px 10px; width:100%;">Compte</th>' +
-          '<th style="padding:8px 10px; white-space:nowrap;">Accès</th>' +
-          '<th style="padding:8px 10px; white-space:nowrap;">Actions</th></tr></thead>' +
+          // En disposition automatique, width:100% sur la PREMIÈRE colonne lui
+          // donne toute la largeur du tableau — les deux suivantes débordent
+          // alors du cadre et la clé devient inatteignable. C'est l'inverse
+          // qu'il faut faire : contraindre les colonnes étroites à width:1%,
+          // le navigateur leur accorde le minimum nécessaire et la première
+          // absorbe le reste.
+          '<th style="padding:8px 10px;">Compte</th>' +
+          '<th style="padding:8px 10px; width:1%; white-space:nowrap;">Accès</th>' +
+          '<th style="padding:8px 10px; width:1%; white-space:nowrap;">Actions</th></tr></thead>' +
         '<tbody>' + liste.map(ligne).join('') + '</tbody>' +
       '</table></div></div>';
   }
