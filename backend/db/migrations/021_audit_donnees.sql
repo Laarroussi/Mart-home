@@ -78,6 +78,11 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_audit_pas_de_maj ON audit_donnees;
 CREATE TRIGGER trg_audit_pas_de_maj
   BEFORE UPDATE OR DELETE ON audit_donnees
-  FOR EACH ROW EXECUTE FUNCTION audit_immuable();
+  -- EXECUTE PROCEDURE et non EXECUTE FUNCTION : la seconde forme n'existe
+  -- qu'à partir de PostgreSQL 11, et le serveur est en deçà. La première est
+  -- comprise par toutes les versions, y compris les plus récentes où elle
+  -- reste acceptée. C'est d'ailleurs la forme employée par toutes les autres
+  -- migrations de ce projet — celle-ci était la seule à s'en écarter.
+  FOR EACH ROW EXECUTE PROCEDURE audit_immuable();
 
 SELECT 'OK migration 021 — journal daudit immuable' AS msg;
