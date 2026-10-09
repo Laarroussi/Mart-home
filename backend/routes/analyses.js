@@ -41,6 +41,12 @@ router.post('/:type/upload/:patientId/:evaluationId', requireAuth, requireRole('
     const { type, patientId, evaluationId } = req.params;
     if (!['vo2', 'pulse'].includes(type)) return res.status(400).json({ error: 'type doit être vo2 ou pulse' });
     if (!req.file) return res.status(400).json({ error: 'Aucun fichier reçu' });
+    // Effacement du fichier temporaire, quoi qu'il arrive ensuite : une
+    // lecture qui échoue ne doit pas laisser de données de santé sur le disque.
+    const effacerTemporaire = () => {
+      try { if (req.file && req.file.path) fs.unlinkSync(req.file.path); }
+      catch (e) { console.warn('[analyses] fichier temporaire non effacé :', e.message); }
+    };
 
     // Parsing : pour VO2 = XLSX, pour pulse = CSV
     let metrics = {};
@@ -56,12 +62,25 @@ router.post('/:type/upload/:patientId/:evaluationId', requireAuth, requireRole('
     } catch (parseErr) {
       console.error('[ANALYSES] parsing failed', parseErr.message);
       metrics = { parseError: parseErr.message };
+    } finally {
+      // Le contenu est lu, le fichier n'a plus de raison d'être. `finally`
+      // et non après le succès : un fichier illisible est justement celui
+      // qu'on oublierait de nettoyer.
+      effacerTemporaire();
     }
 
     const { rows } = await query(
       `INSERT INTO analyses_files (patient_id, evaluation_id, file_type, file_name, file_path, file_size, metrics, uploaded_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [patientId, evaluationId, type, req.file.originalname, req.file.path, req.file.size, JSON.stringify(metrics), req.user.id]
+      // On n'enregistre plus le chemin du fichier : il n'était jamais relu, et
+      // il désignait un emplacement sur le disque du serveur. Ces fichiers
+      // s'accumulaient indéfiniment, hors de toute sauvegarde de la base, et
+      // auraient été perdus au premier changement d'hébergement — alors qu'ils
+      // contiennent des données de santé.
+      //
+      // Ce qui compte est extrait dans `metrics` et vit en base. Le fichier
+      // n'était qu'un intermédiaire de lecture : il est effacé juste après.
+      [patientId, evaluationId, type, req.file.originalname, null, req.file.size, JSON.stringify(metrics), req.user.id]
     );
 
     // Met à jour l'évaluation avec les métriques clés
