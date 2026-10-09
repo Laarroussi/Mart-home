@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase47-1"></script>
+  <script src="api-client.js?v=phase47-2"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase47-1"></script>
+  <script src="questionnaires-defs.js?v=phase47-2"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase47-1"></script>
+  <script src="medical-parsers.js?v=phase47-2"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase47-1"></script>
-  <script src="cpet-analyse.js?v=phase47-1"></script>
+  <script src="cpet-graph-preview.js?v=phase47-2"></script>
+  <script src="cpet-analyse.js?v=phase47-2"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase47-1"></script>
-  <script src="medical-record-ui.js?v=phase47-1"></script>
+  <script src="pdf-extractor.js?v=phase47-2"></script>
+  <script src="medical-record-ui.js?v=phase47-2"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase47-1"></script>
-  <script src="synthese-ui.js?v=phase47-1"></script>
-  <script src="audit-ui.js?v=phase47-1"></script>
-  <script src="entretien-ui.js?v=phase47-1"></script>
-  <script src="activation-ui.js?v=phase47-1"></script>
-  <script src="document-import.js?v=phase47-1"></script>
-  <script src="visio-jitsi.js?v=phase47-1"></script>
-  <script src="video-pilotee.js?v=phase47-1"></script>
-  <script src="fiche-apa.js?v=phase47-1"></script>
-  <script src="inactivite.js?v=phase47-1"></script>
-  <script src="bilans-ui.js?v=phase47-1"></script>
-  <script src="etudes-ui.js?v=phase47-1"></script>
-  <script src="ville-hopital.js?v=phase47-1"></script>
-  <script src="qlibres-ui.js?v=phase47-1"></script>
-  <script src="parametres-ui.js?v=phase47-1"></script>
+  <script src="aortic-consultations.js?v=phase47-2"></script>
+  <script src="synthese-ui.js?v=phase47-2"></script>
+  <script src="audit-ui.js?v=phase47-2"></script>
+  <script src="entretien-ui.js?v=phase47-2"></script>
+  <script src="activation-ui.js?v=phase47-2"></script>
+  <script src="document-import.js?v=phase47-2"></script>
+  <script src="visio-jitsi.js?v=phase47-2"></script>
+  <script src="video-pilotee.js?v=phase47-2"></script>
+  <script src="fiche-apa.js?v=phase47-2"></script>
+  <script src="inactivite.js?v=phase47-2"></script>
+  <script src="bilans-ui.js?v=phase47-2"></script>
+  <script src="etudes-ui.js?v=phase47-2"></script>
+  <script src="ville-hopital.js?v=phase47-2"></script>
+  <script src="qlibres-ui.js?v=phase47-2"></script>
+  <script src="parametres-ui.js?v=phase47-2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -18203,6 +18203,19 @@
         return; // bloque tant que le changement n'est pas fait
       }
       showUserBadge(user);
+      // Les boutons de mode sont réglés MAINTENANT, pas par une boucle d'attente.
+      //
+      // initModes attendait l'apparition du badge en réessayant vingt fois
+      // toutes les 500 ms, soit dix secondes. Saisir une adresse et un mot de
+      // passe prend davantage : la fonction abandonnait avant la connexion, et
+      // updateModeUI n'était jamais appelée. Le bouton conservait alors son
+      // libellé d'origine — « Démo : off » — alors que le mode enregistré
+      // pouvait être « on ». Le chargement demandait donc la cohorte de
+      // démonstration, vide depuis la remise à zéro, et la liste des patients
+      // restait désespérément vide sans que rien ne l'explique.
+      //
+      // Ici, le badge vient d'être affiché : l'appel réussit du premier coup.
+      try { if (typeof window.initModes === 'function') window.initModes(); } catch (_) {}
       // Phase 14b : cet onglet fait foi à partir de maintenant
       try { if (typeof window.__memoriserSession === 'function') window.__memoriserSession(); } catch (_) {}
       const role = syncApiUserToCurrentUser(user);
@@ -18618,7 +18631,14 @@
     // Retry pour le cas où le login API n'est pas encore terminé au 1er appel
     function retryInitModes(attempt) {
       if (initModes()) return;
-      if (attempt >= 20) { console.warn('[modes] initModes abandon après 20 tentatives'); return; }
+      if (attempt >= 20) {
+        // On renonce à régler la visibilité des boutons, mais surtout pas à
+        // afficher le bon état : un bouton qui annonce « off » alors que le
+        // mode est « on » fait chercher le défaut partout sauf là où il est.
+        try { updateModeUI(); } catch (_) {}
+        console.warn('[modes] initModes : badge jamais apparu, état des modes rafraîchi malgré tout.');
+        return;
+      }
       setTimeout(() => retryInitModes(attempt + 1), 500);
     }
     setTimeout(() => retryInitModes(0), 300);
