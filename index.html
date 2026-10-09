@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase47-4"></script>
+  <script src="api-client.js?v=phase47-5"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase47-4"></script>
+  <script src="questionnaires-defs.js?v=phase47-5"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase47-4"></script>
+  <script src="medical-parsers.js?v=phase47-5"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase47-4"></script>
-  <script src="cpet-analyse.js?v=phase47-4"></script>
+  <script src="cpet-graph-preview.js?v=phase47-5"></script>
+  <script src="cpet-analyse.js?v=phase47-5"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase47-4"></script>
-  <script src="medical-record-ui.js?v=phase47-4"></script>
+  <script src="pdf-extractor.js?v=phase47-5"></script>
+  <script src="medical-record-ui.js?v=phase47-5"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase47-4"></script>
-  <script src="synthese-ui.js?v=phase47-4"></script>
-  <script src="audit-ui.js?v=phase47-4"></script>
-  <script src="entretien-ui.js?v=phase47-4"></script>
-  <script src="activation-ui.js?v=phase47-4"></script>
-  <script src="document-import.js?v=phase47-4"></script>
-  <script src="visio-jitsi.js?v=phase47-4"></script>
-  <script src="video-pilotee.js?v=phase47-4"></script>
-  <script src="fiche-apa.js?v=phase47-4"></script>
-  <script src="inactivite.js?v=phase47-4"></script>
-  <script src="bilans-ui.js?v=phase47-4"></script>
-  <script src="etudes-ui.js?v=phase47-4"></script>
-  <script src="ville-hopital.js?v=phase47-4"></script>
-  <script src="qlibres-ui.js?v=phase47-4"></script>
-  <script src="parametres-ui.js?v=phase47-4"></script>
+  <script src="aortic-consultations.js?v=phase47-5"></script>
+  <script src="synthese-ui.js?v=phase47-5"></script>
+  <script src="audit-ui.js?v=phase47-5"></script>
+  <script src="entretien-ui.js?v=phase47-5"></script>
+  <script src="activation-ui.js?v=phase47-5"></script>
+  <script src="document-import.js?v=phase47-5"></script>
+  <script src="visio-jitsi.js?v=phase47-5"></script>
+  <script src="video-pilotee.js?v=phase47-5"></script>
+  <script src="fiche-apa.js?v=phase47-5"></script>
+  <script src="inactivite.js?v=phase47-5"></script>
+  <script src="bilans-ui.js?v=phase47-5"></script>
+  <script src="etudes-ui.js?v=phase47-5"></script>
+  <script src="ville-hopital.js?v=phase47-5"></script>
+  <script src="qlibres-ui.js?v=phase47-5"></script>
+  <script src="parametres-ui.js?v=phase47-5"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13847,16 +13847,33 @@
           window.patients = (typeof patients !== 'undefined' && Array.isArray(patients))
             ? patients : [];
         }
+        // La pseudonymisation est appliquée à `adapted`, PAS à window.patients.
+        //
+        // La version précédente faisait ceci :
+        //     const masked = applyPseudonymization(window.patients);
+        //     window.patients.length = 0;
+        //     masked.forEach(p => window.patients.push(p));
+        //
+        // Or applyPseudonymization renvoie le tableau REÇU tel quel lorsque le
+        // mode pseudonymisé est désactivé — pas une copie. `masked` et
+        // `window.patients` étaient donc le même objet : le vider vidait les
+        // deux, et la boucle suivante ne repoussait rien. La cohorte était
+        // perdue en silence, sans erreur, et le journal annonçait malgré tout
+        // le nombre reçu de l'API.
+        //
+        // Le défaut était invisible en mode pseudonymisé, où .map() produit un
+        // nouveau tableau qui survit à la troncature. Et il se réparait en
+        // basculant le mode Démo, dont le code appliquait déjà la
+        // pseudonymisation à une liste intermédiaire.
+        const finalList = (typeof window.applyPseudonymization === 'function')
+          ? window.applyPseudonymization(adapted) : adapted;
         window.patients.length = 0;
-        adapted.forEach(p => window.patients.push(p));
-        // Applique la pseudonymisation si active
-        if (typeof window.applyPseudonymization === 'function') {
-          const masked = window.applyPseudonymization(window.patients);
-          window.patients.length = 0;
-          masked.forEach(p => window.patients.push(p));
-        }
+        finalList.forEach(p => window.patients.push(p));
         window.patients._fromApi = true;
-        console.log('[patients] chargés depuis API : ', adapted.length, '(demo=' + demoParam + ')');
+        // On journalise ce qui est RÉELLEMENT en mémoire, pas ce qui a été
+        // reçu : c'est l'écart entre les deux qui a masqué ce défaut.
+        console.log('[patients] en mémoire :', window.patients.length,
+                    '— reçus de l\'API :', adapted.length, '(demo=' + demoParam + ')');
         // Re-render
         // Phase 14d : chaque rendu est isolé — une erreur sur l'un ne doit pas
         // empêcher les suivants (c'est ce qui laissait le dossier patient figé
