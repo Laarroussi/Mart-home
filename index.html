@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase46-8"></script>
+  <script src="api-client.js?v=phase47-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase46-8"></script>
+  <script src="questionnaires-defs.js?v=phase47-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase46-8"></script>
+  <script src="medical-parsers.js?v=phase47-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase46-8"></script>
-  <script src="cpet-analyse.js?v=phase46-8"></script>
+  <script src="cpet-graph-preview.js?v=phase47-0"></script>
+  <script src="cpet-analyse.js?v=phase47-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase46-8"></script>
-  <script src="medical-record-ui.js?v=phase46-8"></script>
+  <script src="pdf-extractor.js?v=phase47-0"></script>
+  <script src="medical-record-ui.js?v=phase47-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase46-8"></script>
-  <script src="synthese-ui.js?v=phase46-8"></script>
-  <script src="audit-ui.js?v=phase46-8"></script>
-  <script src="entretien-ui.js?v=phase46-8"></script>
-  <script src="activation-ui.js?v=phase46-8"></script>
-  <script src="document-import.js?v=phase46-8"></script>
-  <script src="visio-jitsi.js?v=phase46-8"></script>
-  <script src="video-pilotee.js?v=phase46-8"></script>
-  <script src="fiche-apa.js?v=phase46-8"></script>
-  <script src="inactivite.js?v=phase46-8"></script>
-  <script src="bilans-ui.js?v=phase46-8"></script>
-  <script src="etudes-ui.js?v=phase46-8"></script>
-  <script src="ville-hopital.js?v=phase46-8"></script>
-  <script src="qlibres-ui.js?v=phase46-8"></script>
-  <script src="parametres-ui.js?v=phase46-8"></script>
+  <script src="aortic-consultations.js?v=phase47-0"></script>
+  <script src="synthese-ui.js?v=phase47-0"></script>
+  <script src="audit-ui.js?v=phase47-0"></script>
+  <script src="entretien-ui.js?v=phase47-0"></script>
+  <script src="activation-ui.js?v=phase47-0"></script>
+  <script src="document-import.js?v=phase47-0"></script>
+  <script src="visio-jitsi.js?v=phase47-0"></script>
+  <script src="video-pilotee.js?v=phase47-0"></script>
+  <script src="fiche-apa.js?v=phase47-0"></script>
+  <script src="inactivite.js?v=phase47-0"></script>
+  <script src="bilans-ui.js?v=phase47-0"></script>
+  <script src="etudes-ui.js?v=phase47-0"></script>
+  <script src="ville-hopital.js?v=phase47-0"></script>
+  <script src="qlibres-ui.js?v=phase47-0"></script>
+  <script src="parametres-ui.js?v=phase47-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3435,7 +3435,11 @@
         <section class="cf-panneau" data-panneau="2" style="display:none;">
           <article class="card" style="padding:22px; margin-bottom:16px;">
             <h3 style="font-size:17px; font-weight:800; margin-bottom:6px;">👤 Identité</h3>
-            <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Ce qui a été lu dans les pièces est déjà rempli. Vérifiez, corrigez, complétez.</p>
+            <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">
+              Ce qui a été lu dans les pièces est déjà rempli. Vérifiez, corrigez, complétez.<br>
+              Seuls <strong>le nom, le prénom et l'adresse électronique</strong> sont nécessaires pour
+              enregistrer la fiche ; le reste se complète au fil des consultations.
+            </p>
 
             <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px;">
               <!-- Population et numéro formaient deux champs voisins qui disaient
@@ -3464,14 +3468,14 @@
               </div>
               <div>
                 <label class="control-label" for="cf_lastName">Nom *</label>
-                <input type="text" id="cf_lastName" placeholder="ex. DUPONT" />
+                <input type="text" id="cf_lastName" placeholder="ex. DUPONT" oninput="updateSuggestedInitials()" />
               </div>
               <div>
                 <label class="control-label" for="cf_firstName">Prénom *</label>
-                <input type="text" id="cf_firstName" placeholder="ex. Marie" />
+                <input type="text" id="cf_firstName" placeholder="ex. Marie" oninput="updateSuggestedInitials()" />
               </div>
               <div>
-                <label class="control-label" for="cf_sex">Sexe *</label>
+                <label class="control-label" for="cf_sex">Sexe</label>
                 <select id="cf_sex">
                   <option value="">— Choisir —</option>
                   <option value="Femme">Femme</option>
@@ -3481,10 +3485,14 @@
               </div>
               <div>
                 <label class="control-label" for="cf_dob">Date de naissance</label>
-                <input type="date" id="cf_dob" />
+                <!-- Le recalcul de l'âge était branché sur ce champ avant la
+                     refonte du parcours en quatre étapes ; il a été perdu dans
+                     la réécriture. On saisissait donc une date et l'âge restait
+                     vide, alors qu'il était obligatoire pour valider. -->
+                <input type="date" id="cf_dob" onchange="updateAgeFromDob()" oninput="updateAgeFromDob()" />
               </div>
               <div>
-                <label class="control-label" for="cf_age">Âge *</label>
+                <label class="control-label" for="cf_age">Âge</label>
                 <input type="number" id="cf_age" min="0" max="120" placeholder="35" />
               </div>
               <div>
@@ -3564,7 +3572,7 @@
 
             <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
               <div>
-                <label class="control-label" for="cf_gene">Gène muté *</label>
+                <label class="control-label" for="cf_gene">Gène muté</label>
                 <select id="cf_gene">
                   <option value="">— Choisir —</option>
                   <option value="FBN1">FBN1</option>
@@ -8525,20 +8533,42 @@
     if ($('cf_firstName')) $('cf_firstName').value = firstName;
     const ipp = ($('cf_ipp') && $('cf_ipp').value || '').trim();
     const center = ($('cf_center') && $('cf_center').value || '').trim();
-    const sex = $('cf_sex').value;
-    const age = parseInt($('cf_age').value, 10);
-    const gene = $('cf_gene').value;
+    const sex = $('cf_sex').value || null;
+    const ageSaisi = parseInt($('cf_age').value, 10);
+    const age = isNaN(ageSaisi) ? null : ageSaisi;
+    const gene = $('cf_gene').value || null;
+    const email = ($('cf_email') && $('cf_email').value || '').trim();
     // Phase 12.1.6 : plus de Baseline saisie ici, on défaut la date du jour et 0 pour aorta
     const evDate = ($('cf_evDate') && $('cf_evDate').value) || new Date().toISOString().slice(0, 10);
     const aorta = ($('cf_aorta') && parseFloat($('cf_aorta').value)) || 0;
 
-    // Validation des champs obligatoires (civil + médical)
+    // ==========================================================
+    // Ce qui bloque, et ce qui ne bloque plus.
+    //
+    // Exiger le sexe, l'âge et le gène pour enregistrer une fiche partait
+    // d'une bonne intention et produisait l'inverse : au premier contact, on
+    // a rarement le compte rendu génétique sous la main, et refuser la
+    // création oblige à inventer une valeur ou à tout ressaisir plus tard.
+    // Une donnée inventée pour contourner un contrôle est pire qu'une donnée
+    // absente : elle a l'air vraie.
+    //
+    // Ne restent obligatoires que les trois éléments sans lesquels la fiche
+    // ne désigne personne et ne peut rien recevoir : le nom, le prénom et
+    // l'adresse électronique — cette dernière parce qu'elle conditionne le
+    // compte du patient et l'envoi des questionnaires.
+    //
+    // Le reste se complète au fil des consultations et des pièces versées,
+    // et le dossier signale lui-même ce qui manque.
+    // ==========================================================
     if (!code) { showCreationFeedback('Code patient requis.', 'error'); return; }
-    if (!lastName) { showCreationFeedback('Nom requis.', 'error'); return; }
-    if (!firstName) { showCreationFeedback('Prénom requis.', 'error'); return; }
-    if (!sex) { showCreationFeedback('Sexe requis.', 'error'); return; }
-    if (!age || isNaN(age)) { showCreationFeedback('Âge requis.', 'error'); return; }
-    if (!gene) { showCreationFeedback('Gène muté requis.', 'error'); return; }
+    if (!lastName) { showCreationFeedback('Le nom est nécessaire pour identifier la fiche.', 'error'); return; }
+    if (!firstName) { showCreationFeedback('Le prénom est nécessaire pour identifier la fiche.', 'error'); return; }
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      showCreationFeedback(
+        "Une adresse électronique valide est nécessaire : elle sert à créer l'accès du patient " +
+        'et à lui envoyer ses questionnaires.', 'error');
+      return;
+    }
     // Phase 12.4 : check unicité DÉPLACÉ côté serveur (l'API renvoie 409 si déjà existant).
     // Le check client-side créait des faux positifs quand la liste locale était désynchronisée
     // du serveur (patients ajoutés localement mais push API échoué, ou seed pas encore nettoyé).
@@ -8573,7 +8603,7 @@
         center: center,
         initials: $('cf_initials').value || ((firstName[0]||'') + '.' + (lastName[0]||'') + '.'),
         dob: $('cf_dob').value,
-        email: $('cf_email').value,
+        email: email,
         phone: $('cf_phone').value,
         doctor: $('cf_doctor').value,
         address: $('cf_address').value,

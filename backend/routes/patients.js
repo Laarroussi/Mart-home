@@ -97,8 +97,13 @@ router.get('/:id', requireAuth, async (req, res, next) => {
 router.post('/', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
     const p = req.body || {};
-    if (!p.id || !p.sex || !p.age || !p.gene) {
-      return res.status(400).json({ error: 'id, sex, age, gene requis' });
+    // Le sexe, l'âge et le gène ne sont plus exigés à la création. Au premier
+    // contact on n'a pas toujours le compte rendu génétique, et refuser la
+    // fiche pousse à inventer une valeur pour passer le contrôle — ce qui est
+    // pire qu'une donnée absente, puisque la valeur inventée a l'air vraie.
+    // Les colonnes correspondantes acceptent déjà NULL.
+    if (!p.id) {
+      return res.status(400).json({ error: 'Le code patient est requis.' });
     }
     const exists = await query('SELECT id FROM patients WHERE id = $1', [p.id]);
     if (exists.rows.length) return res.status(409).json({ error: 'Code patient déjà utilisé' });
