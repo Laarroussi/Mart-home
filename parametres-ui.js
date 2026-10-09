@@ -77,6 +77,11 @@
     try { z.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
   }
 
+  function moiMeme(u) {
+    var moi = (window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser()) || {};
+    return moi && u && moi.id === u.id;
+  }
+
   /**
    * Compte d'essai ?
    *
@@ -96,14 +101,21 @@
    */
   function estEssai(u) {
     if (u.is_demo) return true;
+    // Compte issu du jeu de données initial : créé par le script d'amorçage,
+    // il n'a pas d'auteur. Ceux que vous créez dans l'interface portent
+    // toujours l'identifiant de leur créateur.
+    //
+    // C'est un repère sûr, là où l'adresse ne dit rien : « Dr. Camille Dupont,
+    // c.dupont@bichat.fr » est parfaitement crédible et aucune règle sur le
+    // nom ou le domaine ne pouvait le distinguer d'un vrai collègue.
+    //
+    // Votre propre compte vient lui aussi de l'amorçage : il est exclu, sans
+    // quoi vous disparaîtriez de votre propre liste.
+    if (!u.created_by && !moiMeme(u)) return true;
     var e = String(u.email || '').toLowerCase();
     return /@example\.(fr|com|org|net)$/.test(e) || /\.test@/.test(e);
   }
 
-  function moiMeme(u) {
-    var moi = (window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser()) || {};
-    return moi && u && moi.id === u.id;
-  }
 
   /**
    * Une ligne de compte.
@@ -155,7 +167,10 @@
             (moi ? ' disabled' : '') + ' style="width:17px; height:17px; accent-color:#0f766e; cursor:inherit;">' +
           (u.active ? 'Actif' : 'Archivé') +
         '</label></td>' +
-      '<td style="padding:10px; text-align:right; white-space:nowrap; width:1%;">' +
+      // Collée à droite : même en faisant défiler, les deux boutons restent
+      // sous les yeux. C'est la colonne qu'on vient chercher.
+      '<td style="padding:10px; text-align:right; white-space:nowrap; width:1%; ' +
+        'position:sticky; right:0; background:' + (u.active ? '#fff' : '#fafbfc') + ';">' +
         '<button type="button" data-reset="' + esc(u.id) + '" class="btn-light" ' +
           'title="Réinitialiser le mot de passe" ' +
           'style="font-size:12px; padding:5px 10px;">🔑</button>' +
@@ -178,7 +193,12 @@
       '<h4 style="font-size:13px; font-weight:800; color:#0b1530; margin:0 0 8px;">' +
         icone + ' ' + esc(titre) +
         ' <span style="font-weight:600; color:#94a3b8;">— ' + liste.length + '</span></h4>' +
-      '<div style="border:1px solid var(--line); border-radius:11px; overflow:hidden;">' +
+      // Le conteneur à défilement est indispensable. Sans lui, un tableau plus
+      // large que la fenêtre est simplement coupé : la case Actif et la clé
+      // disparaissent, et rien ne permet de les atteindre. Je l'avais retiré
+      // en croyant la largeur maîtrisée — elle ne l'est pas sur une fenêtre
+      // étroite, où la colonne « Compte » a une largeur minimale incompressible.
+      '<div style="border:1px solid var(--line); border-radius:11px; overflow-x:auto;">' +
       // table-layout reste en « auto ». Un essai en « fixed » combiné à des
       // colonnes déclarées à 1 % les a réduites à néant : la case Actif et le
       // bouton de mot de passe avaient disparu de l'écran. En auto, width:100%
@@ -195,7 +215,8 @@
           // absorbe le reste.
           '<th style="padding:8px 10px;">Compte</th>' +
           '<th style="padding:8px 10px; width:1%; white-space:nowrap;">Accès</th>' +
-          '<th style="padding:8px 10px; width:1%; white-space:nowrap;">Actions</th></tr></thead>' +
+          '<th style="padding:8px 10px; width:1%; white-space:nowrap; ' +
+            'position:sticky; right:0; background:#f8fafc;">Actions</th></tr></thead>' +
         '<tbody>' + liste.map(ligne).join('') + '</tbody>' +
       '</table></div></div>';
   }
