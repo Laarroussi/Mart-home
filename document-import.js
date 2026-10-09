@@ -244,6 +244,22 @@
         input.value = '';
       });
     }
+
+    const zone = el.querySelector('[data-di-zone]');
+    if (zone && input) {
+      zone.addEventListener('click', () => input.click());
+      const surligner = on => {
+        zone.style.background = on ? '#eff6ff' : '#f8fbff';
+        zone.style.borderColor = on ? '#3b82f6' : '#bfdbfe';
+      };
+      zone.addEventListener('dragover', e => { e.preventDefault(); surligner(true); });
+      zone.addEventListener('dragleave', () => surligner(false));
+      zone.addEventListener('drop', async e => {
+        e.preventDefault(); surligner(false);
+        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) await traiter(f, patientId);
+      });
+    }
     el.querySelectorAll('[data-di-suppr]').forEach(b => {
       b.addEventListener('click', async () => {
         if (!confirm('Supprimer définitivement cette donnée de la chronologie ?')) return;
@@ -304,6 +320,15 @@
             <button data-di-btn style="padding:10px 18px; border:none; background:white; color:#1d4ed8; border-radius:9px; font-weight:700; cursor:pointer; font-size:12.5px; white-space:nowrap;">⬆️ Verser une pièce</button>
           </div>
         </div>
+        <div data-di-zone style="margin:16px 20px 0; padding:22px; border:2px dashed #bfdbfe; border-radius:12px; text-align:center; background:#f8fbff; cursor:pointer; transition:background .15s, border-color .15s;">
+          <div style="font-size:30px; margin-bottom:6px;">📥</div>
+          <div style="font-size:13.5px; font-weight:700; color:#1d4ed8; margin-bottom:3px;">Glissez un fichier ici, ou cliquez pour parcourir</div>
+          <div style="font-size:11.5px; color:#64748b; line-height:1.5;">
+            Épreuve d'effort (COSMED) · échocardiographie · compte rendu · courrier · onde de pouls · photo · enregistrement audio<br>
+            Le type est reconnu automatiquement : vous n'avez pas à choisir.
+          </div>
+        </div>
+        <div data-di-resultat style="display:none; margin:14px 20px 0;"></div>
         <div style="padding:16px 20px;">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;">
             <strong style="font-size:13px; color:#0b1530;">Chronologie médicale</strong>
@@ -325,26 +350,63 @@
    * donc le contenu — la signature d'un classeur, ou les en-têtes de colonnes
    * qu'aucun compte rendu clinique ne contient.
    */
-  async function ressembleAUneEpreuveDEffort(file) {
+  async function reconnaitreAppareil(file) {
     const nom = (file.name || '').toLowerCase();
-    if (!/\.(csv|tsv|txt|xlsx?|xlsm)$/i.test(nom)) return false;
-    if (!window.CpetAnalyse || typeof XLSX === 'undefined') return false;
+    if (!/\.(csv|tsv|txt|xlsx?|xlsm)$/i.test(nom)) return null;
+    if (typeof XLSX === 'undefined') return null;
 
     // Classeur Excel, quelle que soit son extension : signature ZIP « PK ».
     try {
       const debut = new Uint8Array(await file.slice(0, 2).arrayBuffer());
-      if (debut[0] === 0x50 && debut[1] === 0x4B) return true;
+      if (debut[0] === 0x50 && debut[1] === 0x4B) return 'cpet';
     } catch (_) {}
 
-    // Fichier réellement texte : on cherche les colonnes d'un cycle
-    // respiratoire. Trois marqueurs suffisent, aucun ne se trouve dans un
-    // courrier ou un compte rendu.
+    let tete = '';
+    try { tete = await file.slice(0, 20000).text(); } catch (_) { return null; }
+
+    // Onde de pouls : en-têtes propres à l'appareil, reconnaissables à coup sûr.
+    if (/^#Patient\s/m.test(tete) || /^#FTPWV\s/m.test(tete) || /^#SBP\s/m.test(tete)) {
+      return 'pulse_wave';
+    }
+
+    // Épreuve d'effort en texte : colonnes d'un cycle respiratoire. Trois
+    // marqueurs suffisent, aucun ne se trouve dans un courrier ou un compte
+    // rendu.
+    const marqueurs = [/\bVO2\b/i, /\bVCO2\b/i, /VE\/VO2/i, /VE\/VCO2/i,
+                       /\bRER\b/i, /\bWatt/i, /\bPhase\b/i, /\bFETO2\b/i];
+    if (marqueurs.filter(r => r.test(tete)).length >= 3) return 'cpet';
+    return null;
+  }
+
+  /**
+   * Onde de pouls : un tracé de signal, pas un texte.
+   *
+   * Le lecteur générique en tirerait les mêmes absurdités qu'avec une épreuve
+   * d'effort. On la confie au parseur dédié et on la range dans les examens.
+   */
+  async function traiterOndeDePouls(file, patientId) {
+    ouvrirAttente("Onde de pouls reconnue — lecture du tracé…", _docNom);
     try {
-      const tete = await file.slice(0, 20000).text();
-      const marqueurs = [/\bVO2\b/i, /\bVCO2\b/i, /VE\/VO2/i, /VE\/VCO2/i,
-                         /\bRER\b/i, /\bWatt/i, /\bPhase\b/i, /\bFETO2\b/i];
-      return marqueurs.filter(r => r.test(tete)).length >= 3;
-    } catch (_) { return false; }
+      const texte = await file.text();
+      const r = window.MedicalParsers.parsePulseWaveCSV(texte);
+      await window.MarfanAPI.medicalExams.create({
+        patient_id: patientId,
+        exam_type: 'pulse_wave',
+        exam_date: new Date().toISOString().slice(0, 10),
+        file_name: file.name || _docNom,
+        file_size_kb: Math.round(file.size / 1024),
+        file_mime: file.type || 'text/csv',
+        raw_file: await versBase64(file),
+        parsed_summary: r.summary || {},
+        parsed_full: r.full || {},
+        notes: 'Versé depuis « Pièces du dossier médical ».'
+      });
+      majAttente("✅ Onde de pouls enregistrée dans les examens.\n\n" +
+                 "Elle est consultable dans « Pièces & examens ».", true);
+    } catch (e) {
+      majAttente("❌ " + ((e && e.message) || 'Lecture impossible') +
+                 "\n\nAucune donnée n'a été enregistrée.", true);
+    }
   }
 
   /**
@@ -498,12 +560,11 @@
     // ventilatoires, OUES et pente VE/VCO2.
     // ============================================================
     try {
-      if (await ressembleAUneEpreuveDEffort(file)) {
-        await traiterEpreuveDEffort(file, patientId);
-        return;
-      }
+      const nature = await reconnaitreAppareil(file);
+      if (nature === 'cpet') { await traiterEpreuveDEffort(file, patientId); return; }
+      if (nature === 'pulse_wave') { await traiterOndeDePouls(file, patientId); return; }
     } catch (e) {
-      console.warn('[docimport] détection CPET :', e && e.message);
+      console.warn('[docimport] reconnaissance du fichier :', e && e.message);
     }
 
     ouvrirAttente('Lecture du document…', _docNom);

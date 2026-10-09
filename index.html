@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase49-1"></script>
+  <script src="api-client.js?v=phase50-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase49-1"></script>
+  <script src="questionnaires-defs.js?v=phase50-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase49-1"></script>
+  <script src="medical-parsers.js?v=phase50-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase49-1"></script>
-  <script src="cpet-analyse.js?v=phase49-1"></script>
+  <script src="cpet-graph-preview.js?v=phase50-1"></script>
+  <script src="cpet-analyse.js?v=phase50-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase49-1"></script>
-  <script src="medical-record-ui.js?v=phase49-1"></script>
+  <script src="pdf-extractor.js?v=phase50-1"></script>
+  <script src="medical-record-ui.js?v=phase50-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase49-1"></script>
-  <script src="synthese-ui.js?v=phase49-1"></script>
-  <script src="audit-ui.js?v=phase49-1"></script>
-  <script src="entretien-ui.js?v=phase49-1"></script>
-  <script src="activation-ui.js?v=phase49-1"></script>
-  <script src="document-import.js?v=phase49-1"></script>
-  <script src="visio-jitsi.js?v=phase49-1"></script>
-  <script src="video-pilotee.js?v=phase49-1"></script>
-  <script src="fiche-apa.js?v=phase49-1"></script>
-  <script src="inactivite.js?v=phase49-1"></script>
-  <script src="bilans-ui.js?v=phase49-1"></script>
-  <script src="etudes-ui.js?v=phase49-1"></script>
-  <script src="ville-hopital.js?v=phase49-1"></script>
-  <script src="qlibres-ui.js?v=phase49-1"></script>
-  <script src="parametres-ui.js?v=phase49-1"></script>
+  <script src="aortic-consultations.js?v=phase50-1"></script>
+  <script src="synthese-ui.js?v=phase50-1"></script>
+  <script src="audit-ui.js?v=phase50-1"></script>
+  <script src="entretien-ui.js?v=phase50-1"></script>
+  <script src="activation-ui.js?v=phase50-1"></script>
+  <script src="document-import.js?v=phase50-1"></script>
+  <script src="visio-jitsi.js?v=phase50-1"></script>
+  <script src="video-pilotee.js?v=phase50-1"></script>
+  <script src="fiche-apa.js?v=phase50-1"></script>
+  <script src="inactivite.js?v=phase50-1"></script>
+  <script src="bilans-ui.js?v=phase50-1"></script>
+  <script src="etudes-ui.js?v=phase50-1"></script>
+  <script src="ville-hopital.js?v=phase50-1"></script>
+  <script src="qlibres-ui.js?v=phase50-1"></script>
+  <script src="parametres-ui.js?v=phase50-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -709,6 +709,39 @@
       box-shadow: 0 2px 10px rgba(8,145,178,.28);
     }
     @media (max-width: 760px) { #dossierVues .subtab-button { flex: 1 1 100%; } }
+
+    /* Cartes annexes du dossier : présentes, mais pas envahissantes. */
+    .dossier-annexe {
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: #fff;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .dossier-annexe > summary {
+      cursor: pointer;
+      padding: 14px 18px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #334155;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dossier-annexe > summary::-webkit-details-marker { display: none; }
+    .dossier-annexe > summary::after {
+      content: '▾';
+      margin-left: auto;
+      color: #94a3b8;
+      transition: transform .2s ease;
+    }
+    .dossier-annexe[open] > summary::after { transform: rotate(180deg); }
+    .dossier-annexe > summary:hover { background: #f8fafc; color: #0f172a; }
+    .dossier-annexe[open] > summary { border-bottom: 1px solid var(--line); }
+    .dossier-annexe > div { padding: 14px 18px; }
+    .dossier-annexe > div > .card:last-child,
+    .dossier-annexe > div > article:last-child { margin-bottom: 0; }
 
 /* ============================================================
        Séance de groupe — scène en constellation
@@ -3890,13 +3923,10 @@
              position, pas d'avancement. -->
         <div class="card" style="padding:14px 18px; margin-bottom:16px;">
           <div class="subtabs" id="dossierVues" style="display:flex; gap:6px; flex-wrap:wrap; margin:0;">
-            <button class="subtab-button active" data-dgroup="synthese" data-subtab="patient-synthese">📋 Synthèse</button>
-            <button class="subtab-button" data-dgroup="aorte" data-subtab="patient-aorte">❤️ Aorte</button>
-            <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-physio">📊 Évaluations</button>
-            <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-questionnaires">📝 SF-36 &amp; GPAQ</button>
-            <!-- Onglet « Comparaisons » retiré : la comparaison patient / groupe
-                 est déjà sous chaque graphique de la vue Évaluations. -->
-            <button class="subtab-button" data-dgroup="documents">📄 Documents &amp; examens</button>
+            <button class="subtab-button active" data-dgroup="synthese" data-subtab="patient-synthese">1 · Synthèse</button>
+            <button class="subtab-button" data-dgroup="pieces">2 · Pièces &amp; examens</button>
+            <button class="subtab-button" data-dgroup="suivi" data-subtab="patient-physio">3 · Suivi clinique</button>
+            <button class="subtab-button" data-dgroup="questionnaires" data-subtab="patient-questionnaires">4 · Questionnaires</button>
           </div>
           <div style="margin-top:10px; height:4px; background:#e2e8f0; border-radius:99px; position:relative; overflow:hidden;">
             <div id="dossierReperePos" style="position:absolute; top:0; bottom:0; left:0; width:20%; background:linear-gradient(90deg,#0891b2,#14b8a6); border-radius:99px; transition:left .25s ease, width .25s ease;"></div>
@@ -3918,29 +3948,17 @@
         <div id="syntheseMount" data-dgroup="synthese"></div>
 
         <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-        <div id="aorticConsultMount" data-dgroup="aorte"></div>
+        <div id="aorticConsultMount" data-dgroup="suivi"></div>
         <!-- Phase 17 : versement de pièces + chronologie extraite par IA -->
-        <div id="docImportMount" data-dgroup="documents"></div>
+        <div id="docImportMount" data-dgroup="pieces"></div>
 
-        <!-- Phase 12.4 : Chronologie des actes réalisés -->
-        <div id="patientActsTimelineMount" data-dgroup="documents"></div>
 
-        <!-- Phase 32 : journal des corrections, exigé par les bonnes pratiques
-             cliniques. Placé avec les documents : c'est la même logique de
-             traçabilité — d'où vient la donnée, qui l'a touchée. -->
-        <div id="auditHistoriqueMount" data-dgroup="documents"></div>
-
-        <!-- ============================================================ -->
-        <!-- === Dossier médical structuré (Phase 12.1) === -->
-        <!-- === Identité, antécédents, objectifs, points clés, import PDF === -->
-        <!-- ============================================================ -->
-        <div id="apiMedicalRecordMount" data-dgroup="documents"></div>
 
         <!-- ============================================================ -->
         <!-- === Dossiers médicaux — UI ÉPURÉE (Phase A) === -->
         <!-- === Seul et unique endroit d'import d'examens cliniques === -->
         <!-- ============================================================ -->
-        <article class="card" id="apiMedicalExamsCard" data-dgroup="documents" style="padding:0; margin-bottom:14px; overflow:hidden;">
+        <article class="card" id="apiMedicalExamsCard" data-dgroup="pieces" style="padding:0; margin-bottom:14px; overflow:hidden;">
           <!-- En-tête sobre -->
           <div style="padding:18px 22px; background:linear-gradient(135deg,#7c3aed,#a855f7); color:white;">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
@@ -3952,12 +3970,18 @@
             </div>
           </div>
 
-          <!-- Zone drag & drop UNIQUE -->
-          <div id="apiMedExDropZone" style="margin:16px 22px; padding:24px; border:2px dashed #c4b5fd; border-radius:12px; text-align:center; background:#faf5ff; cursor:pointer; transition:all 0.2s;">
-            <div style="font-size:36px; margin-bottom:8px;">📥</div>
-            <div style="font-size:13.5px; font-weight:700; color:#5b21b6; margin-bottom:4px;">Glissez un fichier ici ou cliquez pour parcourir</div>
-            <div style="font-size:11.5px; color:#6b7390;">Formats acceptés : <code>.csv</code> (onde de pouls) · <code>.xlsx</code> (CPET COSMED) — max 10 MB</div>
-            <input id="apiMedExHiddenFile" type="file" accept=".csv,.xlsx,.xls,.txt" style="display:none;">
+          <!-- Phase 50 — La seconde zone de versement a été retirée.
+               Il y en avait trois dans ce dossier : celle-ci pour les examens
+               d'appareil, celle des pièces du dossier, et une troisième par
+               évaluation pour le VO2. Rien n'indiquait laquelle choisir, et le
+               choix n'était pas neutre : une épreuve d'effort versée dans la
+               mauvaise partait au lecteur de texte, qui en tirait des mesures
+               fausses. Il n'y a plus qu'un seul endroit, en haut de cette vue,
+               et c'est lui qui reconnaît le type du fichier. -->
+          <div style="margin:16px 22px; padding:12px 15px; border:1px solid #e9d5ff; border-radius:11px; background:#faf5ff; font-size:12.5px; color:#5b21b6; line-height:1.55;">
+            Pour ajouter un examen, utilisez <strong>« Pièces du dossier médical »</strong> en haut de cette vue :
+            épreuve d'effort, échocardiographie, compte rendu, onde de pouls ou enregistrement audio y sont reconnus
+            automatiquement. Les examens d'appareil déjà importés restent listés ci-dessous.
           </div>
 
           <!-- Filtres légers -->
@@ -3974,7 +3998,24 @@
           <div id="apiMedExList" style="padding:0 22px 22px;"></div>
         </article>
 
-        <div id="dossierSharedHeader" data-dgroup="evaluations">
+        <!-- Phase 50 — Consultées de loin en loin, elles restent à portée
+             d'un clic sans occuper l'écran. -->
+        <details class="dossier-annexe" data-dgroup="pieces">
+          <summary>🗂 Dossier médical structuré — antécédents, objectifs, points clés</summary>
+          <div id="apiMedicalRecordMount"></div>
+        </details>
+
+        <details class="dossier-annexe" data-dgroup="pieces">
+          <summary>📆 Chronologie des actes réalisés</summary>
+          <div id="patientActsTimelineMount"></div>
+        </details>
+
+        <details class="dossier-annexe" data-dgroup="pieces">
+          <summary>🧾 Journal des corrections — qui a modifié quoi, et quand</summary>
+          <div id="auditHistoriqueMount"></div>
+        </details>
+
+        <div id="dossierSharedHeader" data-dgroup="suivi">
         <article class="card timeline-card">
           <div class="timeline-head">
             <h3>📅 Évaluations enregistrées <span id="evalCountLabel" style="color:var(--muted); font-weight:600; font-size:13px;"></span></h3>
@@ -3988,11 +4029,11 @@
              Ces deux entrées restent masquées : les analyses VO₂ et pOpmètre
              s'ouvrent depuis la carte « Dossiers médicaux ». -->
         <div class="subtabs" style="display:none;">
-          <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-vo2">🫁 Analyse VO₂</button>
-          <button class="subtab-button" data-dgroup="evaluations" data-subtab="patient-pulse">💓 Onde de pouls</button>
+          <button class="subtab-button" data-dgroup="suivi" data-subtab="patient-vo2">🫁 Analyse VO₂</button>
+          <button class="subtab-button" data-dgroup="suivi" data-subtab="patient-pulse">💓 Onde de pouls</button>
         </div>
 
-        <div id="dossierGraphBoard" data-dgroup="evaluations">
+        <div id="dossierGraphBoard" data-dgroup="suivi">
         <div class="assessment-note">
           <div class="note-head">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -4114,21 +4155,11 @@
           </article>
         </section>
 
+        <!-- Phase 50 — L'aorte n'a plus d'onglet à elle. Trois courbes qui
+             décrivent le même patient au même moment se lisent ensemble : on
+             ne décide pas d'une intensité d'effort sans avoir le diamètre
+             aortique sous les yeux. Elle ouvre donc le suivi clinique. -->
         <section id="patient-physio" class="sub-panel hidden">
-          <div class="chart-grid">
-            <article class="card chart-card">
-              <div class="chart-header"><div><h3>VO₂ — vue détaillée</h3><p>Toutes les évaluations avec comparaisons. Cliquez sur un point pour ouvrir le détail complet.</p></div></div>
-              <svg class="svg-chart" id="vo2Chart" viewBox="0 0 520 240" preserveAspectRatio="xMidYMid meet"></svg>
-              <div class="legend"><span class="legend-item"><span class="dot"></span>Patient</span><span class="legend-item"><span class="dot group"></span>Référence</span></div>
-            </article>
-            <article class="card chart-card">
-              <div class="chart-header"><div><h3>Force musculaire</h3><p>Suivi longitudinal de la force.</p></div></div>
-              <svg class="svg-chart" id="forceChart" viewBox="0 0 520 240" preserveAspectRatio="xMidYMid meet"></svg>
-            </article>
-          </div>
-        </section>
-
-        <section id="patient-aorte" class="sub-panel hidden">
           <!-- Reprise des dossiers antérieurs : les documents déjà versés
                contiennent des mesures datées qui ne figurent pas encore sur
                les courbes. Ce bouton les y fait entrer. -->
@@ -4141,15 +4172,20 @@
             <button class="btn-light" onclick="resynchroniserCourbes()" style="font-weight:700; white-space:nowrap;">↻ Reprendre les documents</button>
           </div>
           <div id="syncCourbesInfo" style="display:none; margin-bottom:14px;"></div>
-          <div class="chart-grid">
+                    <div class="chart-grid">
             <article class="card chart-card">
               <div class="chart-header"><div><h3>Dilatation de l'aorte</h3><p>Suivi longitudinal avec validation investigateur.</p></div></div>
               <svg class="svg-chart" id="aortaChart" viewBox="0 0 520 240" preserveAspectRatio="xMidYMid meet"></svg>
             </article>
-            <!-- Carte « Vigilance médicale » retirée : quatre barres de
-                 pourcentages sans unité ni seuil de référence, dont on ne
-                 pouvait rien conclure. Le suivi aortique juste à gauche et le
-                 statut clinique du dossier donnent l'information utile. -->
+            <article class="card chart-card">
+              <div class="chart-header"><div><h3>VO₂ — vue détaillée</h3><p>Toutes les évaluations avec comparaisons. Cliquez sur un point pour ouvrir le détail complet.</p></div></div>
+              <svg class="svg-chart" id="vo2Chart" viewBox="0 0 520 240" preserveAspectRatio="xMidYMid meet"></svg>
+              <div class="legend"><span class="legend-item"><span class="dot"></span>Patient</span><span class="legend-item"><span class="dot group"></span>Référence</span></div>
+            </article>
+            <article class="card chart-card">
+              <div class="chart-header"><div><h3>Force musculaire</h3><p>Suivi longitudinal de la force.</p></div></div>
+              <svg class="svg-chart" id="forceChart" viewBox="0 0 520 240" preserveAspectRatio="xMidYMid meet"></svg>
+            </article>
           </div>
         </section>
 
@@ -10488,9 +10524,9 @@
    * Bascule de vue dans le dossier patient.
    *
    * Deux choses se jouent ensemble : le panneau d'analyse (.sub-panel) et le
-   * groupe de blocs de tête (data-dgroup) — identité et synthèse, aorte,
-   * documents, évaluations. Les afficher tous en même temps donnait une page
-   * de plusieurs milliers de pixels dans laquelle on cherchait l'information.
+   * groupe de blocs de tête (data-dgroup) — synthese, pieces, suivi,
+   * questionnaires. Les afficher tous en même temps donnait une page de
+   * plusieurs milliers de pixels dans laquelle on cherchait l'information.
    */
   function afficherVueDossier(groupe, panneau) {
     document.querySelectorAll('#dossierVues .subtab-button').forEach(b => {
@@ -10514,8 +10550,8 @@
     // justifiée, que les deux onglets affichaient la même chose.
     const board = $('dossierGraphBoard');
     if (board) {
-      const avecTableau = groupe === 'evaluations' &&
-                          !['patient-vo2', 'patient-pulse', 'patient-questionnaires'].includes(panneau);
+      const avecTableau = groupe === 'suivi' &&
+                          !['patient-vo2', 'patient-pulse'].includes(panneau);
       board.style.display = avecTableau ? '' : 'none';
     }
     if (panneau === 'patient-vo2') { syncEvalSelectors(); renderVo2Analysis(); }
@@ -10546,7 +10582,7 @@
   window.afficherVueDossier = afficherVueDossier;
 
   document.querySelectorAll('.subtab-button').forEach(btn => btn.addEventListener('click', () => {
-    afficherVueDossier(btn.dataset.dgroup || 'evaluations', btn.dataset.subtab || null);
+    afficherVueDossier(btn.dataset.dgroup || 'suivi', btn.dataset.subtab || null);
   }));
 
   // ============================================================
@@ -17084,9 +17120,11 @@
     function wireMedExDropZone() {
       const zone = document.getElementById('apiMedExDropZone');
       const input = document.getElementById('apiMedExHiddenFile');
-      if (!zone || !input || zone._wired) return;
-      zone._wired = true;
+      if (zone && input && !zone._wired) { zone._wired = true; cablerZone(zone, input); }
+      cablerFiltres();
+    }
 
+    function cablerZone(zone, input) {
       zone.addEventListener('click', () => input.click());
       input.addEventListener('change', (e) => {
         if (e.target.files && e.target.files[0]) openExamImportModalWithFile(e.target.files[0]);
@@ -17103,7 +17141,11 @@
         if (e.dataTransfer.files && e.dataTransfer.files[0]) openExamImportModalWithFile(e.dataTransfer.files[0]);
       });
 
-      // Filtres
+    }
+
+    function cablerFiltres() {
+      if (window._medExFiltresCables) return;
+      window._medExFiltresCables = true;
       document.querySelectorAll('.apiMedExFilter').forEach(btn => {
         btn.addEventListener('click', () => {
           _medExFilter = btn.dataset.filter;
