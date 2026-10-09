@@ -21,6 +21,7 @@
 
   let _patientId = null;
   let _conteneurId = null;
+  let _zoneId = null;
   let _faits = [];
   let _echo = null;
   let _docNom = '';
@@ -235,31 +236,6 @@
     } catch (e) { console.warn('[docimport] chronologie :', e && e.message); }
 
     el.innerHTML = rendreCarte(patientId, faits);
-    const input = el.querySelector('[data-di-input]');
-    const bouton = el.querySelector('[data-di-btn]');
-    if (bouton && input) {
-      bouton.addEventListener('click', () => input.click());
-      input.addEventListener('change', async () => {
-        if (input.files && input.files[0]) await traiter(input.files[0], patientId);
-        input.value = '';
-      });
-    }
-
-    const zone = el.querySelector('[data-di-zone]');
-    if (zone && input) {
-      zone.addEventListener('click', () => input.click());
-      const surligner = on => {
-        zone.style.background = on ? '#eff6ff' : '#f8fbff';
-        zone.style.borderColor = on ? '#3b82f6' : '#bfdbfe';
-      };
-      zone.addEventListener('dragover', e => { e.preventDefault(); surligner(true); });
-      zone.addEventListener('dragleave', () => surligner(false));
-      zone.addEventListener('drop', async e => {
-        e.preventDefault(); surligner(false);
-        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-        if (f) await traiter(f, patientId);
-      });
-    }
     el.querySelectorAll('[data-di-suppr]').forEach(b => {
       b.addEventListener('click', async () => {
         if (!confirm('Supprimer définitivement cette donnée de la chronologie ?')) return;
@@ -311,24 +287,10 @@
       <article class="card" style="padding:0; margin-bottom:14px; overflow:hidden;">
         <div style="padding:14px 20px; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
           <div>
-            <h3 style="margin:0; color:white; font-size:15px;">📎 Pièces du dossier médical — ${esc(patientId)}</h3>
-            <p style="margin:3px 0 0; font-size:11.5px; opacity:.92;">PDF, scans, photos, Word, Excel, texte. Les données datées sont extraites, relues par vous, puis classées chronologiquement. Une épreuve d'effort est reconnue et analysée automatiquement.</p>
-          </div>
-          <div>
-            <input type="file" data-di-input style="display:none"
-              accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,.xlsm,.png,.jpg,.jpeg,.webp,.tif,.tiff,.heic,.heif,.mp3,.m4a,.wav,.ogg,.opus,.webm,.aac,.flac,application/pdf,text/*,image/*,audio/*">
-            <button data-di-btn style="padding:10px 18px; border:none; background:white; color:#1d4ed8; border-radius:9px; font-weight:700; cursor:pointer; font-size:12.5px; white-space:nowrap;">⬆️ Verser une pièce</button>
+            <h3 style="margin:0; color:white; font-size:15px;">📎 Données extraites des pièces — ${esc(patientId)}</h3>
+            <p style="margin:3px 0 0; font-size:11.5px; opacity:.92;">Chaque mesure, traitement ou examen daté retrouvé dans un document versé, relu par vous, classé chronologiquement.</p>
           </div>
         </div>
-        <div data-di-zone style="margin:16px 20px 0; padding:22px; border:2px dashed #bfdbfe; border-radius:12px; text-align:center; background:#f8fbff; cursor:pointer; transition:background .15s, border-color .15s;">
-          <div style="font-size:30px; margin-bottom:6px;">📥</div>
-          <div style="font-size:13.5px; font-weight:700; color:#1d4ed8; margin-bottom:3px;">Glissez un fichier ici, ou cliquez pour parcourir</div>
-          <div style="font-size:11.5px; color:#64748b; line-height:1.5;">
-            Épreuve d'effort (COSMED) · échocardiographie · compte rendu · courrier · onde de pouls · photo · enregistrement audio<br>
-            Le type est reconnu automatiquement : vous n'avez pas à choisir.
-          </div>
-        </div>
-        <div data-di-resultat style="display:none; margin:14px 20px 0;"></div>
         <div style="padding:16px 20px;">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;">
             <strong style="font-size:13px; color:#0b1530;">Chronologie médicale</strong>
@@ -968,5 +930,61 @@
     });
   }
 
-  window.DocImport = { mount, traiter, lireTexte };
+  /**
+   * La zone de versement, seule, pour la première rubrique du dossier.
+   *
+   * Elle est séparée de la chronologie extraite parce qu'elles ne servent pas
+   * au même moment : on verse une pièce en passant, on relit les données
+   * extraites quand on vérifie. Les mettre dans la même carte obligeait à
+   * traverser toute la chronologie pour atteindre le bouton.
+   */
+  function monterZone(containerId, patientId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    _patientId = patientId;
+
+    el.innerHTML = `
+      <article class="card" style="padding:0; margin-bottom:14px; overflow:hidden;">
+        <div style="padding:14px 20px; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white;">
+          <h3 style="margin:0; color:white; font-size:15px;">📎 Verser une pièce au dossier</h3>
+          <p style="margin:3px 0 0; font-size:11.5px; opacity:.92;">Un seul endroit pour tout : le type du fichier est reconnu automatiquement.</p>
+        </div>
+        <div style="padding:16px 20px;">
+          <div data-dz style="padding:24px; border:2px dashed #bfdbfe; border-radius:12px; text-align:center; background:#f8fbff; cursor:pointer; transition:background .15s, border-color .15s;">
+            <div style="font-size:30px; margin-bottom:6px;">📥</div>
+            <div style="font-size:13.5px; font-weight:700; color:#1d4ed8; margin-bottom:3px;">Glissez un fichier ici, ou cliquez pour parcourir</div>
+            <div style="font-size:11.5px; color:#64748b; line-height:1.5;">
+              Épreuve d'effort (COSMED) · échocardiographie · compte rendu · courrier ·
+              onde de pouls · photo · enregistrement audio
+            </div>
+          </div>
+          <div data-di-resultat style="display:none; margin-top:12px;"></div>
+          <input type="file" data-dz-input style="display:none"
+            accept=".pdf,.txt,.csv,.tsv,.json,.md,.htm,.html,.rtf,.docx,.xlsx,.xls,.xlsm,.png,.jpg,.jpeg,.webp,.tif,.tiff,.heic,.heif,.mp3,.m4a,.wav,.ogg,.opus,.webm,.aac,.flac,application/pdf,text/*,image/*,audio/*">
+        </div>
+      </article>`;
+
+    const zone = el.querySelector('[data-dz]');
+    const input = el.querySelector('[data-dz-input]');
+    _zoneId = containerId;
+
+    zone.addEventListener('click', () => input.click());
+    input.addEventListener('change', async () => {
+      if (input.files && input.files[0]) await traiter(input.files[0], patientId);
+      input.value = '';
+    });
+    const surligner = on => {
+      zone.style.background = on ? '#eff6ff' : '#f8fbff';
+      zone.style.borderColor = on ? '#3b82f6' : '#bfdbfe';
+    };
+    zone.addEventListener('dragover', e => { e.preventDefault(); surligner(true); });
+    zone.addEventListener('dragleave', () => surligner(false));
+    zone.addEventListener('drop', async e => {
+      e.preventDefault(); surligner(false);
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) await traiter(f, patientId);
+    });
+  }
+
+  window.DocImport = { mount, monterZone, traiter, lireTexte };
 })();

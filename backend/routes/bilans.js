@@ -212,7 +212,12 @@ router.get('/:patient_id/donnees', requireAuth, staff, async (req, res, next) =>
   try {
     const pid = req.params.patient_id;
     const fin = req.query.fin || new Date().toISOString().slice(0, 10);
-    const debut = req.query.debut || await bornePrecedente(pid);
+    // `tout=1` : toute l'histoire depuis l'entrée, et non la seule période
+    // depuis le dernier bilan. C'est ce que demande la vue « Activité
+    // physique réalisée », qui raconte le parcours entier.
+    const debut = req.query.tout === '1'
+      ? null
+      : (req.query.debut || await bornePrecedente(pid));
     res.json({ donnees: await agregerPeriode(pid, debut, fin), debut, fin });
   } catch (e) { next(e); }
 });

@@ -37,6 +37,7 @@
   <script src="entretien-ui.js?v=phase50-1"></script>
   <script src="activation-ui.js?v=phase50-1"></script>
   <script src="document-import.js?v=phase50-1"></script>
+  <script src="activite-ui.js?v=phase50-1"></script>
   <script src="visio-jitsi.js?v=phase50-1"></script>
   <script src="video-pilotee.js?v=phase50-1"></script>
   <script src="fiche-apa.js?v=phase50-1"></script>
@@ -3924,9 +3925,10 @@
         <div class="card" style="padding:14px 18px; margin-bottom:16px;">
           <div class="subtabs" id="dossierVues" style="display:flex; gap:6px; flex-wrap:wrap; margin:0;">
             <button class="subtab-button active" data-dgroup="synthese" data-subtab="patient-synthese">1 · Synthèse</button>
-            <button class="subtab-button" data-dgroup="pieces">2 · Pièces &amp; examens</button>
-            <button class="subtab-button" data-dgroup="suivi" data-subtab="patient-physio">3 · Suivi clinique</button>
+            <button class="subtab-button" data-dgroup="activite">2 · Activité réalisée</button>
+            <button class="subtab-button" data-dgroup="suivi" data-subtab="patient-physio">3 · Graphiques</button>
             <button class="subtab-button" data-dgroup="questionnaires" data-subtab="patient-questionnaires">4 · Questionnaires</button>
+            <button class="subtab-button" data-dgroup="pieces">5 · Documents</button>
           </div>
           <div style="margin-top:10px; height:4px; background:#e2e8f0; border-radius:99px; position:relative; overflow:hidden;">
             <div id="dossierReperePos" style="position:absolute; top:0; bottom:0; left:0; width:20%; background:linear-gradient(90deg,#0891b2,#14b8a6); border-radius:99px; transition:left .25s ease, width .25s ease;"></div>
@@ -3935,6 +3937,12 @@
 
         <!-- Phase 12.4 : Carte d'identité enrichie -->
         <div id="patientIdentityCardMount" data-dgroup="synthese"></div>
+
+        <!-- Phase 51 — Le versement ouvre le dossier. C'est le geste le plus
+             fréquent : on arrive avec un compte rendu en main. Le reléguer
+             derrière une rubrique obligeait à chercher où déposer, et le
+             mauvais choix de zone avait des conséquences cliniques. -->
+        <div id="docVersementMount" data-dgroup="synthese"></div>
 
         <!-- Phase 24 : Synthèse clinique en trois rubriques.
              Placée en tête du dossier : c'est le document qu'on relit en
@@ -3948,6 +3956,12 @@
         <div id="syntheseMount" data-dgroup="synthese"></div>
 
         <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
+        <!-- Phase 51 — Deuxième rubrique : ce que le patient a effectivement
+             fait. Elle répond à la question qu'on se pose en ouvrant un
+             dossier — où en est cette personne — avant les courbes, qui
+             servent à le vérifier. -->
+        <div id="activiteMount" data-dgroup="activite"></div>
+
         <div id="aorticConsultMount" data-dgroup="suivi"></div>
         <!-- Phase 17 : versement de pièces + chronologie extraite par IA -->
         <div id="docImportMount" data-dgroup="pieces"></div>
@@ -6919,6 +6933,10 @@
       if (syMount) syMount.innerHTML = '';
       const diMount = document.getElementById('docImportMount');
       if (diMount) diMount.innerHTML = '';
+      const dvMount = document.getElementById('docVersementMount');
+      if (dvMount) dvMount.innerHTML = '';
+      const acMount = document.getElementById('activiteMount');
+      if (acMount) acMount.innerHTML = '';
       // La carte de résumé conservait les valeurs du patient précédent —
       // 42 mm d'aorte affichés sous « Aucun patient sélectionné ». Dans un
       // dossier médical, une donnée orpheline attribuée au mauvais patient
@@ -6984,12 +7002,24 @@
       }
     } catch (e) { console.warn('[aortic] mount échoué', e); }
 
-    // Phase 17 : pièces du dossier médical + chronologie extraite
+    // Phase 17 : pièces du dossier médical + chronologie extraite.
+    // Phase 51 : le versement et la chronologie sont montés séparément —
+    // l'un ouvre le dossier, l'autre vit avec les documents.
     try {
+      if (window.DocImport && document.getElementById('docVersementMount')) {
+        window.DocImport.monterZone('docVersementMount', selectedPatient.id);
+      }
       if (window.DocImport && document.getElementById('docImportMount')) {
         window.DocImport.mount('docImportMount', selectedPatient.id);
       }
     } catch (e) { console.warn('[docimport] mount échoué', e); }
+
+    // Phase 51 : activité physique réalisée
+    try {
+      if (window.ActiviteUI && document.getElementById('activiteMount')) {
+        window.ActiviteUI.mount('activiteMount', selectedPatient.id);
+      }
+    } catch (e) { console.warn('[activite] mount échoué', e); }
 
     renderTimeline();
     syncGraphSelectors();
