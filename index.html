@@ -18,34 +18,34 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase47-5"></script>
+  <script src="api-client.js?v=phase48-0"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase47-5"></script>
+  <script src="questionnaires-defs.js?v=phase48-0"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase47-5"></script>
+  <script src="medical-parsers.js?v=phase48-0"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase47-5"></script>
-  <script src="cpet-analyse.js?v=phase47-5"></script>
+  <script src="cpet-graph-preview.js?v=phase48-0"></script>
+  <script src="cpet-analyse.js?v=phase48-0"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase47-5"></script>
-  <script src="medical-record-ui.js?v=phase47-5"></script>
+  <script src="pdf-extractor.js?v=phase48-0"></script>
+  <script src="medical-record-ui.js?v=phase48-0"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase47-5"></script>
-  <script src="synthese-ui.js?v=phase47-5"></script>
-  <script src="audit-ui.js?v=phase47-5"></script>
-  <script src="entretien-ui.js?v=phase47-5"></script>
-  <script src="activation-ui.js?v=phase47-5"></script>
-  <script src="document-import.js?v=phase47-5"></script>
-  <script src="visio-jitsi.js?v=phase47-5"></script>
-  <script src="video-pilotee.js?v=phase47-5"></script>
-  <script src="fiche-apa.js?v=phase47-5"></script>
-  <script src="inactivite.js?v=phase47-5"></script>
-  <script src="bilans-ui.js?v=phase47-5"></script>
-  <script src="etudes-ui.js?v=phase47-5"></script>
-  <script src="ville-hopital.js?v=phase47-5"></script>
-  <script src="qlibres-ui.js?v=phase47-5"></script>
-  <script src="parametres-ui.js?v=phase47-5"></script>
+  <script src="aortic-consultations.js?v=phase48-0"></script>
+  <script src="synthese-ui.js?v=phase48-0"></script>
+  <script src="audit-ui.js?v=phase48-0"></script>
+  <script src="entretien-ui.js?v=phase48-0"></script>
+  <script src="activation-ui.js?v=phase48-0"></script>
+  <script src="document-import.js?v=phase48-0"></script>
+  <script src="visio-jitsi.js?v=phase48-0"></script>
+  <script src="video-pilotee.js?v=phase48-0"></script>
+  <script src="fiche-apa.js?v=phase48-0"></script>
+  <script src="inactivite.js?v=phase48-0"></script>
+  <script src="bilans-ui.js?v=phase48-0"></script>
+  <script src="etudes-ui.js?v=phase48-0"></script>
+  <script src="ville-hopital.js?v=phase48-0"></script>
+  <script src="qlibres-ui.js?v=phase48-0"></script>
+  <script src="parametres-ui.js?v=phase48-0"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -230,11 +230,21 @@
     /* ===== Main ===== */
     .main { min-width: 0; padding: 22px 28px 60px; }
 
+/* Le badge de session — nom, Démo, Pseudo, Déconnexion — est fixé en haut à
+       droite de la fenêtre, au-dessus de tout. Le bandeau de travail passait
+       dessous : le sélecteur de patient s'y trouvait à moitié recouvert, et
+       sur une fenêtre étroite il devenait inatteignable.
+
+       Deux réponses complémentaires. Le bandeau descend sous le badge, et son
+       contenu s'enroule au lieu de se comprimer : le sélecteur passe alors à la
+       ligne plutôt que de disparaître. */
     .top-shell {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 46px;
       margin-bottom: 22px;
       background: rgba(255,255,255,0.7);
       border: 1px solid var(--line);
@@ -242,7 +252,7 @@
       padding: 12px 18px;
       box-shadow: var(--shadow-sm);
       position: sticky;
-      top: 12px;
+      top: 58px;
       z-index: 20;
       backdrop-filter: blur(14px);
     }
@@ -254,7 +264,11 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      min-width: 270px;
+      /* flex-basis plutôt que min-width : le sélecteur réclame sa place quand
+         elle existe et passe à la ligne sinon, au lieu d'imposer une largeur
+         qui pousse le titre hors de l'écran. */
+      flex: 0 1 auto;
+      min-width: 220px;
       justify-content: flex-end;
     }
 
@@ -3127,7 +3141,14 @@
           </div>
         </div>
         <div class="quick-patient" style="display:none;">
-          <span class="status ok" id="quickStatus">Stable</span>
+          <!-- La pastille de statut a été retirée de ce bandeau. Elle répétait
+               une information déjà présente, en gros, sur la fiche du patient,
+               et elle disputait la place au sélecteur dans un espace déjà
+               encombré par le badge de session. L'élément reste dans le code
+               sous forme masquée : plusieurs fonctions l'alimentent encore, et
+               les supprimer toutes pour gagner une ligne invisible créerait
+               plus de risque que de bénéfice. -->
+          <span class="status ok" id="quickStatus" style="display:none;">Stable</span>
           <select id="quickPatientSelect"></select>
         </div>
       </div>
