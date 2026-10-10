@@ -18,35 +18,36 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase57-1"></script>
+  <script src="api-client.js?v=phase58-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase57-1"></script>
+  <script src="questionnaires-defs.js?v=phase58-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase57-1"></script>
+  <script src="medical-parsers.js?v=phase58-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase57-1"></script>
-  <script src="cpet-analyse.js?v=phase57-1"></script>
+  <script src="cpet-graph-preview.js?v=phase58-1"></script>
+  <script src="cpet-analyse.js?v=phase58-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase57-1"></script>
-  <script src="medical-record-ui.js?v=phase57-1"></script>
+  <script src="pdf-extractor.js?v=phase58-1"></script>
+  <script src="medical-record-ui.js?v=phase58-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase57-1"></script>
-  <script src="synthese-ui.js?v=phase57-1"></script>
-  <script src="audit-ui.js?v=phase57-1"></script>
-  <script src="entretien-ui.js?v=phase57-1"></script>
-  <script src="activation-ui.js?v=phase57-1"></script>
-  <script src="document-import.js?v=phase57-1"></script>
-  <script src="activite-ui.js?v=phase57-1"></script>
-  <script src="visio-jitsi.js?v=phase57-1"></script>
-  <script src="video-pilotee.js?v=phase57-1"></script>
-  <script src="fiche-apa.js?v=phase57-1"></script>
-  <script src="inactivite.js?v=phase57-1"></script>
-  <script src="bilans-ui.js?v=phase57-1"></script>
-  <script src="etudes-ui.js?v=phase57-1"></script>
-  <script src="ville-hopital.js?v=phase57-1"></script>
-  <script src="qlibres-ui.js?v=phase57-1"></script>
-  <script src="parametres-ui.js?v=phase57-1"></script>
+  <script src="aortic-consultations.js?v=phase58-1"></script>
+  <script src="synthese-ui.js?v=phase58-1"></script>
+  <script src="audit-ui.js?v=phase58-1"></script>
+  <script src="entretien-ui.js?v=phase58-1"></script>
+  <script src="activation-ui.js?v=phase58-1"></script>
+  <script src="document-import.js?v=phase58-1"></script>
+  <script src="activite-ui.js?v=phase58-1"></script>
+  <script src="cpet-detail.js?v=phase58-1"></script>
+  <script src="visio-jitsi.js?v=phase58-1"></script>
+  <script src="video-pilotee.js?v=phase58-1"></script>
+  <script src="fiche-apa.js?v=phase58-1"></script>
+  <script src="inactivite.js?v=phase58-1"></script>
+  <script src="bilans-ui.js?v=phase58-1"></script>
+  <script src="etudes-ui.js?v=phase58-1"></script>
+  <script src="ville-hopital.js?v=phase58-1"></script>
+  <script src="qlibres-ui.js?v=phase58-1"></script>
+  <script src="parametres-ui.js?v=phase58-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3983,6 +3984,11 @@
         <div id="activiteMount" data-dgroup="activite"></div>
 
         <div id="aorticConsultMount" data-dgroup="suivi"></div>
+
+        <!-- Phase 58 — L'analyse de l'épreuve d'effort existait depuis
+             longtemps dans une colonne JSONB que rien n'ouvrait. Elle a
+             maintenant son écran, avec la provenance de chaque valeur. -->
+        <div id="cpetDetailMount" data-dgroup="suivi"></div>
         <!-- Phase 17 : versement de pièces + chronologie extraite par IA -->
         <div id="docImportMount" data-dgroup="pieces"></div>
 
@@ -6979,6 +6985,8 @@
       if (dvMount) dvMount.innerHTML = '';
       const acMount = document.getElementById('activiteMount');
       if (acMount) acMount.innerHTML = '';
+      const cdMount = document.getElementById('cpetDetailMount');
+      if (cdMount) cdMount.innerHTML = '';
       // La carte de résumé conservait les valeurs du patient précédent —
       // 42 mm d'aorte affichés sous « Aucun patient sélectionné ». Dans un
       // dossier médical, une donnée orpheline attribuée au mauvais patient
@@ -7062,6 +7070,13 @@
         window.ActiviteUI.mount('activiteMount', selectedPatient.id);
       }
     } catch (e) { console.warn('[activite] mount échoué', e); }
+
+    // Phase 58 : lecture détaillée de l'épreuve d'effort
+    try {
+      if (window.CpetDetailUI && document.getElementById('cpetDetailMount')) {
+        window.CpetDetailUI.mount('cpetDetailMount', selectedPatient.id);
+      }
+    } catch (e) { console.warn('[cpet-detail] mount échoué', e); }
 
     renderTimeline();
     syncGraphSelectors();
