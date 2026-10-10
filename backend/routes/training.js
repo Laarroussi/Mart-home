@@ -128,7 +128,20 @@ router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
     // duration_s : durée DÉCLARÉE par le patient (séance réalisée sans ceinture
     // cardio, saisie a posteriori depuis sa séance prescrite). Prioritaire sur
     // la durée calculée, qui n'a pas de sens dans ce cas.
-    const { borg_cr10, content, patient_comment, status, notes, duration_s } = req.body || {};
+    const { borg_cr10, content, patient_comment, status, notes, duration_s,
+            modalite } = req.body || {};
+
+    // Modalité : endurance, renforcement, ou les deux. Facultative, et elle
+    // le reste — une séance dont on ignore ce qui a été travaillé doit
+    // s'afficher comme telle, pas recevoir une valeur par défaut qui
+    // fausserait la répartition.
+    const MODALITES = ['endurance', 'renforcement', 'combine', 'autre'];
+    const mod = MODALITES.includes(modalite) ? modalite : null;
+    if (modalite != null && modalite !== '' && mod === null) {
+      return res.status(400).json({
+        error: 'Modalité inconnue : ' + modalite + '. Valeurs acceptées : ' + MODALITES.join(', ')
+      });
+    }
     if (borg_cr10 == null || borg_cr10 < 0 || borg_cr10 > 10) {
       return res.status(400).json({ error: 'borg_cr10 entre 0 et 10 requis' });
     }
@@ -165,7 +178,8 @@ router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
               energy_total_kcal = $10,
               notes = COALESCE($11, notes),
               content = COALESCE($12, content),
-              patient_comment = COALESCE($13, patient_comment)
+              patient_comment = COALESCE($13, patient_comment),
+              modalite = COALESCE($15, modalite)
         WHERE id = $14
         RETURNING *`,
       [
@@ -180,7 +194,8 @@ router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
         notes || null,
         content || null,
         patient_comment || null,
-        req.params.id
+        req.params.id,
+        mod
       ]
     );
     if (!rows.length) return res.status(404).json({ error: 'Séance introuvable' });

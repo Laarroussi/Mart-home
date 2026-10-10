@@ -89,6 +89,51 @@ async function agregerPeriode(patientId, debut, fin) {
         AND started_at::date <= $2` + filtreDebut, bornes);
   if (inter.rows.length && inter.rows[0].nb > 0) d.seances_interrompues = inter.rows[0].nb;
 
+  // --- Répartition par modalité (migration 035) -------------------------
+  // Les séances dont la modalité n'a pas été renseignée sont comptées à
+  // part, sous « non précisée ». Les fondre dans une catégorie existante
+  // donnerait une répartition fausse et impossible à démentir.
+  const modal = await query(
+    `SELECT COALESCE(modalite, 'non_precisee') AS modalite, COUNT(*)::int AS nb,
+            ROUND(SUM(duration_s) / 60.0)::int AS minutes
+       FROM training_sessions
+      WHERE patient_id = $1 AND status = 'completed'
+        AND started_at::date <= $2` + filtreDebut + `
+      GROUP BY COALESCE(modalite, 'non_precisee')
+      ORDER BY nb DESC`, bornes).catch(() => ({ rows: [] }));
+  if (modal.rows.length) d.repartition_modalites = modal.rows;
+
+  // --- Assiduité (migration 035) ----------------------------------------
+  // Un taux d'assiduité est un rapport. Sans prescription enregistrée il n'a
+  // pas de dénominateur : on ne l'invente pas, on dit qu'il manque. Un taux
+  // calculé sur un dénominateur supposé serait pire que pas de taux du tout.
+  const presc = await query(
+    `SELECT seances_par_semaine, prescription_debut, prescription_fin
+       FROM training_program_patients
+      WHERE patient_id = $1 AND seances_par_semaine IS NOT NULL
+      ORDER BY assigned_at DESC LIMIT 1`, [patientId]).catch(() => ({ rows: [] }));
+
+  if (!presc.rows.length) {
+    d.assiduite = { calculable: false,
+      raison: "Aucun rythme de seances prescrit : le taux d'assiduite n'a pas de denominateur." };
+  } else if (d.seances && d.seances.semaines_couvertes) {
+    const p = presc.rows[0];
+    const attendues = Number(p.seances_par_semaine) * d.seances.semaines_couvertes;
+    if (attendues > 0) {
+      d.assiduite = {
+        calculable: true,
+        prescrites_par_semaine: Number(p.seances_par_semaine),
+        attendues: Math.round(attendues),
+        realisees: d.seances.nb_seances,
+        taux_pct: Math.round((d.seances.nb_seances / attendues) * 100),
+        periode_semaines: d.seances.semaines_couvertes
+      };
+    }
+  } else {
+    d.assiduite = { calculable: false,
+      raison: "Periode trop courte ou aucune seance : pas de denominateur fiable." };
+  }
+
   // --- Éducation thérapeutique suivie pendant la période ---------------
   const edu = await query(
     `SELECT c.title AS module, r.post_score AS score, r.validated AS valide,
