@@ -122,6 +122,29 @@
    * tant que la valeur n'a pas été corrigée ou confirmée. Un avertissement
    * qu'on peut rater une fois ne protège de rien.
    */
+  /**
+   * Une valeur est-elle invraisemblable ? Réponse unique, utilisée partout.
+   *
+   * Elle existait en double : une fois pour le bandeau d'avertissement, et
+   * nulle part ailleurs. Résultat, un diamètre de 13 mm était signalé comme
+   * douteux ET servait d'« évaluation actuelle », produisant une évolution
+   * de −22 mm affichée en vert, c'est-à-dire comme une amélioration.
+   *
+   * Signaler une valeur sans l'écarter des calculs est pire que de ne rien
+   * signaler : l'avertissement donne l'impression que le problème est traité,
+   * pendant que le chiffre faux continue de circuler.
+   */
+  function estDouteuse(valeur, site) {
+    if (valeur == null) return false;
+    const x = parseFloat(valeur);
+    if (!isFinite(x)) return false;
+    const t = String(site || '').toLowerCase();
+    const estAnneau = /anneau|annulus/.test(t);
+    const estSinus  = !t || /valsalva|racine|sinus/.test(t);
+    const planche = estAnneau ? 14 : (estSinus ? 25 : 18);
+    return x < planche || x > 90;
+  }
+
   function valeursDouteuses() {
     const out = [];
     // Le seuil dépend du niveau mesuré, parce que les niveaux n'ont pas les
@@ -137,12 +160,10 @@
       const x = parseFloat(v);
       if (!isFinite(x)) return;
 
+      if (!estDouteuse(x, site)) return;
       const s = String(site || '').toLowerCase();
-      const estAnneau = /anneau|annulus/.test(s);
-      const estSinus  = !s || /valsalva|racine|sinus/.test(s);
-
-      const planche = estAnneau ? 14 : (estSinus ? 25 : 18);
-      if (x < planche) {
+      const estSinus = !s || /valsalva|racine|sinus/.test(s);
+      if (x < 91) {
         out.push({ valeur: x, date, origine,
           raison: estSinus
             ? 'trop bas pour des sinus de Valsalva chez un adulte — s\'agit-il de l\'anneau ?'
@@ -178,15 +199,18 @@
     (_echos || []).forEach(e => {
       const v = e.sinus_valsalva_mm != null ? parseFloat(e.sinus_valsalva_mm)
               : (e.aorte_max_mm != null ? parseFloat(e.aorte_max_mm) : null);
-      if (v != null && e.exam_date) {
-        points.push({ date: e.exam_date, valeur: v, site: e.aorte_site_max || 'Sinus de Valsalva',
+      const site = e.aorte_site_max || 'Sinus de Valsalva';
+      if (v != null && e.exam_date && !estDouteuse(v, site)) {
+        points.push({ date: e.exam_date, valeur: v, site: site,
                       origine: 'échocardiographie', niveau: 'mesure', rang: 2 });
       }
     });
 
     (_consultations || []).forEach(c => {
       const v = c.aortic_value_mm != null ? parseFloat(c.aortic_value_mm) : null;
-      if (v != null && c.consultation_date) {
+      // Une valeur écartée n'entre pas dans le calcul : ni comme mesure
+      // actuelle, ni dans l'évolution qu'on en déduirait.
+      if (v != null && c.consultation_date && !estDouteuse(v, c.aortic_site)) {
         points.push({ date: c.consultation_date, valeur: v, site: c.aortic_site || null,
                       origine: 'consultation', niveau: 'declaree', rang: 1 });
       }
@@ -205,7 +229,9 @@
   // ============================================================
   function renderAorticCard() {
     const a = _aortic || {};
-    const first = a.first_value_mm != null ? parseFloat(a.first_value_mm) : null;
+    const firstBrut = a.first_value_mm != null ? parseFloat(a.first_value_mm) : null;
+    const firstDouteuse = estDouteuse(firstBrut, a.first_site);
+    const first = firstDouteuse ? null : firstBrut;
 
     // Phase 62 — La valeur « actuelle » n'est plus stockée ici. Elle l'était,
     // recopiée depuis l'écho ou la consultation, et elle divergeait dès que
@@ -253,8 +279,10 @@
               <div style="font-size:10.5px; color:${alert ? '#991b1b' : (warn ? '#92400e' : '#1e40af')}; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">Évaluation actuelle</div>
               <div style="font-size:22px; font-weight:800; color:#0b1530; margin-top:4px;">${curr != null ? curr.toFixed(1) + ' <span style="font-size:13px; font-weight:600;">mm</span>' : '<span style="font-size:14px; color:#94a3b8;">Non renseigné</span>'}</div>
               <div style="font-size:11.5px; color:#64748b; margin-top:3px;">
-                ${a.current_date ? '📅 ' + fmtDate(a.current_date) : '—'}
-                ${a.current_site ? '<br>📍 ' + esc(a.current_site) : ''}
+                ${derniere ? '📅 ' + fmtDate(derniere.date) : (valeursDouteuses().length
+                    ? '<span style="color:#92400e;">valeur écartée, à vérifier</span>' : '—')}
+                ${derniere && derniere.site ? '<br>📍 ' + esc(derniere.site) : ''}
+                ${derniere ? '<br><span style="font-size:11px;">' + esc(derniere.origine) + '</span>' : ''}
               </div>
               ${alert ? '<div style="margin-top:6px; font-size:11px; font-weight:700; color:#991b1b;">⚠️ Seuil ≥ 45 mm</div>' : ''}
               ${warn  ? '<div style="margin-top:6px; font-size:11px; font-weight:700; color:#92400e;">⚠ Surveillance rapprochée</div>' : ''}
@@ -263,7 +291,11 @@
             <div style="padding:12px 14px; background:#f8fafc; border-radius:10px; border-left:3px solid ${deltaColor};">
               <div style="font-size:10.5px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">Évolution</div>
               <div style="font-size:22px; font-weight:800; color:${deltaColor}; margin-top:4px;">${deltaTxt}</div>
-              <div style="font-size:11.5px; color:#64748b; margin-top:3px;">${first != null && curr != null ? 'Depuis la 1ʳᵉ mesure' : 'Données incomplètes'}</div>
+              <div style="font-size:11.5px; color:#64748b; margin-top:3px;">${
+                (first != null && curr != null) ? 'Depuis la 1ʳᵉ mesure'
+                : (firstDouteuse || valeursDouteuses().length)
+                  ? '<span style="color:#92400e;">Non calculée : une valeur a été écartée</span>'
+                  : 'Données incomplètes'}</div>
             </div>
           </div>
           ${a.notes ? `<div style="margin-top:12px; padding:10px 12px; background:#f8fafc; border-radius:8px; font-size:12.5px; color:#475569;">📝 ${esc(a.notes)}</div>` : ''}
