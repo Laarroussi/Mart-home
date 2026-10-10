@@ -110,7 +110,31 @@ Non calculables depuis le fichier, donc jamais inventés :
   calculée automatiquement dès que la spirométrie accompagnera le fichier
   d'effort.
 
-## 5. Une donnée, un seul enregistrement
+## 5. Une colonne, une seule signification
+
+Dans la base destinée à l'analyse, **une colonne doit vouloir dire une seule
+chose**. Une colonne `AORTE_mm` dont le sens dépend d'une colonne `NIVEAU`
+voisine est inexploitable : on ne peut ni en faire une moyenne, ni y suivre
+une progression, sans savoir si la ligne 12 parle de l'anneau et la ligne 13
+des sinus.
+
+Chaque mesure porte donc sa colonne, nommée par ce qu'elle mesure :
+`SINUS_VALSALVA_mm`, `JONCTION_SINOTUBULAIRE_mm`, `AORTE_ASCENDANTE_mm`,
+`VG_FEVG_SIMPSON_pct` — et `VG_FEVG_TEICHOLZ_pct` dans une colonne séparée,
+parce que les deux méthodes ne sont pas comparables.
+
+Une case vide signifie **« non mesuré sur cet examen »**. Jamais zéro, jamais
+« identique au segment voisin ».
+
+Les valeurs de synthèse du dossier, qui agrègent plusieurs origines, portent
+un préfixe distinct (`SUIVI_`) pour qu'on ne les confonde jamais avec une
+mesure d'examen.
+
+C'est la différence entre une base de travail et une base de recherche : la
+seconde sera lue par quelqu'un qui n'était pas là quand la donnée a été
+saisie.
+
+## 6. Une donnée, un seul enregistrement
 
 Une donnée clinique est enregistrée **une seule fois**, et affichée à
 plusieurs endroits selon le besoin. L'inverse — la même valeur recopiée dans

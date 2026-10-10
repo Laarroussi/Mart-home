@@ -18,39 +18,39 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase68-1"></script>
+  <script src="api-client.js?v=phase69-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase68-1"></script>
+  <script src="questionnaires-defs.js?v=phase69-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase68-1"></script>
+  <script src="medical-parsers.js?v=phase69-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase68-1"></script>
-  <script src="cpet-analyse.js?v=phase68-1"></script>
+  <script src="cpet-graph-preview.js?v=phase69-1"></script>
+  <script src="cpet-analyse.js?v=phase69-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase68-1"></script>
-  <script src="medical-record-ui.js?v=phase68-1"></script>
+  <script src="pdf-extractor.js?v=phase69-1"></script>
+  <script src="medical-record-ui.js?v=phase69-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase68-1"></script>
-  <script src="synthese-ui.js?v=phase68-1"></script>
-  <script src="audit-ui.js?v=phase68-1"></script>
-  <script src="entretien-ui.js?v=phase68-1"></script>
-  <script src="activation-ui.js?v=phase68-1"></script>
-  <script src="document-import.js?v=phase68-1"></script>
-  <script src="activite-ui.js?v=phase68-1"></script>
-  <script src="cpet-detail.js?v=phase68-1"></script>
-  <script src="echo-calculs.js?v=phase68-1"></script>
-  <script src="echo-detail.js?v=phase68-1"></script>
-  <script src="accueil-activite.js?v=phase68-1"></script>
-  <script src="visio-jitsi.js?v=phase68-1"></script>
-  <script src="video-pilotee.js?v=phase68-1"></script>
-  <script src="fiche-apa.js?v=phase68-1"></script>
-  <script src="inactivite.js?v=phase68-1"></script>
-  <script src="bilans-ui.js?v=phase68-1"></script>
-  <script src="etudes-ui.js?v=phase68-1"></script>
-  <script src="ville-hopital.js?v=phase68-1"></script>
-  <script src="qlibres-ui.js?v=phase68-1"></script>
-  <script src="parametres-ui.js?v=phase68-1"></script>
+  <script src="aortic-consultations.js?v=phase69-1"></script>
+  <script src="synthese-ui.js?v=phase69-1"></script>
+  <script src="audit-ui.js?v=phase69-1"></script>
+  <script src="entretien-ui.js?v=phase69-1"></script>
+  <script src="activation-ui.js?v=phase69-1"></script>
+  <script src="document-import.js?v=phase69-1"></script>
+  <script src="activite-ui.js?v=phase69-1"></script>
+  <script src="cpet-detail.js?v=phase69-1"></script>
+  <script src="echo-calculs.js?v=phase69-1"></script>
+  <script src="echo-detail.js?v=phase69-1"></script>
+  <script src="accueil-activite.js?v=phase69-1"></script>
+  <script src="visio-jitsi.js?v=phase69-1"></script>
+  <script src="video-pilotee.js?v=phase69-1"></script>
+  <script src="fiche-apa.js?v=phase69-1"></script>
+  <script src="inactivite.js?v=phase69-1"></script>
+  <script src="bilans-ui.js?v=phase69-1"></script>
+  <script src="etudes-ui.js?v=phase69-1"></script>
+  <script src="ville-hopital.js?v=phase69-1"></script>
+  <script src="qlibres-ui.js?v=phase69-1"></script>
+  <script src="parametres-ui.js?v=phase69-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -17897,7 +17897,7 @@
     const UNIFIED_SECTIONS = [
       { id:'clinical',  label:'Données cliniques',        color:'#475569', short:'Clin' },
       { id:'cpet',      label:'Test CPET (VO₂, Watts, FC)', color:'#4f46e5', short:'CPET' },
-      { id:'echo',      label:'Échocardiographie (aorte)', color:'#0ea5e9', short:'Echo' },
+      { id:'echo',      label:'Aorte — segments, suivi et consultations', color:'#0ea5e9', short:'Aorte' },
       { id:'force',     label:'Force isométrique',          color:'#22c55e', short:'Force' },
       { id:'training',  label:'Séances d\'entraînement',   color:'#f59e0b', short:'Train' },
       { id:'sf36',      label:'SF-36 (qualité de vie)',     color:'#7c3aed', short:'SF36' },
@@ -17905,11 +17905,42 @@
       // Phase 17 : données extraites des pièces versées, classées par date
       { id:'timeline',  label:'Dossier médical (pièces versées)', color:'#1d4ed8', short:'Doc' },
       // Phase 18 : une ligne de colonnes par examen échocardiographique
-      { id:'ett',       label:'Échocardiographie (ETT complète)', color:'#0369a1', short:'ETT' }
+      { id:'ett',       label:'Échocardiographie complète (aorte, VG, valves, diastole)', color:'#0369a1', short:'ETT' }
     ];
 
     // Colonnes d'un examen ETT, dans l'ordre de lecture du compte-rendu
     // ====================================================================
+    /**
+     * Une série de colonnes par examen échocardiographique.
+     *
+     * Partagée par la section « Aorte » et la section « ETT complète » : la
+     * première en prend un sous-ensemble, la seconde tout. Deux boucles
+     * séparées auraient fini par diverger — un libellé corrigé d'un côté,
+     * oublié de l'autre, et deux colonnes nommées différemment pour la même
+     * mesure dans un même export.
+     *
+     * Le préfixe ETT1_, ETT2_ suit l'ordre chronologique : ETT1 est l'examen
+     * le plus ancien. Ce n'est pas arbitraire — pour comparer des patients
+     * entre eux, il faut que la première colonne désigne le même rang chez
+     * tous.
+     */
+    function colonnesParExamen(cols, sec, champs, nbExamens) {
+      for (let i = 1; i <= nbExamens; i++) {
+        champs.forEach(([cle, libelle]) => {
+          cols.push({ key: 'ETT' + i + '_' + cle, label: 'ETT' + i + '_' + libelle, section: sec,
+            get: p => {
+              const ex = (p._ett || [])[i - 1];
+              if (!ex) return '—';
+              const v = ex[cle];
+              if (v == null || v === '') return '—';
+              if (cle === 'exam_date') return fmtVisit(v, '—') || '—';
+              if (cle === 'conclusion') return String(v).replace(/\s+/g, ' ').slice(0, 160);
+              return (typeof v === 'number' || !isNaN(Number(v))) ? String(parseFloat(v)) : String(v);
+            }});
+        });
+      }
+    }
+
     // Colonnes d'un examen échocardiographique — UNE COLONNE PAR MESURE
     // --------------------------------------------------------------------
     // Phase 67 — Correction d'une faute de conception.
@@ -17990,6 +18021,20 @@
 
       ['conclusion','CONCLUSION']
     ];
+
+    // Sous-ensemble aortique, pour qui veut suivre la racine sans charger les
+    // cinquante-sept colonnes de l'examen complet. Il est DÉRIVÉ de la liste
+    // ci-dessus, jamais recopié : une colonne renommée d'un côté le serait
+    // des deux, et les deux sections ne peuvent pas diverger.
+    const CLES_AORTE = [
+      'exam_date', 'anneau_aortique_mm', 'sinus_valsalva_mm', 'jonction_sinotub_mm',
+      'aorte_ascendante_mm', 'crosse_aortique_mm', 'aorte_descendante_mm',
+      'aorte_abdominale_mm', 'aorte_max_mm', 'aorte_site_max',
+      'z_score_anneau', 'z_score_sinus', 'z_score_ascendante', 'z_score_reference',
+      'aorte_systole_mm', 'aorte_diastole_mm', 'aorte_site_cycle',
+      'pa_systolique_mmhg', 'pa_diastolique_mmhg'
+    ];
+    const CHAMPS_AORTE = CHAMPS_ETT.filter(c => CLES_AORTE.indexOf(c[0]) >= 0);
     const _dbCache = { training: null, sf36: null, gpaq: null, aortic: null, consult: null, timeline: null, ett: null };
 
     async function preloadDbApiData() {
@@ -18224,6 +18269,13 @@
               if (!r) return '—';
               return r.v >= 45 ? 'Seuil >= 45 mm' : (r.v >= 42 ? 'Surveillance rapprochee' : 'Sous seuil');
             }});
+            // Phase 68 — Les mesures aortiques de chaque échocardiographie,
+            // nommées par segment. Elles manquaient : cette section ne
+            // montrait que des valeurs de synthèse, et l'on ne pouvait pas
+            // savoir si une progression portait sur les sinus ou sur
+            // l'ascendante. C'est pourtant toute la question du suivi.
+            colonnesParExamen(cols, sec, CHAMPS_AORTE, maxByPatient.ett || 0);
+
             // Une série de colonnes par consultation enregistrée
             const maxC = maxByPatient.consult || 0;
             for (let i = 1; i <= maxC; i++) {
@@ -18291,22 +18343,8 @@
           }
         }
         else if (sec.id === 'ett') {
-          // Phase 18 : E1_ = examen le plus ancien, E2_ le suivant, etc.
-          const maxE = maxByPatient.ett || 0;
-          for (let i = 1; i <= maxE; i++) {
-            CHAMPS_ETT.forEach(([cle, libelle]) => {
-              cols.push({ key: 'E' + i + '_' + cle, label: 'E' + i + '_' + libelle, section: sec,
-                get: p => {
-                  const ex = (p._ett || [])[i - 1];
-                  if (!ex) return '—';
-                  const v = ex[cle];
-                  if (v == null || v === '') return '—';
-                  if (cle === 'exam_date') return fmtVisit(v, '—') || '—';
-                  if (cle === 'conclusion') return String(v).replace(/\s+/g, ' ').slice(0, 160);
-                  return (typeof v === 'number' || !isNaN(Number(v))) ? String(parseFloat(v)) : String(v);
-                }});
-            });
-          }
+          // ETT1_ = examen le plus ancien, ETT2_ le suivant, etc.
+          colonnesParExamen(cols, sec, CHAMPS_ETT, maxByPatient.ett || 0);
         }
         else if (sec.id === 'training') {
           const maxN = maxByPatient.training || 0;
