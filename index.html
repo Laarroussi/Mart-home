@@ -18,35 +18,35 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase56-1"></script>
+  <script src="api-client.js?v=phase57-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase56-1"></script>
+  <script src="questionnaires-defs.js?v=phase57-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase56-1"></script>
+  <script src="medical-parsers.js?v=phase57-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase56-1"></script>
-  <script src="cpet-analyse.js?v=phase56-1"></script>
+  <script src="cpet-graph-preview.js?v=phase57-1"></script>
+  <script src="cpet-analyse.js?v=phase57-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase56-1"></script>
-  <script src="medical-record-ui.js?v=phase56-1"></script>
+  <script src="pdf-extractor.js?v=phase57-1"></script>
+  <script src="medical-record-ui.js?v=phase57-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase56-1"></script>
-  <script src="synthese-ui.js?v=phase56-1"></script>
-  <script src="audit-ui.js?v=phase56-1"></script>
-  <script src="entretien-ui.js?v=phase56-1"></script>
-  <script src="activation-ui.js?v=phase56-1"></script>
-  <script src="document-import.js?v=phase56-1"></script>
-  <script src="activite-ui.js?v=phase56-1"></script>
-  <script src="visio-jitsi.js?v=phase56-1"></script>
-  <script src="video-pilotee.js?v=phase56-1"></script>
-  <script src="fiche-apa.js?v=phase56-1"></script>
-  <script src="inactivite.js?v=phase56-1"></script>
-  <script src="bilans-ui.js?v=phase56-1"></script>
-  <script src="etudes-ui.js?v=phase56-1"></script>
-  <script src="ville-hopital.js?v=phase56-1"></script>
-  <script src="qlibres-ui.js?v=phase56-1"></script>
-  <script src="parametres-ui.js?v=phase56-1"></script>
+  <script src="aortic-consultations.js?v=phase57-1"></script>
+  <script src="synthese-ui.js?v=phase57-1"></script>
+  <script src="audit-ui.js?v=phase57-1"></script>
+  <script src="entretien-ui.js?v=phase57-1"></script>
+  <script src="activation-ui.js?v=phase57-1"></script>
+  <script src="document-import.js?v=phase57-1"></script>
+  <script src="activite-ui.js?v=phase57-1"></script>
+  <script src="visio-jitsi.js?v=phase57-1"></script>
+  <script src="video-pilotee.js?v=phase57-1"></script>
+  <script src="fiche-apa.js?v=phase57-1"></script>
+  <script src="inactivite.js?v=phase57-1"></script>
+  <script src="bilans-ui.js?v=phase57-1"></script>
+  <script src="etudes-ui.js?v=phase57-1"></script>
+  <script src="ville-hopital.js?v=phase57-1"></script>
+  <script src="qlibres-ui.js?v=phase57-1"></script>
+  <script src="parametres-ui.js?v=phase57-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -8808,7 +8808,86 @@
     initialsEl.value = (fi && li) ? (fi + '.' + li + '.') : '';
   }
 
-  function createPatientFromForm() {
+  /**
+   * Demande le motif avant d'enregistrer une modification.
+   *
+   * Le journal d'audit refuse une modification sans motif — c'est voulu, un
+   * motif facultatif n'est jamais rempli. Mais l'interface n'en demandait
+   * aucun : l'enregistrement échouait, et la fenêtre annonçait quand même
+   * « Fiche mise à jour ». On corrigeait une donnée clinique en croyant
+   * l'avoir enregistrée.
+   *
+   * La liste reprend exactement les codes acceptés par le serveur. S'ils
+   * divergeaient, on retrouverait le même échec silencieux.
+   */
+  const MOTIFS_MODIF = [
+    ['source',       'Valeur corrigée d\'après le document source'],
+    ['extraction_ia','Correction d\'une extraction automatique'],
+    ['saisie',       'Erreur de saisie'],
+    ['lecture_doc',  'Erreur de lecture du document'],
+    ['aberrante',    'Valeur aberrante écartée'],
+    ['complement',   'Complément d\'information reçu'],
+    ['protocole',    'Mise en conformité au protocole'],
+    ['autre',        'Autre (préciser)']
+  ];
+
+  function demanderMotif() {
+    return new Promise(resolve => {
+      const id = 'modalMotif';
+      document.getElementById(id)?.remove();
+      document.body.insertAdjacentHTML('beforeend', `
+        <div id="${id}" style="position:fixed; inset:0; background:rgba(11,21,48,.86); z-index:10070; display:flex; align-items:center; justify-content:center; padding:20px;">
+          <div style="background:white; border-radius:15px; padding:24px 26px; width:520px; max-width:94vw; box-shadow:0 24px 60px rgba(0,0,0,.35);">
+            <h3 style="margin:0 0 6px; font-size:17px; color:#0b1530;">Motif de la modification</h3>
+            <p style="margin:0 0 14px; font-size:12.5px; color:#64748b; line-height:1.6;">
+              Cette fiche contient des données cliniques. Le motif est enregistré
+              dans le journal des corrections, avec votre nom et la date.
+            </p>
+            <select id="mmCode" style="width:100%; padding:10px; font-size:13.5px;">
+              ${MOTIFS_MODIF.map(([c, l]) => `<option value="${c}">${l}</option>`).join('')}
+            </select>
+            <div id="mmTexteZone" style="display:none; margin-top:10px;">
+              <input id="mmTexte" type="text" placeholder="Précisez en quelques mots (5 caractères minimum)" style="width:100%; padding:10px; font-size:13.5px;" />
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:9px; margin-top:18px;">
+              <button type="button" id="mmAnnuler" class="btn-secondary">Annuler</button>
+              <button type="button" id="mmOk" class="btn-gradient">Enregistrer</button>
+            </div>
+          </div>
+        </div>`);
+
+      const boite = document.getElementById(id);
+      const code = document.getElementById('mmCode');
+      const zone = document.getElementById('mmTexteZone');
+      code.addEventListener('change', () => {
+        zone.style.display = code.value === 'autre' ? 'block' : 'none';
+      });
+      const fermer = v => { boite.remove(); resolve(v); };
+      document.getElementById('mmAnnuler').addEventListener('click', () => fermer(null));
+      document.getElementById('mmOk').addEventListener('click', () => {
+        const t = (document.getElementById('mmTexte')?.value || '').trim();
+        if (code.value === 'autre' && t.length < 5) {
+          alert('Le motif « Autre » demande une précision d\'au moins cinq caractères.');
+          return;
+        }
+        fermer({ code: code.value, texte: t || null });
+      });
+    });
+  }
+
+  async function createPatientFromForm() {
+    // En modification, on recueille le motif AVANT toute écriture. Annuler
+    // ici n'enregistre rien et ne prétend rien avoir enregistré.
+    if (window._editingPatientId) {
+      const m = await demanderMotif();
+      if (!m) return;
+      window._motifModification = m;
+    }
+    return createPatientFromFormInterne();
+  }
+  window.createPatientFromForm = createPatientFromForm;
+
+  function createPatientFromFormInterne() {
     // ==========================================================
     // Phase 13.9 — GARDE-FOU : refuse la création si la session serveur
     // n'est pas active (ex. « Continuer en mode démo », ou token expiré).
@@ -9040,6 +9119,23 @@
       const setModalStatus = (msg, ok) => {
         const z = document.getElementById('pcModalStatus');
         if (!z) return;
+        // La fenêtre annonçait « Fiche patient mise à jour » avant même de
+        // savoir si le serveur avait accepté. Avec un bandeau d'échec juste
+        // en dessous, le titre vert restait la première chose lue — et on
+        // repartait en croyant la correction enregistrée. Un échec doit se
+        // voir d'abord, et se lire partout.
+        if (!ok) {
+          const e = document.getElementById('pcModalEntete');
+          const t = document.getElementById('pcModalTitre');
+          const i = document.getElementById('pcModalIcone');
+          const c = document.getElementById('pcModalCorps');
+          if (e) e.style.background = 'linear-gradient(135deg,#b91c1c,#dc2626)';
+          if (t) t.textContent = 'Enregistrement refusé';
+          if (i) i.textContent = '⚠️';
+          if (c) c.innerHTML = '<p style="margin:0 0 10px; color:#991b1b; font-weight:600;">' +
+            'Rien n\'a été enregistré en base. Les modifications restent affichées à ' +
+            'l\'écran mais seront perdues au rechargement.</p>';
+        }
         z.style.display = 'block';
         z.style.cssText = 'display:block; margin-top:10px; padding:9px 12px; border-radius:9px; font-size:12.5px; font-weight:600; ' +
           (ok ? 'background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46;'
@@ -9056,12 +9152,20 @@
         try {
           const target = (window.patients || []).find(x => x.id === code) || newPatient;
           if (isEditing) {
+            // Le journal d'audit exige un motif : modifier une donnée
+            // clinique sans dire pourquoi rend le journal inexploitable le
+            // jour où on lui demandera des comptes. Il est recueilli avant
+            // l'envoi, et non deviné côté serveur — c'est le soignant qui
+            // sait pourquoi il corrige, pas la machine.
+            const motif = window._motifModification || { code: 'saisie', texte: null };
+            window._motifModification = null;
             await API.patients.update(code, {
               sex: target.sex, age: target.age, gene: target.gene, aorta: target.aorta,
               status: target.status, status_class: target.statusClass, progress: target.progress,
               risk_factor: target.riskFactor, risk_comment: target.riskComment,
               alterations: target.alterations, incidents: target.incidents,
-              civil: target.civil, medical: target.medical, study: target.study
+              civil: target.civil, medical: target.medical, study: target.study,
+              motif_code: motif.code, motif_texte: motif.texte
             });
           } else {
             const rep = await API.patients.create(target);
@@ -9210,14 +9314,14 @@
     const html = `
       <div id="patientCreatedModal" style="position:fixed; inset:0; background:rgba(11,21,48,0.72); z-index:10020; display:flex; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(4px);">
         <div style="background:white; border-radius:18px; width:520px; max-width:96vw; box-shadow:0 30px 80px rgba(0,0,0,0.30); overflow:hidden;">
-          <div style="padding:22px 26px; background:${grad}; color:white; text-align:center;">
-            <div style="font-size:36px; margin-bottom:4px;">${icone}</div>
-            <h3 style="margin:0; color:white; font-size:19px;">${titre}</h3>
+          <div id="pcModalEntete" style="padding:22px 26px; background:${grad}; color:white; text-align:center;">
+            <div id="pcModalIcone" style="font-size:36px; margin-bottom:4px;">${icone}</div>
+            <h3 id="pcModalTitre" style="margin:0; color:white; font-size:19px;">${titre}</h3>
             <p style="margin:6px 0 0; font-size:13px; opacity:0.95;">${firstName} ${lastName.toUpperCase()} — <strong>${code}</strong></p>
           </div>
           <div style="padding:20px 26px; font-size:13px; color:#0b1530; line-height:1.5;">
-            ${bodyMsg}
-            <p style="margin:0 0 0; color:#64748b; font-size:12px;">Vous pouvez maintenant créer un nouveau patient, consulter le dossier, ou télécharger un PDF de la fiche.</p>
+            <div id="pcModalCorps">${bodyMsg}
+            <p style="margin:0 0 0; color:#64748b; font-size:12px;">Vous pouvez maintenant créer un nouveau patient, consulter le dossier, ou télécharger un PDF de la fiche.</p></div>
             <!-- Phase 13.8 : statut réel de l'enregistrement en base de données -->
             <div id="pcModalStatus" style="display:none;"></div>
           </div>
