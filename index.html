@@ -18,35 +18,35 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase54-1"></script>
+  <script src="api-client.js?v=phase55-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase54-1"></script>
+  <script src="questionnaires-defs.js?v=phase55-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase54-1"></script>
+  <script src="medical-parsers.js?v=phase55-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase54-1"></script>
-  <script src="cpet-analyse.js?v=phase54-1"></script>
+  <script src="cpet-graph-preview.js?v=phase55-1"></script>
+  <script src="cpet-analyse.js?v=phase55-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase54-1"></script>
-  <script src="medical-record-ui.js?v=phase54-1"></script>
+  <script src="pdf-extractor.js?v=phase55-1"></script>
+  <script src="medical-record-ui.js?v=phase55-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase54-1"></script>
-  <script src="synthese-ui.js?v=phase54-1"></script>
-  <script src="audit-ui.js?v=phase54-1"></script>
-  <script src="entretien-ui.js?v=phase54-1"></script>
-  <script src="activation-ui.js?v=phase54-1"></script>
-  <script src="document-import.js?v=phase54-1"></script>
-  <script src="activite-ui.js?v=phase54-1"></script>
-  <script src="visio-jitsi.js?v=phase54-1"></script>
-  <script src="video-pilotee.js?v=phase54-1"></script>
-  <script src="fiche-apa.js?v=phase54-1"></script>
-  <script src="inactivite.js?v=phase54-1"></script>
-  <script src="bilans-ui.js?v=phase54-1"></script>
-  <script src="etudes-ui.js?v=phase54-1"></script>
-  <script src="ville-hopital.js?v=phase54-1"></script>
-  <script src="qlibres-ui.js?v=phase54-1"></script>
-  <script src="parametres-ui.js?v=phase54-1"></script>
+  <script src="aortic-consultations.js?v=phase55-1"></script>
+  <script src="synthese-ui.js?v=phase55-1"></script>
+  <script src="audit-ui.js?v=phase55-1"></script>
+  <script src="entretien-ui.js?v=phase55-1"></script>
+  <script src="activation-ui.js?v=phase55-1"></script>
+  <script src="document-import.js?v=phase55-1"></script>
+  <script src="activite-ui.js?v=phase55-1"></script>
+  <script src="visio-jitsi.js?v=phase55-1"></script>
+  <script src="video-pilotee.js?v=phase55-1"></script>
+  <script src="fiche-apa.js?v=phase55-1"></script>
+  <script src="inactivite.js?v=phase55-1"></script>
+  <script src="bilans-ui.js?v=phase55-1"></script>
+  <script src="etudes-ui.js?v=phase55-1"></script>
+  <script src="ville-hopital.js?v=phase55-1"></script>
+  <script src="qlibres-ui.js?v=phase55-1"></script>
+  <script src="parametres-ui.js?v=phase55-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3680,7 +3680,8 @@
                 </div>
                 <div>
                   <label class="control-label" for="cf_aorticFirstValue">Diamètre (mm)</label>
-                  <input type="number" step="0.1" id="cf_aorticFirstValue" placeholder="ex. 38.5" />
+                  <input type="number" step="0.1" id="cf_aorticFirstValue" placeholder="ex. 38.5" oninput="verifierAorte(this)" />
+                  <div data-alerte-pour="cf_aorticFirstValue" style="display:none; margin-top:5px; font-size:11.5px; color:#92400e; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:6px 9px; line-height:1.5;"></div>
                 </div>
                 <div>
                   <label class="control-label" for="cf_aorticFirstSite">Site mesuré</label>
@@ -3713,7 +3714,8 @@
                 </div>
                 <div>
                   <label class="control-label" for="cf_aorticTodayValue">Diamètre du jour (mm)</label>
-                  <input type="number" step="0.1" id="cf_aorticTodayValue" placeholder="ex. 39" />
+                  <input type="number" step="0.1" id="cf_aorticTodayValue" placeholder="ex. 39" oninput="verifierAorte(this)" />
+                  <div data-alerte-pour="cf_aorticTodayValue" style="display:none; margin-top:5px; font-size:11.5px; color:#92400e; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:6px 9px; line-height:1.5;"></div>
                 </div>
                 <div>
                   <label class="control-label" for="cf_aorticTodaySite">Site mesuré</label>
@@ -4205,6 +4207,20 @@
             <article class="card chart-card">
               <div class="chart-header"><div><h3>Dilatation de l'aorte</h3><p>Suivi longitudinal avec validation investigateur.</p></div></div>
               <svg class="svg-chart" id="aortaChart" viewBox="0 0 520 240" preserveAspectRatio="xMidYMid meet"></svg>
+              <!-- Phase 55 — Une courbe sans légende de provenance laisse
+                   croire que tous ses points ont la même valeur de preuve.
+                   Ils ne l'ont pas : la plupart sont encore des valeurs
+                   rapportées, en attendant les comptes rendus. -->
+              <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-top:10px; font-size:11.5px; color:#475569;">
+                <span style="display:inline-flex; align-items:center; gap:6px;">
+                  <svg width="16" height="16"><circle cx="8" cy="8" r="5.5" fill="white" stroke="#07111f" stroke-width="2.6"/></svg>
+                  Mesure — compte rendu d'échocardiographie
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:6px;">
+                  <svg width="16" height="16"><circle cx="8" cy="8" r="5.5" fill="white" stroke="#b45309" stroke-width="2.6" stroke-dasharray="3 2.5"/></svg>
+                  <span style="color:#92400e;">Déclarée — rapportée, en attente du compte rendu</span>
+                </span>
+              </div>
             </article>
             <article class="card chart-card">
               <div class="chart-header"><div><h3>VO₂ — vue détaillée</h3><p>Toutes les évaluations avec comparaisons. Cliquez sur un point pour ouvrir le détail complet.</p></div></div>
@@ -6315,6 +6331,9 @@
       chartTitle,
       metricKey,
       pointMeta: (evalIndices || selectedPatient.evaluations.map((_, i) => i)).map(idx => ({ evalIndex: idx, ev: selectedPatient.evaluations[idx] })),
+      // Le niveau de preuve voyage avec les points : il décide de leur tracé.
+      niveaux: (evalIndices || selectedPatient.evaluations.map((_, i) => i))
+        .map(idx => (selectedPatient.evaluations[idx] || {}).niveauPreuve || 'declaree'),
       onPointClick: (evalIndex, title) => openEvaluationDetail(evalIndex, title || chartTitle)
     };
   }
@@ -7729,11 +7748,21 @@
       options.onPointClick(meta.evalIndex ?? i, options.chartTitle || unitLabel, options.metricKey, meta.ev);
     };
 
+    // Niveau de preuve point par point. Un point déclaré — valeur rapportée en
+    // attendant le compte rendu — est tracé en ambre et en pointillés. Il
+    // reste sur la courbe, parce qu'il permet de travailler ; il ne se
+    // confond plus avec une mesure, parce qu'il n'en est pas une.
+    const niveaux = options.niveaux || [];
     mainValues.forEach((v, i) => {
-      const dot = drawDot(svg, x(i), y(v), '#07111f', true);
+      const declare = niveaux[i] === 'declaree';
+      const dot = drawDot(svg, x(i), y(v), declare ? '#b45309' : '#07111f', true);
+      if (declare) dot.setAttribute('stroke-dasharray', '3 2.5');
       const label = labels && labels[i] ? labels[i] : `Point ${i + 1}`;
       const title = makeSvg('title', {});
-      title.textContent = `${label} — ${unitLabel}: ${v}. Cliquez pour details VO2/SV1/SV2.`;
+      title.textContent = `${label} — ${unitLabel}: ${v}.` +
+        (declare ? ' Valeur déclarée, non vérifiée : en attente du compte rendu.'
+                 : ' Mesure issue du document de référence.') +
+        ' Cliquez pour le détail.';
       dot.appendChild(title);
       if (clickable) {
         dot.classList.add('chart-point-clickable');
@@ -8060,6 +8089,38 @@
    * affichages tirés de deux endroits finiraient par diverger, et c'est
    * exactement ce qui fait écrire une donnée dans le mauvais dossier.
    */
+  /**
+   * Garde-fou de vraisemblance sur une valeur aortique.
+   *
+   * Un 19 mm s'est glissé dans un dossier sans que rien ne le signale. Pour
+   * des sinus de Valsalva chez l'adulte, c'est hors de tout — mais la machine
+   * n'a pas à trancher : un enfant, un segment inhabituel, un report partiel
+   * existent. Elle avertit, elle ne bloque pas. Refuser la saisie aurait
+   * empêché d'enregistrer des cas légitimes, et poussé à contourner.
+   */
+  function verifierAorte(champ) {
+    if (!champ) return;
+    const zone = document.querySelector('[data-alerte-pour="' + champ.id + '"]');
+    if (!zone) return;
+    const v = parseFloat(String(champ.value).replace(',', '.'));
+    if (!isFinite(v) || champ.value === '') { zone.style.display = 'none'; return; }
+
+    let msg = '';
+    if (v < 15)      msg = '<strong>' + v + ' mm</strong> — inhabituellement bas pour un adulte. ' +
+                           'Vérifiez le compte rendu : s\'agit-il bien d\'un diamètre en millimètres ?';
+    else if (v > 90) msg = '<strong>' + v + ' mm</strong> — au-delà de toute valeur attendue. ' +
+                           'Vérifiez l\'unité et le segment mesuré.';
+    else if (v >= 45) msg = '<strong>' + v + ' mm</strong> — au seuil chirurgical habituellement retenu. ' +
+                           'La valeur est enregistrée telle quelle.';
+
+    zone.innerHTML = msg;
+    zone.style.display = msg ? 'block' : 'none';
+    zone.style.background = v >= 45 && v <= 90 ? '#fef2f2' : '#fffbeb';
+    zone.style.borderColor = v >= 45 && v <= 90 ? '#fecaca' : '#fde68a';
+    zone.style.color = v >= 45 && v <= 90 ? '#991b1b' : '#92400e';
+  }
+  window.verifierAorte = verifierAorte;
+
   function majPastilleCreation() {
     const el = document.getElementById('quickCreationCode');
     if (!el) return;
@@ -14041,7 +14102,10 @@
         sv2Vo2:  n(s.sv2Vo2),
         oues:    n(s.oues),
         natureVo2: s.natureVo2 || null,
-        zones:   s.zones || null
+        zones:   s.zones || null,
+        // Mesurée au document de référence, ou simplement déclarée ?
+        // La distinction suit la donnée jusqu'au point de la courbe.
+        niveauPreuve: e.niveau_preuve || 'declaree'
       });
     }
 

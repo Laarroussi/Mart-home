@@ -39,6 +39,18 @@ function jour(v) {
   } catch (_) { return null; }
 }
 
+/**
+ * Niveau de preuve déduit de l'origine de la valeur.
+ *
+ * Seul le compte rendu d'échocardiographie est le document de référence pour
+ * l'aorte. Une consultation retranscrit une mesure, elle ne la produit pas ;
+ * un formulaire encore moins. Les deux restent affichés — ils permettent de
+ * travailler avant l'arrivée des examens — mais distingués.
+ */
+function niveauDepuisDetail(detail) {
+  return /échocardiographie/i.test(String(detail || '')) ? 'mesure' : 'declaree';
+}
+
 function nombre(v) {
   if (v == null || v === '') return null;
   const n = Number(v);
@@ -154,19 +166,27 @@ async function synchroniser(patientId, parQui) {
 
       const r = await query(
         `INSERT INTO evaluations (patient_id, eval_id, label, eval_date, aorta, vo2,
-                                  validated, note, source, source_detail, maj_le)
-              VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 'document', $8, NOW())
+                                  validated, note, source, source_detail,
+                                  niveau_preuve, maj_le)
+              VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 'document', $8, $9, NOW())
          ON CONFLICT (patient_id, eval_date) WHERE source = 'document'
          DO UPDATE SET aorta = COALESCE(EXCLUDED.aorta, evaluations.aorta),
                        vo2   = COALESCE(EXCLUDED.vo2,   evaluations.vo2),
                        source_detail = EXCLUDED.source_detail,
+                       -- Une mesure ne redevient jamais déclarée : le jour où
+                       -- l'échocardiographie arrive, elle prend la place du
+                       -- chiffre saisi, et ce niveau ne redescend pas.
+                       niveau_preuve = CASE
+                         WHEN EXCLUDED.niveau_preuve = 'mesure' THEN 'mesure'
+                         ELSE evaluations.niveau_preuve END,
                        maj_le = NOW()
          RETURNING (xmax = 0) AS creee`,
         [patientId, prochain,
          'Document — ' + new Date(date).toLocaleDateString('fr-FR'),
          date, mesures.aorta, mesures.vo2,
          'Déduite d\'une pièce versée (' + (detail || 'document') + '). À valider.',
-         detail || null]
+         detail || null,
+         niveauDepuisDetail(detail)]
       );
       if (r.rows[0] && r.rows[0].creee) resume.creees++; else resume.majs++;
     } catch (e) {

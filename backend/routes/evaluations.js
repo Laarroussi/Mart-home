@@ -61,12 +61,18 @@ router.post('/:patientId', requireAuth, requireRole('principal_admin', 'investig
       // d'entraînement affichées pendant les séances ; sans elle, la
       // plateforme retombait sur la formule « 220 moins l'âge ».
       `INSERT INTO evaluations (patient_id, eval_id, label, eval_date, vo2, sv1, sv2, ve_vco2_slope, watts, fc_max,
-                                force_kg, sf36, gpaq, aorta, validated, note, thresholds)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
+                                force_kg, sf36, gpaq, aorta, validated, note, thresholds,
+                                niveau_preuve)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
       [req.params.patientId, evalId, ev.label || ('Évaluation ' + evalId), ev.date,
        ev.vo2, ev.sv1, ev.sv2, ev.ve_vco2_slope, ev.watts, ev.fc_max,
        ev.force, ev.sf36, ev.gpaq, ev.aorta, ev.validated !== false, ev.note || '',
-       JSON.stringify(ev.thresholds || {})]
+       JSON.stringify(ev.thresholds || {}),
+       // Une évaluation portant un VO2 vient d'un fichier d'épreuve d'effort
+       // analysé cycle par cycle : c'est une mesure. Le reste est déclaré
+       // jusqu'à preuve du contraire — le doute profite à la prudence, pas à
+       // l'apparence de précision.
+       (ev.niveau_preuve === 'mesure' || ev.vo2 != null) ? 'mesure' : 'declaree']
     );
     res.status(201).json({ evaluation: rows[0] });
   } catch (err) { next(err); }
@@ -75,7 +81,7 @@ router.post('/:patientId', requireAuth, requireRole('principal_admin', 'investig
 /** PATCH /api/evaluations/:id — Modifier une éval (notamment ajouter vo2_data/pulse_data/thresholds) */
 router.patch('/by-id/:id', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
-    const allowed = ['label','eval_date','vo2','sv1','sv2','ve_vco2_slope','watts','fc_max','force_kg','sf36','gpaq','aorta','validated','note','vo2_data','pulse_data','thresholds'];
+    const allowed = ['label','eval_date','vo2','sv1','sv2','ve_vco2_slope','watts','fc_max','force_kg','sf36','gpaq','aorta','validated','note','vo2_data','pulse_data','thresholds','niveau_preuve'];
     const fields = []; const params = [];
     for (const k of allowed) {
       if (req.body[k] !== undefined) {
