@@ -18,35 +18,35 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase52-1"></script>
+  <script src="api-client.js?v=phase53-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase52-1"></script>
+  <script src="questionnaires-defs.js?v=phase53-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase52-1"></script>
+  <script src="medical-parsers.js?v=phase53-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase52-1"></script>
-  <script src="cpet-analyse.js?v=phase52-1"></script>
+  <script src="cpet-graph-preview.js?v=phase53-1"></script>
+  <script src="cpet-analyse.js?v=phase53-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase52-1"></script>
-  <script src="medical-record-ui.js?v=phase52-1"></script>
+  <script src="pdf-extractor.js?v=phase53-1"></script>
+  <script src="medical-record-ui.js?v=phase53-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase52-1"></script>
-  <script src="synthese-ui.js?v=phase52-1"></script>
-  <script src="audit-ui.js?v=phase52-1"></script>
-  <script src="entretien-ui.js?v=phase52-1"></script>
-  <script src="activation-ui.js?v=phase52-1"></script>
-  <script src="document-import.js?v=phase52-1"></script>
-  <script src="activite-ui.js?v=phase52-1"></script>
-  <script src="visio-jitsi.js?v=phase52-1"></script>
-  <script src="video-pilotee.js?v=phase52-1"></script>
-  <script src="fiche-apa.js?v=phase52-1"></script>
-  <script src="inactivite.js?v=phase52-1"></script>
-  <script src="bilans-ui.js?v=phase52-1"></script>
-  <script src="etudes-ui.js?v=phase52-1"></script>
-  <script src="ville-hopital.js?v=phase52-1"></script>
-  <script src="qlibres-ui.js?v=phase52-1"></script>
-  <script src="parametres-ui.js?v=phase52-1"></script>
+  <script src="aortic-consultations.js?v=phase53-1"></script>
+  <script src="synthese-ui.js?v=phase53-1"></script>
+  <script src="audit-ui.js?v=phase53-1"></script>
+  <script src="entretien-ui.js?v=phase53-1"></script>
+  <script src="activation-ui.js?v=phase53-1"></script>
+  <script src="document-import.js?v=phase53-1"></script>
+  <script src="activite-ui.js?v=phase53-1"></script>
+  <script src="visio-jitsi.js?v=phase53-1"></script>
+  <script src="video-pilotee.js?v=phase53-1"></script>
+  <script src="fiche-apa.js?v=phase53-1"></script>
+  <script src="inactivite.js?v=phase53-1"></script>
+  <script src="bilans-ui.js?v=phase53-1"></script>
+  <script src="etudes-ui.js?v=phase53-1"></script>
+  <script src="ville-hopital.js?v=phase53-1"></script>
+  <script src="qlibres-ui.js?v=phase53-1"></script>
+  <script src="parametres-ui.js?v=phase53-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3184,6 +3184,15 @@
                plus de risque que de bénéfice. -->
           <span class="status ok" id="quickStatus" style="display:none;">Stable</span>
           <select id="quickPatientSelect"></select>
+          <!-- Phase 52 — Pendant la création, ce sélecteur montrait un AUTRE
+               patient (celui ouvert avant) juste au-dessus du formulaire. On
+               croyait lire le code en cours de saisie. Dans un dossier
+               clinique, afficher une identité qui n'est pas celle que l'on
+               est en train de remplir est une invitation à la confondre.
+               Il cède donc la place au code réellement attribué. -->
+          <span id="quickCreationCode" style="display:none; padding:7px 14px; border-radius:99px;
+                background:#ecfeff; border:1px solid #a5f3fc; color:#0e7490; font-weight:800;
+                font-size:12.5px; white-space:nowrap;">Nouveau dossier</span>
         </div>
       </div>
 
@@ -6131,6 +6140,11 @@
     $('workspaceSubtitle').textContent = titles[tabId][1];
     const quickPatientBox = document.querySelector('.quick-patient');
     if (quickPatientBox) quickPatientBox.style.display = tabId === 'accueil' ? 'none' : 'flex';
+    // Sur la création, on remplace le sélecteur par le code en cours.
+    const selQ = $('quickPatientSelect'), pastilleQ = $('quickCreationCode');
+    if (selQ)      selQ.style.display      = tabId === 'creation' ? 'none' : '';
+    if (pastilleQ) pastilleQ.style.display = tabId === 'creation' ? 'inline-flex' : 'none';
+    if (tabId === 'creation') { try { majPastilleCreation(); } catch (_) {} }
     if (tabId === 'dossier') {
       renderPatientFile();
       // Le dossier s'ouvre toujours sur la synthèse : c'est ce qu'on relit
@@ -8034,8 +8048,31 @@
     if (!code) return;
     const n = String((num && num.value) || '').replace(/\D/g, '');
     code.value = n ? categorieChoisie() + '-' + n.padStart(3, '0') : '';
+    majPastilleCreation();
   }
   window.majCodeAssemble = majCodeAssemble;
+
+  /**
+   * La pastille du bandeau pendant la création.
+   *
+   * Elle affiche le code réellement attribué à la fiche en cours — celui de
+   * `cf_code`, la même source que la validation et l'enregistrement. Deux
+   * affichages tirés de deux endroits finiraient par diverger, et c'est
+   * exactement ce qui fait écrire une donnée dans le mauvais dossier.
+   */
+  function majPastilleCreation() {
+    const el = document.getElementById('quickCreationCode');
+    if (!el) return;
+    const code = ($('cf_code') && $('cf_code').value) || '';
+    const edition = !!window._editingPatientId;
+    el.textContent = code
+      ? (edition ? 'Modification · ' + code : 'Nouveau dossier · ' + code)
+      : 'Nouveau dossier';
+    el.style.background  = edition ? '#fef3c7' : '#ecfeff';
+    el.style.borderColor = edition ? '#fcd34d' : '#a5f3fc';
+    el.style.color       = edition ? '#92400e' : '#0e7490';
+  }
+  window.majPastilleCreation = majPastilleCreation;
 
   /**
    * Nom d'hôpital ramené à la ville, en majuscules et sans accent.
@@ -8843,8 +8880,22 @@
       }
       window._editingPatientId = null;
     } else {
-      // Ajout à la cohorte
-      patients.push(newPatient);
+      // Ajout à la cohorte.
+      //
+      // Phase 52 — On remplace si le code est déjà présent, au lieu d'ajouter
+      // à l'aveugle. Un même code apparaissait deux fois dans la liste
+      // déroulante : impossible de savoir laquelle des deux lignes on
+      // sélectionnait, et deux entrées pour un même patient dans une cohorte
+      // de recherche est une faute de données, pas un défaut d'affichage.
+      const dejaLa = patients.findIndex(x => x && x.id === code);
+      if (dejaLa >= 0) {
+        newPatient.evaluations   = patients[dejaLa].evaluations   || newPatient.evaluations;
+        newPatient.notifications = patients[dejaLa].notifications || newPatient.notifications;
+        patients[dejaLa] = newPatient;
+        console.warn('[creation] code déjà présent en mémoire, ligne remplacée :', code);
+      } else {
+        patients.push(newPatient);
+      }
     }
 
     // ==========================================================
@@ -14075,8 +14126,18 @@
         // pseudonymisation à une liste intermédiaire.
         const finalList = (typeof window.applyPseudonymization === 'function')
           ? window.applyPseudonymization(adapted) : adapted;
+        // Phase 52 — Dédoublonnage par code, dernière ligne gagnante.
+        // Un doublon venu du serveur est impossible, le code y est clé
+        // primaire ; il naît côté navigateur, d'un ajout local non suivi d'un
+        // rechargement. Le filet coûte trois lignes ; deux lignes portant le
+        // même code dans une cohorte de recherche coûtent beaucoup plus.
+        const parCode = new Map();
+        finalList.forEach(p => { if (p && p.id) parCode.set(p.id, p); });
+        if (parCode.size !== finalList.length) {
+          console.warn('[patients] doublons écartés :', finalList.length - parCode.size);
+        }
         window.patients.length = 0;
-        finalList.forEach(p => window.patients.push(p));
+        parCode.forEach(p => window.patients.push(p));
         window.patients._fromApi = true;
         // On journalise ce qui est RÉELLEMENT en mémoire, pas ce qui a été
         // reçu : c'est l'écart entre les deux qui a masqué ce défaut.
