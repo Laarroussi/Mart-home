@@ -18,39 +18,39 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase65-1"></script>
+  <script src="api-client.js?v=phase66-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase65-1"></script>
+  <script src="questionnaires-defs.js?v=phase66-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase65-1"></script>
+  <script src="medical-parsers.js?v=phase66-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase65-1"></script>
-  <script src="cpet-analyse.js?v=phase65-1"></script>
+  <script src="cpet-graph-preview.js?v=phase66-1"></script>
+  <script src="cpet-analyse.js?v=phase66-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase65-1"></script>
-  <script src="medical-record-ui.js?v=phase65-1"></script>
+  <script src="pdf-extractor.js?v=phase66-1"></script>
+  <script src="medical-record-ui.js?v=phase66-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase65-1"></script>
-  <script src="synthese-ui.js?v=phase65-1"></script>
-  <script src="audit-ui.js?v=phase65-1"></script>
-  <script src="entretien-ui.js?v=phase65-1"></script>
-  <script src="activation-ui.js?v=phase65-1"></script>
-  <script src="document-import.js?v=phase65-1"></script>
-  <script src="activite-ui.js?v=phase65-1"></script>
-  <script src="cpet-detail.js?v=phase65-1"></script>
-  <script src="echo-calculs.js?v=phase65-1"></script>
-  <script src="echo-detail.js?v=phase65-1"></script>
-  <script src="accueil-activite.js?v=phase65-1"></script>
-  <script src="visio-jitsi.js?v=phase65-1"></script>
-  <script src="video-pilotee.js?v=phase65-1"></script>
-  <script src="fiche-apa.js?v=phase65-1"></script>
-  <script src="inactivite.js?v=phase65-1"></script>
-  <script src="bilans-ui.js?v=phase65-1"></script>
-  <script src="etudes-ui.js?v=phase65-1"></script>
-  <script src="ville-hopital.js?v=phase65-1"></script>
-  <script src="qlibres-ui.js?v=phase65-1"></script>
-  <script src="parametres-ui.js?v=phase65-1"></script>
+  <script src="aortic-consultations.js?v=phase66-1"></script>
+  <script src="synthese-ui.js?v=phase66-1"></script>
+  <script src="audit-ui.js?v=phase66-1"></script>
+  <script src="entretien-ui.js?v=phase66-1"></script>
+  <script src="activation-ui.js?v=phase66-1"></script>
+  <script src="document-import.js?v=phase66-1"></script>
+  <script src="activite-ui.js?v=phase66-1"></script>
+  <script src="cpet-detail.js?v=phase66-1"></script>
+  <script src="echo-calculs.js?v=phase66-1"></script>
+  <script src="echo-detail.js?v=phase66-1"></script>
+  <script src="accueil-activite.js?v=phase66-1"></script>
+  <script src="visio-jitsi.js?v=phase66-1"></script>
+  <script src="video-pilotee.js?v=phase66-1"></script>
+  <script src="fiche-apa.js?v=phase66-1"></script>
+  <script src="inactivite.js?v=phase66-1"></script>
+  <script src="bilans-ui.js?v=phase66-1"></script>
+  <script src="etudes-ui.js?v=phase66-1"></script>
+  <script src="ville-hopital.js?v=phase66-1"></script>
+  <script src="qlibres-ui.js?v=phase66-1"></script>
+  <script src="parametres-ui.js?v=phase66-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -18084,17 +18084,17 @@
           // Phase 13.11 : l'ancienne colonne AORTE_BASELINE lisait un champ hérité
           // toujours vide (affichait « 0 »). Remplacée par les mesures réelles du
           // suivi aortique, visibles dès la section « Données cliniques ».
-          cols.push({ key:'aorte_diag_mm', label:'AORTE_DIAG_mm', section:sec, get: p => {
+          cols.push({ key:'aorte_diag_mm', label:'AORTE_DEPART_mm', section:sec, get: p => {
             const v = p._aortic && p._aortic.first_value_mm;
             return (v == null || v === '') ? '—' : parseFloat(v).toFixed(1);
           }});
-          cols.push({ key:'aorte_diag_date', label:'AORTE_DIAG_DATE', section:sec,
+          cols.push({ key:'aorte_diag_date', label:'AORTE_DEPART_DATE', section:sec,
             get: p => fmtVisit(p._aortic && p._aortic.first_diagnosis_date, '—') || '—' });
-          cols.push({ key:'aorte_actuel_mm', label:'AORTE_ACTUEL_mm', section:sec, get: p => {
+          cols.push({ key:'aorte_actuel_mm', label:'AORTE_RECENTE_mm', section:sec, get: p => {
             const v = p._aortic && p._aortic.current_value_mm;
             return (v == null || v === '') ? '—' : parseFloat(v).toFixed(1);
           }});
-          cols.push({ key:'aorte_actuel_date', label:'AORTE_ACTUEL_DATE', section:sec,
+          cols.push({ key:'aorte_actuel_date', label:'AORTE_RECENTE_DATE', section:sec,
             get: p => fmtVisit(p._aortic && p._aortic.current_date, '—') || '—' });
         }
         else if (sec.id === 'cpet' || sec.id === 'echo' || sec.id === 'force') {
@@ -18104,17 +18104,17 @@
           // tableau unifié : seules les anciennes évaluations y figuraient.
           if (sec.id === 'echo') {
             const num = v => (v == null || v === '') ? null : parseFloat(v);
-            cols.push({ key:'AO_DIAG_DATE', label:'AORTE_DIAG_DATE', section:sec,
+            cols.push({ key:'AO_DIAG_DATE', label:'AORTE_DEPART_DATE', section:sec,
               get: p => fmtVisit(p._aortic && p._aortic.first_diagnosis_date, '—') || '—' });
-            cols.push({ key:'AO_DIAG_MM', label:'AORTE_DIAG_mm', section:sec,
+            cols.push({ key:'AO_DIAG_MM', label:'AORTE_DEPART_mm', section:sec,
               get: p => { const v = num(p._aortic && p._aortic.first_value_mm); return v != null ? v.toFixed(1) : '—'; } });
-            cols.push({ key:'AO_DIAG_SITE', label:'AORTE_DIAG_SITE', section:sec,
+            cols.push({ key:'AO_DIAG_SITE', label:'AORTE_DEPART_NIVEAU', section:sec,
               get: p => (p._aortic && p._aortic.first_site) || '—' });
-            cols.push({ key:'AO_ACT_DATE', label:'AORTE_ACTUEL_DATE', section:sec,
+            cols.push({ key:'AO_ACT_DATE', label:'AORTE_RECENTE_DATE', section:sec,
               get: p => fmtVisit(p._aortic && p._aortic.current_date, '—') || '—' });
-            cols.push({ key:'AO_ACT_MM', label:'AORTE_ACTUEL_mm', section:sec,
+            cols.push({ key:'AO_ACT_MM', label:'AORTE_RECENTE_mm', section:sec,
               get: p => { const v = num(p._aortic && p._aortic.current_value_mm); return v != null ? v.toFixed(1) : '—'; } });
-            cols.push({ key:'AO_ACT_SITE', label:'AORTE_ACTUEL_SITE', section:sec,
+            cols.push({ key:'AO_ACT_SITE', label:'AORTE_RECENTE_NIVEAU', section:sec,
               get: p => (p._aortic && p._aortic.current_site) || '—' });
             cols.push({ key:'AO_DELTA', label:'AORTE_DELTA_mm', section:sec, get: p => {
               const f = num(p._aortic && p._aortic.first_value_mm);
@@ -18134,7 +18134,7 @@
                 get: p => fmtVisit((p._consult||[])[i-1] && p._consult[i-1].consultation_date, '—') || '—' });
               cols.push({ key:'C'+i+'_AORTE', label:'C'+i+'_AORTE_mm', section:sec,
                 get: p => { const c = (p._consult||[])[i-1]; const v = c && c.aortic_value_mm != null ? parseFloat(c.aortic_value_mm) : null; return v != null ? v.toFixed(1) : '—'; } });
-              cols.push({ key:'C'+i+'_SITE', label:'C'+i+'_SITE', section:sec,
+              cols.push({ key:'C'+i+'_SITE', label:'C'+i+'_NIVEAU', section:sec,
                 get: p => ((p._consult||[])[i-1] || {}).aortic_site || '—' });
               cols.push({ key:'C'+i+'_METHODE', label:'C'+i+'_METHODE', section:sec,
                 get: p => ((p._consult||[])[i-1] || {}).aortic_method || '—' });
@@ -18155,6 +18155,13 @@
             }
             if (sec.id === 'echo') {
               cols.push({ key:'V'+i+'_AORTE',   label:'V'+i+'_AORTE_mm', section:sec, get: p => ((p.evaluations||[])[i-1]||{}).aorta ?? '—' });
+            // Un point de courbe sans son niveau de preuve se lit comme une
+            // mesure. La plupart n'en sont pas : ce sont des valeurs
+            // rapportées, en attendant les comptes rendus. La colonne le dit.
+            cols.push({ key:'V'+i+'_AORTE_PREUVE', label:'V'+i+'_AORTE_PREUVE', section:sec,
+              get: p => { const e = (p.evaluations||[])[i-1];
+                          if (!e || e.aorta == null) return '—';
+                          return e.niveauPreuve === 'mesure' ? 'mesuree' : 'declaree'; } });
             }
             if (sec.id === 'force') {
               cols.push({ key:'V'+i+'_FORCE',   label:'V'+i+'_FORCE_kg', section:sec, get: p => ((p.evaluations||[])[i-1]||{}).force ?? '—' });
@@ -18333,6 +18340,23 @@
         info.innerHTML = '📊 <strong>Tableau unifié</strong> — Sections : ' +
           selected.map(s => `<span style="background:${s.color}; color:white; padding:1px 7px; border-radius:99px; font-size:11.5px; font-weight:700;">${s.short}</span>`).join(' ') +
           ' · <strong>' + patients.length + '</strong> patient(s) · <strong>' + cols.length + '</strong> colonne(s) · cellules vides = "—"';
+
+        // Phase 66 — « AORTE » ne dit pas quel segment a été mesuré. Anneau,
+        // sinus de Valsalva, jonction et aorte ascendante n'ont ni les mêmes
+        // dimensions ni le même sens clinique, et une colonne qui les
+        // confond accepte 13 mm comme 43 mm sans broncher. C'est ce qui s'est
+        // produit deux fois. La légende nomme ce que chaque colonne contient.
+        if (selected.some(s => s.id === 'aorte' || s.id === 'ett' || s.id === 'cpet')) {
+          info.innerHTML += '<div style="margin-top:7px; font-size:11.5px; color:#475569; line-height:1.6; font-weight:400;">' +
+            '<strong>AORTE_…</strong> : le diamètre retenu pour le suivi. Le segment mesuré est donné par la ' +
+            'colonne <strong>…_NIVEAU</strong> juste à côté — dans le syndrome de Marfan, la référence est le ' +
+            '<strong>sinus de Valsalva</strong>. Un niveau vide signifie que personne ne l\'a renseigné : ' +
+            'la valeur peut porter sur un autre segment.<br>' +
+            '<strong>V…_AORTE_PREUVE</strong> : <em>mesurée</em> = issue d\'un compte rendu d\'échocardiographie · ' +
+            '<em>declaree</em> = rapportée, en attente du compte rendu.<br>' +
+            '<strong>E…_VALSALVA_mm</strong> : la mesure échographique elle-même, sans ambiguïté de niveau.' +
+            '</div>';
+        }
       }
 
       if (!patients.length) {
