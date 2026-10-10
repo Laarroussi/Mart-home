@@ -365,12 +365,23 @@ const CHAMPS_NUM_ECHO = [
   'mvg_g','mvg_ind_g_m2','h_sur_r','vtd_a4c_ml','vts_a4c_ml','vtd_a2c_ml','vts_a2c_ml',
   'vtd_bp_ml','vts_bp_ml','vtd_bp_ind_ml_m2','vts_bp_ind_ml_m2','ve_bp_ml','ve_bp_ind_ml_m2',
   'vts_og_bp_ml','vts_og_bp_ind_ml_m2','vit_pic_e_vm_cm_s','vit_pic_a_vm_cm_s','td_vm_s',
-  'vmax_va_cm_s','itv_va_cm','grad_max_va_mmhg','vmax_it_cm_s','grad_max_it_mmhg','confiance'
+  'vmax_va_cm_s','itv_va_cm','grad_max_va_mmhg','vmax_it_cm_s','grad_max_it_mmhg',
+  // Migration 033 — compléments. On extrait les GRANDEURS, pas les rapports :
+  // E/e', E/A, distensibilité et compliance sont recalculés à l'affichage à
+  // partir de ces colonnes. Un rapport extrait d'un texte ne se vérifie plus.
+  'z_score_sinus','z_score_anneau','z_score_ascendante',
+  'aorte_systole_mm','aorte_diastole_mm','pa_systolique_mmhg','pa_diastolique_mmhg',
+  'gls_pct','e_prime_septal_cm_s','e_prime_lateral_cm_s','paps_mmhg',
+  'distensibilite_rapportee','compliance_rapportee',
+  'confiance'
 ];
 const CHAMPS_TXT_ECHO = [
   'centre','operateur','aorte_site_max','vg_texte','vd_texte','oreillettes_texte',
   'valve_mitrale_texte','valve_tricuspide_texte','valve_aortique_texte',
-  'gros_vaisseaux_texte','conclusion','aorte_operee_type'
+  'gros_vaisseaux_texte','conclusion','aorte_operee_type',
+  // Le référentiel du Z-score et la méthode de FEVG sont indissociables de
+  // leurs valeurs : sans eux, les chiffres ne sont pas interprétables.
+  'z_score_reference','fevg_methode','gls_logiciel','aorte_site_cycle'
 ];
 
 async function analyserEcho(texte) {
