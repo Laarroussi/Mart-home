@@ -34,15 +34,20 @@
 -- ============================================================
 
 -- --- 1. Avant : ce qui va partir, et ce qui reste ---
-SELECT label, count(*) AS n,
-       CASE WHEN label IN ('QR','VO2','VCO2','VE','FC','SpO2','METS','VO2/kg',
-                           'VE/VO2','VE/VCO2','FR','BF','VT','PetCO2','PetO2',
-                           'Puissance','Power','Watt','RER','Phase')
-            THEN 'À RETIRER — cycle respiratoire'
-            ELSE 'conservé' END AS sort
+SELECT label, event_date, count(*) AS n,
+       CASE
+         WHEN label ILIKE '%ambiant%' OR label ILIKE '%débitmètre%'
+           OR label ILIKE '%debitmetre%' OR label ILIKE '%barométrique%'
+           THEN 'À RETIRER — condition d''étalonnage'
+         WHEN label IN ('QR','VO2','VCO2','VE','FC','SpO2','METS','VO2/kg',
+                        'VE/VO2','VE/VCO2','FR','BF','VT','PetCO2','PetO2',
+                        'Puissance','Power','Watt','RER','Phase')
+          AND count(*) >= 2
+           THEN 'À RETIRER — répété le même jour'
+         ELSE 'conservé' END AS sort
   FROM medical_timeline
  WHERE patient_id = 'MRF-003'          -- ← LE CODE PATIENT
- GROUP BY label ORDER BY n DESC;
+ GROUP BY label, event_date ORDER BY n DESC, label;
 
 DO $$
 DECLARE
@@ -59,26 +64,44 @@ DECLARE
                         'Puissance','Power','Watt','RER','Phase'];
   n BIGINT;
 BEGIN
-  -- Garde-fou : on ne retire une ligne que si le même libellé apparaît
-  -- plusieurs fois pour ce patient. Une mesure unique nommée « VO2 » peut
-  -- venir d'un compte rendu de consultation et mérite d'être conservée ;
-  -- quarante-quatre « VO2 » le même jour ne viennent que d'un tableau.
-  WITH repetes AS (
-    SELECT label FROM medical_timeline
+  -- Garde-fou, deuxième version. La première exigeait cinq occurrences et
+  -- laissait passer « METS » et « VO2/kg », présents quatre fois : un seuil
+  -- numérique arbitraire rate toujours quelque chose.
+  --
+  -- Le vrai critère est ailleurs : un même libellé répété LE MÊME JOUR ne
+  -- peut pas être un fait clinique. On ne mesure pas quatre fois le VO2/kg
+  -- d'un patient dans la même journée — on lit quatre lignes d'un tableau.
+  -- Deux valeurs à deux dates différentes, en revanche, sont deux examens,
+  -- et elles restent.
+  WITH doublons_du_jour AS (
+    SELECT patient_id, label, event_date
+      FROM medical_timeline
      WHERE (cible IS NULL OR patient_id = cible)
        AND label = ANY (cycle)
-     GROUP BY patient_id, label
-    HAVING count(*) >= 5
+     GROUP BY patient_id, label, event_date
+    HAVING count(*) >= 2
   )
+  DELETE FROM medical_timeline t
+   USING doublons_du_jour d
+   WHERE t.patient_id = d.patient_id
+     AND t.label = d.label
+     AND t.event_date IS NOT DISTINCT FROM d.event_date;
+  GET DIAGNOSTICS n = ROW_COUNT;
+  RAISE NOTICE 'Pseudo-faits retirés (répétés le même jour) : %', n;
+
+  -- Conditions d'étalonnage de l'appareil : température et humidité de la
+  -- salle et du débitmètre, pression barométrique. Ce sont des paramètres
+  -- de l'examen, pas des mesures du patient. Dans une chronologie médicale,
+  -- « Température 22 °C » daté du jour de l'épreuve se lit comme une
+  -- température corporelle.
   DELETE FROM medical_timeline
    WHERE (cible IS NULL OR patient_id = cible)
-     AND label IN (SELECT label FROM repetes);
+     AND (label ILIKE '%ambiant%' OR label ILIKE '%débitmètre%'
+          OR label ILIKE '%debitmetre%' OR label ILIKE '%barométrique%'
+          OR label ILIKE '%barometrique%');
   GET DIAGNOSTICS n = ROW_COUNT;
-
-  RAISE NOTICE 'Pseudo-faits retirés : %', n;
-  IF n = 0 THEN
-    RAISE NOTICE 'Rien à retirer — la chronologie est déjà propre.';
-  END IF;
+  RAISE NOTICE 'Conditions d''étalonnage retirées : %', n;
+  RAISE NOTICE 'Terminé.';
 END $$;
 
 -- --- 2. Après : ce qui reste dans la chronologie ---
