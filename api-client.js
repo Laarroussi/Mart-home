@@ -216,6 +216,9 @@
     cohort: {
       overview: () => request('GET', '/cohort/overview'),
       database: (mode = 'long') => request('GET', `/cohort/database?mode=${mode}`),
+      // Activité physique de la cohorte : ce que les patients ont fait,
+      // par opposition aux évaluations, qui disent ce qu'ils peuvent faire.
+      activite:  (semaines) => request('GET', `/cohort/activite` + (semaines ? `?semaines=${semaines}` : '')),
       exportUrl: (mode) => `${API_BASE}/cohort/export?mode=${mode}` // à utiliser avec token en query si besoin
     },
 

@@ -22,6 +22,86 @@ router.get('/overview', requireAuth, requireRole('principal_admin', 'investigato
   } catch (err) { next(err); }
 });
 
+/**
+ * GET /api/cohort/activite — l'activité physique de la cohorte
+ * ------------------------------------------------------------
+ * Ce que la page d'accueil montrait jusqu'ici : le nombre d'évaluations. Ce
+ * qu'elle devrait montrer : ce que les patients ont effectivement fait.
+ *
+ * Chaque chiffre renvoyé ici est un comptage réel. Aucun n'est estimé, et
+ * l'absence de données ne devient jamais un zéro : une cohorte sans séance
+ * renvoie `aucune_seance: true`, et l'interface le dit en toutes lettres
+ * plutôt que d'afficher « 0 h » comme si les patients n'avaient rien fait.
+ * La distinction compte : on ne réagit pas pareil à « personne ne s'entraîne »
+ * et à « rien n'a encore été enregistré ».
+ */
+router.get('/activite', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
+  try {
+    const semaines = Math.min(52, Math.max(4, parseInt(req.query.semaines, 10) || 12));
+
+    const [glob, modal, hebdo, presc, patients] = await Promise.all([
+      query(`SELECT COUNT(*)::int                      AS seances,
+                    COUNT(DISTINCT patient_id)::int    AS patients_actifs,
+                    ROUND(SUM(duration_s) / 3600.0, 1) AS heures,
+                    ROUND(AVG(duration_s) / 60.0)::int AS duree_moyenne_min,
+                    ROUND(SUM(energy_total_kcal))::int AS kcal,
+                    ROUND(AVG(borg_cr10)::numeric, 1)  AS cr10_moyen,
+                    ROUND(AVG(hr_avg))::int            AS fc_moyenne,
+                    MIN(started_at)::date              AS premiere,
+                    MAX(started_at)::date              AS derniere
+               FROM training_sessions WHERE status = 'completed'`),
+
+      query(`SELECT COALESCE(modalite, 'non_precisee') AS modalite,
+                    COUNT(*)::int AS nb,
+                    ROUND(SUM(duration_s) / 3600.0, 1) AS heures
+               FROM training_sessions WHERE status = 'completed'
+              GROUP BY COALESCE(modalite, 'non_precisee') ORDER BY nb DESC`),
+
+      // Charge par semaine : c'est l'évolution qui se lit, pas le total.
+      query(`SELECT date_trunc('week', started_at)::date AS semaine,
+                    COUNT(*)::int AS seances,
+                    ROUND(SUM(duration_s) / 3600.0, 1) AS heures
+               FROM training_sessions
+              WHERE status = 'completed'
+                AND started_at >= date_trunc('week', NOW()) - ($1 || ' weeks')::interval
+              GROUP BY 1 ORDER BY 1`, [semaines]),
+
+      // Assiduité : seulement sur les patients ayant une prescription. Un
+      // taux moyen calculé sur ceux qui n'en ont pas n'aurait aucun sens.
+      query(`SELECT COUNT(*)::int AS avec_prescription,
+                    ROUND(AVG(seances_par_semaine)::numeric, 1) AS rythme_moyen
+               FROM training_program_patients WHERE seances_par_semaine IS NOT NULL`)
+        .catch(() => ({ rows: [{ avec_prescription: 0, rythme_moyen: null }] })),
+
+      query(`SELECT COUNT(*)::int AS total FROM patients
+              WHERE NOT COALESCE(is_demo, FALSE)`)
+    ]);
+
+    const g = glob.rows[0] || {};
+    const total = (patients.rows[0] || {}).total || 0;
+
+    res.json({
+      aucune_seance: !g.seances,
+      patients_total: total,
+      patients_actifs: g.patients_actifs || 0,
+      // Part des patients ayant au moins une séance : un volume horaire ne
+      // dit rien s'il est le fait d'un seul patient sur treize.
+      part_actifs_pct: total ? Math.round(((g.patients_actifs || 0) / total) * 100) : null,
+      seances: g.seances || 0,
+      heures: g.heures != null ? Number(g.heures) : null,
+      duree_moyenne_min: g.duree_moyenne_min,
+      kcal: g.kcal,
+      cr10_moyen: g.cr10_moyen != null ? Number(g.cr10_moyen) : null,
+      fc_moyenne: g.fc_moyenne,
+      premiere: g.premiere, derniere: g.derniere,
+      modalites: modal.rows,
+      charge_hebdomadaire: hebdo.rows,
+      prescription: presc.rows[0] || { avec_prescription: 0 },
+      semaines_demandees: semaines
+    });
+  } catch (err) { next(err); }
+});
+
 /** GET /api/cohort/database?mode=long|wide|edu */
 router.get('/database', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
