@@ -18,35 +18,35 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase50-1"></script>
+  <script src="api-client.js?v=phase52-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase50-1"></script>
+  <script src="questionnaires-defs.js?v=phase52-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase50-1"></script>
+  <script src="medical-parsers.js?v=phase52-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase50-1"></script>
-  <script src="cpet-analyse.js?v=phase50-1"></script>
+  <script src="cpet-graph-preview.js?v=phase52-1"></script>
+  <script src="cpet-analyse.js?v=phase52-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase50-1"></script>
-  <script src="medical-record-ui.js?v=phase50-1"></script>
+  <script src="pdf-extractor.js?v=phase52-1"></script>
+  <script src="medical-record-ui.js?v=phase52-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase50-1"></script>
-  <script src="synthese-ui.js?v=phase50-1"></script>
-  <script src="audit-ui.js?v=phase50-1"></script>
-  <script src="entretien-ui.js?v=phase50-1"></script>
-  <script src="activation-ui.js?v=phase50-1"></script>
-  <script src="document-import.js?v=phase50-1"></script>
-  <script src="activite-ui.js?v=phase50-1"></script>
-  <script src="visio-jitsi.js?v=phase50-1"></script>
-  <script src="video-pilotee.js?v=phase50-1"></script>
-  <script src="fiche-apa.js?v=phase50-1"></script>
-  <script src="inactivite.js?v=phase50-1"></script>
-  <script src="bilans-ui.js?v=phase50-1"></script>
-  <script src="etudes-ui.js?v=phase50-1"></script>
-  <script src="ville-hopital.js?v=phase50-1"></script>
-  <script src="qlibres-ui.js?v=phase50-1"></script>
-  <script src="parametres-ui.js?v=phase50-1"></script>
+  <script src="aortic-consultations.js?v=phase52-1"></script>
+  <script src="synthese-ui.js?v=phase52-1"></script>
+  <script src="audit-ui.js?v=phase52-1"></script>
+  <script src="entretien-ui.js?v=phase52-1"></script>
+  <script src="activation-ui.js?v=phase52-1"></script>
+  <script src="document-import.js?v=phase52-1"></script>
+  <script src="activite-ui.js?v=phase52-1"></script>
+  <script src="visio-jitsi.js?v=phase52-1"></script>
+  <script src="video-pilotee.js?v=phase52-1"></script>
+  <script src="fiche-apa.js?v=phase52-1"></script>
+  <script src="inactivite.js?v=phase52-1"></script>
+  <script src="bilans-ui.js?v=phase52-1"></script>
+  <script src="etudes-ui.js?v=phase52-1"></script>
+  <script src="ville-hopital.js?v=phase52-1"></script>
+  <script src="qlibres-ui.js?v=phase52-1"></script>
+  <script src="parametres-ui.js?v=phase52-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3477,7 +3477,13 @@
             <div id="cfPiecesListe" style="margin-top:14px;"></div>
 
             <div style="margin-top:18px; padding:12px 15px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; font-size:12.5px; color:#475569; line-height:1.6;">
-              Aucune pièce sous la main ? Vous pouvez passer directement à l'étape suivante et tout saisir à la main.
+              Aucune pièce sous la main ? Vous pouvez passer directement à l'étape suivante et tout saisir à la main.<br>
+              <!-- Phase 52 — La sortie de secours doit être là où l'on se
+                   trompe. S'être trompé de document et ne pas trouver comment
+                   revenir en arrière pousse à valider une fiche fausse. -->
+              Document versé par erreur ? Retirez-le d'un clic sur la croix de sa ligne,
+              ou <button type="button" onclick="resetCreationForm()" style="border:none; background:none; padding:0; color:#b91c1c; font-weight:700; text-decoration:underline; cursor:pointer; font-size:12.5px;">effacez tout et recommencez</button>.
+              Rien n'est enregistré tant que la fiche n'est pas validée.
             </div>
 
             <div style="display:flex; justify-content:flex-end; margin-top:18px;">
@@ -8247,7 +8253,7 @@
    * montre que le dernier. Sans cette liste, on ne savait plus ce qui avait
    * déjà été lu, et on reversait deux fois le même compte rendu.
    */
-  function cfAjouterPiece(nom, nbChamps, nbFaits) {
+  function cfAjouterPiece(nom, nbChamps, nbFaits, trace) {
     const z = document.getElementById('cfPiecesListe');
     if (!z) return;
     if (!z.dataset.pret) {
@@ -8267,10 +8273,79 @@
                   'text-overflow:ellipsis; white-space:nowrap;">' + ech(nom) + '</strong>' +
                   '<span style="color:#0f766e; white-space:nowrap;">' +
                   nbChamps + ' champ(s)' +
-                  (nbFaits ? ' · ' + nbFaits + ' donnée(s)' : '') + '</span>';
+                  (nbFaits ? ' · ' + nbFaits + ' donnée(s)' : '') + '</span>' +
+                  '<button type="button" data-cf-retirer title="Retirer cette pièce" ' +
+                  'style="flex:0 0 auto; border:none; background:transparent; color:#94a3b8; ' +
+                  'cursor:pointer; font-size:15px; line-height:1; padding:2px 4px;">✕</button>';
+    d._trace = trace || null;
+    d.querySelector('[data-cf-retirer]')
+     .addEventListener('click', () => cfRetirerPiece(d, nom));
     lignes.appendChild(d);
   }
   window.cfAjouterPiece = cfAjouterPiece;
+
+  /**
+   * Retirer une pièce versée par erreur, avant toute validation.
+   *
+   * Un mauvais document versé remplissait l'identité avec celle de quelqu'un
+   * d'autre, et rien ne permettait de revenir en arrière : il fallait tout
+   * recommencer. C'est le genre de cul-de-sac qui pousse à valider une fiche
+   * fausse « pour la corriger après ».
+   *
+   * Le retrait n'efface que ce que CETTE pièce a écrit, et seulement si vous
+   * n'y avez pas retouché depuis. Un champ que vous avez corrigé à la main
+   * vous appartient : la machine n'a pas à le défaire, elle vous le signale.
+   */
+  function cfRetirerPiece(ligne, nom) {
+    const t = ligne._trace || {};
+    const champs = t.champs || [];
+
+    if (!confirm('Retirer « ' + nom + ' » ?\n\n' +
+                 'Les champs pré-remplis par cette pièce seront vidés, ' +
+                 'sauf ceux que vous avez modifiés vous-même.')) return;
+
+    let vides = 0;
+    const gardes = [];
+    champs.forEach(c => {
+      const el = document.getElementById(c.id);
+      if (!el) return;
+      if (String(el.value) === String(c.valeur)) { el.value = ''; vides++; }
+      else if (String(el.value).trim() !== '') gardes.push(c.id);
+    });
+
+    // L'âge se recalcule depuis la date de naissance : vidée, il doit suivre.
+    try { if (typeof updateAgeFromDob === 'function') updateAgeFromDob(); } catch (_) {}
+
+    // Les faits extraits de cette pièce quittent la file d'import. On compare
+    // sur la même clé que la fusion, pour retirer exactement ce qui avait été
+    // ajouté — ni plus, ni moins.
+    const aRetirer = t.faits || [];
+    if (aRetirer.length && window._faitsAImporter && window._faitsAImporter.faits) {
+      const cle = x => [x.event_date || '', x.category || '', x.label || '',
+                        x.value_num == null ? '' : x.value_num].join('|');
+      const hors = new Set(aRetirer.map(cle));
+      window._faitsAImporter.faits =
+        window._faitsAImporter.faits.filter(x => !hors.has(cle(x)));
+      if (!window._faitsAImporter.faits.length) window._faitsAImporter = null;
+    }
+    if (t.echo) window._echoAImporter = null;
+
+    ligne.remove();
+
+    const lignes = document.getElementById('cfPiecesLignes');
+    if (lignes && !lignes.children.length) {
+      const z = document.getElementById('cfPiecesListe');
+      if (z) { z.innerHTML = ''; delete z.dataset.pret; }
+    }
+
+    let msg = '✕ « ' + nom + ' » retirée — ' + vides + ' champ(s) vidé(s).';
+    if (gardes.length) {
+      msg += ' ' + gardes.length + ' champ(s) que vous aviez modifiés ont été conservés : ' +
+             'vérifiez-les.';
+    }
+    try { toast(msg, gardes.length ? 'warn' : 'info', 7000); } catch (_) { alert(msg); }
+  }
+  window.cfRetirerPiece = cfRetirerPiece;
 
   // ============================================================
   // Phase 36 — Modalités de prise en charge
@@ -9221,10 +9296,20 @@
         statut('Aucune donnée exploitable trouvée dans ce document.', 'err'); return;
       }
 
-      // Pré-remplit uniquement les champs VIDES
+      // Pré-remplit uniquement les champs VIDES.
+      //
+      // Phase 52 — On garde la trace de ce que cette pièce a écrit, et où.
+      // Sans cette trace, retirer un document versé par erreur était
+      // impossible : on savait que des champs avaient été remplis, pas
+      // lesquels. Le seul recours était de tout recommencer.
+      const ecrits = [];
       const poser = (id, val) => {
         const el = $(id);
-        if (el && val != null && String(val).trim() !== '' && !el.value) { el.value = val; return true; }
+        if (el && val != null && String(val).trim() !== '' && !el.value) {
+          el.value = val;
+          ecrits.push({ id: id, valeur: String(el.value) });
+          return true;
+        }
         return false;
       };
       let n = 0;
@@ -9324,7 +9409,14 @@
         faits.forEach(x => { const k = cle(x); if (!vus.has(k)) { vus.add(k); fusion.push(x); } });
         window._faitsAImporter = { code, faits: fusion };
       })();
-      try { cfAjouterPiece(f.name || 'Document', n, faits.length); } catch (_) {}
+      try {
+        cfAjouterPiece(f.name || 'Document', n, faits.length, {
+          champs: ecrits,
+          faits: faits,
+          echo: !!echo,
+          code: code
+        });
+      } catch (_) {}
 
       // Aperçu du détail : le clinicien doit pouvoir lire ce qui a été extrait
       // AVANT de valider, et non le découvrir dans le dossier après coup.
