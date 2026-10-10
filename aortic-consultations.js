@@ -108,6 +108,70 @@
    * Renvoie null plutôt qu'une valeur par défaut : un dossier sans mesure
    * doit s'afficher sans mesure.
    */
+  /**
+   * Valeurs aortiques hors de toute vraisemblance, encore en base.
+   *
+   * 13 mm et 19 mm se sont glissés dans deux dossiers sans que rien ne les
+   * signale : l'un venait d'un anneau pris pour des sinus, l'autre d'une
+   * origine inconnue. Tous deux sont parfaitement plausibles PRIS
+   * ISOLÉMENT — c'est ce qui les rend difficiles à voir.
+   *
+   * La borne dure du serveur reste large (5 à 120 mm) pour ne pas bloquer un
+   * dossier pédiatrique. Mais entre « accepté » et « vraisemblable » il y a
+   * de la place, et c'est là que vit cet avertissement : permanent, visible
+   * tant que la valeur n'a pas été corrigée ou confirmée. Un avertissement
+   * qu'on peut rater une fois ne protège de rien.
+   */
+  function valeursDouteuses() {
+    const out = [];
+    // Le seuil dépend du niveau mesuré, parce que les niveaux n'ont pas les
+    // mêmes dimensions. Un anneau aortique de 22 mm est normal ; des sinus
+    // de Valsalva à 22 mm chez un adulte n'existent pas.
+    //
+    // Un site non renseigné est traité comme des sinus : c'est ce que ce
+    // suivi mesure par défaut, et c'est précisément dans ce cas qu'une
+    // mesure prise ailleurs passe inaperçue. Le 19 mm d'un dossier était un
+    // anneau enregistré sans son site.
+    const juger = (v, date, origine, site) => {
+      if (v == null) return;
+      const x = parseFloat(v);
+      if (!isFinite(x)) return;
+
+      const s = String(site || '').toLowerCase();
+      const estAnneau = /anneau|annulus/.test(s);
+      const estSinus  = !s || /valsalva|racine|sinus/.test(s);
+
+      const planche = estAnneau ? 14 : (estSinus ? 25 : 18);
+      if (x < planche) {
+        out.push({ valeur: x, date, origine,
+          raison: estSinus
+            ? 'trop bas pour des sinus de Valsalva chez un adulte — s\'agit-il de l\'anneau ?'
+            : 'inhabituellement bas' + (site ? ' pour : ' + site : '') });
+      } else if (x > 90) {
+        out.push({ valeur: x, date, origine, raison: 'au-delà de toute valeur attendue' });
+      }
+    };
+    const a = _aortic || {};
+    juger(a.first_value_mm, a.first_diagnosis_date, 'valeur de départ', a.first_site);
+    (_consultations || []).forEach(c => juger(c.aortic_value_mm, c.consultation_date, 'consultation', c.aortic_site));
+    (_echos || []).forEach(e => juger(e.sinus_valsalva_mm, e.exam_date, 'échocardiographie', 'Sinus de Valsalva'));
+    return out;
+  }
+
+  function bandeauDouteuses() {
+    const d = valeursDouteuses();
+    if (!d.length) return '';
+    const jour = x => { if (!x) return 'date inconnue'; const t = new Date(x);
+      return isNaN(t) ? String(x) : t.toLocaleDateString('fr-FR'); };
+    return '<div style="padding:12px 15px; margin:0 0 14px; border-radius:10px; background:#fffbeb; ' +
+      'border:1px solid #fde68a; border-left:4px solid #f59e0b; font-size:12.5px; color:#92400e; line-height:1.6;">' +
+      '<strong>' + d.length + ' valeur(s) aortique(s) à vérifier.</strong><br>' +
+      d.map(x => '• <strong>' + x.valeur + ' mm</strong> le ' + jour(x.date) +
+                 ' (' + x.origine + ') — ' + x.raison).join('<br>') +
+      '<br><span style="font-size:11.5px;">Vérifiez le niveau mesuré sur le compte rendu : ' +
+      'un anneau aortique pris pour des sinus de Valsalva donne exactement ce genre de chiffre.</span></div>';
+  }
+
   function mesureLaPlusRecente() {
     const points = [];
 
@@ -163,11 +227,16 @@
         <div class="ac-head" style="background:linear-gradient(135deg,#dc2626,#f43f5e); color:white;">
           <div>
             <h3 style="margin:0; color:white; font-size:15px;">🫀 Suivi de la dilatation aortique <span style="font-weight:600; opacity:0.9;">— ${esc(_patientId || '?')}</span></h3>
-            <p style="margin:3px 0 0; font-size:11.5px; opacity:0.92;">Racine aortique / sinus de Valsalva — diagnostic initial Marfan vs évaluation actuelle</p>
+            <p style="margin:3px 0 0; font-size:11.5px; opacity:0.92;">Valeur de départ, puis mesure la plus récente — le compte rendu d'échocardiographie fait foi</p>
           </div>
           <button data-ac="edit-aortic" style="padding:7px 13px; border:1px solid rgba(255,255,255,0.35); background:rgba(255,255,255,0.15); color:white; border-radius:8px; font-weight:600; cursor:pointer; font-size:12px; white-space:nowrap;">✏️ Modifier</button>
         </div>
         <div class="ac-body">
+          ${bandeauDouteuses()}
+          ${derniere ? `<div style="font-size:11.5px; color:#64748b; margin-bottom:10px;">
+            Mesure la plus récente : <strong>${derniere.valeur} mm</strong>${derniere.site ? ' — ' + esc(derniere.site) : ''},
+            ${derniere.origine}${derniere.niveau === 'declaree' ? ' <span style="color:#92400e; font-weight:700;">(déclarée, non vérifiée)</span>' : ' <span style="color:#065f46; font-weight:700;">(mesurée)</span>'}
+          </div>` : ''}
           <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px;">
             <!-- Valeur initiale -->
             <div style="padding:12px 14px; background:#f8fafc; border-radius:10px; border-left:3px solid #94a3b8;">
