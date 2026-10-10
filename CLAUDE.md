@@ -21,3 +21,8 @@ Claude doit uniquement modifier les fichiers du dépôt GitHub.
 ## Objectif
 
 Améliorer le site progressivement : contenu, design, responsive mobile, pages, navigation et corrections HTML/CSS/JS.
+
+## Données cliniques
+
+Voir `REGLES-DONNEES.md` — provenance des mesures, hiérarchie des sources,
+chronologie. Ces règles priment sur toute considération d'affichage.

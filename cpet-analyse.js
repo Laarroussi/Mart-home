@@ -63,7 +63,11 @@
     power:  ['power', 'puissance', 'watt', 'charge'],
     phase:  ['phase'],
     vo2kg:  ['vo2/kg', 'vo2kg'],
-    spo2:   ['spo2', 'sao2']
+    spo2:   ['spo2', 'sao2'],
+    petco2: ['petco2', 'pet co2', 'etco2', 'pe tco2'],
+    peto2:  ['peto2', 'pet o2', 'eto2'],
+    vt:     ['vt', 'volume courant', 'tidal volume'],
+    bf:     ['bf', 'fr', 'rf', 'breathing frequency']
   };
 
   function reperer(entetes) {
@@ -104,6 +108,9 @@
         power: idx.power != null ? nombre(L[idx.power]) : null,
         vo2kg: idx.vo2kg != null ? nombre(L[idx.vo2kg]) : null,
         spo2:  idx.spo2 != null ? nombre(L[idx.spo2]) : null,
+        petco2: idx.petco2 != null ? nombre(L[idx.petco2]) : null,
+        vt:    idx.vt != null ? nombre(L[idx.vt]) : null,
+        bf:    idx.bf != null ? nombre(L[idx.bf]) : null,
         phase: idx.phase != null ? String(L[idx.phase] || '').toUpperCase() : ''
       });
     }
@@ -145,6 +152,68 @@
       out.push(n ? somme / n : null);
     }
     return out;
+  }
+
+  // ============================================================
+  // Valeurs de référence
+  // ============================================================
+  /**
+   * Fréquence cardiaque maximale prédite.
+   *
+   * Tanaka plutôt que « 220 − âge » : cette dernière surestime chez le sujet
+   * jeune et sous-estime après 50 ans, avec un écart type de douze battements.
+   * Les deux sont renvoyées — l'une sert au calcul, l'autre à la comparaison
+   * avec les comptes rendus qui l'utilisent encore.
+   *
+   * Réserve majeure : sous bêtabloquant — fréquent dans le syndrome de Marfan —
+   * aucune des deux ne vaut. Le pourcentage de la prédite devient alors
+   * ininterprétable, et c'est signalé.
+   */
+  function fcPredite(age) {
+    if (!age || age <= 0) return null;
+    return {
+      tanaka: Math.round(208 - 0.7 * age),
+      classique: Math.round(220 - age)
+    };
+  }
+
+  /**
+   * VO₂ de pic prédit — équations de Wasserman & Hansen, cycloergomètre.
+   *
+   *   Homme : (taille_cm − âge) × 20  mL/min
+   *   Femme : (taille_cm − âge) × 14  mL/min
+   *
+   * Formule explicitée ici à dessein : une valeur normalisée dont on ignore
+   * le référentiel ne peut pas être interprétée, et les référentiels usuels
+   * (Wasserman, SHIP, ERS) diffèrent de 10 à 15 %.
+   *
+   * Limites assumées, et déclarées dans le résultat :
+   *   • cycloergomètre uniquement — les constantes diffèrent sur tapis ;
+   *   • pas de correction pour le poids réel, que Wasserman prévoit en cas
+   *     d'écart important au poids idéal ;
+   *   • rien n'est calculé si le sexe, l'âge ou la taille manquent.
+   *
+   * À FAIRE VALIDER par le service avant usage clinique.
+   */
+  function vo2Predit(sujet) {
+    if (!sujet) return null;
+    var age = Number(sujet.age), taille = Number(sujet.taille);
+    if (!age || !taille || taille < 100 || taille > 230) return null;
+
+    var sexe = String(sujet.sexe || '').trim().toLowerCase();
+    var estFemme = /^f|femme|female|w/.test(sexe);
+    var estHomme = /^h|^m(?!me)|homme|male/.test(sexe);
+    if (!estFemme && !estHomme) return null;
+
+    // Tapis roulant : les constantes ne s'appliquent pas, on s'abstient.
+    var ergo = String(sujet.ergometre || '').toLowerCase();
+    if (/tapis|treadmill/.test(ergo)) return null;
+
+    return {
+      ml_min: Math.round((taille - age) * (estFemme ? 14 : 20)),
+      equation: 'Wasserman & Hansen, cycloergomètre',
+      reserve: 'Sans correction pondérale. À valider par le service.'
+    };
   }
 
   // ============================================================
@@ -190,17 +259,30 @@
     var moyAvant = avant.length ? avant.reduce(function (a, b) { return a + b; }, 0) / avant.length : null;
     var plateau = (moyAvant != null && vo2Pic != null) ? (vo2Pic - moyAvant) < TOLERANCE_PLATEAU : false;
 
-    var age = donnees.sujet && donnees.sujet.age ? Number(donnees.sujet.age) : null;
-    var fcPred = age ? 220 - age : null;
+    var sujet = donnees.sujet || {};
+    var age = sujet.age ? Number(sujet.age) : null;
+    var pred = fcPredite(age);
+    var fcPred = pred ? pred.tanaka : null;
+
+    // Sous bêtabloquant, la fréquence prédite n'a plus de sens : le critère
+    // « FC ≥ 90 % de la prédite » ne peut jamais être rempli, et l'épreuve
+    // serait déclarée sous-maximale à tort. On le neutralise plutôt que de
+    // produire une conclusion fausse.
+    var sousBB = !!donnees.sous_betabloquant;
+
     var criteres = {
       plateau: plateau,
       qr_atteint: qrPic != null ? qrPic >= 1.10 : null,
-      fc_atteinte: (fcPic != null && fcPred) ? (fcPic >= 0.90 * fcPred) : null,
-      fc_pct_predite: (fcPic != null && fcPred) ? Math.round(100 * fcPic / fcPred) : null
+      fc_atteinte: sousBB ? null
+                 : (fcPic != null && fcPred) ? (fcPic >= 0.90 * fcPred) : null,
+      fc_pct_predite: (fcPic != null && fcPred) ? Math.round(100 * fcPic / fcPred) : null,
+      fc_predite_tanaka: fcPred,
+      fc_predite_220_age: pred ? pred.classique : null,
+      betabloquant_declare: sousBB
     };
     var nbRemplis = ['plateau', 'qr_atteint', 'fc_atteinte']
       .filter(function (k) { return criteres[k] === true; }).length;
-    // Le plateau est le critère de référence : sans lui, jamais de VO₂ max.
+    // Le plateau reste le critère de référence : sans lui, jamais de VO₂ max.
     var nature = plateau && nbRemplis >= 2 ? 'VO2max' : 'VO2pic';
 
     // --- Pente VE/VCO₂ ---------------------------------------------
@@ -242,6 +324,66 @@
       if (fcs.length) fcRepos = Math.round(fcs.reduce(function (a, b) { return a + b; }, 0) / fcs.length);
     }
 
+    // --- Durée de l'épreuve ----------------------------------------
+    // Un test de moins de six minutes ou de plus de douze sort de la fenêtre
+    // recommandée pour un protocole incrémental : le VO₂ de pic y est
+    // sous-estimé. L'information conditionne l'interprétation, elle est donc
+    // calculée et jugée, pas seulement affichée.
+    var tDebut = null, tFin = null;
+    src.forEach(function (c) {
+      if (c.t == null) return;
+      if (tDebut == null || c.t < tDebut) tDebut = c.t;
+      if (tFin == null || c.t > tFin) tFin = c.t;
+    });
+    var dureeS = (tDebut != null && tFin != null) ? Math.round(tFin - tDebut) : null;
+
+    // --- Pouls d'oxygène : VO₂ / FC --------------------------------
+    // Substitut du volume d'éjection systolique à l'effort. Un pouls bas ou
+    // qui plafonne tôt oriente vers une limitation cardiaque.
+    var poulsO2 = (vo2Pic != null && fcPic) ? vo2Pic / fcPic : null;
+
+    // --- PETCO₂ : au repos et au pic -------------------------------
+    function moyChamp(liste, champ) {
+      var v = liste.map(function (c) { return c[champ]; })
+                   .filter(function (x) { return x != null; });
+      return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null;
+    }
+    var petco2Pic = moyChamp(fen, 'petco2');
+
+    // --- Récupération de la fréquence cardiaque à une minute -------
+    // Facteur pronostique fort et indépendant. Une baisse ≤ 12 battements
+    // après une minute de récupération active est considérée anormale.
+    // Calculée seulement si le fichier contient la phase de récupération —
+    // sinon elle reste absente, et non nulle.
+    var hrr1 = null, hrr1Anormale = null;
+    var recup = tous.filter(function (c) { return /RECOV|RECUP/i.test(c.phase); });
+    if (recup.length && fcPic != null) {
+      var t0 = recup[0].t;
+      if (t0 != null) {
+        var proches = recup.filter(function (c) {
+          return c.t != null && c.t - t0 >= 45 && c.t - t0 <= 75 && c.fc != null;
+        });
+        if (proches.length) {
+          var fc60 = moyChamp(proches, 'fc');
+          hrr1 = Math.round(fcPic - fc60);
+          hrr1Anormale = hrr1 <= 12;
+        }
+      }
+    }
+
+    // --- VO₂ de pic rapporté à la valeur prédite -------------------
+    var predVo2 = vo2Predit(sujet);
+    var vo2Pct = (predVo2 && vo2Pic != null)
+      ? Math.round(100 * vo2Pic / predVo2.ml_min) : null;
+
+    // --- Seuils exprimés en pourcentage du pic ---------------------
+    // Un SV1 survenant en dessous de 40 % du VO₂ prédit signe un
+    // déconditionnement marqué ; c'est l'indicateur qui justifie le plus
+    // souvent l'entrée en activité physique adaptée.
+    function pct(v) {
+      return (v != null && vo2Pic) ? Math.round(100 * v / vo2Pic) : null;
+    }
+
     var res = {
       nb_cycles: tous.length,
       nb_cycles_exercice: exo.length,
@@ -266,13 +408,131 @@
 
       sv1_fc: sv1Fc, sv2_fc: sv2Fc,
       sv1_watts: seuils.sv1_watts || null, sv2_watts: seuils.sv2_watts || null,
-      sv1_vo2: seuils.sv1_vo2 || null, sv2_vo2: seuils.sv2_vo2 || null
+      sv1_vo2: seuils.sv1_vo2 || null, sv2_vo2: seuils.sv2_vo2 || null,
+      sv1_pct_pic: pct(seuils.sv1_vo2), sv2_pct_pic: pct(seuils.sv2_vo2),
+
+      // --- Ajouts : tout ce qui se déduit des mêmes cycles ---
+      vo2_pic_l_min: vo2Pic != null ? Math.round(vo2Pic) / 1000 : null,
+      vo2_pic_pct_predit: vo2Pct,
+      vo2_predit_ml_min: predVo2 ? predVo2.ml_min : null,
+      vo2_predit_equation: predVo2 ? predVo2.equation : null,
+      vo2_predit_reserve: predVo2 ? predVo2.reserve : null,
+
+      duree_exercice_s: dureeS,
+      duree_exercice_min: dureeS != null ? Math.round(dureeS / 6) / 10 : null,
+      duree_dans_fenetre: dureeS != null ? (dureeS >= 360 && dureeS <= 720) : null,
+
+      pouls_o2_ml_bat: poulsO2 != null ? Math.round(poulsO2 * 10) / 10 : null,
+      petco2_pic_mmhg: petco2Pic != null ? Math.round(petco2Pic * 10) / 10 : null,
+
+      hrr1_bpm: hrr1,
+      hrr1_anormale: hrr1Anormale,
+
+      // Non calculables depuis le flux ventilatoire. Déclarées absentes
+      // plutôt qu'omises : une case vide se remplit, une donnée oubliée non.
+      pa_repos: null,
+      pa_effort_max: null,
+      reserve_ventilatoire_pct: null,
+      reserve_ventilatoire_note: 'Exige la VMM, donc un VEMS spirométrique.'
     };
+
+    res.facteurs_pronostiques = facteursPronostiques(res);
 
     res.zones = zonesDepuisSeuils({
       repos: fcRepos, sv1: sv1Fc, sv2: sv2Fc, pic: res.fc_pic
     });
     return res;
+  }
+
+  /**
+   * Facteurs pronostiques, rassemblés et situés par rapport à leurs seuils.
+   *
+   * Les chiffres bruts ne disent rien à eux seuls : une pente VE/VCO₂ de 34
+   * n'évoque quelque chose qu'à qui manie l'échelle de Weber-Arena tous les
+   * jours. Chaque facteur est donc accompagné de sa valeur, de son seuil, et
+   * de la position de l'un par rapport à l'autre.
+   *
+   * Un facteur dont la donnée manque est renvoyé avec `valeur: null` plutôt
+   * qu'écarté de la liste : son absence est une information clinique — elle
+   * dit qu'on ne sait pas, et non que tout va bien.
+   */
+  function facteursPronostiques(r) {
+    var f = [];
+
+    f.push({
+      cle: 've_vco2',
+      libelle: 'Pente VE/VCO₂',
+      valeur: r.ve_vco2_pente,
+      unite: '',
+      seuil: '< 30 normale · ≥ 36 défavorable',
+      statut: r.ve_vco2_pente == null ? 'absent'
+            : r.ve_vco2_pente >= 36 ? 'defavorable'
+            : r.ve_vco2_pente >= 30 ? 'intermediaire' : 'favorable',
+      note: 'Efficience ventilatoire. Classes de Weber-Arena.'
+    });
+
+    f.push({
+      cle: 'oues',
+      libelle: 'OUES rapportée au poids',
+      valeur: r.oues_par_kg,
+      unite: 'mL/min/kg/log(VE)',
+      // Pas de seuil chiffré ici, volontairement. La valeur de référence de
+      // l'OUES dépend de l'âge, du sexe et de la corpulence, et les normes
+      // publiées ne s'accordent pas sur une borne unique. Afficher un seuil
+      // approximatif reviendrait à classer un patient sur une règle fausse —
+      // on affiche donc la mesure, et l'interprétation reste au clinicien.
+      seuil: 'référence selon âge, sexe et corpulence — à comparer au prédit',
+      statut: r.oues_par_kg == null ? 'absent' : 'mesure',
+      note: 'Ne dépend pas d\'un effort maximal : interprétable même sur une épreuve sous-maximale.'
+    });
+
+    f.push({
+      cle: 'pouls_o2',
+      libelle: 'Pouls d\'oxygène au pic',
+      valeur: r.pouls_o2_ml_bat,
+      unite: 'mL/battement',
+      seuil: 'à rapporter à la valeur prédite du sujet',
+      statut: r.pouls_o2_ml_bat == null ? 'absent' : 'mesure',
+      note: 'Substitut du volume d\'éjection systolique à l\'effort.'
+    });
+
+    f.push({
+      cle: 'hrr1',
+      libelle: 'Récupération de la FC à 1 minute',
+      valeur: r.hrr1_bpm,
+      unite: 'bpm',
+      seuil: '> 12 normale',
+      statut: r.hrr1_bpm == null ? 'absent'
+            : r.hrr1_anormale ? 'defavorable' : 'favorable',
+      note: r.hrr1_bpm == null
+        ? 'Phase de récupération absente du fichier.'
+        : 'Reflet du tonus vagal. Facteur pronostique indépendant.'
+    });
+
+    f.push({
+      cle: 'vo2_pct',
+      libelle: 'VO₂ de pic en % de la prédite',
+      valeur: r.vo2_pic_pct_predit,
+      unite: '%',
+      seuil: '≥ 84 % de la prédite, borne usuelle de la normale',
+      statut: r.vo2_pic_pct_predit == null ? 'absent'
+            : r.vo2_pic_pct_predit >= 84 ? 'favorable'
+            : r.vo2_pic_pct_predit >= 60 ? 'intermediaire' : 'defavorable',
+      note: r.vo2_predit_equation || 'Référentiel non applicable à ce sujet.'
+    });
+
+    f.push({
+      cle: 'sv1',
+      libelle: 'SV1 en % du VO₂ de pic',
+      valeur: r.sv1_pct_pic,
+      unite: '%',
+      seuil: '40 à 60 % attendu',
+      statut: r.sv1_pct_pic == null ? 'absent'
+            : r.sv1_pct_pic < 40 ? 'defavorable' : 'favorable',
+      note: 'Un premier seuil bas signe un déconditionnement — c\'est l\'indication la plus fréquente d\'entrée en APA.'
+    });
+
+    return f;
   }
 
   /**
@@ -399,6 +659,9 @@
   window.CpetAnalyse = {
     analyser: analyser,
     analyserClasseur: analyserClasseur,
+    facteursPronostiques: facteursPronostiques,
+    vo2Predit: vo2Predit,
+    fcPredite: fcPredite,
     zonesDepuisSeuils: zonesDepuisSeuils,
     interpreterVeVco2: interpreterVeVco2
   };

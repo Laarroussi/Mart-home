@@ -18,35 +18,35 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase53-1"></script>
+  <script src="api-client.js?v=phase54-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase53-1"></script>
+  <script src="questionnaires-defs.js?v=phase54-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase53-1"></script>
+  <script src="medical-parsers.js?v=phase54-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase53-1"></script>
-  <script src="cpet-analyse.js?v=phase53-1"></script>
+  <script src="cpet-graph-preview.js?v=phase54-1"></script>
+  <script src="cpet-analyse.js?v=phase54-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase53-1"></script>
-  <script src="medical-record-ui.js?v=phase53-1"></script>
+  <script src="pdf-extractor.js?v=phase54-1"></script>
+  <script src="medical-record-ui.js?v=phase54-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase53-1"></script>
-  <script src="synthese-ui.js?v=phase53-1"></script>
-  <script src="audit-ui.js?v=phase53-1"></script>
-  <script src="entretien-ui.js?v=phase53-1"></script>
-  <script src="activation-ui.js?v=phase53-1"></script>
-  <script src="document-import.js?v=phase53-1"></script>
-  <script src="activite-ui.js?v=phase53-1"></script>
-  <script src="visio-jitsi.js?v=phase53-1"></script>
-  <script src="video-pilotee.js?v=phase53-1"></script>
-  <script src="fiche-apa.js?v=phase53-1"></script>
-  <script src="inactivite.js?v=phase53-1"></script>
-  <script src="bilans-ui.js?v=phase53-1"></script>
-  <script src="etudes-ui.js?v=phase53-1"></script>
-  <script src="ville-hopital.js?v=phase53-1"></script>
-  <script src="qlibres-ui.js?v=phase53-1"></script>
-  <script src="parametres-ui.js?v=phase53-1"></script>
+  <script src="aortic-consultations.js?v=phase54-1"></script>
+  <script src="synthese-ui.js?v=phase54-1"></script>
+  <script src="audit-ui.js?v=phase54-1"></script>
+  <script src="entretien-ui.js?v=phase54-1"></script>
+  <script src="activation-ui.js?v=phase54-1"></script>
+  <script src="document-import.js?v=phase54-1"></script>
+  <script src="activite-ui.js?v=phase54-1"></script>
+  <script src="visio-jitsi.js?v=phase54-1"></script>
+  <script src="video-pilotee.js?v=phase54-1"></script>
+  <script src="fiche-apa.js?v=phase54-1"></script>
+  <script src="inactivite.js?v=phase54-1"></script>
+  <script src="bilans-ui.js?v=phase54-1"></script>
+  <script src="etudes-ui.js?v=phase54-1"></script>
+  <script src="ville-hopital.js?v=phase54-1"></script>
+  <script src="qlibres-ui.js?v=phase54-1"></script>
+  <script src="parametres-ui.js?v=phase54-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -17104,7 +17104,19 @@
                   oues: av.oues_ml_min, ouesParKg: av.oues_par_kg,
                   veVco2Pente: av.ve_vco2_pente, veVco2R2: av.ve_vco2_r2,
                   natureVo2: av.nature_vo2, criteres: av.criteres_maximalite,
-                  zones: av.zones
+                  zones: av.zones,
+                  // Mêmes ajouts que dans le versement par le dossier :
+                  // les deux chemins doivent produire une évaluation
+                  // identique, sans quoi la comparaison d'une épreuve à
+                  // l'autre dépendrait de la porte d'entrée utilisée.
+                  vo2PicLMin: av.vo2_pic_l_min, vo2PctPredit: av.vo2_pic_pct_predit,
+                  vo2Predit: av.vo2_predit_ml_min, vo2PreditEquation: av.vo2_predit_equation,
+                  dureeExerciceS: av.duree_exercice_s, dureeDansFenetre: av.duree_dans_fenetre,
+                  poulsO2: av.pouls_o2_ml_bat, petco2Pic: av.petco2_pic_mmhg,
+                  hrr1: av.hrr1_bpm, hrr1Anormale: av.hrr1_anormale,
+                  sv1PctPic: av.sv1_pct_pic, sv2PctPic: av.sv2_pct_pic,
+                  qrPic: av.qr_pic,
+                  facteursPronostiques: av.facteurs_pronostiques
                 }
               });
               complement = ' Une évaluation a été créée dans le suivi.';

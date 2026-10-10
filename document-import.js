@@ -453,7 +453,18 @@
           oues: av.oues_ml_min, ouesParKg: av.oues_par_kg,
           veVco2Pente: av.ve_vco2_pente, veVco2R2: av.ve_vco2_r2,
           natureVo2: av.nature_vo2, criteres: av.criteres_maximalite,
-          zones: av.zones
+          zones: av.zones,
+          // Ajouts : tout ce que les cycles permettent de calculer. Stockés
+          // avec l'évaluation pour que la comparaison d'une épreuve à l'autre
+          // n'ait pas à rouvrir le fichier source.
+          vo2PicLMin: av.vo2_pic_l_min, vo2PctPredit: av.vo2_pic_pct_predit,
+          vo2Predit: av.vo2_predit_ml_min, vo2PreditEquation: av.vo2_predit_equation,
+          dureeExerciceS: av.duree_exercice_s, dureeDansFenetre: av.duree_dans_fenetre,
+          poulsO2: av.pouls_o2_ml_bat, petco2Pic: av.petco2_pic_mmhg,
+          hrr1: av.hrr1_bpm, hrr1Anormale: av.hrr1_anormale,
+          sv1PctPic: av.sv1_pct_pic, sv2PctPic: av.sv2_pct_pic,
+          qrPic: av.qr_pic,
+          facteursPronostiques: av.facteurs_pronostiques
         }
       });
     } catch (e) {
