@@ -193,6 +193,131 @@
   }
 
   // ============================================================
+  // === Comparaison des épreuves dans le temps =================
+  // ============================================================
+  /**
+   * Ce qu'on compare, et dans quel sens cela va.
+   *
+   * `sens` vaut +1 quand augmenter est favorable, −1 quand c'est l'inverse.
+   * Sans cette colonne, une pente VE/VCO₂ qui monte s'afficherait en vert
+   * comme un VO₂ qui monte — alors qu'elle signe une aggravation.
+   *
+   * `sens: 0` pour ce qui ne s'interprète pas dans une direction unique :
+   * une FC de pic plus basse peut venir d'un bêtabloquant comme d'un effort
+   * moins poussé. On affiche l'écart sans le colorer.
+   */
+  var COMPARER = [
+    { cle: 'vo2',        libelle: 'VO₂ de pic',            unite: 'mL/kg/min', sens: 1,
+      get: e => num(e.vo2) },
+    { cle: 'vo2pct',     libelle: '% de la théorique',     unite: '%',  sens: 1,
+      get: e => num((e.thresholds || {}).vo2PctPredit) },
+    { cle: 'watts',      libelle: 'Puissance maximale',    unite: 'W',  sens: 1,
+      get: e => num(e.watts) },
+    { cle: 'fcpic',      libelle: 'FC maximale',           unite: 'bpm', sens: 0,
+      get: e => num((e.thresholds || {}).fcPeak) || num(e.fc) },
+    { cle: 'sv1fc',      libelle: 'SV1 — FC',              unite: 'bpm', sens: 1,
+      get: e => num((e.thresholds || {}).sv1Fc) },
+    { cle: 'sv1pct',     libelle: 'SV1 en % du pic',       unite: '%',  sens: 1,
+      get: e => num((e.thresholds || {}).sv1PctPic) },
+    { cle: 'sv2fc',      libelle: 'SV2 — FC',              unite: 'bpm', sens: 1,
+      get: e => num((e.thresholds || {}).sv2Fc) },
+    { cle: 'vevco2',     libelle: 'Pente VE/VCO₂',         unite: '',   sens: -1,
+      get: e => num(e.vevco2Slope) || num((e.thresholds || {}).veVco2Pente) },
+    { cle: 'oueskg',     libelle: 'OUES rapportée au poids', unite: '', sens: 1,
+      get: e => num((e.thresholds || {}).ouesParKg) },
+    { cle: 'poulso2',    libelle: 'Pouls d\'oxygène',       unite: 'mL/bat', sens: 1,
+      get: e => num((e.thresholds || {}).poulsO2) },
+    { cle: 'hrr1',       libelle: 'Récupération FC à 1 min', unite: 'bpm', sens: 1,
+      get: e => num((e.thresholds || {}).hrr1) }
+  ];
+
+  /** Mois écoulés entre deux dates, arrondis — l'écart sans sa durée ne dit rien. */
+  function moisEntre(a, b) {
+    if (!a || !b) return null;
+    const j = Math.round((new Date(b) - new Date(a)) / 86400000);
+    return { jours: j, mois: Math.round(j / 30.4) };
+  }
+
+  function etiquette(i, total) {
+    if (i === 0) return 'Inclusion';
+    if (i === total - 1) return total === 2 ? 'Actuelle' : 'Dernière';
+    return 'Suivi ' + i;
+  }
+
+  function rendreComparaison(eps) {
+    const n = eps.length;
+    const dureeTotale = moisEntre(eps[0].date, eps[n - 1].date);
+
+    let entete = '<tr style="background:#f8fafc;">' +
+      '<th style="padding:9px 10px; text-align:left; font-size:11.5px; color:#475569;">Paramètre</th>';
+    eps.forEach((e, i) => {
+      entete += '<th style="padding:9px 10px; text-align:right; font-size:11.5px; color:#475569; white-space:nowrap;">' +
+        '<div style="font-weight:800; color:#0b1530;">' + esc(etiquette(i, n)) + '</div>' +
+        '<div style="font-weight:600;">' + jour(e.date) + '</div></th>';
+    });
+    entete += '<th style="padding:9px 10px; text-align:right; font-size:11.5px; color:#475569; white-space:nowrap;">' +
+      '<div style="font-weight:800; color:#0b1530;">Écart</div>' +
+      '<div style="font-weight:600;">' +
+        (dureeTotale ? 'sur ' + dureeTotale.mois + ' mois' : 'intervalle inconnu') + '</div></th></tr>';
+
+    let corps = '';
+    COMPARER.forEach(p => {
+      const vals = eps.map(p.get);
+      // Un paramètre absent de toutes les épreuves n'apporte rien : on ne
+      // remplit pas le tableau de lignes vides.
+      if (vals.every(v => v == null)) return;
+
+      let cells = '<td style="padding:8px 10px; font-size:12.5px; color:#334155;">' +
+        esc(p.libelle) + (p.unite ? ' <span style="font-size:11px; color:#94a3b8;">' + esc(p.unite) + '</span>' : '') +
+        '</td>';
+      vals.forEach(v => {
+        cells += '<td style="padding:8px 10px; text-align:right; font-size:13.5px; font-weight:700; color:' +
+          (v == null ? '#cbd5e1' : '#0b1530') + ';">' + (v == null ? '—' : v) + '</td>';
+      });
+
+      const a = vals[0], b = vals[n - 1];
+      let ecart = '<span style="color:#cbd5e1;">—</span>';
+      if (a != null && b != null) {
+        const d = Math.round((b - a) * 100) / 100;
+        const couleur = (p.sens === 0 || d === 0) ? '#475569'
+          : (d * p.sens > 0 ? '#047857' : '#b91c1c');
+        ecart = '<span style="color:' + couleur + '; font-weight:800;">' +
+          (d > 0 ? '+' : '') + d + '</span>';
+      }
+      cells += '<td style="padding:8px 10px; text-align:right; font-size:13.5px;">' + ecart + '</td>';
+      corps += '<tr style="border-top:1px solid #f1f5f9;">' + cells + '</tr>';
+    });
+
+    // Les intervalles entre épreuves successives, en clair. Deux épreuves à
+    // six semaines et deux épreuves à deux ans ne se lisent pas pareil.
+    let intervalles = '';
+    if (n > 1) {
+      const morceaux = [];
+      for (let i = 1; i < n; i++) {
+        const m = moisEntre(eps[i - 1].date, eps[i].date);
+        if (m) morceaux.push(etiquette(i - 1, n) + ' → ' + etiquette(i, n) + ' : ' +
+          (m.mois >= 1 ? m.mois + ' mois' : m.jours + ' jours'));
+      }
+      if (morceaux.length) {
+        intervalles = '<div style="font-size:11.5px; color:#64748b; margin-top:8px; line-height:1.6;">' +
+          esc(morceaux.join(' · ')) + '</div>';
+      }
+    }
+
+    return '<div style="margin-bottom:18px;">' +
+      '<div style="font-size:12px; font-weight:800; color:#0b1530; text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">' +
+        'Évolution d\'une épreuve à l\'autre</div>' +
+      '<div style="border:1px solid var(--line); border-radius:11px; overflow-x:auto;">' +
+        '<table style="width:100%; border-collapse:collapse; background:#fff;">' +
+          '<thead>' + entete + '</thead><tbody>' + corps + '</tbody></table>' +
+      '</div>' + intervalles +
+      '<div style="font-size:11.5px; color:#64748b; margin-top:6px; line-height:1.6;">' +
+        'Vert : évolution favorable. Rouge : défavorable. Gris : sans direction d\'interprétation unique — ' +
+        'une FC de pic plus basse peut venir d\'un bêtabloquant comme d\'un effort moins poussé.' +
+      '</div></div>';
+  }
+
+  // ============================================================
   // === Sélecteur et enveloppe =================================
   // ============================================================
   function rendre() {
@@ -221,7 +346,9 @@
       '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">' +
         choix +
         '<span style="font-size:11.5px; color:#64748b;">' + _epreuves.length + ' épreuve(s) au dossier</span>' +
-      '</div>' + rendreEpreuve(ev));
+      '</div>' +
+      (_epreuves.length > 1 ? rendreComparaison(_epreuves) : '') +
+      rendreEpreuve(ev));
   }
 
   function carte(contenu) {
