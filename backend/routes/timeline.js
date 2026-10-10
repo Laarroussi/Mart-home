@@ -408,22 +408,17 @@ router.post('/:patient_id/echo', requireAuth, async (req, res, next) => {
       ).catch(() => {});
     }
 
-    // Le diamètre des sinus alimente le suivi aortique « évaluation actuelle »
-    if (e.sinus_valsalva_mm != null) {
-      await query(
-        `INSERT INTO medical_records (patient_id, aortic_followup)
-         VALUES ($1, jsonb_build_object('current_value_mm', $2::numeric,
-                                        'current_date', COALESCE($3::date, CURRENT_DATE),
-                                        'current_site', 'Sinus de Valsalva'))
-         ON CONFLICT (patient_id) DO UPDATE
-           SET aortic_followup = COALESCE(medical_records.aortic_followup, '{}'::jsonb) ||
-               jsonb_build_object('current_value_mm', $2::numeric,
-                                  'current_date', COALESCE($3::date, CURRENT_DATE),
-                                  'current_site', 'Sinus de Valsalva'),
-               updated_at = NOW()`,
-        [req.params.patient_id, e.sinus_valsalva_mm, e.exam_date || null]
-      ).catch(err => console.warn('[echo] maj suivi aortique :', err.message));
-    }
+    // Phase 62 — La recopie du diamètre des sinus vers
+    // `aortic_followup.current_value_mm` est supprimée.
+    //
+    // Elle était doublement nuisible. D'abord parce qu'elle dupliquait la
+    // mesure : l'échocardiographie la porte déjà, et sync-evaluations
+    // relisait ensuite la copie comme une origine distincte. Ensuite parce
+    // que cette origine n'était pas reconnue comme une échocardiographie :
+    // une mesure authentique, recopiée là, redescendait au niveau
+    // « déclarée ». Le niveau de preuve se dégradait tout seul.
+    //
+    // Le compte rendu est désormais l'unique dépositaire de ses mesures.
 
     let sync = null;
     try { sync = await synchroniser(req.params.patient_id, req.user.id); }

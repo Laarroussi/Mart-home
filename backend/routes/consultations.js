@@ -80,26 +80,15 @@ router.post('/:patient_id', requireAuth, async (req, res, next) => {
     );
     const consult = rows[0];
 
-    // Si une mesure aortique est fournie, on met à jour le "current" du suivi aortique
-    if (b.aortic_value_mm != null) {
-      await query(
-        `INSERT INTO medical_records (patient_id, aortic_followup)
-         VALUES ($1, jsonb_build_object(
-             'current_value_mm', $2::numeric,
-             'current_date', COALESCE($3::date, CURRENT_DATE),
-             'current_site', $4::text
-         ))
-         ON CONFLICT (patient_id) DO UPDATE
-           SET aortic_followup = COALESCE(medical_records.aortic_followup, '{}'::jsonb) ||
-               jsonb_build_object(
-                 'current_value_mm', $2::numeric,
-                 'current_date', COALESCE($3::date, CURRENT_DATE),
-                 'current_site', $4::text
-               ),
-               updated_at = NOW()`,
-        [req.params.patient_id, b.aortic_value_mm, b.consultation_date || null, b.aortic_site || null]
-      );
-    }
+    // Phase 62 — La recopie vers `aortic_followup.current_value_mm` est
+    // supprimée. Elle dupliquait la mesure : la consultation la portait
+    // déjà, et sync-evaluations relisait ensuite la copie comme une origine
+    // distincte, nommée « évaluation actuelle ». Le même diamètre entrait
+    // deux fois dans la courbe, sous deux étiquettes.
+    //
+    // La consultation est désormais l'unique dépositaire de sa propre
+    // mesure. Le suivi aortique ne conserve que la valeur de départ.
+
     // Une mesure aortique relevée en consultation est une donnée datée : elle
     // a sa place sur la courbe longitudinale, au même titre qu'une évaluation.
     let sync = null;
@@ -132,14 +121,56 @@ router.get('/:patient_id/aortic', requireAuth, async (req, res, next) => {
 
 // ============================================================
 // PATCH /:patient_id/aortic — met à jour le suivi aortique
-// Body : { first_diagnosis_date?, first_value_mm?, first_site?, first_comment?,
-//          current_value_mm?, current_date?, current_site?, notes? }
+// Body : { first_diagnosis_date?, first_value_mm?, first_site?, first_comment?, notes? }
+//
+// Phase 62 — Deux changements.
+//
+// Les clés `current_*` ne sont plus acceptées : la mesure du jour appartient
+// à la consultation ou au compte rendu qui la porte, pas à une copie dans le
+// suivi aortique. Le champ ne conserve que la valeur de DÉPART, celle saisie
+// à la création en attendant les documents.
+//
+// Et le corps de requête n'est plus fusionné en bloc. Il l'était tel quel :
+// n'importe quelle clé envoyée par un client entrait dans une colonne
+// clinique et y restait, sans schéma pour la rejeter ni rien pour la
+// signaler. On n'accepte plus qu'une liste nommée.
+//
 // ⚠ DOIT être déclarée AVANT /:patient_id/:id (voir remarque ci-dessus).
 // ============================================================
+const CLES_AORTE = ['first_diagnosis_date', 'first_value_mm', 'first_site',
+                    'first_comment', 'notes'];
+
 router.patch('/:patient_id/aortic', requireAuth, async (req, res, next) => {
   try {
     if (!canWrite(req.user)) return res.status(403).json({ error: 'Accès interdit' });
-    const b = req.body || {};
+
+    const recu = req.body || {};
+    const b = {};
+    CLES_AORTE.forEach(k => { if (recu[k] !== undefined) b[k] = recu[k]; });
+
+    const refusees = Object.keys(recu).filter(k => CLES_AORTE.indexOf(k) < 0);
+    if (refusees.length) {
+      console.warn('[aorte] clés ignorées :', refusees.join(', '));
+    }
+    if (!Object.keys(b).length) {
+      return res.status(400).json({
+        error: 'Aucun champ exploitable. Champs acceptés : ' + CLES_AORTE.join(', '),
+        refusees
+      });
+    }
+
+    // Garde-fou de vraisemblance, côté serveur : l'interface avertit déjà,
+    // mais un appel direct à l'API ne passe pas par l'interface.
+    const v = b.first_value_mm;
+    if (v !== undefined && v !== null && v !== '') {
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 5 || n > 120) {
+        return res.status(400).json({
+          error: 'Diamètre aortique invraisemblable : ' + v + ' mm. Attendu entre 5 et 120 mm.'
+        });
+      }
+    }
+
     const { rows } = await query(
       `INSERT INTO medical_records (patient_id, aortic_followup, updated_by)
        VALUES ($1, $2::jsonb, $3)

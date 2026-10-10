@@ -17,6 +17,7 @@
 
   let _patientId = null;
   let _aortic = {};
+  let _echos = [];
   let _consultations = [];
   let _showForm = false;
   let _editingId = null;
@@ -36,12 +37,14 @@
   async function load(patientId) {
     _patientId = patientId;
     try {
-      const [rA, rC] = await Promise.all([
+      const [rA, rC, rE] = await Promise.all([
         window.MarfanAPI.consultations.getAortic(patientId),
-        window.MarfanAPI.consultations.list(patientId)
+        window.MarfanAPI.consultations.list(patientId),
+        window.MarfanAPI.timeline.echoList(patientId).catch(() => ({ examens: [] }))
       ]);
       _aortic = (rA && rA.aortic) || {};
       _consultations = (rC && rC.consultations) || [];
+      _echos = (rE && rE.examens) || [];
       // Expose pour la timeline des actes (renderPatientTimelineActs dans index.html)
       window._patientConsultations = _consultations;
       if (typeof window.renderPatientTimelineActs === 'function') {
@@ -49,7 +52,7 @@
       }
     } catch (e) {
       console.warn('[aortic] chargement échoué :', e.message);
-      _aortic = {}; _consultations = [];
+      _aortic = {}; _consultations = []; _echos = [];
       window._patientConsultations = [];
     }
   }
@@ -95,13 +98,58 @@
       </style>`;
   }
 
+  /**
+   * La mesure aortique la plus récente, et d'où elle vient.
+   *
+   * Priorité au compte rendu d'échocardiographie : c'est le document de
+   * référence. À date égale, il l'emporte sur une consultation, qui n'en est
+   * qu'une retranscription.
+   *
+   * Renvoie null plutôt qu'une valeur par défaut : un dossier sans mesure
+   * doit s'afficher sans mesure.
+   */
+  function mesureLaPlusRecente() {
+    const points = [];
+
+    (_echos || []).forEach(e => {
+      const v = e.sinus_valsalva_mm != null ? parseFloat(e.sinus_valsalva_mm)
+              : (e.aorte_max_mm != null ? parseFloat(e.aorte_max_mm) : null);
+      if (v != null && e.exam_date) {
+        points.push({ date: e.exam_date, valeur: v, site: e.aorte_site_max || 'Sinus de Valsalva',
+                      origine: 'échocardiographie', niveau: 'mesure', rang: 2 });
+      }
+    });
+
+    (_consultations || []).forEach(c => {
+      const v = c.aortic_value_mm != null ? parseFloat(c.aortic_value_mm) : null;
+      if (v != null && c.consultation_date) {
+        points.push({ date: c.consultation_date, valeur: v, site: c.aortic_site || null,
+                      origine: 'consultation', niveau: 'declaree', rang: 1 });
+      }
+    });
+
+    if (!points.length) return null;
+    points.sort((x, y) => {
+      const d = new Date(y.date) - new Date(x.date);
+      return d !== 0 ? d : (y.rang - x.rang);
+    });
+    return points[0];
+  }
+
   // ============================================================
   // === Bloc 1 : Suivi aortique ================================
   // ============================================================
   function renderAorticCard() {
     const a = _aortic || {};
     const first = a.first_value_mm != null ? parseFloat(a.first_value_mm) : null;
-    const curr  = a.current_value_mm != null ? parseFloat(a.current_value_mm) : null;
+
+    // Phase 62 — La valeur « actuelle » n'est plus stockée ici. Elle l'était,
+    // recopiée depuis l'écho ou la consultation, et elle divergeait dès que
+    // l'originale était corrigée. Elle est maintenant DÉDUITE de la mesure
+    // la plus récente, l'échocardiographie ayant priorité sur la
+    // consultation à date égale : c'est le document de référence.
+    const derniere = mesureLaPlusRecente();
+    const curr = derniere ? derniere.valeur : null;
     const delta = (first != null && curr != null) ? (curr - first) : null;
     const deltaColor = delta == null ? '#64748b' : (delta > 1 ? '#dc2626' : (delta < -1 ? '#16a34a' : '#0891b2'));
     const deltaTxt = delta == null ? '—' : ((delta > 0 ? '+' : '') + delta.toFixed(1) + ' mm');
@@ -379,17 +427,16 @@
                 <input type="text" id="ao_firstComment" value="${esc(a.first_comment || '')}" placeholder="ex. Mesure issue du compte-rendu du CHU de..." style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box;"></div>
             </div>
 
-            <h4 style="margin:0 0 10px; font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Évaluation actuelle</h4>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
-              <div><label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Date de mesure</label>
-                <input type="date" id="ao_currDate" value="${(a.current_date || new Date().toISOString().slice(0,10)).slice(0,10)}" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box;"></div>
-              <div><label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Valeur (mm)</label>
-                <input type="number" step="0.1" id="ao_currValue" value="${a.current_value_mm != null ? a.current_value_mm : ''}" placeholder="ex. 42.0" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box;"></div>
-              <div style="grid-column:1/-1;"><label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Site</label>
-                <select id="ao_currSite" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box;">
-                  <option value="">— Non précisé —</option>
-                  ${SITES.map(s => `<option value="${s}" ${a.current_site === s ? 'selected' : ''}>${s}</option>`).join('')}
-                </select></div>
+            <!-- Phase 62 — La saisie d'une « évaluation actuelle » est retirée.
+                 Elle créait une copie qui divergeait de la mesure d'origine
+                 dès que celle-ci était corrigée, et personne ne savait plus
+                 laquelle croire. Une mesure se saisit là où elle a été
+                 faite : dans une consultation, ou dans le compte rendu. -->
+            <div style="padding:12px 14px; margin-bottom:16px; border-radius:10px; background:#f0f9ff; border:1px solid #bae6fd; font-size:12.5px; color:#075985; line-height:1.6;">
+              <strong>La mesure du jour ne se saisit plus ici.</strong><br>
+              Ajoutez-la dans une <strong>consultation</strong>, ou versez le
+              <strong>compte rendu d'échocardiographie</strong> — c'est lui qui fait foi.
+              La valeur affichée en haut est toujours la plus récente des deux.
             </div>
 
             <div><label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">Notes sur l'évaluation actuelle</label>
@@ -411,9 +458,6 @@
       first_value_mm:       v('ao_firstValue') ? parseFloat(v('ao_firstValue')) : null,
       first_site:           v('ao_firstSite') || null,
       first_comment:        v('ao_firstComment') || null,
-      current_date:         v('ao_currDate') || null,
-      current_value_mm:     v('ao_currValue') ? parseFloat(v('ao_currValue')) : null,
-      current_site:         v('ao_currSite') || null,
       notes:                v('ao_notes') || null
     };
     try {

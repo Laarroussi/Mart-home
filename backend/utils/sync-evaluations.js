@@ -122,7 +122,10 @@ async function collecter(patientId) {
   if (mr.rows.length && mr.rows[0].aortic_followup) {
     const a = mr.rows[0].aortic_followup;
     poser(a.first_diagnosis_date, 'aorta', nombre(a.first_value_mm), 'diagnostic initial');
-    poser(a.current_date, 'aorta', nombre(a.current_value_mm), 'évaluation actuelle');
+    // `current_*` n'est plus une origine : c'était une recopie de l'écho ou
+    // de la consultation, relue ici comme si elle venait d'ailleurs. Seule
+    // la valeur de DÉPART reste, et elle est explicitement déclarée.
+    // (migration 034)
   }
 
   return parDate;
@@ -133,12 +136,45 @@ async function collecter(patientId) {
  * Ne lève jamais : renvoie un compte rendu.
  */
 async function synchroniser(patientId, parQui) {
-  const resume = { creees: 0, majs: 0, ignorees: 0, erreurs: [] };
+  const resume = { creees: 0, majs: 0, ignorees: 0, supprimees: 0, erreurs: [] };
   if (!patientId) return resume;
 
   let parDate;
   try { parDate = await collecter(patientId); }
   catch (e) { resume.erreurs.push(e.message); return resume; }
+
+  // --- La projection se nettoie d'elle-même ----------------------------
+  //
+  // Jusqu'ici cette fonction ne savait qu'ajouter. Une évaluation dérivée
+  // survivait donc à la disparition de son origine : on corrigeait la
+  // valeur fautive à la source, et le point restait sur la courbe. C'est ce
+  // qui s'est produit avec un diamètre de 45 mm — il a fallu un script pour
+  // l'effacer à la main, alors qu'une synchronisation aurait dû suffire.
+  //
+  // On supprime donc les évaluations d'origine documentaire dont la date
+  // n'est plus produite par aucune origine. Jamais les autres : une
+  // évaluation saisie à la main appartient au soignant, et une évaluation
+  // portant un VO2 vient d'une épreuve d'effort analysée, pas d'ici.
+  try {
+    const dates = [...parDate.keys()];
+    const r = dates.length
+      ? await query(
+          `DELETE FROM evaluations
+            WHERE patient_id = $1 AND source = 'document'
+              AND vo2 IS NULL AND force_kg IS NULL AND sf36 IS NULL AND gpaq IS NULL
+              AND eval_date <> ALL ($2::date[])`, [patientId, dates])
+      : await query(
+          `DELETE FROM evaluations
+            WHERE patient_id = $1 AND source = 'document'
+              AND vo2 IS NULL AND force_kg IS NULL AND sf36 IS NULL AND gpaq IS NULL`,
+          [patientId]);
+    resume.supprimees = r.rowCount || 0;
+    if (resume.supprimees) {
+      console.log('[sync-eval] ' + patientId + ' : ' + resume.supprimees +
+                  ' évaluation(s) dérivée(s) sans origine, supprimée(s).');
+    }
+  } catch (e) { resume.erreurs.push('nettoyage : ' + e.message); }
+
   if (!parDate.size) return resume;
 
   // Dates déjà couvertes par une évaluation saisie à la main ou importée :
@@ -194,9 +230,10 @@ async function synchroniser(patientId, parQui) {
     }
   }
 
-  if (resume.creees || resume.majs) {
+  if (resume.creees || resume.majs || resume.supprimees) {
     console.log('[sync-eval] ' + patientId + ' : ' + resume.creees + ' créée(s), ' +
-                resume.majs + ' mise(s) à jour, par ' + (parQui || 'système'));
+                resume.majs + ' mise(s) à jour, ' + resume.supprimees +
+                ' supprimée(s), par ' + (parQui || 'système'));
   }
   return resume;
 }
