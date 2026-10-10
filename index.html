@@ -18,35 +18,35 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase55-1"></script>
+  <script src="api-client.js?v=phase56-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase55-1"></script>
+  <script src="questionnaires-defs.js?v=phase56-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase55-1"></script>
+  <script src="medical-parsers.js?v=phase56-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase55-1"></script>
-  <script src="cpet-analyse.js?v=phase55-1"></script>
+  <script src="cpet-graph-preview.js?v=phase56-1"></script>
+  <script src="cpet-analyse.js?v=phase56-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase55-1"></script>
-  <script src="medical-record-ui.js?v=phase55-1"></script>
+  <script src="pdf-extractor.js?v=phase56-1"></script>
+  <script src="medical-record-ui.js?v=phase56-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase55-1"></script>
-  <script src="synthese-ui.js?v=phase55-1"></script>
-  <script src="audit-ui.js?v=phase55-1"></script>
-  <script src="entretien-ui.js?v=phase55-1"></script>
-  <script src="activation-ui.js?v=phase55-1"></script>
-  <script src="document-import.js?v=phase55-1"></script>
-  <script src="activite-ui.js?v=phase55-1"></script>
-  <script src="visio-jitsi.js?v=phase55-1"></script>
-  <script src="video-pilotee.js?v=phase55-1"></script>
-  <script src="fiche-apa.js?v=phase55-1"></script>
-  <script src="inactivite.js?v=phase55-1"></script>
-  <script src="bilans-ui.js?v=phase55-1"></script>
-  <script src="etudes-ui.js?v=phase55-1"></script>
-  <script src="ville-hopital.js?v=phase55-1"></script>
-  <script src="qlibres-ui.js?v=phase55-1"></script>
-  <script src="parametres-ui.js?v=phase55-1"></script>
+  <script src="aortic-consultations.js?v=phase56-1"></script>
+  <script src="synthese-ui.js?v=phase56-1"></script>
+  <script src="audit-ui.js?v=phase56-1"></script>
+  <script src="entretien-ui.js?v=phase56-1"></script>
+  <script src="activation-ui.js?v=phase56-1"></script>
+  <script src="document-import.js?v=phase56-1"></script>
+  <script src="activite-ui.js?v=phase56-1"></script>
+  <script src="visio-jitsi.js?v=phase56-1"></script>
+  <script src="video-pilotee.js?v=phase56-1"></script>
+  <script src="fiche-apa.js?v=phase56-1"></script>
+  <script src="inactivite.js?v=phase56-1"></script>
+  <script src="bilans-ui.js?v=phase56-1"></script>
+  <script src="etudes-ui.js?v=phase56-1"></script>
+  <script src="ville-hopital.js?v=phase56-1"></script>
+  <script src="qlibres-ui.js?v=phase56-1"></script>
+  <script src="parametres-ui.js?v=phase56-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3496,6 +3496,7 @@
             </div>
 
             <div style="display:flex; justify-content:flex-end; margin-top:18px;">
+              <button type="button" class="btn-gradient cf-enregistrer" onclick="createPatientFromForm()" style="display:none; margin-right:9px;">✓ Enregistrer les modifications</button>
               <button type="button" class="btn-gradient" onclick="cfAllerEtape(2)">Vérifier les informations →</button>
             </div>
           </article>
@@ -3750,6 +3751,7 @@
 
             <div style="display:flex; justify-content:space-between; margin-top:18px;">
               <button type="button" class="btn-secondary" onclick="cfAllerEtape(1)">← Pièces</button>
+              <button type="button" class="btn-gradient cf-enregistrer" onclick="createPatientFromForm()" style="display:none; margin-right:9px;">✓ Enregistrer les modifications</button>
               <button type="button" class="btn-gradient" onclick="cfAllerEtape(3)">Entretien →</button>
             </div>
           </article>
@@ -3805,6 +3807,7 @@
 
             <div style="display:flex; justify-content:space-between; margin-top:18px;">
               <button type="button" class="btn-secondary" onclick="cfAllerEtape(2)">← Vérification</button>
+              <button type="button" class="btn-gradient cf-enregistrer" onclick="createPatientFromForm()" style="display:none; margin-right:9px;">✓ Enregistrer les modifications</button>
               <button type="button" class="btn-gradient" onclick="cfAllerEtape(4)">Synthèse →</button>
             </div>
           </article>
@@ -3870,7 +3873,7 @@
               <span style="display:flex; gap:9px; align-items:center;">
                 <button class="btn-secondary" id="cf_ficheBtn" onclick="apercuFicheCreation()">🖨 Aperçu de la fiche</button>
                 <button class="btn-secondary" id="cf_pdfBtn" onclick="generatePatientPdfFromForm()" style="display:none;">📄 Générer le PDF</button>
-                <button class="btn-gradient" onclick="createPatientFromForm()" style="font-size:14.5px; padding:12px 22px;">✓ Valider et créer le dossier</button>
+                <button class="btn-gradient" id="cf_validerBtn" onclick="createPatientFromForm()" style="font-size:14.5px; padding:12px 22px;">✓ Valider et créer le dossier</button>
               </span>
             </div>
           </article>
@@ -8132,6 +8135,22 @@
     el.style.background  = edition ? '#fef3c7' : '#ecfeff';
     el.style.borderColor = edition ? '#fcd34d' : '#a5f3fc';
     el.style.color       = edition ? '#92400e' : '#0e7490';
+
+    // Phase 56 — En modification, l'enregistrement doit être à portée de main
+    // sur chaque étape. Corriger un diamètre aortique à l'étape 2 obligeait à
+    // traverser l'entretien et la synthèse pour atteindre un bouton qui
+    // parlait de « créer le dossier » — un dossier qui existe déjà. On
+    // cherche « enregistrer », on ne le trouve pas, et on finit par quitter
+    // la page en croyant avoir enregistré.
+    document.querySelectorAll('#creation .cf-enregistrer').forEach(b => {
+      b.style.display = edition ? 'inline-flex' : 'none';
+    });
+    const valider = document.getElementById('cf_validerBtn');
+    if (valider) {
+      valider.textContent = edition
+        ? '✓ Enregistrer les modifications'
+        : '✓ Valider et créer le dossier';
+    }
   }
   window.majPastilleCreation = majPastilleCreation;
 
@@ -8940,6 +8959,10 @@
         patients[idx] = newPatient;
       }
       window._editingPatientId = null;
+      // Le formulaire repasse en création : les boutons « Enregistrer les
+      // modifications » doivent disparaître, sinon ils proposeraient de
+      // modifier un dossier qu'on ne modifie plus.
+      try { majPastilleCreation(); } catch (_) {}
     } else {
       // Ajout à la cohorte.
       //
@@ -9480,15 +9503,62 @@
 
 
       // Première mesure aortique : la plus ancienne
+      // --- Dilatation aortique -------------------------------------
+      //
+      // Un compte rendu d'échocardiographie mesure l'aorte à plusieurs
+      // niveaux le même jour : anneau, sinus de Valsalva, jonction
+      // sino-tubulaire, aorte ascendante. Le code prenait le premier fait
+      // par ordre chronologique — donc, à date égale, celui que le hasard de
+      // l'extraction plaçait en tête.
+      //
+      // Un dossier a ainsi reçu 19 mm comme « dilatation initiale » : la
+      // valeur de l'anneau, normale, là où les sinus mesuraient 40 mm. Le
+      // suivi Marfan portant sur les sinus, la courbe partait d'un chiffre
+      // qui ne décrivait pas ce qu'elle prétendait suivre.
+      //
+      // On choisit donc explicitement : les sinus de Valsalva d'abord ; à
+      // défaut, le plus grand diamètre du jour, qui est le critère de
+      // décision clinique. Et le site retenu est toujours renseigné, pour
+      // qu'on sache de quoi parle le chiffre.
       const aortiques = faits
         .filter(x => /aort|valsalva|racine/i.test(x.label || '') && x.value_num != null)
         .sort((a, b) => new Date(a.event_date || 0) - new Date(b.event_date || 0));
+
       if (aortiques.length) {
-        const prem = aortiques[0], dern = aortiques[aortiques.length - 1];
+        const estValsalva = x => /valsalva|racine/i.test(x.label || '');
+        const estAnneau   = x => /anneau|annulus/i.test(x.label || '');
+
+        /** Parmi les mesures d'une même date, celle qui fait référence. */
+        const choisir = (groupe) => {
+          const sinus = groupe.filter(estValsalva);
+          if (sinus.length) return sinus[0];
+          // L'anneau n'est jamais retenu comme diamètre de suivi : il est
+          // structurellement le plus petit et ne dilate pas comme les sinus.
+          const sansAnneau = groupe.filter(x => !estAnneau(x));
+          const util = sansAnneau.length ? sansAnneau : groupe;
+          return util.reduce((a, b) => (b.value_num > a.value_num ? b : a));
+        };
+
+        const memeJour = (a, b) => String(a.event_date || '') === String(b.event_date || '');
+        const premGroupe = aortiques.filter(x => memeJour(x, aortiques[0]));
+        const dernGroupe = aortiques.filter(x => memeJour(x, aortiques[aortiques.length - 1]));
+
+        const prem = choisir(premGroupe);
+        const dern = choisir(dernGroupe);
+
         if (poser('cf_aorticFirstValue', prem.value_num)) n++;
         if (prem.event_date && poser('cf_aorticFirstDate', prem.event_date)) n++;
-        if (/valsalva/i.test(prem.label)) { if (poser('cf_aorticFirstSite', 'Sinus de Valsalva')) n++; }
+        const site = estValsalva(prem) ? 'Sinus de Valsalva' : (prem.label || null);
+        if (site && poser('cf_aorticFirstSite', site)) n++;
         if (dern !== prem && poser('cf_aorticTodayValue', dern.value_num)) n++;
+
+        // L'avertissement de vraisemblance s'applique aussi aux valeurs
+        // posées par la machine : c'est même là qu'il sert le plus, puisque
+        // personne ne les a regardées en les tapant.
+        try {
+          verifierAorte(document.getElementById('cf_aorticFirstValue'));
+          verifierAorte(document.getElementById('cf_aorticTodayValue'));
+        } catch (_) {}
       }
 
       // Traitements en cours

@@ -32,8 +32,9 @@
 DO $$
 DECLARE
   -- ↓↓↓ LES DEUX SEULES LIGNES À MODIFIER ↓↓↓
-  cible    TEXT    := 'MRF-003';
-  nouvelle NUMERIC := 41;
+  cible    TEXT    := 'MRF-010';
+  nouvelle NUMERIC := 40;
+  site     TEXT    := 'Sinus de Valsalva';   -- laissez vide ('') pour ne pas y toucher
   -- ↑↑↑ ----------------------------- ↑↑↑
 
   avant NUMERIC;
@@ -62,6 +63,16 @@ BEGIN
    WHERE patient_id = cible;
   RAISE NOTICE 'Suivi aortique : % mm -> % mm.', avant, nouvelle;
 
+  -- Le site compte autant que le chiffre : 40 mm ne veut pas dire la même
+  -- chose selon qu'on mesure l'anneau, les sinus ou l'aorte ascendante. Une
+  -- valeur sans son niveau n'est pas interprétable.
+  IF site IS NOT NULL AND site <> '' THEN
+    UPDATE medical_records
+       SET aortic_followup = jsonb_set(aortic_followup, '{first_site}', to_jsonb(site))
+     WHERE patient_id = cible;
+    RAISE NOTICE 'Site renseigné : %', site;
+  END IF;
+
   -- L'évaluation dérivée porte encore l'ancienne valeur : sans cette mise à
   -- jour, la courbe continuerait d'afficher le chiffre corrigé ailleurs.
   UPDATE evaluations SET aorta = nouvelle
@@ -71,8 +82,8 @@ BEGIN
 END $$;
 
 SELECT jsonb_pretty(aortic_followup) AS suivi_aortique
-  FROM medical_records WHERE patient_id = 'MRF-003';   -- ← LE MÊME CODE
+  FROM medical_records WHERE patient_id = 'MRF-010';   -- ← LE MÊME CODE
 
 SELECT id, eval_id, label, eval_date, source, aorta
-  FROM evaluations WHERE patient_id = 'MRF-003'        -- ← LE MÊME CODE
+  FROM evaluations WHERE patient_id = 'MRF-010'        -- ← LE MÊME CODE
  ORDER BY eval_date, id;
