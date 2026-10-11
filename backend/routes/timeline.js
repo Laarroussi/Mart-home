@@ -103,6 +103,52 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
       return res.status(400).json({ error: "Le document ne contient aucun texte exploitable, même après lecture optique." });
     }
 
+    // ============================================================
+    // Phase 76 — Le document est conservé AVANT d'être analysé.
+    // ------------------------------------------------------------
+    // Jusqu'ici cette route lisait le fichier, en tirait des faits, et
+    // n'en gardait rien : `medical_record_documents` est resté vide alors
+    // que le journal d'extraction enregistre une vingtaine de lectures et
+    // près de mille faits proposés.
+    //
+    // Deux conséquences, toutes deux vérifiées en base :
+    //
+    //   • une mesure intégrée au dossier n'a aucune pièce justificative —
+    //     impossible de revenir au document pour vérifier un chiffre, ce
+    //     qui est la première chose qu'on fait quand une valeur surprend ;
+    //   • si le clinicien ferme l'écran de relecture, l'extraction entière
+    //     est perdue, et il faut reverser le fichier pour la refaire.
+    //     Un document de 253 faits a disparu ainsi.
+    //
+    // On enregistre donc la pièce dès la lecture, avec son texte extrait.
+    // Elle existe désormais indépendamment de ce que le clinicien décide
+    // d'en retenir, et les faits intégrés pourront s'y rattacher.
+    // ============================================================
+    let docEnregistre = doc_id || null;
+    if (!docEnregistre) {
+      try {
+        const d = await query(
+          `INSERT INTO medical_record_documents
+             (patient_id, file_name, file_size_kb, file_mime, raw_file,
+              extracted_text, ocr_used, status, uploaded_by)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',$8) RETURNING id`,
+          [req.params.patient_id,
+           req.body.nom_fichier || null,
+           fichier_base64 ? Math.round(fichier_base64.length * 0.75 / 1024) : null,
+           mime || null,
+           fichier_base64 || null,
+           String(texte).slice(0, 2000000),
+           !!ocrInfo,
+           req.user.id]
+        );
+        docEnregistre = d.rows[0].id;
+      } catch (e) {
+        // Un échec d'enregistrement ne doit pas priver le clinicien de son
+        // analyse : on continue, et on le dit dans la réponse.
+        console.warn('[timeline] conservation du document :', e.message);
+      }
+    }
+
     // Récupère l'identité pour pouvoir la masquer
     const p = await query('SELECT civil FROM patients WHERE id = $1', [req.params.patient_id]);
     const patient = p.rows.length ? { civil: p.rows[0].civil || {} } : { civil: {} };
@@ -169,7 +215,7 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
     await query(
       `INSERT INTO ai_extraction_log (patient_id, doc_id, modele, nb_faits, pseudonymise, duree_ms, par)
        VALUES ($1,$2,$3,$4,TRUE,$5,$6)`,
-      [req.params.patient_id, doc_id || null, resultat.modele,
+      [req.params.patient_id, docEnregistre || null, resultat.modele,
        resultat.faits.length, resultat.duree_ms, req.user.id]
     ).catch(() => {});
 
@@ -226,7 +272,10 @@ router.post('/:patient_id/analyser', requireAuth, async (req, res, next) => {
       duree_ms: resultat.duree_ms,
       pseudonymise: !modeIdentite,
       ocr: ocrInfo,                       // non nul si le document a dû être lu par OCR
-      apercu_masque: texteMasque.slice(0, 600)
+      apercu_masque: texteMasque.slice(0, 600),
+      // Identifiant de la pièce conservée : les faits intégrés s'y
+      // rattacheront, et l'on pourra remonter d'une mesure à son document.
+      doc_id: docEnregistre
     });
   } catch (err) { next(err); }
 });

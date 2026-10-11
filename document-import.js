@@ -22,6 +22,7 @@
   let _patientId = null;
   let _conteneurId = null;
   let _zoneId = null;
+  let _docId = null;   // pièce conservée par le serveur à la lecture
   let _faits = [];
   let _echo = null;
   let _docNom = '';
@@ -607,6 +608,11 @@
     }
 
     _faits = (prop && prop.faits) || [];
+    // La pièce est désormais conservée par le serveur dès la lecture. On
+    // garde son identifiant pour que chaque fait intégré pointe vers le
+    // document dont il est tiré : une mesure sans sa pièce justificative
+    // ne se vérifie pas.
+    _docId = (prop && prop.doc_id) || null;
     _echo = (prop && prop.echo) || null;
     fermerAttente();
     if (!_faits.length && !_echo) {
@@ -870,7 +876,7 @@
           <div style="padding:16px 24px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
             <span id="diCompteur" style="font-size:12.5px; color:#475569; font-weight:600;"></span>
             <div style="display:flex; gap:9px;">
-              <button onclick="document.getElementById('diRelecture').remove()" style="padding:12px 20px; border:1px solid #cbd5e1; background:white; color:#475569; border-radius:10px; font-weight:600; font-size:13.5px; cursor:pointer;">Annuler</button>
+              <button id="diAnnuler" style="padding:12px 20px; border:1px solid #cbd5e1; background:white; color:#475569; border-radius:10px; font-weight:600; font-size:13.5px; cursor:pointer;">Abandonner</button>
               <button id="diValider" style="padding:12px 26px; border:none; border-radius:10px; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white; font-weight:700; font-size:13.5px; cursor:pointer;">✓ Intégrer au dossier</button>
             </div>
           </div>
@@ -889,6 +895,24 @@
       majCompteur();
     });
     majCompteur();
+
+    // Phase 76 — Abandonner demande confirmation, et dit ce qu'on perd.
+    //
+    // Le bouton s'appelait « Annuler » et fermait sans rien demander. Une
+    // extraction de 253 faits a disparu de cette façon : le clinicien ferme,
+    // croit que c'est enregistré, et rien ne le détrompe. Le document reste
+    // désormais en base, mais les faits proposés, eux, sont perdus — il faut
+    // relancer la lecture.
+    document.getElementById('diAnnuler').addEventListener('click', function () {
+      const n = cases().filter(c => c.checked).length;
+      const message = n
+        ? n + ' donnée(s) sélectionnée(s) ne seront PAS enregistrées.\n\n' +
+          'Le document reste dans le dossier, mais il faudra relancer la lecture ' +
+          'pour retrouver ces propositions.\n\nAbandonner quand même ?'
+        : 'Abandonner cette lecture ?';
+      if (!confirm(message)) return;
+      const b = document.getElementById('diRelecture'); if (b) b.remove();
+    });
 
     document.getElementById('diValider').addEventListener('click', async function () {
       const lire = (cls, i) => {
@@ -920,11 +944,12 @@
       try {
         let messages = [];
         if (echoAEnregistrer) {
+          if (_docId) echoAEnregistrer.source_doc_id = _docId;
           await window.MarfanAPI.timeline.echoSave(_patientId, echoAEnregistrer);
           messages.push('1 échocardiographie');
         }
         if (retenus.length) {
-          await window.MarfanAPI.timeline.save(_patientId, retenus, null);
+          await window.MarfanAPI.timeline.save(_patientId, retenus, _docId);
           messages.push(retenus.length + ' donnée(s) datées');
         }
         const b = document.getElementById('diRelecture'); if (b) b.remove();
