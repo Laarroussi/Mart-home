@@ -20,12 +20,28 @@
 -- ============================================================
 
 -- 1. Combien de pièces, et dans quelle table ?
-SELECT 'medical_record_documents' AS table_source, count(*) AS lignes FROM medical_record_documents
-UNION ALL SELECT 'medical_timeline',   count(*) FROM medical_timeline
-UNION ALL SELECT 'echo_reports',       count(*) FROM echo_reports
-UNION ALL SELECT 'medical_exams',      count(*) FROM medical_exams
-UNION ALL SELECT 'pieces_patients',    count(*) FROM pieces_patients
-UNION ALL SELECT 'analyses_files',     count(*) FROM analyses_files;
+--
+-- Les comptages passent par un bloc dynamique parce qu'une table peut
+-- manquer : une migration non appliquée fait échouer la requête entière à
+-- l'analyse, avant même d'avoir affiché les autres tableaux. On préfère
+-- lire « table absente » et continuer — c'est une information, pas une
+-- panne, et elle vaut d'être vue.
+DO $$
+DECLARE
+  t TEXT;
+  n BIGINT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['medical_record_documents','medical_timeline','echo_reports',
+                           'medical_exams','pieces_patients','analyses_files',
+                           'consultations','evaluations'] LOOP
+    IF to_regclass('public.' || t) IS NULL THEN
+      RAISE NOTICE '% : TABLE ABSENTE (migration non appliquée)', rpad(t, 26);
+    ELSE
+      EXECUTE format('SELECT count(*) FROM %I', t) INTO n;
+      RAISE NOTICE '% : % ligne(s)', rpad(t, 26), n;
+    END IF;
+  END LOOP;
+END $$;
 
 -- 2. Les fichiers reçus, patient par patient, du plus récent au plus ancien.
 --    `status` dit où en est la pièce : « pending » = versée mais jamais
