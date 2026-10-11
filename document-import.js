@@ -974,6 +974,21 @@
    * extraites quand on vérifie. Les mettre dans la même carte obligeait à
    * traverser toute la chronologie pour atteindre le bouton.
    */
+  /**
+   * Le code du patient, avec son nom quand on le connaît.
+   *
+   * « MRF-002 » seul ne se vérifie pas d'un coup d'œil : deux codes voisins
+   * se ressemblent. « MRF-002 · CASSIOTIS » se vérifie.
+   */
+  function nomPatient(id) {
+    try {
+      const p = (window.patients || []).find(x => x && x.id === id);
+      const c = p && p.civil;
+      const nom = c && (c.lastName || c.nom);
+      return nom ? id + ' · ' + String(nom).toUpperCase() : id;
+    } catch (_) { return id; }
+  }
+
   function monterZone(containerId, patientId) {
     const el = document.getElementById(containerId);
     if (!el) return;
@@ -981,9 +996,20 @@
 
     el.innerHTML = `
       <article class="card" style="padding:0; margin-bottom:14px; overflow:hidden;">
-        <div style="padding:14px 20px; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white;">
-          <h3 style="margin:0; color:white; font-size:15px;">📎 Verser une pièce au dossier</h3>
-          <p style="margin:3px 0 0; font-size:11.5px; opacity:.92;">Un seul endroit pour tout : le type du fichier est reconnu automatiquement.</p>
+        <!-- Phase 77 — Le code du patient figure dans l'en-tête ET dans la
+             zone de dépôt. La carte ne le portait pas : on versait depuis un
+             dossier ouvert quelques minutes plus tôt, sans remarquer que le
+             sélecteur du bandeau désignait quelqu'un d'autre. Un compte rendu
+             dans le dossier d'un autre patient est une erreur grave et
+             silencieuse — rien ne la signale ensuite. -->
+        <div style="padding:14px 20px; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div>
+            <h3 style="margin:0; color:white; font-size:15px;">📎 Verser une pièce au dossier</h3>
+            <p style="margin:3px 0 0; font-size:11.5px; opacity:.92;">Le type du fichier est reconnu automatiquement.</p>
+          </div>
+          <span style="background:rgba(255,255,255,.22); border:1px solid rgba(255,255,255,.45); padding:6px 14px; border-radius:99px; font-weight:800; font-size:13px; white-space:nowrap;">
+            ${esc(nomPatient(patientId))}
+          </span>
         </div>
         <div style="padding:16px 20px;">
           <div data-dz style="padding:24px; border:2px dashed #bfdbfe; border-radius:12px; text-align:center; background:#f8fbff; cursor:pointer; transition:background .15s, border-color .15s;">
@@ -992,6 +1018,9 @@
             <div style="font-size:11.5px; color:#64748b; line-height:1.5;">
               Épreuve d'effort (COSMED) · échocardiographie · compte rendu · courrier ·
               onde de pouls · photo · enregistrement audio
+            </div>
+            <div style="margin-top:9px; font-size:12.5px; font-weight:700; color:#1d4ed8;">
+              La pièce sera rattachée à <span style="background:#dbeafe; padding:2px 9px; border-radius:7px;">${esc(nomPatient(patientId))}</span>
             </div>
           </div>
           <div data-di-resultat style="display:none; margin-top:12px;"></div>
