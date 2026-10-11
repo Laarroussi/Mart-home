@@ -18,39 +18,39 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase79-1"></script>
+  <script src="api-client.js?v=phase80-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase79-1"></script>
+  <script src="questionnaires-defs.js?v=phase80-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase79-1"></script>
+  <script src="medical-parsers.js?v=phase80-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase79-1"></script>
-  <script src="cpet-analyse.js?v=phase79-1"></script>
+  <script src="cpet-graph-preview.js?v=phase80-1"></script>
+  <script src="cpet-analyse.js?v=phase80-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase79-1"></script>
-  <script src="medical-record-ui.js?v=phase79-1"></script>
+  <script src="pdf-extractor.js?v=phase80-1"></script>
+  <script src="medical-record-ui.js?v=phase80-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase79-1"></script>
-  <script src="synthese-ui.js?v=phase79-1"></script>
-  <script src="audit-ui.js?v=phase79-1"></script>
-  <script src="entretien-ui.js?v=phase79-1"></script>
-  <script src="activation-ui.js?v=phase79-1"></script>
-  <script src="document-import.js?v=phase79-1"></script>
-  <script src="activite-ui.js?v=phase79-1"></script>
-  <script src="cpet-detail.js?v=phase79-1"></script>
-  <script src="echo-calculs.js?v=phase79-1"></script>
-  <script src="echo-detail.js?v=phase79-1"></script>
-  <script src="accueil-activite.js?v=phase79-1"></script>
-  <script src="visio-jitsi.js?v=phase79-1"></script>
-  <script src="video-pilotee.js?v=phase79-1"></script>
-  <script src="fiche-apa.js?v=phase79-1"></script>
-  <script src="inactivite.js?v=phase79-1"></script>
-  <script src="bilans-ui.js?v=phase79-1"></script>
-  <script src="etudes-ui.js?v=phase79-1"></script>
-  <script src="ville-hopital.js?v=phase79-1"></script>
-  <script src="qlibres-ui.js?v=phase79-1"></script>
-  <script src="parametres-ui.js?v=phase79-1"></script>
+  <script src="aortic-consultations.js?v=phase80-1"></script>
+  <script src="synthese-ui.js?v=phase80-1"></script>
+  <script src="audit-ui.js?v=phase80-1"></script>
+  <script src="entretien-ui.js?v=phase80-1"></script>
+  <script src="activation-ui.js?v=phase80-1"></script>
+  <script src="document-import.js?v=phase80-1"></script>
+  <script src="activite-ui.js?v=phase80-1"></script>
+  <script src="cpet-detail.js?v=phase80-1"></script>
+  <script src="echo-calculs.js?v=phase80-1"></script>
+  <script src="echo-detail.js?v=phase80-1"></script>
+  <script src="accueil-activite.js?v=phase80-1"></script>
+  <script src="visio-jitsi.js?v=phase80-1"></script>
+  <script src="video-pilotee.js?v=phase80-1"></script>
+  <script src="fiche-apa.js?v=phase80-1"></script>
+  <script src="inactivite.js?v=phase80-1"></script>
+  <script src="bilans-ui.js?v=phase80-1"></script>
+  <script src="etudes-ui.js?v=phase80-1"></script>
+  <script src="ville-hopital.js?v=phase80-1"></script>
+  <script src="qlibres-ui.js?v=phase80-1"></script>
+  <script src="parametres-ui.js?v=phase80-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1310,6 +1310,19 @@
       max-height: 70vh;
       background: white;
     }
+
+    /* Phase 80 — La barre de défilement horizontale reste visible.
+       Sur macOS elle s'efface tant qu'on ne la provoque pas, et la première
+       colonne figée masque le mouvement : avec soixante-seize colonnes, rien
+       n'indiquait qu'il y avait une suite à droite. On croyait les données
+       absentes alors qu'elles étaient hors champ. */
+    #apiDbUnifiedWrap { scrollbar-color: #94a3b8 #e2e8f0; }
+    #apiDbUnifiedWrap::-webkit-scrollbar { height: 12px; }
+    #apiDbUnifiedWrap::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 99px; }
+    #apiDbUnifiedWrap::-webkit-scrollbar-thumb {
+      background: #94a3b8; border-radius: 99px; border: 2px solid #e2e8f0;
+    }
+    #apiDbUnifiedWrap::-webkit-scrollbar-thumb:hover { background: #64748b; }
     table { width: 100%; border-collapse: collapse; min-width: 1100px; background: white; }
     th, td { padding: 12px 13px; text-align: left; border-bottom: 1px solid var(--line); font-size: 12.5px; white-space: nowrap; }
     th {
@@ -18473,6 +18486,18 @@
       const cols = buildUnifiedColumns(selected, patients, maxByPatient);
 
       if (status) status.textContent = selected.length + ' section(s) cochée(s) · ' + patients.length + ' patient(s) affiché(s) · ' + cols.length + ' colonne(s)';
+
+      // Phase 80 — Dire explicitement que le tableau continue à droite, et
+      // jusqu'où. « 76 colonnes » ne se traduit pas spontanément en « il faut
+      // faire défiler » quand les dix premières remplissent déjà l'écran.
+      if (info && cols.length > 12) {
+        const derniere = cols[cols.length - 1];
+        info.innerHTML += '<div style="margin-top:7px; padding:7px 11px; background:#eff6ff; ' +
+          'border:1px solid #bfdbfe; border-radius:8px; font-size:12px; color:#1e40af; font-weight:600;">' +
+          '→ Le tableau continue vers la droite : ' + cols.length + ' colonnes en tout, ' +
+          'jusqu\'à « ' + String(derniere.label).replace(/[<>]/g, '') + ' ». Faites défiler horizontalement.' +
+          '</div>';
+      }
 
       if (info) {
         info.innerHTML = '📊 <strong>Tableau unifié</strong> — Sections : ' +
