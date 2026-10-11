@@ -42,7 +42,7 @@ SELECT verification, etat FROM (VALUES
   ('028_etude_demo', CASE WHEN to_regclass('public.etudes') IS NOT NULL THEN 'appliquee' ELSE '*** NON APPLIQUEE ***' END),
   ('029_categories', CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='patients' AND column_name='categorie') THEN 'appliquee' ELSE '*** NON APPLIQUEE ***' END),
   ('030_questionnaires_libres', CASE WHEN to_regclass('public.ql_questionnaires') IS NOT NULL THEN 'appliquee' ELSE '*** NON APPLIQUEE ***' END),
-  ('031_emails_minuscules', CASE WHEN to_regclass('public.users_email_lower_uk') IS NOT NULL THEN 'appliquee' ELSE '*** NON APPLIQUEE ***' END),
+  ('031_emails_minuscules', CASE WHEN to_regclass('public.uq_users_email_minuscules') IS NOT NULL THEN 'appliquee' ELSE '*** NON APPLIQUEE ***' END),
   ('032_niveau_preuve', CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='evaluations' AND column_name='niveau_preuve') THEN 'appliquee' ELSE '*** NON APPLIQUEE ***' END),
   ('033_echo_complements', CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='echo_reports' AND column_name='z_score_sinus') THEN 'appliquee' ELSE '*** NON APPLIQUEE ***' END),
   ('034_aorte_source_unique', CASE WHEN NOT EXISTS (SELECT 1 FROM medical_records WHERE aortic_followup ? 'current_value_mm') THEN 'appliquee' ELSE '*** NON APPLIQUEE ***' END),
