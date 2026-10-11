@@ -18,39 +18,39 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase73-1"></script>
+  <script src="api-client.js?v=phase74-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase73-1"></script>
+  <script src="questionnaires-defs.js?v=phase74-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase73-1"></script>
+  <script src="medical-parsers.js?v=phase74-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase73-1"></script>
-  <script src="cpet-analyse.js?v=phase73-1"></script>
+  <script src="cpet-graph-preview.js?v=phase74-1"></script>
+  <script src="cpet-analyse.js?v=phase74-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase73-1"></script>
-  <script src="medical-record-ui.js?v=phase73-1"></script>
+  <script src="pdf-extractor.js?v=phase74-1"></script>
+  <script src="medical-record-ui.js?v=phase74-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase73-1"></script>
-  <script src="synthese-ui.js?v=phase73-1"></script>
-  <script src="audit-ui.js?v=phase73-1"></script>
-  <script src="entretien-ui.js?v=phase73-1"></script>
-  <script src="activation-ui.js?v=phase73-1"></script>
-  <script src="document-import.js?v=phase73-1"></script>
-  <script src="activite-ui.js?v=phase73-1"></script>
-  <script src="cpet-detail.js?v=phase73-1"></script>
-  <script src="echo-calculs.js?v=phase73-1"></script>
-  <script src="echo-detail.js?v=phase73-1"></script>
-  <script src="accueil-activite.js?v=phase73-1"></script>
-  <script src="visio-jitsi.js?v=phase73-1"></script>
-  <script src="video-pilotee.js?v=phase73-1"></script>
-  <script src="fiche-apa.js?v=phase73-1"></script>
-  <script src="inactivite.js?v=phase73-1"></script>
-  <script src="bilans-ui.js?v=phase73-1"></script>
-  <script src="etudes-ui.js?v=phase73-1"></script>
-  <script src="ville-hopital.js?v=phase73-1"></script>
-  <script src="qlibres-ui.js?v=phase73-1"></script>
-  <script src="parametres-ui.js?v=phase73-1"></script>
+  <script src="aortic-consultations.js?v=phase74-1"></script>
+  <script src="synthese-ui.js?v=phase74-1"></script>
+  <script src="audit-ui.js?v=phase74-1"></script>
+  <script src="entretien-ui.js?v=phase74-1"></script>
+  <script src="activation-ui.js?v=phase74-1"></script>
+  <script src="document-import.js?v=phase74-1"></script>
+  <script src="activite-ui.js?v=phase74-1"></script>
+  <script src="cpet-detail.js?v=phase74-1"></script>
+  <script src="echo-calculs.js?v=phase74-1"></script>
+  <script src="echo-detail.js?v=phase74-1"></script>
+  <script src="accueil-activite.js?v=phase74-1"></script>
+  <script src="visio-jitsi.js?v=phase74-1"></script>
+  <script src="video-pilotee.js?v=phase74-1"></script>
+  <script src="fiche-apa.js?v=phase74-1"></script>
+  <script src="inactivite.js?v=phase74-1"></script>
+  <script src="bilans-ui.js?v=phase74-1"></script>
+  <script src="etudes-ui.js?v=phase74-1"></script>
+  <script src="ville-hopital.js?v=phase74-1"></script>
+  <script src="qlibres-ui.js?v=phase74-1"></script>
+  <script src="parametres-ui.js?v=phase74-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -17897,7 +17897,7 @@
     const UNIFIED_SECTIONS = [
       { id:'clinical',  label:'Données cliniques',        color:'#475569', short:'Clin' },
       { id:'cpet',      label:'Test CPET (VO₂, Watts, FC)', color:'#4f46e5', short:'CPET' },
-      { id:'echo',      label:'ETT Sinus de Valsalva — racine et aorte', color:'#0ea5e9', short:'ETT Valsalva' },
+      { id:'echo',      label:'ETT Sinus — diamètre des sinus de Valsalva seul', color:'#0ea5e9', short:'ETT Sinus' },
       { id:'force',     label:'Force isométrique',          color:'#22c55e', short:'Force' },
       { id:'training',  label:'Séances d\'entraînement',   color:'#f59e0b', short:'Train' },
       { id:'sf36',      label:'SF-36 (qualité de vie)',     color:'#7c3aed', short:'SF36' },
@@ -17905,7 +17905,7 @@
       // Phase 17 : données extraites des pièces versées, classées par date
       { id:'timeline',  label:'Dossier médical (pièces versées)', color:'#1d4ed8', short:'Doc' },
       // Phase 18 : une ligne de colonnes par examen échocardiographique
-      { id:'ett',       label:'ETT Complet — ventricule, oreillette, valves, débits', color:'#0369a1', short:'ETT Complet' },
+      { id:'ett',       label:'ETT Complet — toute l\'aorte et tout le cœur', color:'#0369a1', short:'ETT Complet' },
       { id:'suiviaorte', label:'Suivi aortique — synthèse du dossier et consultations', color:'#64748b', short:'Suivi' }
     ];
 
@@ -17982,7 +17982,19 @@
     // tableau sert à comparer des mesures.
     const CHAMPS_CONTEXTE = [['exam_date','Date']];
 
-    // --- ETT Sinus de Valsalva : la racine et l'aorte ---
+    // --- ETT Sinus : la seule mesure qui décide du suivi ---
+    //
+    // Deux colonnes par examen : la date et le diamètre des sinus de
+    // Valsalva. C'est la lecture qu'on fait le plus souvent — suivre une
+    // dilatation sur une cohorte entière — et elle tient à l'écran sans
+    // défilement, même avec dix examens par patient.
+    //
+    // Tout le reste vit dans « ETT Complet ».
+    const CHAMPS_SINUS = CHAMPS_CONTEXTE.concat([
+      ['sinus_valsalva_mm','Valsalva (mm)']
+    ]);
+
+    // --- Les segments aortiques, repris dans l'examen complet ---
     const CHAMPS_AORTE = CHAMPS_CONTEXTE.concat([
       ['sinus_valsalva_mm','Valsalva (mm)'],
       ['jonction_sinotub_mm','JST (mm)'],
@@ -18005,7 +18017,7 @@
       ['pa_diastolique_mmhg','PA diastolique (mmHg)']
     ]);
 
-    // --- ETT Complet : le coeur, dans l'ordre du compte rendu ---
+    // --- Le coeur, dans l'ordre du compte rendu ---
     const CHAMPS_COEUR = CHAMPS_CONTEXTE.concat([
       // Ventricule gauche
       ['divgd_cm','DIVGd (cm)'],
@@ -18062,6 +18074,13 @@
       ['vmax_it_cm_s','Vmax IT (cm/s)'],
       ['grad_max_it_mmhg','Grad max IT (mmHg)']
     ]);
+
+    // --- ETT Complet : l'aorte puis le coeur, sans rien répéter ---
+    // Construit par concaténation plutôt que recopié : une colonne ajoutée
+    // à l'aorte apparaîtra ici sans qu'on y pense, et les libellés ne
+    // peuvent pas diverger entre les deux vues.
+    const CHAMPS_COMPLET = CHAMPS_AORTE.concat(
+      CHAMPS_COEUR.filter(c => c[0] !== 'exam_date'));
     const _dbCache = { training: null, sf36: null, gpaq: null, aortic: null, consult: null, timeline: null, ett: null };
 
     async function preloadDbApiData() {
@@ -18236,7 +18255,7 @@
           // ont leur propre section — elles n'ont pas à s'intercaler entre
           // le code patient et le diamètre qu'on vient lire.
           if (sec.id === 'echo') {
-            colonnesParExamen(cols, sec, CHAMPS_AORTE, maxByPatient.ett || 0);
+            colonnesParExamen(cols, sec, CHAMPS_SINUS, maxByPatient.ett || 0);
           }
 
           // CPET et Force : une série de colonnes par évaluation enregistrée.
@@ -18362,7 +18381,7 @@
         }
         else if (sec.id === 'ett') {
           // ETT1_ = examen le plus ancien, ETT2_ le suivant, etc.
-          colonnesParExamen(cols, sec, CHAMPS_COEUR, maxByPatient.ett || 0);
+          colonnesParExamen(cols, sec, CHAMPS_COMPLET, maxByPatient.ett || 0);
         }
         else if (sec.id === 'training') {
           const maxN = maxByPatient.training || 0;
