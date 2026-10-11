@@ -373,6 +373,13 @@ const CHAMPS_NUM_ECHO = [
   'aorte_systole_mm','aorte_diastole_mm','pa_systolique_mmhg','pa_diastolique_mmhg',
   'gls_pct','e_prime_septal_cm_s','e_prime_lateral_cm_s','paps_mmhg',
   'distensibilite_rapportee','compliance_rapportee',
+  // Migration 036 — mesures présentes dans un compte rendu réel et qui
+  // n'avaient aucune colonne. Sans entrée ici, l'extraction les ignore et
+  // elles se perdent entre le document et la base.
+  'ccvg_mm','tapse_mm','surface_og_cm2','grad_moy_va_mmhg',
+  'itv_ccvg_cm','ve_ccvg_ml','ve_ccvg_ind_ml_m2','dc_ccvg_l_min',
+  'ic_ccvg_l_min_m2','sva_itv_cm2','sva_itv_ind_cm2_m2','ip_pct',
+  'e_sur_ea_moy_rapporte',
   'confiance'
 ];
 const CHAMPS_TXT_ECHO = [
