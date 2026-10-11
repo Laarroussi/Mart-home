@@ -18487,21 +18487,22 @@
 
       if (status) status.textContent = selected.length + ' section(s) cochée(s) · ' + patients.length + ' patient(s) affiché(s) · ' + cols.length + ' colonne(s)';
 
-      // Phase 80 — Dire explicitement que le tableau continue à droite, et
-      // jusqu'où. « 76 colonnes » ne se traduit pas spontanément en « il faut
-      // faire défiler » quand les dix premières remplissent déjà l'écran.
+      // Phase 81 — Les pastilles emmènent le tableau jusqu'à leurs colonnes.
+      //
+      // Avec soixante-seize colonnes, celles qu'on vient de cocher peuvent se
+      // trouver à trois écrans vers la droite. On cochait « ETT Complet », on
+      // voyait les mêmes dix colonnes qu'avant, et l'on concluait que la
+      // case ne faisait rien. Un clic sur sa pastille y amène directement.
       if (info && cols.length > 12) {
-        const derniere = cols[cols.length - 1];
-        info.innerHTML += '<div style="margin-top:7px; padding:7px 11px; background:#eff6ff; ' +
-          'border:1px solid #bfdbfe; border-radius:8px; font-size:12px; color:#1e40af; font-weight:600;">' +
-          '→ Le tableau continue vers la droite : ' + cols.length + ' colonnes en tout, ' +
-          'jusqu\'à « ' + String(derniere.label).replace(/[<>]/g, '') + ' ». Faites défiler horizontalement.' +
+        info.innerHTML += '<div style="margin-top:6px; font-size:11.5px; color:#475569;">' +
+          'Cliquez une pastille ci-dessus pour aller à ses colonnes. ' +
+          cols.length + ' colonnes en tout — le tableau défile horizontalement.' +
           '</div>';
       }
 
       if (info) {
         info.innerHTML = '📊 <strong>Tableau unifié</strong> — Sections : ' +
-          selected.map(s => `<span style="background:${s.color}; color:white; padding:1px 7px; border-radius:99px; font-size:11.5px; font-weight:700;">${s.short}</span>`).join(' ') +
+          selected.map(s => `<button type="button" data-aller-section="${s.id}" title="Aller aux colonnes « ${s.label} »" style="background:${s.color}; color:white; padding:3px 11px; border:none; border-radius:99px; font-size:11.5px; font-weight:700; cursor:pointer;">${s.short} →</button>`).join(' ') +
           ' · <strong>' + patients.length + '</strong> patient(s) · <strong>' + cols.length + '</strong> colonne(s) · cellules vides = "—"';
 
         // Phase 66 — « AORTE » ne dit pas quel segment a été mesuré. Anneau,
@@ -18541,7 +18542,9 @@
         const sec = c.section;
         const bg = c.sticky ? '#f3f6fb' : (sec ? sec.color + '22' : '#f3f6fb');
         const stickyStyle = c.sticky ? 'position:sticky; left:0; background:#0b1530; color:white; z-index:2;' : '';
-        header += `<th style="text-align:left; padding:9px 10px; ${stickyStyle} background:${c.sticky ? '#0b1530' : bg}; ${c.sticky ? 'color:white;' : 'color:#0b1530;'} font-size:11.5px; font-weight:700; white-space:nowrap;">${c.label}</th>`;
+        // data-section sur chaque en-tête : c'est la cible des pastilles.
+        const marque = sec ? ` data-section="${sec.id}"` : '';
+        header += `<th${marque} style="text-align:left; padding:9px 10px; ${stickyStyle} background:${c.sticky ? '#0b1530' : bg}; ${c.sticky ? 'color:white;' : 'color:#0b1530;'} font-size:11.5px; font-weight:700; white-space:nowrap;">${c.label}</th>`;
       });
       header += '</tr>';
 
@@ -18563,6 +18566,35 @@
           <thead style="position:sticky; top:0; z-index:3;">${header}</thead>
           <tbody>${body}</tbody>
         </table>`;
+
+      cablerPastillesSection(wrap, info);
+    }
+
+    /**
+     * Les pastilles de section font défiler le tableau jusqu'à leurs colonnes.
+     *
+     * Le décalage de 150 pixels tient compte de la colonne « PATIENT » figée
+     * à gauche : sans lui, la première colonne de la section se retrouve
+     * cachée dessous, et l'on croit que le défilement a raté sa cible.
+     */
+    function cablerPastillesSection(wrap, info) {
+      if (!info || !wrap) return;
+      info.querySelectorAll('[data-aller-section]').forEach(bouton => {
+        bouton.addEventListener('click', () => {
+          const id = bouton.dataset.allerSection;
+          const cible = wrap.querySelector('th[data-section="' + id + '"]');
+          if (!cible) return;
+          const x = cible.offsetLeft - 150;
+          wrap.scrollTo({ left: Math.max(0, x), behavior: 'smooth' });
+
+          // Le temps du défilement, la colonne atteinte se signale : sur
+          // soixante-seize colonnes, arriver « quelque part » sans savoir où
+          // ne renseigne pas beaucoup.
+          const avant = cible.style.boxShadow;
+          cible.style.boxShadow = 'inset 0 -3px 0 #0b1530';
+          setTimeout(() => { cible.style.boxShadow = avant; }, 1600);
+        });
+      });
     }
 
     function exportUnifiedCSV() {
