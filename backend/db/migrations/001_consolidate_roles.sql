@@ -20,7 +20,11 @@
 --   3. psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/001_consolidate_roles.sql
 -- ============================================================
 
-BEGIN;
+-- Pas de BEGIN/COMMIT : phpPgAdmin les rejette, et le client Node les
+-- rejette aussi dans un fichier multi-instructions. Cette migration a été
+-- écrite avec, et n'a donc jamais pu être appliquée — sans que rien ne le
+-- signale. Les ordres ci-dessous sont idempotents, la transaction implicite
+-- de chaque instruction suffit.
 
 -- 1. Supprime l'ancienne contrainte CHECK
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
@@ -36,7 +40,6 @@ ALTER TABLE users ADD CONSTRAINT users_role_check
 -- 4. Vérification : afficher la répartition des rôles
 SELECT role, COUNT(*) AS nb FROM users GROUP BY role ORDER BY role;
 
-COMMIT;
 
 -- ============================================================
 -- Fin migration 001

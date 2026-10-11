@@ -195,7 +195,9 @@
     } catch (e) { note('Pièce illisible : ' + ((e && e.message) || ''), 'error'); return; }
     if (!piece) return;
 
-    var analyse = piece.analyse || {};
+    // `analyse_ia` et non `analyse` : le second est un mot réservé de
+    // PostgreSQL, et la colonne portait ce nom — la migration échouait.
+    var analyse = piece.analyse_ia || piece.analyse || {};
     var faits = analyse.faits || [];
 
     var lignes = faits.length

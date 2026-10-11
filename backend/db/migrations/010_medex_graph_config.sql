@@ -23,7 +23,11 @@
 -- IDEMPOTENT.
 -- ============================================================
 
-BEGIN;
+-- Pas de BEGIN/COMMIT : phpPgAdmin les rejette, et le client Node les
+-- rejette aussi dans un fichier multi-instructions. Cette migration a été
+-- écrite avec, et n'a donc jamais pu être appliquée — sans que rien ne le
+-- signale. Les ordres ci-dessous sont idempotents, la transaction implicite
+-- de chaque instruction suffit.
 
 ALTER TABLE medical_exams ADD COLUMN IF NOT EXISTS graph_config JSONB;
 
@@ -31,5 +35,4 @@ CREATE INDEX IF NOT EXISTS idx_medex_graph_config ON medical_exams ((graph_confi
 
 SELECT 'OK migration 010' AS msg;
 
-COMMIT;
 -- Fin migration 010

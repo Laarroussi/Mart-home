@@ -11,7 +11,11 @@
 -- IDEMPOTENT.
 -- ============================================================
 
-BEGIN;
+-- Pas de BEGIN/COMMIT : phpPgAdmin les rejette, et le client Node les
+-- rejette aussi dans un fichier multi-instructions. Cette migration a été
+-- écrite avec, et n'a donc jamais pu être appliquée — sans que rien ne le
+-- signale. Les ordres ci-dessous sont idempotents, la transaction implicite
+-- de chaque instruction suffit.
 
 -- ============================================================
 -- training_sessions
@@ -74,7 +78,6 @@ SELECT 'training_sessions' AS table_name, COUNT(*) AS rows FROM training_session
 UNION ALL
 SELECT 'training_samples', COUNT(*) FROM training_samples;
 
-COMMIT;
 
 -- ============================================================
 -- Fin migration 005

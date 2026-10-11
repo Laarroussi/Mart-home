@@ -100,7 +100,7 @@ router.post('/mes-documents', requireAuth, async (req, res, next) => {
 
     await query(
       `UPDATE pieces_patients
-          SET texte_source = $2, analyse = $3, nb_faits = $4,
+          SET texte_source = $2, analyse_ia = $3, nb_faits = $4,
               erreur_lecture = $5, statut = $6
         WHERE id = $1`,
       [pieceId, texteFinal || null, JSON.stringify(analyse),

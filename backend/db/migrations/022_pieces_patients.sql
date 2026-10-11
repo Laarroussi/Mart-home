@@ -36,7 +36,14 @@ CREATE TABLE IF NOT EXISTS pieces_patients (
 
   -- Ce que la lecture automatique en a tiré
   texte_source  TEXT,              -- texte extrait : la source vérifiable
-  analyse       JSONB NOT NULL DEFAULT '{}'::jsonb,  -- { faits:[], echo:{}, genetique:{} }
+  -- « analyse » seul est un MOT RÉSERVÉ de PostgreSQL : c'est l'orthographe
+  -- britannique de ANALYZE. La migration échouait sur « erreur de syntaxe sur
+  -- ou près de "analyse" », et elle n'a jamais été appliquée — la table
+  -- n'existait pas, sans que rien ne le signale pendant des semaines.
+  --
+  -- On la renomme plutôt que de la mettre entre guillemets : une colonne qui
+  -- exige des guillemets partout finit toujours par en manquer quelque part.
+  analyse_ia    JSONB NOT NULL DEFAULT '{}'::jsonb,  -- { faits:[], echo:{}, genetique:{} }
   nb_faits      INTEGER DEFAULT 0,
   erreur_lecture TEXT,
 

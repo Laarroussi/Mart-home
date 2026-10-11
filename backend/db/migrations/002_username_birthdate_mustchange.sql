@@ -16,7 +16,11 @@
 --   psql "$DBURL" -v ON_ERROR_STOP=1 -f db/migrations/002_username_birthdate_mustchange.sql
 -- ============================================================
 
-BEGIN;
+-- Pas de BEGIN/COMMIT : phpPgAdmin les rejette, et le client Node les
+-- rejette aussi dans un fichier multi-instructions. Cette migration a été
+-- écrite avec, et n'a donc jamais pu être appliquée — sans que rien ne le
+-- signale. Les ordres ci-dessous sont idempotents, la transaction implicite
+-- de chaque instruction suffit.
 
 -- 1. Ajout des colonnes
 ALTER TABLE users ADD COLUMN IF NOT EXISTS username             VARCHAR(100);
@@ -50,7 +54,6 @@ UPDATE users SET must_change_password = FALSE WHERE must_change_password IS NULL
 -- 6. Vérification finale
 SELECT id, role, username, email, must_change_password FROM users ORDER BY role, username;
 
-COMMIT;
 
 -- ============================================================
 -- Fin migration 002

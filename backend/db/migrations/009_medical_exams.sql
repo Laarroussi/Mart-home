@@ -14,7 +14,11 @@
 -- IDEMPOTENT.
 -- ============================================================
 
-BEGIN;
+-- Pas de BEGIN/COMMIT : phpPgAdmin les rejette, et le client Node les
+-- rejette aussi dans un fichier multi-instructions. Cette migration a été
+-- écrite avec, et n'a donc jamais pu être appliquée — sans que rien ne le
+-- signale. Les ordres ci-dessous sont idempotents, la transaction implicite
+-- de chaque instruction suffit.
 
 CREATE TABLE IF NOT EXISTS medical_exams (
     id              SERIAL PRIMARY KEY,
@@ -55,5 +59,4 @@ CREATE TRIGGER set_medex_updated
 SELECT exam_type, status, COUNT(*) AS nb
   FROM medical_exams GROUP BY exam_type, status ORDER BY exam_type, status;
 
-COMMIT;
 -- Fin migration 009

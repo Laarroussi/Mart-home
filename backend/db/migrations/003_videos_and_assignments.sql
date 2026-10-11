@@ -12,7 +12,11 @@
 -- IDEMPOTENT : peut être ré-exécutée sans risque.
 -- ============================================================
 
-BEGIN;
+-- Pas de BEGIN/COMMIT : phpPgAdmin les rejette, et le client Node les
+-- rejette aussi dans un fichier multi-instructions. Cette migration a été
+-- écrite avec, et n'a donc jamais pu être appliquée — sans que rien ne le
+-- signale. Les ordres ci-dessous sont idempotents, la transaction implicite
+-- de chaque instruction suffit.
 
 -- ============================================================
 -- 1. Table videos
@@ -98,7 +102,6 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================
 SELECT video_type, COUNT(*) AS nb FROM videos GROUP BY video_type ORDER BY video_type;
 
-COMMIT;
 
 -- ============================================================
 -- Fin migration 003

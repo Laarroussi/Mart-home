@@ -17,7 +17,11 @@
 -- IDEMPOTENT.
 -- ============================================================
 
-BEGIN;
+-- Pas de BEGIN/COMMIT : phpPgAdmin les rejette, et le client Node les
+-- rejette aussi dans un fichier multi-instructions. Cette migration a été
+-- écrite avec, et n'a donc jamais pu être appliquée — sans que rien ne le
+-- signale. Les ordres ci-dessous sont idempotents, la transaction implicite
+-- de chaque instruction suffit.
 
 -- 1. Colonnes additionnelles
 ALTER TABLE visio_sessions ADD COLUMN IF NOT EXISTS scheduled_at  TIMESTAMPTZ;
@@ -76,7 +80,6 @@ UPDATE visio_sessions SET status = 'completed'
 -- 7. Vérification finale
 SELECT status, COUNT(*) AS nb FROM visio_sessions GROUP BY status ORDER BY status;
 
-COMMIT;
 
 -- ============================================================
 -- Fin migration 004
