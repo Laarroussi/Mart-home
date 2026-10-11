@@ -410,6 +410,25 @@ router.delete('/:patient_id/:id', requireAuth, async (req, res, next) => {
 // === ÉCHOCARDIOGRAPHIE : une ligne de tableau par examen ====
 // ============================================================
 
+/**
+ * Les colonnes réellement présentes dans `echo_reports`, lues une fois.
+ *
+ * Le catalogue fait foi, pas une liste recopiée : c'est la seule façon de ne
+ * pas voir une insertion entière échouer parce qu'un champ a changé de table.
+ * Le cache évite d'interroger information_schema à chaque enregistrement ;
+ * il se vide au redémarrage, ce qui suffit — une migration passe par un
+ * redéploiement.
+ */
+let _colonnesEcho = null;
+async function colonnesEchoReports() {
+  if (_colonnesEcho) return _colonnesEcho;
+  const { rows } = await query(
+    `SELECT column_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'echo_reports'`);
+  _colonnesEcho = new Set(rows.map(r => r.column_name));
+  return _colonnesEcho;
+}
+
 // GET /:patient_id/echo — tous les examens du patient
 router.get('/:patient_id/echo', requireAuth, async (req, res, next) => {
   try {
@@ -432,9 +451,30 @@ router.post('/:patient_id/echo', requireAuth, async (req, res, next) => {
     const e = req.body && req.body.echo;
     if (!e) return res.status(400).json({ error: 'Aucune donnée à enregistrer' });
 
-    const colonnes = ['exam_date'].concat(CHAMPS_NUM_ECHO.filter(c => c !== 'confiance'))
-                                  .concat(CHAMPS_TXT_ECHO)
-                                  .concat(['confiance', 'source_nom_fichier', 'source_doc_id']);
+    // Phase 78 — La liste des colonnes est filtrée sur ce qui existe
+    // réellement dans `echo_reports`.
+    //
+    // `CHAMPS_TXT_ECHO` sert à l'extraction : il énumère ce que l'IA doit
+    // chercher dans le document. Tout n'y a pas sa colonne au même endroit —
+    // `aorte_operee_type` appartient à la table `patients`, parce que c'est
+    // un antécédent du patient et non une mesure de cet examen-là.
+    // L'insertion le réclamait quand même et échouait en bloc : « la colonne
+    // aorte_operee_type de la relation echo_reports n'existe pas ». Toute
+    // l'échocardiographie était perdue à cause d'un champ mal placé.
+    //
+    // Le filtre interroge le catalogue plutôt qu'une liste écrite à la main :
+    // une colonne ajoutée demain sera prise en compte, une colonne retirée
+    // cessera d'être réclamée, sans que personne ait à y penser.
+    const dispo = await colonnesEchoReports();
+    const demandees = ['exam_date']
+      .concat(CHAMPS_NUM_ECHO.filter(c => c !== 'confiance'))
+      .concat(CHAMPS_TXT_ECHO)
+      .concat(['confiance', 'source_nom_fichier', 'source_doc_id']);
+    const ecartees = demandees.filter(c => !dispo.has(c));
+    if (ecartees.length) {
+      console.warn('[echo] champs sans colonne dans echo_reports, ignorés :', ecartees.join(', '));
+    }
+    const colonnes = demandees.filter(c => dispo.has(c));
     const valeurs = colonnes.map(c => (e[c] === undefined || e[c] === '') ? null : e[c]);
     colonnes.push('patient_id'); valeurs.push(req.params.patient_id);
     colonnes.push('created_by');  valeurs.push(req.user.id);
