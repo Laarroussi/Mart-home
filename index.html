@@ -18,39 +18,39 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase78-1"></script>
+  <script src="api-client.js?v=phase79-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase78-1"></script>
+  <script src="questionnaires-defs.js?v=phase79-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase78-1"></script>
+  <script src="medical-parsers.js?v=phase79-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase78-1"></script>
-  <script src="cpet-analyse.js?v=phase78-1"></script>
+  <script src="cpet-graph-preview.js?v=phase79-1"></script>
+  <script src="cpet-analyse.js?v=phase79-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase78-1"></script>
-  <script src="medical-record-ui.js?v=phase78-1"></script>
+  <script src="pdf-extractor.js?v=phase79-1"></script>
+  <script src="medical-record-ui.js?v=phase79-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase78-1"></script>
-  <script src="synthese-ui.js?v=phase78-1"></script>
-  <script src="audit-ui.js?v=phase78-1"></script>
-  <script src="entretien-ui.js?v=phase78-1"></script>
-  <script src="activation-ui.js?v=phase78-1"></script>
-  <script src="document-import.js?v=phase78-1"></script>
-  <script src="activite-ui.js?v=phase78-1"></script>
-  <script src="cpet-detail.js?v=phase78-1"></script>
-  <script src="echo-calculs.js?v=phase78-1"></script>
-  <script src="echo-detail.js?v=phase78-1"></script>
-  <script src="accueil-activite.js?v=phase78-1"></script>
-  <script src="visio-jitsi.js?v=phase78-1"></script>
-  <script src="video-pilotee.js?v=phase78-1"></script>
-  <script src="fiche-apa.js?v=phase78-1"></script>
-  <script src="inactivite.js?v=phase78-1"></script>
-  <script src="bilans-ui.js?v=phase78-1"></script>
-  <script src="etudes-ui.js?v=phase78-1"></script>
-  <script src="ville-hopital.js?v=phase78-1"></script>
-  <script src="qlibres-ui.js?v=phase78-1"></script>
-  <script src="parametres-ui.js?v=phase78-1"></script>
+  <script src="aortic-consultations.js?v=phase79-1"></script>
+  <script src="synthese-ui.js?v=phase79-1"></script>
+  <script src="audit-ui.js?v=phase79-1"></script>
+  <script src="entretien-ui.js?v=phase79-1"></script>
+  <script src="activation-ui.js?v=phase79-1"></script>
+  <script src="document-import.js?v=phase79-1"></script>
+  <script src="activite-ui.js?v=phase79-1"></script>
+  <script src="cpet-detail.js?v=phase79-1"></script>
+  <script src="echo-calculs.js?v=phase79-1"></script>
+  <script src="echo-detail.js?v=phase79-1"></script>
+  <script src="accueil-activite.js?v=phase79-1"></script>
+  <script src="visio-jitsi.js?v=phase79-1"></script>
+  <script src="video-pilotee.js?v=phase79-1"></script>
+  <script src="fiche-apa.js?v=phase79-1"></script>
+  <script src="inactivite.js?v=phase79-1"></script>
+  <script src="bilans-ui.js?v=phase79-1"></script>
+  <script src="etudes-ui.js?v=phase79-1"></script>
+  <script src="ville-hopital.js?v=phase79-1"></script>
+  <script src="qlibres-ui.js?v=phase79-1"></script>
+  <script src="parametres-ui.js?v=phase79-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -18374,18 +18374,38 @@
       // Phase 13.12 : récupération à la volée du suivi aortique des patients
       // pas encore interrogés (typiquement ceux créés depuis la connexion),
       // puis re-rendu automatique une fois les données arrivées.
+      // Phase 79 — Deux défauts corrigés ici, et ce sont eux qui vidaient
+      // les colonnes d'échocardiographie.
+      //
+      // 1. La liste des patients à interroger était calculée sur
+      //    `aorticFetched`. Dès que le suivi aortique avait été chargé, les
+      //    échocardiographies n'étaient PLUS JAMAIS demandées — la condition
+      //    portait sur un cache, et on en consultait un autre. Chaque cache
+      //    a maintenant sa propre liste.
+      //
+      // 2. `loadTimelineFor` était lancé sans attendre sa réponse et sans
+      //    redessiner. Les examens arrivaient dans le cache après la
+      //    construction du tableau, et rien ne le reconstruisait : la donnée
+      //    était là, en mémoire, et l'écran affichait des tirets.
+      //
+      // Une échocardiographie enregistrée en base, visible nulle part. Le
+      // genre de défaut qui fait croire que l'enregistrement a échoué.
       try {
-        const manquants = allPatients
-          .map(p => p.id)
-          .filter(id => id && !(_dbCache.aorticFetched && _dbCache.aorticFetched.has(id)));
-        if (manquants.length && window.MarfanAPI && window.MarfanAPI.isAuthenticated()) {
-          loadTimelineFor(manquants).catch(() => {});
-          loadAorticFor(manquants).then(n => {
+        if (window.MarfanAPI && window.MarfanAPI.isAuthenticated()) {
+          const ids = allPatients.map(p => p.id).filter(Boolean);
+
+          const sansAorte = ids.filter(id => !(_dbCache.aorticFetched && _dbCache.aorticFetched.has(id)));
+          const sansExamens = ids.filter(id => !(_dbCache.timelineFetched && _dbCache.timelineFetched.has(id)));
+
+          const redessiner = n => {
             if (n > 0 && !_dbCache._rerendering) {
               _dbCache._rerendering = true;
               try { renderUnifiedTable(); } finally { _dbCache._rerendering = false; }
             }
-          }).catch(() => {});
+          };
+
+          if (sansExamens.length) loadTimelineFor(sansExamens).then(redessiner).catch(() => {});
+          if (sansAorte.length)   loadAorticFor(sansAorte).then(redessiner).catch(() => {});
         }
       } catch (_) { /* non bloquant */ }
 
