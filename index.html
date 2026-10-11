@@ -18,39 +18,39 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase80-1"></script>
+  <script src="api-client.js?v=phase82-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase80-1"></script>
+  <script src="questionnaires-defs.js?v=phase82-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase80-1"></script>
+  <script src="medical-parsers.js?v=phase82-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase80-1"></script>
-  <script src="cpet-analyse.js?v=phase80-1"></script>
+  <script src="cpet-graph-preview.js?v=phase82-1"></script>
+  <script src="cpet-analyse.js?v=phase82-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase80-1"></script>
-  <script src="medical-record-ui.js?v=phase80-1"></script>
+  <script src="pdf-extractor.js?v=phase82-1"></script>
+  <script src="medical-record-ui.js?v=phase82-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase80-1"></script>
-  <script src="synthese-ui.js?v=phase80-1"></script>
-  <script src="audit-ui.js?v=phase80-1"></script>
-  <script src="entretien-ui.js?v=phase80-1"></script>
-  <script src="activation-ui.js?v=phase80-1"></script>
-  <script src="document-import.js?v=phase80-1"></script>
-  <script src="activite-ui.js?v=phase80-1"></script>
-  <script src="cpet-detail.js?v=phase80-1"></script>
-  <script src="echo-calculs.js?v=phase80-1"></script>
-  <script src="echo-detail.js?v=phase80-1"></script>
-  <script src="accueil-activite.js?v=phase80-1"></script>
-  <script src="visio-jitsi.js?v=phase80-1"></script>
-  <script src="video-pilotee.js?v=phase80-1"></script>
-  <script src="fiche-apa.js?v=phase80-1"></script>
-  <script src="inactivite.js?v=phase80-1"></script>
-  <script src="bilans-ui.js?v=phase80-1"></script>
-  <script src="etudes-ui.js?v=phase80-1"></script>
-  <script src="ville-hopital.js?v=phase80-1"></script>
-  <script src="qlibres-ui.js?v=phase80-1"></script>
-  <script src="parametres-ui.js?v=phase80-1"></script>
+  <script src="aortic-consultations.js?v=phase82-1"></script>
+  <script src="synthese-ui.js?v=phase82-1"></script>
+  <script src="audit-ui.js?v=phase82-1"></script>
+  <script src="entretien-ui.js?v=phase82-1"></script>
+  <script src="activation-ui.js?v=phase82-1"></script>
+  <script src="document-import.js?v=phase82-1"></script>
+  <script src="activite-ui.js?v=phase82-1"></script>
+  <script src="cpet-detail.js?v=phase82-1"></script>
+  <script src="echo-calculs.js?v=phase82-1"></script>
+  <script src="echo-detail.js?v=phase82-1"></script>
+  <script src="accueil-activite.js?v=phase82-1"></script>
+  <script src="visio-jitsi.js?v=phase82-1"></script>
+  <script src="video-pilotee.js?v=phase82-1"></script>
+  <script src="fiche-apa.js?v=phase82-1"></script>
+  <script src="inactivite.js?v=phase82-1"></script>
+  <script src="bilans-ui.js?v=phase82-1"></script>
+  <script src="etudes-ui.js?v=phase82-1"></script>
+  <script src="ville-hopital.js?v=phase82-1"></script>
+  <script src="qlibres-ui.js?v=phase82-1"></script>
+  <script src="parametres-ui.js?v=phase82-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -14219,7 +14219,13 @@
   <!-- Bandeau "mode démo" si API down -->
   <div id="apiDemoBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9990; background:#dc2626; color:white; padding:10px 16px; font-size:13px; font-weight:700; text-align:center; border-bottom:2px solid #991b1b; box-shadow:0 3px 12px rgba(0,0,0,0.2);">
     ⚠ MODE DÉMONSTRATION — rien n'est enregistré en base de données. Toute fiche créée sera perdue au rechargement.
-    <button onclick="window.location.reload()" style="margin-left:12px; padding:4px 12px; border:1px solid rgba(255,255,255,0.5); background:rgba(255,255,255,0.15); color:white; border-radius:7px; font-weight:700; font-size:12px; cursor:pointer;">Se connecter</button>
+    <!-- Phase 82 — Ce bouton se contentait de recharger la page. Avec un
+         jeton périmé encore en mémoire, le rechargement ramenait exactement
+         au même endroit : le mode démonstration. On cliquait « Se connecter »
+         et il ne se passait rien de visible, sans qu'aucun message
+         n'explique pourquoi. Il efface désormais la session avant de
+         recharger, ce qui fait réapparaître l'écran de connexion. -->
+    <button onclick="window.__reconnexion()" style="margin-left:12px; padding:4px 12px; border:1px solid rgba(255,255,255,0.5); background:rgba(255,255,255,0.15); color:white; border-radius:7px; font-weight:700; font-size:12px; cursor:pointer;">Se connecter</button>
   </div>
 
   <!-- Bouton déconnexion + toggles Démo/Pseudonymisation (Phase 12.2) -->
@@ -19187,6 +19193,28 @@
     // écouteur est retiré avec lui. getElementById aurait renvoyé null et
     // levé une exception qui aurait interrompu tout le reste de ce bloc —
     // y compris le branchement du bouton de déconnexion.
+
+    /**
+     * Repartir d'une session propre.
+     *
+     * Le mode démonstration s'enclenche quand l'application n'a pas de
+     * session valide. Recharger sans effacer le jeton périmé y ramène donc
+     * immanquablement. On nettoie d'abord — jeton, badge, surveillance
+     * d'inactivité — puis on recharge : l'écran de connexion réapparaît.
+     */
+    window.__reconnexion = async function () {
+      try { if (window.Inactivite) window.Inactivite.arreter(); } catch (_) {}
+      try { await window.MarfanAPI.logout(); } catch (_) {}
+      // Ceinture et bretelles : si `logout()` échoue (serveur injoignable,
+      // réponse en erreur), les clés restent et le rechargement ramènerait
+      // au mode démonstration. On les retire explicitement, avec les noms
+      // réellement employés par api-client.js.
+      try {
+        localStorage.removeItem('marfan.token');
+        localStorage.removeItem('marfan.user');
+      } catch (_) {}
+      window.location.reload();
+    };
 
     document.getElementById('apiLogoutBtn').addEventListener('click', async function () {
       try { if (window.Inactivite) window.Inactivite.arreter(); } catch (_) {}
