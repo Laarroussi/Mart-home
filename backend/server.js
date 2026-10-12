@@ -56,9 +56,37 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 // Le plafond passe à 2000 par quart d'heure. Pour un service clinique, c'est
 // large sans être illimité : un abus reste arrêté, un usage réel ne l'est
 // jamais.
+//
+// PLANCHER DE SÉCURITÉ — pourquoi le code refuse une valeur trop basse
+// --------------------------------------------------------------------
+// Relever la valeur par défaut ne suffisait pas. Le serveur lit d'abord
+// RATE_LIMIT_MAX_REQUESTS dans son environnement, et cette variable vaut 200
+// sur o2switch depuis la première installation. Le fichier .env n'est jamais
+// déployé (volontairement : il porte les mots de passe), donc le correctif
+// partait à chaque fois et n'avait aucun effet — on relisait un code juste en
+// se demandant pourquoi le serveur se comportait mal.
+//
+// Une configuration peut être oubliée ; une séance avec des patients connectés
+// ne se rejoue pas. Le code impose donc un plancher : une valeur en dessous de
+// PLANCHER est traitée comme une erreur de configuration, pas comme une
+// consigne. Elle est corrigée et signalée au démarrage, dans les journaux.
+const PLANCHER_REQUETES = 2000;
+const maxConfigure = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10);
+const maxRetenu = Number.isFinite(maxConfigure) && maxConfigure >= PLANCHER_REQUETES
+  ? maxConfigure
+  : PLANCHER_REQUETES;
+
+if (Number.isFinite(maxConfigure) && maxConfigure < PLANCHER_REQUETES) {
+  console.warn(
+    '[limite de debit] RATE_LIMIT_MAX_REQUESTS=' + maxConfigure +
+    ' est trop bas pour un usage clinique : valeur relevee a ' + PLANCHER_REQUETES + '.' +
+    ' Corrigez-la dans cPanel > Setup Node.js App pour supprimer cet avertissement.'
+  );
+}
+
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 2000,
+  max: maxRetenu,
   message: { error: 'Trop de requêtes, ressayez plus tard.' },
   standardHeaders: true,
   legacyHeaders: false,
