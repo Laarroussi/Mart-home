@@ -18,39 +18,43 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Client API Marfan APA — expose window.MarfanAPI (login, patients, evaluations, etc.) -->
   <!-- Bump le ?v=N à chaque grosse phase pour forcer le rafraîchissement côté client -->
-  <script src="api-client.js?v=phase82-1"></script>
+  <!-- Repère de version affiché dans la base de données. Il répond d'un
+       regard à « cette correction est-elle en ligne ? », question qui nous a
+       coûté plusieurs allers-retours. -->
+  <script>window.MARFAN_VERSION = 'v83';</script>
+  <script src="api-client.js?v=phase83-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase82-1"></script>
+  <script src="questionnaires-defs.js?v=phase83-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase82-1"></script>
+  <script src="medical-parsers.js?v=phase83-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase82-1"></script>
-  <script src="cpet-analyse.js?v=phase82-1"></script>
+  <script src="cpet-graph-preview.js?v=phase83-1"></script>
+  <script src="cpet-analyse.js?v=phase83-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase82-1"></script>
-  <script src="medical-record-ui.js?v=phase82-1"></script>
+  <script src="pdf-extractor.js?v=phase83-1"></script>
+  <script src="medical-record-ui.js?v=phase83-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase82-1"></script>
-  <script src="synthese-ui.js?v=phase82-1"></script>
-  <script src="audit-ui.js?v=phase82-1"></script>
-  <script src="entretien-ui.js?v=phase82-1"></script>
-  <script src="activation-ui.js?v=phase82-1"></script>
-  <script src="document-import.js?v=phase82-1"></script>
-  <script src="activite-ui.js?v=phase82-1"></script>
-  <script src="cpet-detail.js?v=phase82-1"></script>
-  <script src="echo-calculs.js?v=phase82-1"></script>
-  <script src="echo-detail.js?v=phase82-1"></script>
-  <script src="accueil-activite.js?v=phase82-1"></script>
-  <script src="visio-jitsi.js?v=phase82-1"></script>
-  <script src="video-pilotee.js?v=phase82-1"></script>
-  <script src="fiche-apa.js?v=phase82-1"></script>
-  <script src="inactivite.js?v=phase82-1"></script>
-  <script src="bilans-ui.js?v=phase82-1"></script>
-  <script src="etudes-ui.js?v=phase82-1"></script>
-  <script src="ville-hopital.js?v=phase82-1"></script>
-  <script src="qlibres-ui.js?v=phase82-1"></script>
-  <script src="parametres-ui.js?v=phase82-1"></script>
+  <script src="aortic-consultations.js?v=phase83-1"></script>
+  <script src="synthese-ui.js?v=phase83-1"></script>
+  <script src="audit-ui.js?v=phase83-1"></script>
+  <script src="entretien-ui.js?v=phase83-1"></script>
+  <script src="activation-ui.js?v=phase83-1"></script>
+  <script src="document-import.js?v=phase83-1"></script>
+  <script src="activite-ui.js?v=phase83-1"></script>
+  <script src="cpet-detail.js?v=phase83-1"></script>
+  <script src="echo-calculs.js?v=phase83-1"></script>
+  <script src="echo-detail.js?v=phase83-1"></script>
+  <script src="accueil-activite.js?v=phase83-1"></script>
+  <script src="visio-jitsi.js?v=phase83-1"></script>
+  <script src="video-pilotee.js?v=phase83-1"></script>
+  <script src="fiche-apa.js?v=phase83-1"></script>
+  <script src="inactivite.js?v=phase83-1"></script>
+  <script src="bilans-ui.js?v=phase83-1"></script>
+  <script src="etudes-ui.js?v=phase83-1"></script>
+  <script src="ville-hopital.js?v=phase83-1"></script>
+  <script src="qlibres-ui.js?v=phase83-1"></script>
+  <script src="parametres-ui.js?v=phase83-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4766,6 +4770,18 @@
             </div>
           </div>
           <div id="apiDbUnifiedInfo" style="margin-bottom:8px; padding:8px 10px; background:#eff6ff; border-radius:7px; font-size:11.5px; color:#1e40af;"></div>
+          <!-- Phase 83 — Des flèches explicites pour parcourir les colonnes.
+               Le tableau défilait déjà, mais rien ne le montrait : sur macOS
+               la barre horizontale reste invisible au repos, et la colonne
+               PATIENT figée masque le mouvement. On croyait les colonnes
+               absentes alors qu'elles étaient à trois écrans sur la droite. -->
+          <div id="apiDbNav" style="display:none; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+            <button type="button" id="dbNavDebut" title="Première colonne" style="padding:7px 12px; border:1px solid #cbd5e1; background:white; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer;">⏮</button>
+            <button type="button" id="dbNavGauche" style="padding:7px 16px; border:1px solid #cbd5e1; background:white; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer;">◀ Colonnes précédentes</button>
+            <button type="button" id="dbNavDroite" style="padding:7px 16px; border:none; background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:white; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer;">Colonnes suivantes ▶</button>
+            <button type="button" id="dbNavFin" title="Dernière colonne" style="padding:7px 12px; border:1px solid #cbd5e1; background:white; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer;">⏭</button>
+            <span id="dbNavPos" style="font-size:12px; color:#475569; font-weight:600;"></span>
+          </div>
           <div class="table-wrap" id="apiDbUnifiedWrap" style="overflow-x:auto; max-height:600px;"></div>
         </article>
 
@@ -18491,7 +18507,12 @@
       const { patients, maxByPatient } = buildEnrichedPatients(searchEl ? searchEl.value : '');
       const cols = buildUnifiedColumns(selected, patients, maxByPatient);
 
-      if (status) status.textContent = selected.length + ' section(s) cochée(s) · ' + patients.length + ' patient(s) affiché(s) · ' + cols.length + ' colonne(s)';
+      // Le numéro de version s'affiche ici. Nous avons perdu du temps, à
+      // plusieurs reprises, à chercher dans le code un défaut déjà corrigé
+      // mais pas encore déployé. Ce repère tranche la question d'un regard.
+      if (status) status.textContent = selected.length + ' section(s) cochée(s) · ' +
+        patients.length + ' patient(s) affiché(s) · ' + cols.length + ' colonne(s) · ' +
+        (window.MARFAN_VERSION || 'version inconnue');
 
       // Phase 81 — Les pastilles emmènent le tableau jusqu'à leurs colonnes.
       //
@@ -18517,7 +18538,10 @@
         // confond accepte 13 mm comme 43 mm sans broncher. C'est ce qui s'est
         // produit deux fois. La légende nomme ce que chaque colonne contient.
         if (selected.some(s => s.id === 'aorte' || s.id === 'ett' || s.id === 'cpet')) {
-          const nEtt = Math.max(0, ...filtered.map(p => (p._ett || []).length));
+          // `filtered` n'existe pas ici — la liste s'appelle `patients`. Cette
+          // ligne levait une exception qui interrompait TOUT le rendu du
+          // tableau : plus de colonnes, plus de lignes, et aucun message.
+          const nEtt = Math.max(0, ...patients.map(p => (p._ett || []).length));
           info.innerHTML += '<div style="margin-top:7px; font-size:11.5px; color:#475569; line-height:1.6; font-weight:400;">' +
             (nEtt === 0
               ? '<strong style="color:#92400e;">Aucune échocardiographie versée pour l\'instant.</strong> ' +
@@ -18574,6 +18598,50 @@
         </table>`;
 
       cablerPastillesSection(wrap, info);
+      cablerNavigation(wrap, cols.length);
+    }
+
+    /**
+     * Les flèches de parcours des colonnes.
+     *
+     * Un défilement qui existe mais ne se voit pas n'existe pas pour celui
+     * qui l'utilise. Ces boutons déplacent le tableau d'un écran à chaque
+     * clic, et affichent en clair où l'on se trouve — « colonnes 21 à 34
+     * sur 76 ». Sans ce repère, on ne sait pas s'il reste quelque chose à
+     * droite ni combien.
+     */
+    function cablerNavigation(wrap, nbColonnes) {
+      const nav = document.getElementById('apiDbNav');
+      if (!nav || !wrap) return;
+
+      const defilable = wrap.scrollWidth > wrap.clientWidth + 4;
+      nav.style.display = defilable ? 'flex' : 'none';
+      if (!defilable) return;
+
+      const pas = () => Math.max(200, wrap.clientWidth - 160);  // on garde un recouvrement
+      const majPosition = () => {
+        const pos = document.getElementById('dbNavPos');
+        if (!pos) return;
+        const total = wrap.scrollWidth - wrap.clientWidth;
+        const pct = total > 0 ? Math.round((wrap.scrollLeft / total) * 100) : 100;
+        pos.textContent = nbColonnes + ' colonnes · ' + pct + ' % parcouru' +
+          (pct >= 99 ? ' — fin du tableau' : '');
+      };
+
+      const brancher = (id, action) => {
+        const b = document.getElementById(id);
+        if (b && !b._cable) { b._cable = true; b.addEventListener('click', action); }
+      };
+      brancher('dbNavGauche', () => wrap.scrollBy({ left: -pas(), behavior: 'smooth' }));
+      brancher('dbNavDroite', () => wrap.scrollBy({ left:  pas(), behavior: 'smooth' }));
+      brancher('dbNavDebut',  () => wrap.scrollTo({ left: 0, behavior: 'smooth' }));
+      brancher('dbNavFin',    () => wrap.scrollTo({ left: wrap.scrollWidth, behavior: 'smooth' }));
+
+      if (!wrap._suiviPosition) {
+        wrap._suiviPosition = true;
+        wrap.addEventListener('scroll', majPosition);
+      }
+      majPosition();
     }
 
     /**
