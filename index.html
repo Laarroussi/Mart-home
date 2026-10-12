@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v84';</script>
-  <script src="api-client.js?v=phase84-1"></script>
+  <script>window.MARFAN_VERSION = 'v85';</script>
+  <script src="api-client.js?v=phase85-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase84-1"></script>
+  <script src="questionnaires-defs.js?v=phase85-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase84-1"></script>
+  <script src="medical-parsers.js?v=phase85-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase84-1"></script>
-  <script src="cpet-analyse.js?v=phase84-1"></script>
+  <script src="cpet-graph-preview.js?v=phase85-1"></script>
+  <script src="cpet-analyse.js?v=phase85-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase84-1"></script>
-  <script src="medical-record-ui.js?v=phase84-1"></script>
+  <script src="pdf-extractor.js?v=phase85-1"></script>
+  <script src="medical-record-ui.js?v=phase85-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase84-1"></script>
-  <script src="synthese-ui.js?v=phase84-1"></script>
-  <script src="audit-ui.js?v=phase84-1"></script>
-  <script src="entretien-ui.js?v=phase84-1"></script>
-  <script src="activation-ui.js?v=phase84-1"></script>
-  <script src="document-import.js?v=phase84-1"></script>
-  <script src="activite-ui.js?v=phase84-1"></script>
-  <script src="cpet-detail.js?v=phase84-1"></script>
-  <script src="echo-calculs.js?v=phase84-1"></script>
-  <script src="echo-detail.js?v=phase84-1"></script>
-  <script src="accueil-activite.js?v=phase84-1"></script>
-  <script src="visio-jitsi.js?v=phase84-1"></script>
-  <script src="video-pilotee.js?v=phase84-1"></script>
-  <script src="fiche-apa.js?v=phase84-1"></script>
-  <script src="inactivite.js?v=phase84-1"></script>
-  <script src="bilans-ui.js?v=phase84-1"></script>
-  <script src="etudes-ui.js?v=phase84-1"></script>
-  <script src="ville-hopital.js?v=phase84-1"></script>
-  <script src="qlibres-ui.js?v=phase84-1"></script>
-  <script src="parametres-ui.js?v=phase84-1"></script>
+  <script src="aortic-consultations.js?v=phase85-1"></script>
+  <script src="synthese-ui.js?v=phase85-1"></script>
+  <script src="audit-ui.js?v=phase85-1"></script>
+  <script src="entretien-ui.js?v=phase85-1"></script>
+  <script src="activation-ui.js?v=phase85-1"></script>
+  <script src="document-import.js?v=phase85-1"></script>
+  <script src="activite-ui.js?v=phase85-1"></script>
+  <script src="cpet-detail.js?v=phase85-1"></script>
+  <script src="echo-calculs.js?v=phase85-1"></script>
+  <script src="echo-detail.js?v=phase85-1"></script>
+  <script src="accueil-activite.js?v=phase85-1"></script>
+  <script src="visio-jitsi.js?v=phase85-1"></script>
+  <script src="video-pilotee.js?v=phase85-1"></script>
+  <script src="fiche-apa.js?v=phase85-1"></script>
+  <script src="inactivite.js?v=phase85-1"></script>
+  <script src="bilans-ui.js?v=phase85-1"></script>
+  <script src="etudes-ui.js?v=phase85-1"></script>
+  <script src="ville-hopital.js?v=phase85-1"></script>
+  <script src="qlibres-ui.js?v=phase85-1"></script>
+  <script src="parametres-ui.js?v=phase85-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4920,7 +4920,8 @@
           <div class="actions">
             <button class="btn-light" onclick="visioDiagnostic()" title="Vérifier la configuration de la visioconférence">🩺 Diagnostic</button>
             <button class="btn-light" onclick="visioCopierLien()" title="Copier le lien de la salle">🔗 Lien</button>
-            <button class="btn-light" onclick="visioStartSession()">▶ Démarrer la séance</button>
+            <button class="btn-light" onclick="visioStartSession()" title="Ouvrir la salle : vous êtes le premier, vos patients vous rejoignent ensuite">▶ Démarrer la séance</button>
+            <button class="btn-light" onclick="visioJoinSession()" title="Une séance est déjà ouverte : vous y entrez sans l'interrompre">↳ Rejoindre la séance en cours</button>
             <button class="btn-danger" onclick="visioEndSession()">⏹ Terminer</button>
           </div>
         </header>
@@ -4975,9 +4976,10 @@
               <div id="visioSelfStage" style="flex:1; min-height:300px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:26px;">
                 <div style="font-size:48px; margin-bottom:10px;">🎥</div>
                 <strong style="font-family:'Sora',sans-serif; font-size:19px;">Salle de séance</strong>
-                <p style="color:#94a3b8; margin-top:9px; max-width:430px; line-height:1.6; font-size:13px;">Démarrez la séance : la visioconférence s'ouvre ici, et vos patients apparaissent en vignettes autour de la vidéo.</p>
-                <div style="display:flex; gap:8px; margin-top:16px;">
-                  <button class="btn-gradient" onclick="visioStartSession()">▶ Démarrer la séance</button>
+                <p style="color:#94a3b8; margin-top:9px; max-width:430px; line-height:1.6; font-size:13px;">Démarrez la séance : la visioconférence s'ouvre ici, et vos patients apparaissent en vignettes autour de la vidéo.<br><span style="color:#64748b;">Une séance est déjà ouverte par un collègue ? Utilisez « Rejoindre ».</span></p>
+                <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; justify-content:center;">
+                  <button class="btn-gradient" onclick="visioStartSession()" title="Ouvrir la salle : vous êtes le premier, vos patients vous rejoignent ensuite">▶ Démarrer la séance</button>
+                  <button class="btn-light" onclick="visioJoinSession()" title="Une séance est déjà ouverte : vous y entrez sans l'interrompre">↳ Rejoindre la séance en cours</button>
                 </div>
               </div>
               <div style="padding:10px 14px; background:rgba(11,21,48,.96); border-top:1px solid rgba(255,255,255,.08); display:flex; gap:9px; flex-wrap:wrap; align-items:center;">
@@ -12802,12 +12804,30 @@
     return window.MARFAN_SALLE_VISIO || 'k7x2m9q4vr8tz3ncb6hw';
   }
 
-  async function visioStartSession() {
+  // Rejoindre une séance déjà ouverte.
+  //
+  // Techniquement, c'est le même geste que « Démarrer » : la salle est une
+  // constante unique pour toute la plateforme, entrer dedans l'ouvre si elle
+  // est vide et vous y ajoute si elle ne l'est pas. Jitsi ne distingue pas les
+  // deux cas.
+  //
+  // Mais un second soignant n'ose pas cliquer sur « Démarrer » quand une
+  // séance est en cours : le mot laisse croire qu'il va la relancer et couper
+  // ses collègues. Le bouton existe donc pour ce qu'il dit, et l'application
+  // lui répond dans les mêmes termes. L'identité du chemin est un détail
+  // d'implémentation ; l'intention de la personne, elle, est réelle.
+  async function visioJoinSession() {
+    return visioStartSession({ rejoindre: true });
+  }
+
+  async function visioStartSession(options) {
+    const rejoint = !!(options && options.rejoindre);
     visioState.sessionActive = true;
     visioState.startTime = Date.now();
     patients.forEach(p => initParticipantState(p));
     if ($('visioLiveLabel')) $('visioLiveLabel').textContent = 'EN DIRECT — séance en cours';
-    if ($('visioSessionStatus')) $('visioSessionStatus').textContent = 'Session démarrée à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    if ($('visioSessionStatus')) $('visioSessionStatus').textContent =
+      (rejoint ? 'Connexion à la séance en cours…' : 'Session démarrée à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
 
     if ($('visioSelfStage')) {
       $('visioSelfStage').style.padding = '0';
@@ -12828,18 +12848,24 @@
           onPartageEcran: majTemoinPartage
         });
         if ($('visioSessionStatus')) {
+          const heure = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
           $('visioSessionStatus').textContent =
-            'Salle « ' + window.VisioJitsi.construireNomSalle(visioCleSalle()) + ' » · ouverte à ' +
-            new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            'Salle « ' + window.VisioJitsi.construireNomSalle(visioCleSalle()) + ' » · ' +
+            (rejoint ? 'rejointe à ' : 'ouverte à ') + heure;
         }
-        toast('▶ Salle ouverte. Vos patients la rejoignent depuis leur onglet « Séance en visio ».', 'success', 7000);
+        toast(
+          rejoint
+            ? '↳ Vous avez rejoint la séance en cours. Les participants déjà connectés ne sont pas interrompus.'
+            : '▶ Salle ouverte. Vos patients la rejoignent depuis leur onglet « Séance en visio ».',
+          'success', 7000);
       } catch (e) {
         $('visioSelfStage').innerHTML =
           '<div style="padding:30px; text-align:center; color:#fca5a5;">' +
           '<div style="font-size:40px; margin-bottom:10px;">⚠️</div>' +
           '<strong style="font-size:16px;">Visioconférence indisponible</strong>' +
           '<p style="color:#94a3b8; margin-top:8px; max-width:460px;">' + (e && e.message ? e.message : '') + '</p></div>';
-        toast('⚠ ' + ((e && e.message) || 'Impossible d\'ouvrir la salle.'), 'error', 9000);
+        toast('⚠ ' + ((e && e.message) ||
+          (rejoint ? 'Impossible de rejoindre la salle.' : 'Impossible d\'ouvrir la salle.')), 'error', 9000);
       }
     }
 
