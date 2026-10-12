@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v85';</script>
-  <script src="api-client.js?v=phase85-1"></script>
+  <script>window.MARFAN_VERSION = 'v87';</script>
+  <script src="api-client.js?v=phase87-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase85-1"></script>
+  <script src="questionnaires-defs.js?v=phase87-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase85-1"></script>
+  <script src="medical-parsers.js?v=phase87-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase85-1"></script>
-  <script src="cpet-analyse.js?v=phase85-1"></script>
+  <script src="cpet-graph-preview.js?v=phase87-1"></script>
+  <script src="cpet-analyse.js?v=phase87-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase85-1"></script>
-  <script src="medical-record-ui.js?v=phase85-1"></script>
+  <script src="pdf-extractor.js?v=phase87-1"></script>
+  <script src="medical-record-ui.js?v=phase87-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase85-1"></script>
-  <script src="synthese-ui.js?v=phase85-1"></script>
-  <script src="audit-ui.js?v=phase85-1"></script>
-  <script src="entretien-ui.js?v=phase85-1"></script>
-  <script src="activation-ui.js?v=phase85-1"></script>
-  <script src="document-import.js?v=phase85-1"></script>
-  <script src="activite-ui.js?v=phase85-1"></script>
-  <script src="cpet-detail.js?v=phase85-1"></script>
-  <script src="echo-calculs.js?v=phase85-1"></script>
-  <script src="echo-detail.js?v=phase85-1"></script>
-  <script src="accueil-activite.js?v=phase85-1"></script>
-  <script src="visio-jitsi.js?v=phase85-1"></script>
-  <script src="video-pilotee.js?v=phase85-1"></script>
-  <script src="fiche-apa.js?v=phase85-1"></script>
-  <script src="inactivite.js?v=phase85-1"></script>
-  <script src="bilans-ui.js?v=phase85-1"></script>
-  <script src="etudes-ui.js?v=phase85-1"></script>
-  <script src="ville-hopital.js?v=phase85-1"></script>
-  <script src="qlibres-ui.js?v=phase85-1"></script>
-  <script src="parametres-ui.js?v=phase85-1"></script>
+  <script src="aortic-consultations.js?v=phase87-1"></script>
+  <script src="synthese-ui.js?v=phase87-1"></script>
+  <script src="audit-ui.js?v=phase87-1"></script>
+  <script src="entretien-ui.js?v=phase87-1"></script>
+  <script src="activation-ui.js?v=phase87-1"></script>
+  <script src="document-import.js?v=phase87-1"></script>
+  <script src="activite-ui.js?v=phase87-1"></script>
+  <script src="cpet-detail.js?v=phase87-1"></script>
+  <script src="echo-calculs.js?v=phase87-1"></script>
+  <script src="echo-detail.js?v=phase87-1"></script>
+  <script src="accueil-activite.js?v=phase87-1"></script>
+  <script src="visio-jitsi.js?v=phase87-1"></script>
+  <script src="video-pilotee.js?v=phase87-1"></script>
+  <script src="fiche-apa.js?v=phase87-1"></script>
+  <script src="inactivite.js?v=phase87-1"></script>
+  <script src="bilans-ui.js?v=phase87-1"></script>
+  <script src="etudes-ui.js?v=phase87-1"></script>
+  <script src="ville-hopital.js?v=phase87-1"></script>
+  <script src="qlibres-ui.js?v=phase87-1"></script>
+  <script src="parametres-ui.js?v=phase87-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13222,8 +13222,14 @@
           </div>
           <div style="padding:16px 22px; overflow-y:auto; flex:1;">
             ${audioOk ? '' : `<div style="background:#fef2f2; border:1px solid #fecaca; border-left:4px solid #dc2626; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
-              <strong style="display:block; font-size:13px; color:#991b1b; margin-bottom:3px;">Le son ne sera pas transmis</strong>
-              <span style="font-size:12.5px; color:#7f1d1d; line-height:1.55;">Ce navigateur ne sait pas capturer l'audio d'un onglet. Vos patients verraient la vidéo <b>sans le son</b>. Pour animer une séance, ouvrez la plateforme dans <b>Google Chrome</b>.</span>
+              <strong style="display:block; font-size:13px; color:#991b1b; margin-bottom:5px;">Ce navigateur ne convient pas à une séance</strong>
+              <span style="font-size:12.5px; color:#7f1d1d; line-height:1.6;">
+                Deux limites, et la seconde touche au secret médical :<br>
+                • il ne sait pas capturer l'audio : vos patients verraient la vidéo <b>sans le son</b> ;<br>
+                • il ne sait pas partager <b>un onglet seul</b> — seulement une fenêtre ou l'écran entier.
+                Partager l'écran entier exposerait <b>les dossiers ouverts devant vous</b>.<br>
+                <b>Ouvrez la plateforme dans Google Chrome</b> pour animer une séance.
+              </span>
             </div>`}
 
             <div style="font-size:11.5px; font-weight:800; color:#f97316; text-transform:uppercase; letter-spacing:.4px; margin-bottom:7px;">Étape 1 — ouvrez la vidéo dans un onglet</div>
@@ -13238,12 +13244,15 @@
             <div style="border-top:1px solid #e2e8f0; margin:16px 0 0; padding-top:15px;">
               <div style="font-size:11.5px; font-weight:800; color:#f97316; text-transform:uppercase; letter-spacing:.4px; margin-bottom:7px;">Étape 2 — partagez cet onglet</div>
               <ol style="margin:0; padding-left:20px; font-size:13.5px; color:#1e293b; line-height:1.85;">
+                ${audioOk ? `
                 <li>Cliquez sur le bouton orange en bas, puis choisissez <b>« Onglet Chrome »</b> — pas « Fenêtre », pas « Écran entier ».</li>
-                <li>Sélectionnez l'onglet de la vidéo${audioOk ? ', et <b style="color:#b45309;">cochez « Partager aussi l\'audio de l\'onglet »</b> en bas à gauche' : ''}.</li>
-                <li>Revenez à l'onglet de la vidéo et appuyez sur lecture : la séance démarre pour tout le monde en même temps.</li>
+                <li>Sélectionnez l'onglet de la vidéo, et <b style="color:#b45309;">cochez « Partager aussi l'audio de l'onglet »</b> en bas à gauche.</li>` : `
+                <li>Cliquez sur le bouton orange en bas. <b>Ce navigateur ne proposera pas d'onglet</b> : seulement des fenêtres et l'écran entier.</li>
+                <li>Choisissez la <b>fenêtre du lecteur vidéo</b>. <b style="color:#991b1b;">Jamais « Écran entier »</b> : vos dossiers patients seraient diffusés. Si le lecteur est un simple onglet parmi d'autres, détachez-le d'abord en fenêtre séparée.</li>` }
+                <li>Revenez sur la vidéo et <b>appuyez sur Lecture</b> : sans ce geste, vos patients ne voient qu'une image figée.</li>
               </ol>
               <div style="background:#f0fdfa; border:1px solid #99f6e4; border-radius:10px; padding:11px 14px; margin-top:14px; font-size:12.5px; color:#115e59; line-height:1.55;">
-                💡 Partager <b>l'onglet</b> plutôt que l'écran entier préserve votre confidentialité : vos patients ne voient que la vidéo, jamais vos autres fenêtres ni vos dossiers.
+                💡 Ne partagez jamais l'écran entier : vos patients ne doivent voir que la vidéo, jamais vos autres fenêtres ni vos dossiers.
               </div>
             </div>
           </div>
@@ -13275,17 +13284,60 @@
    */
   window.majTemoinPartage = function (actif) {
     const t = $('visioPartageEtat');
-    if (!t) return;
-    if (actif) {
-      t.textContent = '🔴 Vidéo partagée aux patients';
-      t.style.background = 'rgba(220,38,38,.18)';
-      t.style.color = '#fca5a5';
-    } else {
-      t.textContent = '⚪ Vidéo non partagée';
-      t.style.background = 'rgba(148,163,184,.18)';
-      t.style.color = '#94a3b8';
+    if (t) {
+      if (actif) {
+        t.textContent = '🔴 Écran partagé aux patients';
+        t.style.background = 'rgba(220,38,38,.22)';
+        t.style.color = '#fecaca';
+      } else {
+        t.textContent = '⚪ Écran non partagé';
+        t.style.background = 'rgba(148,163,184,.18)';
+        t.style.color = '#94a3b8';
+      }
     }
+    rappelerLaLecture(actif);
   };
+
+  /**
+   * Rappel « allez appuyer sur Lecture », tant que le partage dure.
+   *
+   * Partager l'onglet ne lance pas la vidéo : elle reste sur l'image où on
+   * l'a laissée. Le soignant, lui, a basculé sur la plateforme pour surveiller
+   * ses patients — et ceux-ci regardent une image figée en croyant que la
+   * séance a commencé. C'est exactement ce qui s'est produit le 12 octobre.
+   *
+   * La consigne existait pourtant : troisième ligne de la fenêtre d'aide. Mais
+   * cette fenêtre est fermée au moment où l'on clique sur « Partager », et le
+   * message éphémère qui la remplaçait s'affichait pendant que le soignant
+   * était dans le sélecteur de Chrome, donc sans le voir.
+   *
+   * Ce rappel-ci ne disparaît pas tout seul. Il naît de l'événement réel de
+   * Jitsi, pas d'une supposition, et il s'efface quand le partage s'arrête.
+   */
+  function rappelerLaLecture(actif) {
+    const existant = document.getElementById('visioRappelLecture');
+    if (!actif) { if (existant) existant.remove(); return; }
+    if (existant) return;
+
+    const d = document.createElement('div');
+    d.id = 'visioRappelLecture';
+    d.style.cssText =
+      'position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:99999; ' +
+      'max-width:620px; background:#7c2d12; color:#ffedd5; border:2px solid #fb923c; ' +
+      'border-radius:12px; padding:13px 17px; box-shadow:0 10px 32px rgba(0,0,0,.4); ' +
+      'font-size:13.5px; line-height:1.55; display:flex; gap:12px; align-items:flex-start;';
+    d.innerHTML =
+      '<span style="font-size:22px; line-height:1;">▶️</span>' +
+      '<span style="flex:1;"><strong style="display:block; margin-bottom:3px;">' +
+      'Le partage est actif — la vidéo, elle, ne tourne pas encore.</strong>' +
+      'Retournez sur l\'onglet de la vidéo et appuyez sur <b>Lecture</b>. ' +
+      'Sans ce geste, vos patients voient une image figée.</span>' +
+      '<button style="border:1px solid #fb923c; background:transparent; color:#ffedd5; ' +
+      'border-radius:7px; padding:5px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">' +
+      'C\'est fait</button>';
+    d.querySelector('button').addEventListener('click', () => d.remove());
+    document.body.appendChild(d);
+  }
 
   window.visioLancerPartageEcran = function () {
     const m = $('visioEcranModal');
