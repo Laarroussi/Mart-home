@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v87';</script>
-  <script src="api-client.js?v=phase87-1"></script>
+  <script>window.MARFAN_VERSION = 'v88';</script>
+  <script src="api-client.js?v=phase88-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase87-1"></script>
+  <script src="questionnaires-defs.js?v=phase88-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase87-1"></script>
+  <script src="medical-parsers.js?v=phase88-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase87-1"></script>
-  <script src="cpet-analyse.js?v=phase87-1"></script>
+  <script src="cpet-graph-preview.js?v=phase88-1"></script>
+  <script src="cpet-analyse.js?v=phase88-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase87-1"></script>
-  <script src="medical-record-ui.js?v=phase87-1"></script>
+  <script src="pdf-extractor.js?v=phase88-1"></script>
+  <script src="medical-record-ui.js?v=phase88-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase87-1"></script>
-  <script src="synthese-ui.js?v=phase87-1"></script>
-  <script src="audit-ui.js?v=phase87-1"></script>
-  <script src="entretien-ui.js?v=phase87-1"></script>
-  <script src="activation-ui.js?v=phase87-1"></script>
-  <script src="document-import.js?v=phase87-1"></script>
-  <script src="activite-ui.js?v=phase87-1"></script>
-  <script src="cpet-detail.js?v=phase87-1"></script>
-  <script src="echo-calculs.js?v=phase87-1"></script>
-  <script src="echo-detail.js?v=phase87-1"></script>
-  <script src="accueil-activite.js?v=phase87-1"></script>
-  <script src="visio-jitsi.js?v=phase87-1"></script>
-  <script src="video-pilotee.js?v=phase87-1"></script>
-  <script src="fiche-apa.js?v=phase87-1"></script>
-  <script src="inactivite.js?v=phase87-1"></script>
-  <script src="bilans-ui.js?v=phase87-1"></script>
-  <script src="etudes-ui.js?v=phase87-1"></script>
-  <script src="ville-hopital.js?v=phase87-1"></script>
-  <script src="qlibres-ui.js?v=phase87-1"></script>
-  <script src="parametres-ui.js?v=phase87-1"></script>
+  <script src="aortic-consultations.js?v=phase88-1"></script>
+  <script src="synthese-ui.js?v=phase88-1"></script>
+  <script src="audit-ui.js?v=phase88-1"></script>
+  <script src="entretien-ui.js?v=phase88-1"></script>
+  <script src="activation-ui.js?v=phase88-1"></script>
+  <script src="document-import.js?v=phase88-1"></script>
+  <script src="activite-ui.js?v=phase88-1"></script>
+  <script src="cpet-detail.js?v=phase88-1"></script>
+  <script src="echo-calculs.js?v=phase88-1"></script>
+  <script src="echo-detail.js?v=phase88-1"></script>
+  <script src="accueil-activite.js?v=phase88-1"></script>
+  <script src="visio-jitsi.js?v=phase88-1"></script>
+  <script src="video-pilotee.js?v=phase88-1"></script>
+  <script src="fiche-apa.js?v=phase88-1"></script>
+  <script src="inactivite.js?v=phase88-1"></script>
+  <script src="bilans-ui.js?v=phase88-1"></script>
+  <script src="etudes-ui.js?v=phase88-1"></script>
+  <script src="ville-hopital.js?v=phase88-1"></script>
+  <script src="qlibres-ui.js?v=phase88-1"></script>
+  <script src="parametres-ui.js?v=phase88-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -16498,6 +16498,7 @@
           _train.elapsed = 0;
           _train.energyCumul = 0;
           _train.buffer = [];
+          _train.lastSampleAt = 0;
 
           // 2. Active les cartes métriques + la carte zone (TOUTES les instances)
           $$device('apiTrainingMetrics').forEach(m => { m.style.opacity = '1'; m.style.pointerEvents = 'auto'; });
@@ -16510,12 +16511,27 @@
           // 4. Tick chaque seconde : lit la FC VIVE depuis _train.currentHr
           //    (alimentée par les notifications Bluetooth) + calcule PA + accumule l'énergie
           _train.tickInterval = setInterval(() => {
-            _train.elapsed += 1;
+            // La durée se lit sur l'horloge, jamais sur le nombre de tics.
+            //
+            // Dès que le patient passe sur une autre fenêtre, le navigateur
+            // ralentit les minuteries des onglets en arrière-plan : jusqu'à un
+            // seul appel par minute. Compter « +1 seconde par tic » transformait
+            // alors une séance de trente minutes en séance de trente secondes.
+            // Durée fausse, dépense fausse — et le patient, lui, avait bien
+            // pédalé. C'est ce qui s'est produit le 12 octobre 2026.
+            //
+            // Date.now() ne dépend d'aucune minuterie : le temps réellement
+            // écoulé est exact même si le tic n'a pas eu lieu pendant 60 s.
+            const ecoule = Math.max(0, Math.round((Date.now() - _train.startedAt) / 1000));
+            const delta = Math.max(0, ecoule - _train.elapsed);
+            _train.elapsed = ecoule;
             // Si pas de FC depuis >15s, on considère que la ceinture a un problème transitoire
             const stale = _train.lastHrAt && (Date.now() - _train.lastHrAt > 15000);
             const hr = stale ? null : _train.currentHr;
             const pa = estimatePA(hr);
-            _train.energyCumul += energyIncrement(hr, 1);
+            // On impute le temps réellement écoulé depuis le tic précédent,
+            // pas une seconde forfaitaire.
+            _train.energyCumul += energyIncrement(hr, delta);
             _train.currentPa = pa;
             // UI : update TOUTES les instances (les 3 onglets)
             setTextAll('apiMetricHr', hr != null ? hr : (stale ? '⚠' : '…'));
@@ -16541,8 +16557,15 @@
               });
             }
 
-            // Bufferise un sample toutes les 5 secondes (uniquement si on a une vraie FC)
-            if (_train.elapsed % 5 === 0 && hr != null) {
+            // Un relevé au moins toutes les 5 secondes, si la FC est réelle.
+            //
+            // On compare à la date du dernier relevé au lieu de tester
+            // « elapsed % 5 === 0 » : en arrière-plan le compteur avance par
+            // bonds de soixante secondes, et cette égalité n'était presque
+            // jamais vraie. Les relevés disparaissaient en même temps que la
+            // durée — deux pertes pour une seule cause.
+            if (hr != null && _train.elapsed - _train.lastSampleAt >= 5) {
+              _train.lastSampleAt = _train.elapsed;
               _train.buffer.push({
                 t_seconds: _train.elapsed, hr, pa_estimated: pa,
                 energy_kcal: parseFloat(_train.energyCumul.toFixed(3))
