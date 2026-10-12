@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v83';</script>
-  <script src="api-client.js?v=phase83-1"></script>
+  <script>window.MARFAN_VERSION = 'v84';</script>
+  <script src="api-client.js?v=phase84-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase83-1"></script>
+  <script src="questionnaires-defs.js?v=phase84-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase83-1"></script>
+  <script src="medical-parsers.js?v=phase84-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase83-1"></script>
-  <script src="cpet-analyse.js?v=phase83-1"></script>
+  <script src="cpet-graph-preview.js?v=phase84-1"></script>
+  <script src="cpet-analyse.js?v=phase84-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase83-1"></script>
-  <script src="medical-record-ui.js?v=phase83-1"></script>
+  <script src="pdf-extractor.js?v=phase84-1"></script>
+  <script src="medical-record-ui.js?v=phase84-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase83-1"></script>
-  <script src="synthese-ui.js?v=phase83-1"></script>
-  <script src="audit-ui.js?v=phase83-1"></script>
-  <script src="entretien-ui.js?v=phase83-1"></script>
-  <script src="activation-ui.js?v=phase83-1"></script>
-  <script src="document-import.js?v=phase83-1"></script>
-  <script src="activite-ui.js?v=phase83-1"></script>
-  <script src="cpet-detail.js?v=phase83-1"></script>
-  <script src="echo-calculs.js?v=phase83-1"></script>
-  <script src="echo-detail.js?v=phase83-1"></script>
-  <script src="accueil-activite.js?v=phase83-1"></script>
-  <script src="visio-jitsi.js?v=phase83-1"></script>
-  <script src="video-pilotee.js?v=phase83-1"></script>
-  <script src="fiche-apa.js?v=phase83-1"></script>
-  <script src="inactivite.js?v=phase83-1"></script>
-  <script src="bilans-ui.js?v=phase83-1"></script>
-  <script src="etudes-ui.js?v=phase83-1"></script>
-  <script src="ville-hopital.js?v=phase83-1"></script>
-  <script src="qlibres-ui.js?v=phase83-1"></script>
-  <script src="parametres-ui.js?v=phase83-1"></script>
+  <script src="aortic-consultations.js?v=phase84-1"></script>
+  <script src="synthese-ui.js?v=phase84-1"></script>
+  <script src="audit-ui.js?v=phase84-1"></script>
+  <script src="entretien-ui.js?v=phase84-1"></script>
+  <script src="activation-ui.js?v=phase84-1"></script>
+  <script src="document-import.js?v=phase84-1"></script>
+  <script src="activite-ui.js?v=phase84-1"></script>
+  <script src="cpet-detail.js?v=phase84-1"></script>
+  <script src="echo-calculs.js?v=phase84-1"></script>
+  <script src="echo-detail.js?v=phase84-1"></script>
+  <script src="accueil-activite.js?v=phase84-1"></script>
+  <script src="visio-jitsi.js?v=phase84-1"></script>
+  <script src="video-pilotee.js?v=phase84-1"></script>
+  <script src="fiche-apa.js?v=phase84-1"></script>
+  <script src="inactivite.js?v=phase84-1"></script>
+  <script src="bilans-ui.js?v=phase84-1"></script>
+  <script src="etudes-ui.js?v=phase84-1"></script>
+  <script src="ville-hopital.js?v=phase84-1"></script>
+  <script src="qlibres-ui.js?v=phase84-1"></script>
+  <script src="parametres-ui.js?v=phase84-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -19667,7 +19667,22 @@
       // Probe API
       const up = await window.MarfanAPI.tryConnect();
       if (!up) {
-        console.log('[MarfanAPI] Mode démo activé (API down)');
+        // Un blocage temporaire n'est pas une panne, et surtout pas une perte
+        // de données. Le dire change tout pour qui vient de passer une heure
+        // à saisir des dossiers.
+        const limite = window.MarfanAPI.derniereRaison === 'limite';
+        console.log('[MarfanAPI] Mode démo activé (' + (limite ? 'limite de requêtes' : 'API injoignable') + ')');
+        if (limite) {
+          const b = document.getElementById('apiDemoBanner');
+          if (b) {
+            b.style.background = '#b45309';
+            b.innerHTML = '⏳ <strong>Trop de requêtes en peu de temps</strong> — le serveur vous demande de patienter. ' +
+              'Vos données sont intactes. Réessayez dans deux à trois minutes.' +
+              '<button onclick="window.location.reload()" style="margin-left:12px; padding:4px 12px; ' +
+              'border:1px solid rgba(255,255,255,0.5); background:rgba(255,255,255,0.15); color:white; ' +
+              'border-radius:7px; font-weight:700; font-size:12px; cursor:pointer;">Réessayer</button>';
+          }
+        }
         showDemoBanner();
         lever();
         return;

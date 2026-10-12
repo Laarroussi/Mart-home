@@ -42,11 +42,34 @@ app.use(cors({
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
-// Rate limit global (anti-DoS basique)
+// ============================================================
+// Limite de débit — protection anti-abus, pas entrave à l'usage
+// ------------------------------------------------------------
+// Le plafond était de 200 requêtes par quart d'heure pour toute
+// l'application. Or l'écran « Base de données » interroge le serveur une fois
+// par patient pour la chronologie, une fois pour les échocardiographies, une
+// fois pour le suivi aortique : treize patients font trente-neuf appels à
+// chaque rendu. Le plafond tombait en quelques minutes d'usage normal, et
+// l'application — ne distinguant pas « bloqué » de « injoignable » — basculait
+// en mode démonstration. Le soignant croyait avoir perdu ses données.
+//
+// Le plafond passe à 2000 par quart d'heure. Pour un service clinique, c'est
+// large sans être illimité : un abus reste arrêté, un usage réel ne l'est
+// jamais.
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 200,
-  message: { error: 'Trop de requêtes, ressayez plus tard.' }
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 2000,
+  message: { error: 'Trop de requêtes, ressayez plus tard.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  // Le contrôle de disponibilité ne doit JAMAIS être limité.
+  //
+  // C'est lui qui répond à la question « le serveur est-il là ? ». Compté
+  // dans le quota, il finit par répondre 429 — et l'application en déduit
+  // une panne alors que le serveur va très bien. Un diagnostic qui tombe
+  // malade en même temps que ce qu'il surveille ne diagnostique rien.
+  skip: (req) => req.path === '/health' || req.path === '/api/health'
 });
 app.use('/api/', limiter);
 

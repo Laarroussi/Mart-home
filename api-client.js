@@ -517,9 +517,35 @@
     health: () => request('GET', '/health'),
 
     /** ===== Mode dégradé ===== */
+    /**
+     * Le serveur répond-il ?
+     *
+     * On distingue désormais trois situations là où il n'y en avait qu'une :
+     * serveur absent, serveur qui nous bloque temporairement (429), et
+     * serveur en bonne santé. Les deux premières menaient au même « mode
+     * démonstration » sans explication — on croyait ses données perdues
+     * alors qu'il suffisait d'attendre quelques minutes.
+     *
+     * La raison est conservée dans `derniereRaison` pour que l'interface
+     * puisse la dire au lieu d'annoncer une panne.
+     */
+    derniereRaison: null,
+
     async tryConnect() {
-      try { await this.health(); return true; }
-      catch { console.warn('[MarfanAPI] backend injoignable — mode démo (données in-memory)'); return false; }
+      try {
+        await this.health();
+        this.derniereRaison = null;
+        return true;
+      } catch (e) {
+        if (e && e.status === 429) {
+          this.derniereRaison = 'limite';
+          console.warn('[MarfanAPI] limite de requêtes atteinte (429) — réessayez dans quelques minutes');
+        } else {
+          this.derniereRaison = 'injoignable';
+          console.warn('[MarfanAPI] backend injoignable — mode démo (données in-memory)');
+        }
+        return false;
+      }
     }
   };
 
