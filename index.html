@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v88';</script>
-  <script src="api-client.js?v=phase88-1"></script>
+  <script>window.MARFAN_VERSION = 'v89';</script>
+  <script src="api-client.js?v=phase89-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase88-1"></script>
+  <script src="questionnaires-defs.js?v=phase89-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase88-1"></script>
+  <script src="medical-parsers.js?v=phase89-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase88-1"></script>
-  <script src="cpet-analyse.js?v=phase88-1"></script>
+  <script src="cpet-graph-preview.js?v=phase89-1"></script>
+  <script src="cpet-analyse.js?v=phase89-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase88-1"></script>
-  <script src="medical-record-ui.js?v=phase88-1"></script>
+  <script src="pdf-extractor.js?v=phase89-1"></script>
+  <script src="medical-record-ui.js?v=phase89-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase88-1"></script>
-  <script src="synthese-ui.js?v=phase88-1"></script>
-  <script src="audit-ui.js?v=phase88-1"></script>
-  <script src="entretien-ui.js?v=phase88-1"></script>
-  <script src="activation-ui.js?v=phase88-1"></script>
-  <script src="document-import.js?v=phase88-1"></script>
-  <script src="activite-ui.js?v=phase88-1"></script>
-  <script src="cpet-detail.js?v=phase88-1"></script>
-  <script src="echo-calculs.js?v=phase88-1"></script>
-  <script src="echo-detail.js?v=phase88-1"></script>
-  <script src="accueil-activite.js?v=phase88-1"></script>
-  <script src="visio-jitsi.js?v=phase88-1"></script>
-  <script src="video-pilotee.js?v=phase88-1"></script>
-  <script src="fiche-apa.js?v=phase88-1"></script>
-  <script src="inactivite.js?v=phase88-1"></script>
-  <script src="bilans-ui.js?v=phase88-1"></script>
-  <script src="etudes-ui.js?v=phase88-1"></script>
-  <script src="ville-hopital.js?v=phase88-1"></script>
-  <script src="qlibres-ui.js?v=phase88-1"></script>
-  <script src="parametres-ui.js?v=phase88-1"></script>
+  <script src="aortic-consultations.js?v=phase89-1"></script>
+  <script src="synthese-ui.js?v=phase89-1"></script>
+  <script src="audit-ui.js?v=phase89-1"></script>
+  <script src="entretien-ui.js?v=phase89-1"></script>
+  <script src="activation-ui.js?v=phase89-1"></script>
+  <script src="document-import.js?v=phase89-1"></script>
+  <script src="activite-ui.js?v=phase89-1"></script>
+  <script src="cpet-detail.js?v=phase89-1"></script>
+  <script src="echo-calculs.js?v=phase89-1"></script>
+  <script src="echo-detail.js?v=phase89-1"></script>
+  <script src="accueil-activite.js?v=phase89-1"></script>
+  <script src="visio-jitsi.js?v=phase89-1"></script>
+  <script src="video-pilotee.js?v=phase89-1"></script>
+  <script src="fiche-apa.js?v=phase89-1"></script>
+  <script src="inactivite.js?v=phase89-1"></script>
+  <script src="bilans-ui.js?v=phase89-1"></script>
+  <script src="etudes-ui.js?v=phase89-1"></script>
+  <script src="ville-hopital.js?v=phase89-1"></script>
+  <script src="qlibres-ui.js?v=phase89-1"></script>
+  <script src="parametres-ui.js?v=phase89-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -16651,6 +16651,7 @@
                       style="width:100%; padding:9px 11px; border:1px solid #d8dde7; border-radius:8px; font-size:13px; font-family:inherit; resize:vertical; margin-bottom:14px;"></textarea>
 
             <div id="apiBorgErr" style="display:none; padding:8px 10px; background:#fee2e2; color:#991b1b; border-radius:7px; font-size:11.5px; margin-bottom:10px;"></div>
+            <div id="apiBorgMinuterie" style="display:none; padding:9px 11px; background:#fffbeb; color:#92400e; border:1px solid #fcd34d; border-radius:7px; font-size:11.5px; line-height:1.5; margin-bottom:10px;"></div>
             <button id="apiBorgConfirm" disabled style="width:100%; padding:11px; border:none; border-radius:9px; background:#94a3b8; color:white; font-weight:700; font-size:13px; cursor:pointer;">Valider et générer la fiche résumé</button>
           </div>
         </div>`;
@@ -16686,8 +16687,86 @@
       }
       document.getElementById('apiSessionContent').addEventListener('input', updateSubmitState);
 
+      // ================================================================
+      // Clôture automatique au bout de deux minutes
+      // ----------------------------------------------------------------
+      // La séance n'était enregistrée qu'au moment où le patient validait
+      // cette fenêtre. S'il s'éloignait, fermait l'onglet ou laissait son
+      // téléphone se verrouiller, une heure de travail restait en base sans
+      // date de fin, sans durée et sans mesures : perdue.
+      //
+      // Passé deux minutes, on enregistre donc ce qui est mesuré. La durée
+      // retenue est celle relevée à l'instant de l'arrêt, pas celle de la
+      // clôture : le patient a cessé de pédaler quand il a cliqué sur
+      // « Arrêter », pas deux minutes plus tard.
+      //
+      // Le ressenti d'effort, lui, reste VIDE. On n'invente pas un chiffre
+      // que personne n'a donné — un 5 par défaut vaudrait « effort modéré »,
+      // ce qui est une affirmation, et fausserait toute analyse ultérieure.
+      // Le décompte se lit sur l'horloge, pas sur le nombre de tics — même
+      // raison que pour la séance elle-même : en arrière-plan, setInterval est
+      // ralenti ou gelé. Au réveil de la page, le délai est constaté comme
+      // dépassé et la séance est enregistrée immédiatement, au lieu d'attendre
+      // deux minutes de plus.
+      const dureeALArret = (typeof _train !== 'undefined' && _train.elapsed) ? _train.elapsed : null;
+      const debutAttente = Date.now();
+      const DELAI_S = 120;
+      const minuterie = document.getElementById('apiBorgMinuterie');
+      let compte = null;
+
+      function arreterLaMinuterie() {
+        if (compte) { clearInterval(compte); compte = null; }
+        if (minuterie) minuterie.style.display = 'none';
+      }
+
+      async function cloturerAutomatiquement() {
+        arreterLaMinuterie();
+        try {
+          await window.MarfanAPI.training.end(sessionId, null, {
+            auto: true,
+            duration_s: dureeALArret || undefined,
+            content: document.getElementById('apiSessionContent').value.trim() || null,
+            patient_comment: document.getElementById('apiSessionComment').value.trim() || null
+          });
+        } catch (e) {
+          console.warn('[training] cloture automatique echouee :', e && e.message);
+          return; // on laisse la fenêtre ouverte : le patient peut encore valider
+        }
+        const b = document.getElementById('apiBorgBackdrop'); if (b) b.remove();
+        resetUIAfterStop();
+        resetTrainingState();
+        try { await loadTrainingHistory('patient'); } catch (_) {}
+        alert('Votre séance a été enregistrée automatiquement.\n\n'
+            + 'Durée et mesures sont conservées. Il manque seulement votre ressenti '
+            + 'd\'effort : vous pourrez l\'indiquer à votre soignant.');
+      }
+
+      compte = setInterval(() => {
+        const resteS = Math.max(0, DELAI_S - Math.round((Date.now() - debutAttente) / 1000));
+        if (minuterie) {
+          const mm = Math.floor(resteS / 60), ss = String(resteS % 60).padStart(2, '0');
+          minuterie.textContent = 'Sans réponse de votre part, la séance sera enregistrée '
+                                + 'automatiquement dans ' + mm + ':' + ss
+                                + ' — sans votre ressenti d\'effort.';
+          minuterie.style.display = 'block';
+        }
+        if (resteS <= 0) cloturerAutomatiquement();
+      }, 1000);
+
+      // Au retour sur l'onglet, on vérifie tout de suite : une page réveillée
+      // après trois minutes ne doit pas attendre le prochain tic pour agir.
+      document.addEventListener('visibilitychange', function auRetour() {
+        if (document.hidden) return;
+        if (!compte) { document.removeEventListener('visibilitychange', auRetour); return; }
+        if (Date.now() - debutAttente >= DELAI_S * 1000) {
+          document.removeEventListener('visibilitychange', auRetour);
+          cloturerAutomatiquement();
+        }
+      });
+
       document.getElementById('apiBorgConfirm').onclick = async function () {
         if (selected == null) return;
+        arreterLaMinuterie();
         const content = document.getElementById('apiSessionContent').value.trim() || null;
         const patient_comment = document.getElementById('apiSessionComment').value.trim() || null;
         if (isLibre && !content) return;

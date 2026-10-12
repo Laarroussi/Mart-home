@@ -142,16 +142,38 @@ router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
         error: 'Modalité inconnue : ' + modalite + '. Valeurs acceptées : ' + MODALITES.join(', ')
       });
     }
-    if (borg_cr10 == null || borg_cr10 < 0 || borg_cr10 > 10) {
-      return res.status(400).json({ error: 'borg_cr10 entre 0 et 10 requis' });
+    // Ressenti d'effort : exigé quand il est fourni, jamais inventé quand il
+    // ne l'est pas.
+    //
+    // Cette route refusait toute séance sans Borg. La conséquence n'était pas
+    // d'obtenir le ressenti, mais de PERDRE LA SÉANCE : un patient qui ferme
+    // sa fenêtre sans répondre laissait une ligne sans fin, sans durée et sans
+    // mesures, indéfiniment « en cours ». Une heure de travail effacée faute
+    // d'un chiffre de confort.
+    //
+    // Le ressenti devient donc facultatif, et son absence est enregistrée
+    // comme telle : borg_cr10 reste NULL. Jamais zéro — zéro veut dire « aucun
+    // effort perçu », ce qui est une affirmation, alors qu'on ne sait pas.
+    const borgFourni = (borg_cr10 !== null && borg_cr10 !== undefined && borg_cr10 !== '');
+    if (borgFourni && (isNaN(parseInt(borg_cr10, 10)) || borg_cr10 < 0 || borg_cr10 > 10)) {
+      return res.status(400).json({ error: 'borg_cr10 doit etre un entier entre 0 et 10' });
     }
     const own = await checkSessionAccess(req, req.params.id);
     if (!own.ok) return res.status(own.status).json({ error: own.error });
 
     const finalStatus = (status === 'interrupted' || status === 'cancelled') ? status : 'completed';
 
-    // Vérif contenu obligatoire pour les séances libres si pas déjà rempli
-    if (own.session.session_type === 'libre' && !own.session.content && !content) {
+    // Clôture automatique : le patient n'a pas répondu dans le délai imparti.
+    // On enregistre ce qui est mesuré, et on laisse vide ce qui ne l'est pas.
+    const auto = (req.body && req.body.auto === true);
+
+    // Contenu obligatoire pour les séances libres — sauf clôture automatique.
+    //
+    // Exiger une description de quelqu'un qui n'est plus là ne la fait pas
+    // apparaître : elle fait disparaître la séance. Mieux vaut une séance
+    // enregistrée dont on sait qu'elle n'est pas décrite, qu'une heure
+    // d'entraînement perdue parce qu'une case est restée vide.
+    if (!auto && own.session.session_type === 'libre' && !own.session.content && !content) {
       return res.status(400).json({ error: 'content obligatoire pour une séance libre (décrivez ce que vous avez fait)' });
     }
 
@@ -183,15 +205,29 @@ router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
         WHERE id = $14
         RETURNING *`,
       [
+        // Durée : la valeur déclarée l'emporte, sinon on laisse le COALESCE
+        // retomber sur NOW() - started_at, c'est-à-dire le temps réellement
+        // écoulé.
+        //
+        // On ne se rabat PLUS sur max_t, l'instant du dernier relevé. Ce
+        // repli a produit des séances d'une heure enregistrées à 48 secondes :
+        // la page passée en arrière-plan cessait d'échantillonner, et la durée
+        // de la séance devenait celle du dernier battement reçu. Un relevé qui
+        // s'arrête ne prouve pas qu'un patient s'est arrêté.
         (duration_s != null && Number.isFinite(parseInt(duration_s, 10)) && parseInt(duration_s, 10) > 0)
           ? parseInt(duration_s, 10)
-          : (a.max_t || null),
+          : null,
         finalStatus,
-        parseInt(borg_cr10, 10),
+        borgFourni ? parseInt(borg_cr10, 10) : null,
         a.hr_min, a.hr_avg, a.hr_max,
         a.pa_min, a.pa_avg, a.pa_max,
         a.energy_total,
-        notes || null,
+        // Trace écrite de la clôture automatique : en relisant la séance, on
+        // doit savoir pourquoi le ressenti manque, sans avoir à le deviner.
+        (notes || (auto
+          ? 'Cloture automatique : le patient n a pas valide la fin de seance dans le delai. '
+            + 'Ressenti d effort non recueilli.'
+          : null)),
         content || null,
         patient_comment || null,
         req.params.id,
