@@ -403,7 +403,10 @@
 
     /** ===== Séances individuelles : une salle par entretien ===== */
     visioIndividuelle: {
-      ouvrir:   (invite_id, titre) => request('POST', '/visio-individuelle', { invite_id, titre }),
+      // Une ou plusieurs personnes : on envoie toujours une liste, le cas à
+      // une personne n'est qu'une liste d'un élément.
+      ouvrir:   (invites, titre) => request('POST', '/visio-individuelle',
+                                            { invites: Array.isArray(invites) ? invites : [invites], titre }),
       lire:     (jeton)            => request('GET',  '/visio-individuelle/' + encodeURIComponent(jeton)),
       terminer: (jeton)            => request('POST', '/visio-individuelle/' + encodeURIComponent(jeton) + '/terminer'),
       miennes:  ()                 => request('GET',  '/visio-individuelle')

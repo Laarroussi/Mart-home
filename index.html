@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v93';</script>
-  <script src="api-client.js?v=phase93-1"></script>
+  <script>window.MARFAN_VERSION = 'v94';</script>
+  <script src="api-client.js?v=phase94-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase93-1"></script>
+  <script src="questionnaires-defs.js?v=phase94-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase93-1"></script>
+  <script src="medical-parsers.js?v=phase94-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase93-1"></script>
-  <script src="cpet-analyse.js?v=phase93-1"></script>
+  <script src="cpet-graph-preview.js?v=phase94-1"></script>
+  <script src="cpet-analyse.js?v=phase94-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase93-1"></script>
-  <script src="medical-record-ui.js?v=phase93-1"></script>
+  <script src="pdf-extractor.js?v=phase94-1"></script>
+  <script src="medical-record-ui.js?v=phase94-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase93-1"></script>
-  <script src="synthese-ui.js?v=phase93-1"></script>
-  <script src="audit-ui.js?v=phase93-1"></script>
-  <script src="entretien-ui.js?v=phase93-1"></script>
-  <script src="activation-ui.js?v=phase93-1"></script>
-  <script src="document-import.js?v=phase93-1"></script>
-  <script src="activite-ui.js?v=phase93-1"></script>
-  <script src="cpet-detail.js?v=phase93-1"></script>
-  <script src="echo-calculs.js?v=phase93-1"></script>
-  <script src="echo-detail.js?v=phase93-1"></script>
-  <script src="accueil-activite.js?v=phase93-1"></script>
-  <script src="visio-jitsi.js?v=phase93-1"></script>
-  <script src="video-pilotee.js?v=phase93-1"></script>
-  <script src="fiche-apa.js?v=phase93-1"></script>
-  <script src="inactivite.js?v=phase93-1"></script>
-  <script src="bilans-ui.js?v=phase93-1"></script>
-  <script src="etudes-ui.js?v=phase93-1"></script>
-  <script src="ville-hopital.js?v=phase93-1"></script>
-  <script src="qlibres-ui.js?v=phase93-1"></script>
-  <script src="parametres-ui.js?v=phase93-1"></script>
+  <script src="aortic-consultations.js?v=phase94-1"></script>
+  <script src="synthese-ui.js?v=phase94-1"></script>
+  <script src="audit-ui.js?v=phase94-1"></script>
+  <script src="entretien-ui.js?v=phase94-1"></script>
+  <script src="activation-ui.js?v=phase94-1"></script>
+  <script src="document-import.js?v=phase94-1"></script>
+  <script src="activite-ui.js?v=phase94-1"></script>
+  <script src="cpet-detail.js?v=phase94-1"></script>
+  <script src="echo-calculs.js?v=phase94-1"></script>
+  <script src="echo-detail.js?v=phase94-1"></script>
+  <script src="accueil-activite.js?v=phase94-1"></script>
+  <script src="visio-jitsi.js?v=phase94-1"></script>
+  <script src="video-pilotee.js?v=phase94-1"></script>
+  <script src="fiche-apa.js?v=phase94-1"></script>
+  <script src="inactivite.js?v=phase94-1"></script>
+  <script src="bilans-ui.js?v=phase94-1"></script>
+  <script src="etudes-ui.js?v=phase94-1"></script>
+  <script src="ville-hopital.js?v=phase94-1"></script>
+  <script src="qlibres-ui.js?v=phase94-1"></script>
+  <script src="parametres-ui.js?v=phase94-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -5100,17 +5100,22 @@
 
         <div class="card" style="padding:18px 20px; margin-bottom:16px;">
           <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
-            <div style="flex:1; min-width:260px;">
-              <label for="indivPersonne" style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:5px;">
-                Personne à faire entrer
+            <div style="flex:1; min-width:300px;">
+              <label style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:5px;">
+                Personnes à faire entrer
               </label>
-              <select id="indivPersonne" style="width:100%; padding:11px; border:1px solid #cbd5e1; border-radius:9px; font-size:13.5px; font-family:inherit;">
-                <option value="">Chargement…</option>
-              </select>
+              <input id="indivFiltre" type="text" placeholder="Filtrer : code patient, nom…"
+                     oninput="indivFiltrerListe()"
+                     style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:9px; font-size:12.5px; font-family:inherit; margin-bottom:7px;">
+              <div id="indivPersonnes"
+                   style="max-height:230px; overflow-y:auto; border:1px solid #cbd5e1; border-radius:9px; padding:7px 9px; background:white;">
+                <div style="color:#94a3b8; font-size:12.5px; padding:8px;">Chargement…</div>
+              </div>
               <p style="font-size:11.5px; color:#64748b; margin:6px 0 0; line-height:1.5;">
+                <span id="indivCompte" style="font-weight:700; color:#0b1530;">Aucune personne retenue</span> —
+                d'ordinaire une seule, mais vous pouvez en cocher plusieurs : un proche,
+                un confrère qui observe, un second patient.
                 Les patients apparaissent sous leur code d'étude, jamais sous leur nom civil.
-                Les investigateurs sont dans la même liste : un confrère peut être invité
-                pour une formation ou une observation.
               </p>
             </div>
             <div style="min-width:220px;">
@@ -12982,9 +12987,9 @@
    * professionnel qui permet de le reconnaître.
    */
   window.indivRafraichirListe = async function () {
-    const sel = $('indivPersonne');
-    if (!sel) return;
-    sel.innerHTML = '<option value="">Chargement…</option>';
+    const zone = $('indivPersonnes');
+    if (!zone) return;
+    zone.innerHTML = '<div style="color:#94a3b8; font-size:12.5px; padding:8px;">Chargement…</div>';
     try {
       const r = await window.MarfanAPI.users.list();
       const liste = (r && (r.users || r)) || [];
@@ -12992,40 +12997,83 @@
       const utiles = liste.filter(u => u.id !== moi.id && u.active !== false &&
                                        (u.role === 'patient' || u.role === 'investigator' || u.role === 'principal_admin'));
       if (!utiles.length) {
-        sel.innerHTML = '<option value="">Aucune personne disponible</option>';
+        zone.innerHTML = '<div style="color:#94a3b8; font-size:12.5px; padding:8px;">Aucune personne disponible.</div>';
         return;
       }
       const etiquette = u => u.role === 'patient'
-        ? (u.patient_id || u.username || u.id) + ' · patient'
-        : (u.name || u.username || u.id) + ' · investigateur';
-      const patients = utiles.filter(u => u.role === 'patient');
-      const soignants = utiles.filter(u => u.role !== 'patient');
-      sel.innerHTML = '<option value="">— Choisissez une personne —</option>' +
-        (patients.length ? '<optgroup label="Patients">' +
-          patients.map(u => `<option value="${u.id}">${etiquette(u)}</option>`).join('') + '</optgroup>' : '') +
-        (soignants.length ? '<optgroup label="Investigateurs">' +
-          soignants.map(u => `<option value="${u.id}">${etiquette(u)}</option>`).join('') + '</optgroup>' : '');
+        ? (u.patient_id || u.username || u.id)
+        : (u.name || u.username || u.id);
+      const ligne = u => `
+        <label data-indiv-ligne data-cherche="${(etiquette(u) + ' ' + (u.service || '')).toLowerCase().replace(/"/g, '')}"
+               style="display:flex; align-items:center; gap:9px; padding:7px 6px; border-radius:7px; cursor:pointer; font-size:13px;">
+          <input type="checkbox" value="${u.id}" onchange="indivMajCompte()" style="width:16px; height:16px; flex:0 0 auto; cursor:pointer;">
+          <span style="flex:1; min-width:0;">
+            <span style="font-weight:600; color:#0b1530;">${etiquette(u)}</span>
+            ${u.service ? `<span style="color:#94a3b8; font-size:11.5px;"> · ${u.service}</span>` : ''}
+          </span>
+        </label>`;
+      const groupe = (titre, gens) => gens.length ? `
+        <div style="font-size:10.5px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.4px; padding:7px 6px 3px;">${titre}</div>
+        ${gens.map(ligne).join('')}` : '';
+
+      zone.innerHTML = groupe('Patients', utiles.filter(u => u.role === 'patient'))
+                     + groupe('Investigateurs', utiles.filter(u => u.role !== 'patient'));
+      indivMajCompte();
     } catch (e) {
-      sel.innerHTML = '<option value="">Liste indisponible</option>';
+      zone.innerHTML = '<div style="color:#991b1b; font-size:12.5px; padding:8px;">Liste indisponible.</div>';
       indivDire('✖ Impossible de charger la liste : ' + ((e && e.message) || 'erreur inconnue'), 'erreur');
     }
   };
 
+  /** Personnes cochées, dans l'ordre d'affichage. */
+  function indivChoisies() {
+    return [...document.querySelectorAll('#indivPersonnes input[type=checkbox]:checked')]
+      .map(c => ({ id: c.value, nom: c.closest('label').querySelector('span span').textContent.trim() }));
+  }
+
+  window.indivMajCompte = function () {
+    const n = indivChoisies().length;
+    const el = $('indivCompte');
+    if (!el) return;
+    el.textContent = n === 0 ? 'Aucune personne retenue'
+                  : n === 1 ? '1 personne retenue'
+                  : n + ' personnes retenues';
+    el.style.color = n ? '#047857' : '#0b1530';
+  };
+
+  /** Filtre d'affichage : on masque, on ne décoche jamais. Une personne
+   *  retenue puis filtrée hors de vue reste invitée — la décocher à son insu
+   *  ferait disparaître un invité sans que rien ne le dise. */
+  window.indivFiltrerListe = function () {
+    const q = (($('indivFiltre') || {}).value || '').trim().toLowerCase();
+    document.querySelectorAll('#indivPersonnes [data-indiv-ligne]').forEach(l => {
+      l.style.display = (!q || (l.dataset.cherche || '').includes(q)) ? 'flex' : 'none';
+    });
+  };
+
   window.indivOuvrirSalle = async function () {
-    const sel = $('indivPersonne');
-    const id = sel && sel.value;
-    if (!id) { indivDire('Choisissez d\'abord la personne à faire entrer.', 'erreur'); return; }
+    const choisies = indivChoisies();
+    if (!choisies.length) {
+      indivDire('Cochez d\'abord au moins une personne à faire entrer.', 'erreur');
+      return;
+    }
     const titre = ($('indivTitre') && $('indivTitre').value.trim()) || null;
     indivDire('⏳ Ouverture de la salle…', 'info');
     try {
-      const r = await window.MarfanAPI.visioIndividuelle.ouvrir(id, titre);
+      const r = await window.MarfanAPI.visioIndividuelle.ouvrir(choisies.map(c => c.id), titre);
       _indivSeance = r.seance;
       const lien = location.origin + location.pathname + '?seance=' + encodeURIComponent(r.seance.jeton);
       if ($('indivLien')) $('indivLien').value = lien;
-      if ($('indivLienQui')) $('indivLienQui').textContent =
-        r.invite.role === 'patient' ? (sel.options[sel.selectedIndex].text.split(' · ')[0]) : r.invite.nom;
+      if ($('indivLienQui')) {
+        const noms = (r.invites || []).map(i => i.nom);
+        $('indivLienQui').textContent = noms.length <= 2
+          ? noms.join(' et ')
+          : noms.slice(0, -1).join(', ') + ' et ' + noms[noms.length - 1];
+      }
       if ($('indivLienBloc')) $('indivLienBloc').style.display = 'block';
-      indivDire('✅ Salle ouverte. Transmettez le lien ci-dessous.', 'ok');
+      indivDire('✅ Salle ouverte. Le <strong>même lien</strong> vaut pour '
+                + ((r.invites || []).length > 1 ? 'toutes les personnes invitées' : 'la personne invitée')
+                + ' : chacune devra s\'identifier.', 'ok');
       await indivEntrerDansLaSalle(r.seance.salle, 'Salle ouverte', false);
     } catch (e) {
       indivDire('✖ ' + ((e && e.message) || 'Ouverture impossible.'), 'erreur');
@@ -13170,8 +13218,11 @@
       const r = await window.MarfanAPI.visioIndividuelle.lire(jeton);
       _indivSeance = r.seance;
       switchMainTab('individuel');
+      const autres = (r.invites || []).filter(i => i.nom && r.vous_etes !== 'soignant');
       indivDire('Entretien avec <strong>' + (r.soignant.nom || 'votre soignant') + '</strong>'
-                + (r.seance.titre ? ' — ' + r.seance.titre : '') + '.', 'ok');
+                + (r.seance.titre ? ' — ' + r.seance.titre : '')
+                + (autres.length > 1 ? '.<br>Également invités : ' + autres.map(i => i.nom).join(', ') + '.' : '.'),
+                'ok');
       await indivEntrerDansLaSalle(r.seance.salle, 'Entretien rejoint', r.vous_etes === 'invite');
     } catch (e) {
       switchMainTab('individuel');

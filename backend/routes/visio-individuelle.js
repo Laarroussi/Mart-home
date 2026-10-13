@@ -39,21 +39,34 @@ function salleDepuisJeton(jeton) {
  */
 async function lireSeance(jeton) {
   const { rows } = await query(
-    `SELECT s.*,
-            si.name AS soignant_nom,
-            ui.name AS invite_nom, ui.role AS invite_role, ui.patient_id AS invite_patient_id
+    `SELECT s.*, si.name AS soignant_nom
        FROM seances_individuelles s
        JOIN users si ON si.id = s.soignant_id
-       JOIN users ui ON ui.id = s.invite_id
       WHERE s.jeton = $1`,
     [jeton]
   );
-  return rows[0] || null;
+  const seance = rows[0];
+  if (!seance) return null;
+
+  // Les invités vivent dans leur propre table depuis la migration 038 : une
+  // séance peut en compter plusieurs. La colonne invite_id subsiste mais
+  // n'est plus lue — elle sera retirée une fois la bascule constatée.
+  const inv = await query(
+    `SELECT u.id, u.name, u.role, u.patient_id
+       FROM seances_individuelles_invites i
+       JOIN users u ON u.id = i.user_id
+      WHERE i.seance_id = $1
+      ORDER BY i.ajoute_le`,
+    [seance.id]
+  );
+  seance.invites = inv.rows;
+  return seance;
 }
 
 function estAutorise(seance, user) {
   if (!seance || !user) return false;
-  return user.id === seance.soignant_id || user.id === seance.invite_id;
+  if (user.id === seance.soignant_id) return true;
+  return (seance.invites || []).some(i => i.id === user.id);
 }
 
 function estPerimee(seance) {
@@ -69,31 +82,67 @@ function estPerimee(seance) {
 router.post('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR),
   async (req, res, next) => {
     try {
-      const { invite_id, titre } = req.body || {};
-      if (!invite_id) return res.status(400).json({ error: 'invite_id requis' });
-      if (invite_id === req.user.id) {
+      // `invites` est la forme courante ; `invite_id` reste accepté pour ne
+      // pas casser un appel plus ancien. Le cas normal reste une personne.
+      const { invites, invite_id, titre } = req.body || {};
+      const demandes = Array.from(new Set(
+        (Array.isArray(invites) ? invites : (invite_id ? [invite_id] : []))
+          .map(x => String(x || '').trim()).filter(Boolean)
+      ));
+
+      if (!demandes.length) {
+        return res.status(400).json({ error: 'Choisissez au moins une personne a inviter.' });
+      }
+      if (demandes.includes(req.user.id)) {
         return res.status(400).json({ error: 'Vous ne pouvez pas vous inviter vous-meme.' });
       }
 
-      const inv = await query('SELECT id, name, role, active FROM users WHERE id = $1', [invite_id]);
-      if (!inv.rows.length) return res.status(404).json({ error: 'Personne introuvable' });
-      if (inv.rows[0].active === false) {
-        return res.status(400).json({ error: 'Ce compte est desactive : il ne pourra pas se connecter.' });
+      // On vérifie TOUTES les personnes avant de créer quoi que ce soit : une
+      // séance à moitié peuplée serait pire qu'un refus net, le soignant
+      // croirait avoir invité quelqu'un qui n'y est pas.
+      const { rows: trouves } = await query(
+        'SELECT id, name, role, active, patient_id FROM users WHERE id = ANY($1::varchar[])',
+        [demandes]
+      );
+      if (trouves.length !== demandes.length) {
+        const connus = trouves.map(u => u.id);
+        return res.status(404).json({
+          error: 'Personne introuvable : ' + demandes.filter(d => !connus.includes(d)).join(', ')
+        });
+      }
+      const inactifs = trouves.filter(u => u.active === false);
+      if (inactifs.length) {
+        return res.status(400).json({
+          error: 'Compte desactive, il ne pourra pas se connecter : ' +
+                 inactifs.map(u => u.name || u.id).join(', ')
+        });
       }
 
       const jeton = crypto.randomBytes(32).toString('base64url');
       const salle = salleDepuisJeton(jeton);
 
       const { rows } = await query(
-        `INSERT INTO seances_individuelles (jeton, salle, soignant_id, invite_id, titre, expire_le)
-         VALUES ($1, $2, $3, $4, $5, NOW() + ($6 || ' hours')::INTERVAL)
+        `INSERT INTO seances_individuelles (jeton, salle, soignant_id, titre, expire_le)
+         VALUES ($1, $2, $3, $4, NOW() + ($5 || ' hours')::INTERVAL)
          RETURNING id, jeton, salle, titre, cree_le, expire_le, statut`,
-        [jeton, salle, req.user.id, invite_id, titre || null, String(VALIDITE_H)]
+        [jeton, salle, req.user.id, titre || null, String(VALIDITE_H)]
       );
+      const seance = rows[0];
+
+      for (const u of trouves) {
+        await query(
+          'INSERT INTO seances_individuelles_invites (seance_id, user_id) VALUES ($1, $2)',
+          [seance.id, u.id]
+        );
+      }
 
       res.status(201).json({
-        seance: rows[0],
-        invite: { id: inv.rows[0].id, nom: inv.rows[0].name, role: inv.rows[0].role },
+        seance,
+        invites: trouves.map(u => ({
+          id: u.id, role: u.role,
+          // Code d'étude pour un patient, nom professionnel pour un soignant.
+          nom: u.role === ROLE.PATIENT ? (u.patient_id || 'Patient') : u.name
+        })),
         validite_h: VALIDITE_H
       });
     } catch (err) { next(err); }
@@ -133,12 +182,10 @@ router.get('/:jeton', requireAuth, async (req, res, next) => {
       },
       soignant: { nom: seance.soignant_nom },
       // Le code d'étude, jamais le nom civil, quand l'invité est un patient.
-      invite: {
-        nom: seance.invite_role === ROLE.PATIENT
-          ? (seance.invite_patient_id || 'Patient')
-          : seance.invite_nom,
-        role: seance.invite_role
-      },
+      invites: (seance.invites || []).map(u => ({
+        id: u.id, role: u.role,
+        nom: u.role === ROLE.PATIENT ? (u.patient_id || 'Patient') : u.name
+      })),
       vous_etes: req.user.id === seance.soignant_id ? 'soignant' : 'invite'
     });
   } catch (err) { next(err); }
@@ -172,9 +219,9 @@ router.get('/', requireAuth, requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR
     try {
       const { rows } = await query(
         `SELECT s.id, s.jeton, s.salle, s.titre, s.cree_le, s.expire_le, s.statut,
-                u.name AS invite_nom, u.role AS invite_role, u.patient_id AS invite_patient_id
+                (SELECT count(*) FROM seances_individuelles_invites i WHERE i.seance_id = s.id)
+                  AS nb_invites
            FROM seances_individuelles s
-           JOIN users u ON u.id = s.invite_id
           WHERE s.soignant_id = $1
           ORDER BY s.cree_le DESC
           LIMIT 30`,
