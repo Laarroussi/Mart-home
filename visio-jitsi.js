@@ -42,14 +42,14 @@
   let _jetonErreur = null; // raison précise de l'échec, affichée à l'écran
 
   /** Demande au serveur un jeton d'accès signé pour l'utilisateur connecté */
-  async function obtenirJeton() {
+  async function obtenirJeton(salle) {
     _jetonErreur = null;
     if (!window.MarfanAPI || !window.MarfanAPI.visioJaas) {
       _jetonErreur = "Le module d'accès au serveur n'est pas chargé (api-client.js).";
       return null;
     }
     try {
-      const r = await window.MarfanAPI.visioJaas.token();
+      const r = await window.MarfanAPI.visioJaas.token(salle);
       if (r && r.token && r.app_id) return r;
       _jetonErreur = "Le serveur a répondu sans jeton ni identifiant d'application.";
     } catch (e) {
@@ -259,7 +259,11 @@
     // Jeton signé par notre serveur : il désigne le modérateur et porte
     // l'identifiant stable du participant. Sans lui, on bascule sur le
     // serveur public, qui ne permettra pas d'ouvrir la salle.
-    _jaas = await obtenirJeton();
+    // Le nom de salle est calculé AVANT la demande de jeton : le serveur
+    // restreint désormais le jeton à la salle demandée, et ne peut le faire
+    // que s'il sait laquelle. Auparavant il délivrait un passe-partout.
+    const salleCourte = construireNomSalle(options.salle);
+    _jaas = await obtenirJeton(salleCourte);
     if (!_jaas) {
       // Auparavant on basculait ici sur meet.jit.si. C'était trompeur : le
       // serveur public exige un modérateur authentifié, la salle affichait
@@ -278,7 +282,6 @@
 
     await chargerScript();
 
-    const salleCourte = construireNomSalle(options.salle);
     // Sur JaaS, le nom de salle doit être préfixé par l'identifiant
     // d'application, faute de quoi la salle n'appartient pas au compte.
     _salle = _jaas ? (_jaas.app_id + '/' + salleCourte) : salleCourte;

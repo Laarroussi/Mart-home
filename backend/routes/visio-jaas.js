@@ -76,7 +76,7 @@ router.get('/config', requireAuth, (req, res) => {
 // ============================================================
 // GET /token — jeton d'accès pour l'utilisateur connecté
 // ============================================================
-router.get('/token', requireAuth, (req, res, next) => {
+router.get('/token', requireAuth, async (req, res, next) => {
   try {
     if (!configure()) {
       return res.status(503).json({
@@ -86,6 +86,42 @@ router.get('/token', requireAuth, (req, res, next) => {
     let cle;
     try { cle = clePrivee(); }
     catch (e) { return res.status(503).json({ error: e.message }); }
+
+    // ============================================================
+    // Portée du jeton : une salle, pas toutes
+    // ------------------------------------------------------------
+    // Ce jeton portait room: '*', c'est-à-dire l'autorisation d'entrer dans
+    // n'importe quelle salle de l'application. Tant qu'il n'existait qu'une
+    // salle de groupe, cela ne changeait rien. Dès lors qu'un entretien
+    // individuel a sa propre salle, cela voudrait dire qu'un patient ayant
+    // appris un nom de salle peut entrer dans l'entretien d'un autre.
+    //
+    // Quand la page demande une salle précise, le jeton est donc limité à
+    // celle-là, et le droit d'y entrer est vérifié ici — avoir le lien ne
+    // suffit pas.
+    const salleDemandee = (req.query.salle || '').trim();
+    let portee = '*';
+
+    if (salleDemandee.startsWith('indiv-')) {
+      const { lireSeance, estAutorise, estPerimee } = require('./visio-individuelle');
+      const { rows } = await require('../config/database')
+        .query('SELECT jeton FROM seances_individuelles WHERE salle = $1', [salleDemandee]);
+      if (!rows.length) {
+        return res.status(404).json({ error: "Cette seance individuelle n'existe pas." });
+      }
+      const seance = await lireSeance(rows[0].jeton);
+      if (!estAutorise(seance, req.user)) {
+        return res.status(403).json({ error: "Cette seance ne vous est pas destinee." });
+      }
+      if (estPerimee(seance)) {
+        return res.status(410).json({ error: 'Cette seance est terminee ou le lien a expire.' });
+      }
+      portee = salleDemandee;
+    } else if (salleDemandee) {
+      // Salle de groupe : ouverte à tout compte authentifié, mais le jeton ne
+      // vaut que pour elle.
+      portee = salleDemandee;
+    }
 
     const estPatient = req.user.role === ROLE.PATIENT;
     const moderateur = !estPatient;
@@ -105,7 +141,7 @@ router.get('/token', requireAuth, (req, res, next) => {
       aud: 'jitsi',
       iss: 'chat',
       sub: APP_ID,
-      room: '*',                       // toutes les salles de cette application
+      room: portee,                    // une salle précise, ou '*' si non précisée
       exp: maintenant + DUREE_H * 3600,
       nbf: maintenant - 10,
       iat: maintenant,

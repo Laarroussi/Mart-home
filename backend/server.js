@@ -139,6 +139,7 @@ function mountRoutes(prefix) {
   app.use(prefix + '/activation',      require('./routes/activation'));
   app.use(prefix + '/timeline',        require('./routes/timeline'));
   app.use(prefix + '/visio-jaas',      require('./routes/visio-jaas'));
+  app.use(prefix + '/visio-individuelle', require('./routes/visio-individuelle'));
   app.use(prefix + '/synthese',        require('./routes/synthese'));
   app.use(prefix + '/bilans',          require('./routes/bilans'));
   app.use(prefix + '/etudes',          require('./routes/etudes'));

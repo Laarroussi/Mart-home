@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v91';</script>
-  <script src="api-client.js?v=phase91-1"></script>
+  <script>window.MARFAN_VERSION = 'v92';</script>
+  <script src="api-client.js?v=phase92-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase91-1"></script>
+  <script src="questionnaires-defs.js?v=phase92-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase91-1"></script>
+  <script src="medical-parsers.js?v=phase92-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase91-1"></script>
-  <script src="cpet-analyse.js?v=phase91-1"></script>
+  <script src="cpet-graph-preview.js?v=phase92-1"></script>
+  <script src="cpet-analyse.js?v=phase92-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase91-1"></script>
-  <script src="medical-record-ui.js?v=phase91-1"></script>
+  <script src="pdf-extractor.js?v=phase92-1"></script>
+  <script src="medical-record-ui.js?v=phase92-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase91-1"></script>
-  <script src="synthese-ui.js?v=phase91-1"></script>
-  <script src="audit-ui.js?v=phase91-1"></script>
-  <script src="entretien-ui.js?v=phase91-1"></script>
-  <script src="activation-ui.js?v=phase91-1"></script>
-  <script src="document-import.js?v=phase91-1"></script>
-  <script src="activite-ui.js?v=phase91-1"></script>
-  <script src="cpet-detail.js?v=phase91-1"></script>
-  <script src="echo-calculs.js?v=phase91-1"></script>
-  <script src="echo-detail.js?v=phase91-1"></script>
-  <script src="accueil-activite.js?v=phase91-1"></script>
-  <script src="visio-jitsi.js?v=phase91-1"></script>
-  <script src="video-pilotee.js?v=phase91-1"></script>
-  <script src="fiche-apa.js?v=phase91-1"></script>
-  <script src="inactivite.js?v=phase91-1"></script>
-  <script src="bilans-ui.js?v=phase91-1"></script>
-  <script src="etudes-ui.js?v=phase91-1"></script>
-  <script src="ville-hopital.js?v=phase91-1"></script>
-  <script src="qlibres-ui.js?v=phase91-1"></script>
-  <script src="parametres-ui.js?v=phase91-1"></script>
+  <script src="aortic-consultations.js?v=phase92-1"></script>
+  <script src="synthese-ui.js?v=phase92-1"></script>
+  <script src="audit-ui.js?v=phase92-1"></script>
+  <script src="entretien-ui.js?v=phase92-1"></script>
+  <script src="activation-ui.js?v=phase92-1"></script>
+  <script src="document-import.js?v=phase92-1"></script>
+  <script src="activite-ui.js?v=phase92-1"></script>
+  <script src="cpet-detail.js?v=phase92-1"></script>
+  <script src="echo-calculs.js?v=phase92-1"></script>
+  <script src="echo-detail.js?v=phase92-1"></script>
+  <script src="accueil-activite.js?v=phase92-1"></script>
+  <script src="visio-jitsi.js?v=phase92-1"></script>
+  <script src="video-pilotee.js?v=phase92-1"></script>
+  <script src="fiche-apa.js?v=phase92-1"></script>
+  <script src="inactivite.js?v=phase92-1"></script>
+  <script src="bilans-ui.js?v=phase92-1"></script>
+  <script src="etudes-ui.js?v=phase92-1"></script>
+  <script src="ville-hopital.js?v=phase92-1"></script>
+  <script src="qlibres-ui.js?v=phase92-1"></script>
+  <script src="parametres-ui.js?v=phase92-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3153,6 +3153,11 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
           Séance de groupe
         </button>
+        <!-- Entretien à deux : salle privée, distincte de celle du groupe. -->
+        <button class="tab-button" data-tab="individuel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="7" r="4"/></svg>
+          Entraînement individuel
+        </button>
         <button class="tab-button" data-tab="education">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           Éducation thérapeutique
@@ -5074,6 +5079,90 @@
         </div>
       </div>
 
+      <!-- ======================= ENTRAINEMENT INDIVIDUEL ======================= -->
+      <!--
+        Un entretien à deux ne peut pas se tenir dans la salle de groupe : celle-ci
+        porte un nom constant, connu de toute la plateforme, et tout compte connecté
+        peut y entrer. Chaque séance individuelle reçoit donc sa propre salle,
+        dérivée d'un jeton tiré au hasard, et le serveur ne délivre le droit d'y
+        entrer qu'au soignant et à la personne invitée.
+      -->
+      <section id="individuel" class="tab-panel hidden">
+        <header class="page-header">
+          <div>
+            <h2>Entraînement individuel</h2>
+            <p>Choisissez la personne, ouvrez la salle, transmettez-lui le lien.</p>
+          </div>
+          <div class="actions">
+            <button class="btn-light" onclick="indivRafraichirListe()" title="Recharger la liste des personnes">↻ Liste</button>
+          </div>
+        </header>
+
+        <div class="card" style="padding:18px 20px; margin-bottom:16px;">
+          <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+            <div style="flex:1; min-width:260px;">
+              <label for="indivPersonne" style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:5px;">
+                Personne à faire entrer
+              </label>
+              <select id="indivPersonne" style="width:100%; padding:11px; border:1px solid #cbd5e1; border-radius:9px; font-size:13.5px; font-family:inherit;">
+                <option value="">Chargement…</option>
+              </select>
+              <p style="font-size:11.5px; color:#64748b; margin:6px 0 0; line-height:1.5;">
+                Les patients apparaissent sous leur code d'étude, jamais sous leur nom civil.
+                Les investigateurs sont dans la même liste : un confrère peut être invité
+                pour une formation ou une observation.
+              </p>
+            </div>
+            <div style="min-width:220px;">
+              <label for="indivTitre" style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:5px;">
+                Intitulé <span style="font-weight:400; color:#94a3b8;">(facultatif)</span>
+              </label>
+              <input id="indivTitre" type="text" placeholder="Réévaluation, reprise d'effort…"
+                     style="width:100%; padding:11px; border:1px solid #cbd5e1; border-radius:9px; font-size:13.5px; font-family:inherit;">
+            </div>
+            <button class="btn-gradient" onclick="indivOuvrirSalle()" style="padding:12px 22px; white-space:nowrap;">
+              ▶ Ouvrir la salle
+            </button>
+          </div>
+          <div id="indivMessage" style="display:none; margin-top:13px; padding:11px 13px; border-radius:9px; font-size:12.5px; line-height:1.55;"></div>
+        </div>
+
+        <!-- Le lien n'apparaît qu'une fois la salle ouverte : rien à copier avant. -->
+        <div id="indivLienBloc" class="card" style="display:none; padding:16px 20px; margin-bottom:16px; background:#f0fdfa; border:1px solid #99f6e4;">
+          <strong style="display:block; font-size:13.5px; color:#115e59; margin-bottom:8px;">
+            Lien à transmettre à <span id="indivLienQui">la personne</span>
+          </strong>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <input id="indivLien" type="text" readonly
+                   style="flex:1; min-width:280px; padding:11px; border:1px solid #99f6e4; border-radius:9px; font-size:12.5px; font-family:ui-monospace,monospace; background:white;">
+            <button class="btn-light" onclick="indivCopierLien()">🔗 Copier</button>
+          </div>
+          <p style="font-size:12px; color:#115e59; margin:9px 0 0; line-height:1.55;">
+            Envoyez-le par le moyen que vous utilisez déjà avec cette personne.
+            Elle devra s'identifier : le lien seul ne donne pas accès à la salle.
+            <strong>Il cesse de fonctionner au bout de 12 heures.</strong>
+          </p>
+        </div>
+
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div style="background:#020617; color:white; min-height:300px; display:flex; flex-direction:column;">
+            <div id="indivStage" style="flex:1; min-height:300px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:26px;">
+              <div style="font-size:48px; margin-bottom:10px;">👤</div>
+              <strong style="font-family:'Sora',sans-serif; font-size:19px;">Salle individuelle</strong>
+              <p style="color:#94a3b8; margin-top:9px; max-width:430px; line-height:1.6; font-size:13px;">
+                Choisissez une personne ci-dessus et ouvrez la salle. Vous y entrerez
+                aussitôt ; elle vous y rejoindra avec le lien.
+              </p>
+            </div>
+            <div style="padding:10px 14px; background:rgba(11,21,48,.96); border-top:1px solid rgba(255,255,255,.08); display:flex; gap:9px; flex-wrap:wrap; align-items:center;">
+              <button class="btn-light" style="padding:7px 12px; font-size:12px;" onclick="indivPartagerEcran()">🖥 Partager mon écran</button>
+              <button class="btn-light" style="padding:7px 12px; font-size:12px; background:#fef2f2; color:#991b1b; border-color:#fecaca; font-weight:700;" onclick="indivTerminer()">⏹ Terminer l'entretien</button>
+              <span style="color:#94a3b8; font-size:11px; margin-left:auto;" id="indivStatut">Aucune salle ouverte</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ============================== EDUCATION ============================== -->
       <section id="education" class="tab-panel hidden">
         <header class="page-header">
@@ -6200,6 +6289,7 @@
       database: ['Base de données', 'Vue longitudinale ou large, structure dynamique.'],
       training: ['Présentation des entraînements en vidéo', 'Bibliothèque complète des vidéos, à visionner en grand.'],
       visio: ['Séance de groupe', 'Patients en visio, vidéo d\'entraînement diffusée et suivi physiologique.'],
+      individuel: ['Entraînement individuel', 'Entretien à deux dans une salle privée, sur lien transmis.'],
       education: ['Éducation thérapeutique', 'Capsules courtes pour accompagner les patients.'],
       listing: ['Listing patients', 'Vue tabulaire compacte.'],
       recherche: ['Recherche clinique', 'Études, numéros CPP et NCT, cahiers d\'observation et inclusions.'],
@@ -6227,6 +6317,9 @@
       try { afficherVueDossier('synthese', 'patient-synthese'); } catch (_) {}
     }
     if (tabId === 'training') renderTrainingVideos();
+    // La liste des personnes se recharge à chaque ouverture : un compte créé
+    // il y a deux minutes doit y figurer sans qu'on ait à recharger la page.
+    if (tabId === 'individuel') { try { indivRafraichirListe(); } catch (_) {} }
     if (tabId === 'database') renderDbTable();
     // Le listing n'était redessiné qu'à la création d'un patient ou au
     // rechargement de la cohorte. Si l'un de ces appels échouait, le tableau
@@ -12829,6 +12922,176 @@
    * visio-jitsi empêche désormais le doublon, mais laisser un bouton inerte
    * sous le doigt reste un défaut d'interface : on dit ce qui se passe.
    */
+  // ================================================================
+  // ENTRAÎNEMENT INDIVIDUEL
+  // ----------------------------------------------------------------
+  // Mêmes règles que la séance de groupe : le verrou entre onglets, la
+  // jonction unique et l'enregistrement de la séance d'entraînement sont
+  // portés par visio-jitsi.js et par le module patient — on passe par les
+  // mêmes fonctions, donc on en hérite sans les réécrire.
+  //
+  // Ce qui change est la salle : elle est privée, créée par le serveur, et
+  // l'autorisation d'y entrer est vérifiée côté serveur à chaque demande de
+  // jeton. Avoir le lien ne suffit pas.
+  // ================================================================
+  let _indivSeance = null;
+
+  function indivDire(texte, type) {
+    const d = $('indivMessage');
+    if (!d) return;
+    const couleurs = {
+      ok:    ['#ecfdf5', '#a7f3d0', '#065f46'],
+      erreur:['#fef2f2', '#fecaca', '#991b1b'],
+      info:  ['#f8fafc', '#e2e8f0', '#334155']
+    }[type || 'info'];
+    d.style.display = 'block';
+    d.style.background = couleurs[0];
+    d.style.border = '1px solid ' + couleurs[1];
+    d.style.color = couleurs[2];
+    d.innerHTML = texte;
+  }
+
+  /**
+   * Liste des personnes invitables : patients ET investigateurs.
+   *
+   * Un patient n'est jamais nommé — son code d'étude suffit, et c'est la règle
+   * dans toute la plateforme. Un investigateur l'est, puisque c'est son nom
+   * professionnel qui permet de le reconnaître.
+   */
+  window.indivRafraichirListe = async function () {
+    const sel = $('indivPersonne');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Chargement…</option>';
+    try {
+      const r = await window.MarfanAPI.users.list();
+      const liste = (r && (r.users || r)) || [];
+      const moi = (window.MarfanAPI.currentUser && window.MarfanAPI.currentUser()) || {};
+      const utiles = liste.filter(u => u.id !== moi.id && u.active !== false &&
+                                       (u.role === 'patient' || u.role === 'investigator' || u.role === 'principal_admin'));
+      if (!utiles.length) {
+        sel.innerHTML = '<option value="">Aucune personne disponible</option>';
+        return;
+      }
+      const etiquette = u => u.role === 'patient'
+        ? (u.patient_id || u.username || u.id) + ' · patient'
+        : (u.name || u.username || u.id) + ' · investigateur';
+      const patients = utiles.filter(u => u.role === 'patient');
+      const soignants = utiles.filter(u => u.role !== 'patient');
+      sel.innerHTML = '<option value="">— Choisissez une personne —</option>' +
+        (patients.length ? '<optgroup label="Patients">' +
+          patients.map(u => `<option value="${u.id}">${etiquette(u)}</option>`).join('') + '</optgroup>' : '') +
+        (soignants.length ? '<optgroup label="Investigateurs">' +
+          soignants.map(u => `<option value="${u.id}">${etiquette(u)}</option>`).join('') + '</optgroup>' : '');
+    } catch (e) {
+      sel.innerHTML = '<option value="">Liste indisponible</option>';
+      indivDire('✖ Impossible de charger la liste : ' + ((e && e.message) || 'erreur inconnue'), 'erreur');
+    }
+  };
+
+  window.indivOuvrirSalle = async function () {
+    const sel = $('indivPersonne');
+    const id = sel && sel.value;
+    if (!id) { indivDire('Choisissez d\'abord la personne à faire entrer.', 'erreur'); return; }
+    const titre = ($('indivTitre') && $('indivTitre').value.trim()) || null;
+    indivDire('⏳ Ouverture de la salle…', 'info');
+    try {
+      const r = await window.MarfanAPI.visioIndividuelle.ouvrir(id, titre);
+      _indivSeance = r.seance;
+      const lien = location.origin + location.pathname + '?seance=' + encodeURIComponent(r.seance.jeton);
+      if ($('indivLien')) $('indivLien').value = lien;
+      if ($('indivLienQui')) $('indivLienQui').textContent =
+        r.invite.role === 'patient' ? (sel.options[sel.selectedIndex].text.split(' · ')[0]) : r.invite.nom;
+      if ($('indivLienBloc')) $('indivLienBloc').style.display = 'block';
+      indivDire('✅ Salle ouverte. Transmettez le lien ci-dessous.', 'ok');
+      await indivEntrerDansLaSalle(r.seance.salle, 'Salle ouverte');
+    } catch (e) {
+      indivDire('✖ ' + ((e && e.message) || 'Ouverture impossible.'), 'erreur');
+    }
+  };
+
+  async function indivEntrerDansLaSalle(salle, mention) {
+    const u = (window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser()) || {};
+    if ($('indivStage')) { $('indivStage').style.padding = '0'; $('indivStage').style.minHeight = '460px'; }
+    try {
+      await window.VisioJitsi.rejoindre('indivStage', {
+        salle: salle,
+        nomAffiche: u.name || u.patient_id || 'Participant',
+        onPartageEcran: majTemoinPartage
+      });
+      if ($('indivStatut')) $('indivStatut').textContent =
+        mention + ' · ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      if (e && e.code === 'AUTRE_ONGLET') {
+        if (confirm(e.message + '\n\nReprendre la main depuis cet onglet malgré tout ?')) {
+          return window.VisioJitsi.rejoindre('indivStage', {
+            salle: salle, forcer: true,
+            nomAffiche: u.name || u.patient_id || 'Participant',
+            onPartageEcran: majTemoinPartage
+          });
+        }
+        return;
+      }
+      indivDire('✖ ' + ((e && e.message) || 'Impossible d\'entrer dans la salle.'), 'erreur');
+    }
+  }
+
+  window.indivPartagerEcran = function () {
+    if (!window.VisioJitsi || !window.VisioJitsi.estActif()) {
+      alert('Ouvrez d\'abord la salle.');
+      return;
+    }
+    visioLancerPartageEcran();
+  };
+
+  window.indivTerminer = async function () {
+    try { if (window.VisioJitsi) window.VisioJitsi.quitter(); } catch (_) {}
+    if (_indivSeance && _indivSeance.jeton) {
+      try { await window.MarfanAPI.visioIndividuelle.terminer(_indivSeance.jeton); } catch (_) {}
+    }
+    _indivSeance = null;
+    if ($('indivLienBloc')) $('indivLienBloc').style.display = 'none';
+    if ($('indivStatut')) $('indivStatut').textContent = 'Entretien terminé';
+    indivDire('Entretien terminé. Le lien transmis ne fonctionne plus.', 'info');
+  };
+
+  window.indivCopierLien = function () {
+    const champ = $('indivLien');
+    if (!champ || !champ.value) return;
+    champ.select();
+    try {
+      navigator.clipboard.writeText(champ.value);
+      indivDire('🔗 Lien copié. Collez-le dans votre message.', 'ok');
+    } catch (_) {
+      document.execCommand('copy');
+      indivDire('🔗 Lien copié.', 'ok');
+    }
+  };
+
+  /**
+   * Entrée par le lien reçu : ?seance=<jeton> dans l'adresse.
+   *
+   * On interroge d'abord le serveur, qui dit si la personne a le droit
+   * d'entrer et si la séance est encore valable. Un refus s'affiche en clair :
+   * « pas pour vous » et « c'est terminé » appellent des réactions
+   * différentes, et une page muette n'aide personne.
+   */
+  window.indivOuvrirDepuisLien = async function () {
+    const jeton = new URLSearchParams(location.search).get('seance');
+    if (!jeton) return;
+    try {
+      const r = await window.MarfanAPI.visioIndividuelle.lire(jeton);
+      _indivSeance = r.seance;
+      switchMainTab('individuel');
+      indivDire('Entretien avec <strong>' + (r.soignant.nom || 'votre soignant') + '</strong>'
+                + (r.seance.titre ? ' — ' + r.seance.titre : '') + '.', 'ok');
+      await indivEntrerDansLaSalle(r.seance.salle, 'Entretien rejoint');
+    } catch (e) {
+      switchMainTab('individuel');
+      indivDire('✖ ' + ((e && e.message) || 'Lien invalide.')
+                + '<br>Demandez un nouveau lien au soignant qui vous a invité.', 'erreur');
+    }
+  };
+
   function visioBoutonsEntree(enCours) {
     document.querySelectorAll('[onclick*="visioStartSession"], [onclick*="visioJoinSession"]')
       .forEach(b => {
@@ -14698,6 +14961,16 @@
           if (typeof goToInvestigator === 'function') goToInvestigator();
         }
       } catch (e) { console.warn('redirectByRole :', e); }
+
+      // Lien d'entretien individuel dans l'adresse : il l'emporte sur la vue
+      // par défaut. Quelqu'un qui clique sur un lien de séance attend la
+      // séance, pas son tableau de bord.
+      try {
+        if (new URLSearchParams(location.search).get('seance') &&
+            typeof indivOuvrirDepuisLien === 'function') {
+          indivOuvrirDepuisLien();
+        }
+      } catch (e) { console.warn('lien de seance :', e); }
     }
 
     // === OVERLAY CHANGEMENT DE MOT DE PASSE OBLIGATOIRE ===

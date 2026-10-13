@@ -393,8 +393,20 @@
 
     /** ===== Visioconférence : jeton d'accès signé par le serveur ===== */
     visioJaas: {
-      token:  () => request('GET', '/visio-jaas/token'),
+      // La salle est transmise pour que le jeton soit limité à elle seule.
+      // Sans elle, le serveur retombe sur un jeton valable pour toutes les
+      // salles — compatible avec l'existant, mais à ne plus utiliser.
+      token:  (salle) => request('GET', '/visio-jaas/token' +
+                                 (salle ? '?salle=' + encodeURIComponent(salle) : '')),
       config: () => request('GET', '/visio-jaas/config')
+    },
+
+    /** ===== Séances individuelles : une salle par entretien ===== */
+    visioIndividuelle: {
+      ouvrir:   (invite_id, titre) => request('POST', '/visio-individuelle', { invite_id, titre }),
+      lire:     (jeton)            => request('GET',  '/visio-individuelle/' + encodeURIComponent(jeton)),
+      terminer: (jeton)            => request('POST', '/visio-individuelle/' + encodeURIComponent(jeton) + '/terminer'),
+      miennes:  ()                 => request('GET',  '/visio-individuelle')
     },
 
     /** ===== Chronologie médicale extraite des documents (IA) ===== */
