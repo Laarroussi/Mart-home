@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v92';</script>
-  <script src="api-client.js?v=phase92-1"></script>
+  <script>window.MARFAN_VERSION = 'v93';</script>
+  <script src="api-client.js?v=phase93-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase92-1"></script>
+  <script src="questionnaires-defs.js?v=phase93-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase92-1"></script>
+  <script src="medical-parsers.js?v=phase93-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase92-1"></script>
-  <script src="cpet-analyse.js?v=phase92-1"></script>
+  <script src="cpet-graph-preview.js?v=phase93-1"></script>
+  <script src="cpet-analyse.js?v=phase93-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase92-1"></script>
-  <script src="medical-record-ui.js?v=phase92-1"></script>
+  <script src="pdf-extractor.js?v=phase93-1"></script>
+  <script src="medical-record-ui.js?v=phase93-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase92-1"></script>
-  <script src="synthese-ui.js?v=phase92-1"></script>
-  <script src="audit-ui.js?v=phase92-1"></script>
-  <script src="entretien-ui.js?v=phase92-1"></script>
-  <script src="activation-ui.js?v=phase92-1"></script>
-  <script src="document-import.js?v=phase92-1"></script>
-  <script src="activite-ui.js?v=phase92-1"></script>
-  <script src="cpet-detail.js?v=phase92-1"></script>
-  <script src="echo-calculs.js?v=phase92-1"></script>
-  <script src="echo-detail.js?v=phase92-1"></script>
-  <script src="accueil-activite.js?v=phase92-1"></script>
-  <script src="visio-jitsi.js?v=phase92-1"></script>
-  <script src="video-pilotee.js?v=phase92-1"></script>
-  <script src="fiche-apa.js?v=phase92-1"></script>
-  <script src="inactivite.js?v=phase92-1"></script>
-  <script src="bilans-ui.js?v=phase92-1"></script>
-  <script src="etudes-ui.js?v=phase92-1"></script>
-  <script src="ville-hopital.js?v=phase92-1"></script>
-  <script src="qlibres-ui.js?v=phase92-1"></script>
-  <script src="parametres-ui.js?v=phase92-1"></script>
+  <script src="aortic-consultations.js?v=phase93-1"></script>
+  <script src="synthese-ui.js?v=phase93-1"></script>
+  <script src="audit-ui.js?v=phase93-1"></script>
+  <script src="entretien-ui.js?v=phase93-1"></script>
+  <script src="activation-ui.js?v=phase93-1"></script>
+  <script src="document-import.js?v=phase93-1"></script>
+  <script src="activite-ui.js?v=phase93-1"></script>
+  <script src="cpet-detail.js?v=phase93-1"></script>
+  <script src="echo-calculs.js?v=phase93-1"></script>
+  <script src="echo-detail.js?v=phase93-1"></script>
+  <script src="accueil-activite.js?v=phase93-1"></script>
+  <script src="visio-jitsi.js?v=phase93-1"></script>
+  <script src="video-pilotee.js?v=phase93-1"></script>
+  <script src="fiche-apa.js?v=phase93-1"></script>
+  <script src="inactivite.js?v=phase93-1"></script>
+  <script src="bilans-ui.js?v=phase93-1"></script>
+  <script src="etudes-ui.js?v=phase93-1"></script>
+  <script src="ville-hopital.js?v=phase93-1"></script>
+  <script src="qlibres-ui.js?v=phase93-1"></script>
+  <script src="parametres-ui.js?v=phase93-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -5155,11 +5155,31 @@
               </p>
             </div>
             <div style="padding:10px 14px; background:rgba(11,21,48,.96); border-top:1px solid rgba(255,255,255,.08); display:flex; gap:9px; flex-wrap:wrap; align-items:center;">
-              <button class="btn-light" style="padding:7px 12px; font-size:12px;" onclick="indivPartagerEcran()">🖥 Partager mon écran</button>
+              <button class="btn-light" style="padding:7px 12px; font-size:12px;" onclick="indivPartagerEcran()" title="Pour une diapositive ou un document — pour une vidéo, préférez « Diffuser »">🖥 Partager mon écran</button>
+              <button class="btn-light" id="indivStopVideoBtn" style="display:none; padding:7px 12px; font-size:12px; background:#fef2f2; color:#991b1b; border-color:#fecaca; font-weight:700;" onclick="indivArreterVideo()">⏹ Arrêter la diffusion</button>
               <button class="btn-light" style="padding:7px 12px; font-size:12px; background:#fef2f2; color:#991b1b; border-color:#fecaca; font-weight:700;" onclick="indivTerminer()">⏹ Terminer l'entretien</button>
               <span style="color:#94a3b8; font-size:11px; margin-left:auto;" id="indivStatut">Aucune salle ouverte</span>
             </div>
+            <!-- Lecteur local du soignant : il voit ce que voit la personne,
+                 et c'est lui qui pilote la lecture. -->
+            <div id="indivLecteur" style="display:none; background:#000;"></div>
           </div>
+        </div>
+
+        <!-- ================= VIDÉOS D'ENTRAÎNEMENT =================
+             Un entretien individuel est souvent une séance d'entraînement :
+             la bibliothèque doit y être, exactement comme en séance de groupe.
+             La vidéo n'est pas « partagée » au sens de l'écran — elle est
+             envoyée, et la personne la joue chez elle en pleine qualité, avec
+             le son, pendant que vous gardez la main sur la lecture. -->
+        <div class="card" style="padding:16px 20px; margin-top:16px;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+            <strong style="font-size:14px;">🎬 Vidéos d'entraînement</strong>
+            <span style="font-size:11.5px; color:#64748b;">
+              Un clic envoie la vidéo chez la personne. Vous pilotez lecture et pause.
+            </span>
+          </div>
+          <div id="indivVideoStrip" style="display:flex; gap:10px; overflow-x:auto; padding-bottom:4px;"></div>
         </div>
       </section>
 
@@ -6319,7 +6339,10 @@
     if (tabId === 'training') renderTrainingVideos();
     // La liste des personnes se recharge à chaque ouverture : un compte créé
     // il y a deux minutes doit y figurer sans qu'on ait à recharger la page.
-    if (tabId === 'individuel') { try { indivRafraichirListe(); } catch (_) {} }
+    if (tabId === 'individuel') {
+      try { indivRafraichirListe(); } catch (_) {}
+      try { indivRendreVideos(); } catch (_) {}
+    }
     if (tabId === 'database') renderDbTable();
     // Le listing n'était redessiné qu'à la création d'un patient ou au
     // rechargement de la cohorte. Si l'un de ces appels échouait, le tableau
@@ -13003,31 +13026,34 @@
         r.invite.role === 'patient' ? (sel.options[sel.selectedIndex].text.split(' · ')[0]) : r.invite.nom;
       if ($('indivLienBloc')) $('indivLienBloc').style.display = 'block';
       indivDire('✅ Salle ouverte. Transmettez le lien ci-dessous.', 'ok');
-      await indivEntrerDansLaSalle(r.seance.salle, 'Salle ouverte');
+      await indivEntrerDansLaSalle(r.seance.salle, 'Salle ouverte', false);
     } catch (e) {
       indivDire('✖ ' + ((e && e.message) || 'Ouverture impossible.'), 'erreur');
     }
   };
 
-  async function indivEntrerDansLaSalle(salle, mention) {
+  async function indivEntrerDansLaSalle(salle, mention, jeSuisInvite) {
     const u = (window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser()) || {};
     if ($('indivStage')) { $('indivStage').style.padding = '0'; $('indivStage').style.minHeight = '460px'; }
+    // La réception des vidéos n'est branchée QUE chez la personne invitée.
+    // Chez celui qui diffuse, recevoir() bascule le module en rôle « patient »
+    // et lui reprend le pilotage de sa propre lecture : il perdrait la main
+    // sur la vidéo qu'il vient de lancer.
+    const options = {
+      salle: salle,
+      nomAffiche: u.name || u.patient_id || 'Participant',
+      onPartageEcran: majTemoinPartage
+    };
+    if (jeSuisInvite) options.onCommandeVideo = msg => recevoirVideoSeance(msg);
     try {
-      await window.VisioJitsi.rejoindre('indivStage', {
-        salle: salle,
-        nomAffiche: u.name || u.patient_id || 'Participant',
-        onPartageEcran: majTemoinPartage
-      });
+      await window.VisioJitsi.rejoindre('indivStage', options);
       if ($('indivStatut')) $('indivStatut').textContent =
         mention + ' · ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     } catch (e) {
       if (e && e.code === 'AUTRE_ONGLET') {
         if (confirm(e.message + '\n\nReprendre la main depuis cet onglet malgré tout ?')) {
-          return window.VisioJitsi.rejoindre('indivStage', {
-            salle: salle, forcer: true,
-            nomAffiche: u.name || u.patient_id || 'Participant',
-            onPartageEcran: majTemoinPartage
-          });
+          return window.VisioJitsi.rejoindre('indivStage',
+            Object.assign({}, options, { forcer: true }));
         }
         return;
       }
@@ -13035,15 +13061,77 @@
     }
   }
 
+  /**
+   * Bibliothèque de vidéos dans l'entretien individuel.
+   *
+   * On réutilise `trainingVideos`, la même liste que l'onglet Entraînement et
+   * que la séance de groupe : une vidéo ajoutée une fois est disponible
+   * partout. Rien n'est recopié.
+   */
+  window.indivRendreVideos = function () {
+    const bande = $('indivVideoStrip');
+    if (!bande) return;
+    const liste = (typeof trainingVideos !== 'undefined' && trainingVideos.length) ? trainingVideos : [];
+    if (!liste.length) {
+      bande.innerHTML = '<div style="padding:14px; color:#94a3b8; font-size:12.5px; font-style:italic;">'
+        + 'Aucune vidéo enregistrée. Ajoutez-en depuis « Présentation des entraînements en vidéo ».</div>';
+      return;
+    }
+    bande.innerHTML = liste.map(v => `
+      <div style="flex:0 0 auto; width:168px;">
+        <img src="https://img.youtube.com/vi/${v.id}/mqdefault.jpg" alt=""
+             style="width:168px; height:94px; object-fit:cover; border-radius:9px; display:block;">
+        <div style="font-size:12px; font-weight:700; color:#0b1530; margin:6px 0 2px; line-height:1.35;">${v.title || ''}</div>
+        <div style="font-size:11px; color:#64748b; margin-bottom:6px;">${v.category || ''}${v.duration_min ? ' · ' + v.duration_min + ' min' : ''}</div>
+        <button class="btn-light" style="width:100%; padding:7px; font-size:11.5px; font-weight:700;"
+                data-indiv-yid="${v.id}" data-indiv-titre="${(v.title || '').replace(/"/g, '&quot;')}">🎬 Diffuser</button>
+      </div>`).join('');
+    bande.querySelectorAll('[data-indiv-yid]').forEach(b => {
+      b.addEventListener('click', () => indivDiffuserVideo(b.dataset.indivYid, b.dataset.indivTitre));
+    });
+  };
+
+  window.indivDiffuserVideo = async function (youtubeId, titre) {
+    if (!window.VisioJitsi || !window.VisioJitsi.estActif()) {
+      alert("Ouvrez d'abord la salle.\n\nLa vidéo est envoyée par la salle : sans salle ouverte, personne ne peut la recevoir.");
+      return;
+    }
+    const zone = $('indivLecteur'), stop = $('indivStopVideoBtn');
+    if (zone) zone.style.display = 'block';
+    if (stop) stop.style.display = 'inline-flex';
+    try {
+      await window.VideoPilotee.diffuser('indivLecteur', youtubeId, titre || '');
+      indivDire('🎬 <strong>' + (titre || 'Vidéo') + '</strong> lancée chez votre interlocuteur.', 'ok');
+    } catch (e) {
+      if (zone) zone.style.display = 'none';
+      if (stop) stop.style.display = 'none';
+      indivDire('✖ ' + ((e && e.message) || 'Diffusion impossible.'), 'erreur');
+    }
+  };
+
+  window.indivArreterVideo = function () {
+    try { window.VideoPilotee.arreter(); } catch (_) {}
+    const zone = $('indivLecteur'); if (zone) { zone.style.display = 'none'; zone.innerHTML = ''; }
+    const stop = $('indivStopVideoBtn'); if (stop) stop.style.display = 'none';
+    indivDire('⏹ Diffusion arrêtée.', 'info');
+  };
+
   window.indivPartagerEcran = function () {
     if (!window.VisioJitsi || !window.VisioJitsi.estActif()) {
       alert('Ouvrez d\'abord la salle.');
       return;
     }
-    visioLancerPartageEcran();
+    // On ouvre la fenêtre guidée, pas le partage brut : c'est elle qui porte
+    // l'ouverture de la vidéo dans un onglet propre, les consignes adaptées au
+    // navigateur et l'avertissement sur l'écran entier. Appeler directement le
+    // partage privait l'entretien individuel de tout cela.
+    visioPartagerEcran();
   };
 
   window.indivTerminer = async function () {
+    // La diffusion s'arrête avec l'entretien : sans cela, la vidéo continuerait
+    // de tourner chez la personne après que vous avez quitté la salle.
+    try { indivArreterVideo(); } catch (_) {}
     try { if (window.VisioJitsi) window.VisioJitsi.quitter(); } catch (_) {}
     if (_indivSeance && _indivSeance.jeton) {
       try { await window.MarfanAPI.visioIndividuelle.terminer(_indivSeance.jeton); } catch (_) {}
@@ -13084,7 +13172,7 @@
       switchMainTab('individuel');
       indivDire('Entretien avec <strong>' + (r.soignant.nom || 'votre soignant') + '</strong>'
                 + (r.seance.titre ? ' — ' + r.seance.titre : '') + '.', 'ok');
-      await indivEntrerDansLaSalle(r.seance.salle, 'Entretien rejoint');
+      await indivEntrerDansLaSalle(r.seance.salle, 'Entretien rejoint', r.vous_etes === 'invite');
     } catch (e) {
       switchMainTab('individuel');
       indivDire('✖ ' + ((e && e.message) || 'Lien invalide.')
