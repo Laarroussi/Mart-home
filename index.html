@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v90';</script>
-  <script src="api-client.js?v=phase90-1"></script>
+  <script>window.MARFAN_VERSION = 'v91';</script>
+  <script src="api-client.js?v=phase91-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase90-1"></script>
+  <script src="questionnaires-defs.js?v=phase91-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase90-1"></script>
+  <script src="medical-parsers.js?v=phase91-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase90-1"></script>
-  <script src="cpet-analyse.js?v=phase90-1"></script>
+  <script src="cpet-graph-preview.js?v=phase91-1"></script>
+  <script src="cpet-analyse.js?v=phase91-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase90-1"></script>
-  <script src="medical-record-ui.js?v=phase90-1"></script>
+  <script src="pdf-extractor.js?v=phase91-1"></script>
+  <script src="medical-record-ui.js?v=phase91-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase90-1"></script>
-  <script src="synthese-ui.js?v=phase90-1"></script>
-  <script src="audit-ui.js?v=phase90-1"></script>
-  <script src="entretien-ui.js?v=phase90-1"></script>
-  <script src="activation-ui.js?v=phase90-1"></script>
-  <script src="document-import.js?v=phase90-1"></script>
-  <script src="activite-ui.js?v=phase90-1"></script>
-  <script src="cpet-detail.js?v=phase90-1"></script>
-  <script src="echo-calculs.js?v=phase90-1"></script>
-  <script src="echo-detail.js?v=phase90-1"></script>
-  <script src="accueil-activite.js?v=phase90-1"></script>
-  <script src="visio-jitsi.js?v=phase90-1"></script>
-  <script src="video-pilotee.js?v=phase90-1"></script>
-  <script src="fiche-apa.js?v=phase90-1"></script>
-  <script src="inactivite.js?v=phase90-1"></script>
-  <script src="bilans-ui.js?v=phase90-1"></script>
-  <script src="etudes-ui.js?v=phase90-1"></script>
-  <script src="ville-hopital.js?v=phase90-1"></script>
-  <script src="qlibres-ui.js?v=phase90-1"></script>
-  <script src="parametres-ui.js?v=phase90-1"></script>
+  <script src="aortic-consultations.js?v=phase91-1"></script>
+  <script src="synthese-ui.js?v=phase91-1"></script>
+  <script src="audit-ui.js?v=phase91-1"></script>
+  <script src="entretien-ui.js?v=phase91-1"></script>
+  <script src="activation-ui.js?v=phase91-1"></script>
+  <script src="document-import.js?v=phase91-1"></script>
+  <script src="activite-ui.js?v=phase91-1"></script>
+  <script src="cpet-detail.js?v=phase91-1"></script>
+  <script src="echo-calculs.js?v=phase91-1"></script>
+  <script src="echo-detail.js?v=phase91-1"></script>
+  <script src="accueil-activite.js?v=phase91-1"></script>
+  <script src="visio-jitsi.js?v=phase91-1"></script>
+  <script src="video-pilotee.js?v=phase91-1"></script>
+  <script src="fiche-apa.js?v=phase91-1"></script>
+  <script src="inactivite.js?v=phase91-1"></script>
+  <script src="bilans-ui.js?v=phase91-1"></script>
+  <script src="etudes-ui.js?v=phase91-1"></script>
+  <script src="ville-hopital.js?v=phase91-1"></script>
+  <script src="qlibres-ui.js?v=phase91-1"></script>
+  <script src="parametres-ui.js?v=phase91-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -12865,6 +12865,9 @@
           salle: visioCleSalle(),
           nomAffiche: u.name || 'Soignant',
           moderateur: true,
+          // Posé seulement si le soignant a explicitement choisi de reprendre
+          // la main alors qu'un autre onglet tenait la salle.
+          forcer: !!(options && options.forcerOnglet),
           onParticipants: n => {
             // n inclut le soignant : on retire 1 pour compter les patients
             const nb = Math.max(0, n - 1);
@@ -12886,6 +12889,17 @@
             : '▶ Salle ouverte. Vos patients la rejoignent depuis leur onglet « Séance en visio ».',
           'success', 7000);
       } catch (e) {
+        // Salle tenue par un autre onglet : ce n'est pas une panne, c'est une
+        // situation réversible. On explique, et on laisse le choix plutôt que
+        // d'afficher un écran d'erreur qui laisserait croire à un blocage.
+        if (e && e.code === 'AUTRE_ONGLET') {
+          visioBoutonsEntree(false);
+          if (confirm(e.message + '\n\nReprendre la main depuis cet onglet malgré tout ?')) {
+            return visioStartSession(Object.assign({}, options || {}, { forcerOnglet: true }));
+          }
+          toast('↩ Séance laissée à l\'autre onglet. Revenez-y pour la poursuivre.', 'info', 8000);
+          return;
+        }
         $('visioSelfStage').innerHTML =
           '<div style="padding:30px; text-align:center; color:#fca5a5;">' +
           '<div style="font-size:40px; margin-bottom:10px;">⚠️</div>' +

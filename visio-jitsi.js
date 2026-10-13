@@ -162,12 +162,71 @@
   // personne ne regardait. Un seul défaut, trois symptômes.
   let _jonctionEnCours = null;
 
+  // ================================================================
+  // Verrou entre onglets
+  // ----------------------------------------------------------------
+  // Le verrou précédent protège une page contre elle-même. Il ne voit pas ce
+  // que fait un AUTRE onglet du même navigateur — or deux onglets qui
+  // rejoignent, ce sont deux participants, et le second n'obtient pas la
+  // caméra : le premier la tient déjà. C'est la moitié des vignettes en trop
+  // observées le 13 octobre, et l'explication du « personne ne me voyait ».
+  //
+  // On pose donc une revendication dans localStorage, partagée par tous les
+  // onglets du même navigateur, rafraîchie tant que la séance dure. Un onglet
+  // fermé brutalement cesse de la rafraîchir : elle expire d'elle-même, et la
+  // salle redevient accessible. Un verrou qui ne sait pas mourir enfermerait
+  // le soignant dehors — ce serait pire que le défaut qu'il corrige.
+  const CLE_VERROU = 'marfan.visio.onglet';
+  const VERROU_TTL_MS = 12000;
+  const ID_ONGLET = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  let _battement = null;
+
+  function lireVerrou() {
+    try { return JSON.parse(localStorage.getItem(CLE_VERROU) || 'null'); } catch (_) { return null; }
+  }
+  function poserVerrou(salle) {
+    try {
+      localStorage.setItem(CLE_VERROU,
+        JSON.stringify({ onglet: ID_ONGLET, salle: salle, a: Date.now() }));
+    } catch (_) {}
+  }
+  function libererVerrou() {
+    if (_battement) { clearInterval(_battement); _battement = null; }
+    try {
+      const v = lireVerrou();
+      if (!v || v.onglet === ID_ONGLET) localStorage.removeItem(CLE_VERROU);
+    } catch (_) {}
+  }
+  /** Renvoie la revendication d'un autre onglet encore vivant, sinon null. */
+  function verrouDUnAutreOnglet() {
+    const v = lireVerrou();
+    if (!v || v.onglet === ID_ONGLET) return null;
+    if (Date.now() - (v.a || 0) > VERROU_TTL_MS) return null;   // onglet disparu
+    return v;
+  }
+  // Un onglet qu'on ferme rend la main immédiatement, sans attendre l'expiration.
+  try { window.addEventListener('pagehide', libererVerrou); } catch (_) {}
+
   async function rejoindre(conteneurId, options) {
     options = options || {};
 
     // Deuxième clic pendant la connexion : on rend la MÊME promesse. Celui qui
     // a cliqué deux fois attend la même salle, il n'en demande pas une seconde.
     if (_jonctionEnCours) return _jonctionEnCours;
+
+    // Un autre onglet tient déjà la salle.
+    if (!options.forcer && !_api) {
+      const autre = verrouDUnAutreOnglet();
+      if (autre) {
+        const e = new Error(
+          "Une séance est déjà ouverte dans un autre onglet de ce navigateur.\n\n" +
+          "Deux onglets dans la même salle, ce sont deux participants : le second " +
+          "n'obtient pas la caméra, et vos patients vous voient en double sans vous voir.\n\n" +
+          "Revenez à l'onglet déjà ouvert, ou fermez-le avant de reprendre ici.");
+        e.code = 'AUTRE_ONGLET';
+        throw e;
+      }
+    }
 
     // Déjà dans la salle demandée : il n'y a rien à faire. Repartir d'un
     // dispose/recreate couperait la séance en cours pour y revenir à
@@ -245,6 +304,13 @@
     });
     observateur.observe(conteneur, { childList: true, subtree: true });
     setTimeout(() => { try { observateur.disconnect(); } catch (_) {} }, 5000);
+
+    // La salle nous appartient à partir d'ici : on le fait savoir aux autres
+    // onglets, et on le redit régulièrement. Cesser de le redire, c'est rendre
+    // la main — y compris si cet onglet disparaît sans prévenir.
+    poserVerrou(salleCourte);
+    if (_battement) clearInterval(_battement);
+    _battement = setInterval(() => { if (_api) poserVerrou(salleCourte); }, 4000);
 
     _api = new window.JitsiMeetExternalAPI(DOMAINE, {
       roomName: _salle,
@@ -404,6 +470,9 @@
   }
 
   function quitter() {
+    // On rend la main aux autres onglets avant toute chose : si dispose()
+    // échoue, le verrou ne doit pas survivre à la séance qu'il protégeait.
+    libererVerrou();
     if (_api) {
       try { _api.dispose(); } catch (_) {}
       _api = null;
