@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v89';</script>
-  <script src="api-client.js?v=phase89-1"></script>
+  <script>window.MARFAN_VERSION = 'v90';</script>
+  <script src="api-client.js?v=phase90-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase89-1"></script>
+  <script src="questionnaires-defs.js?v=phase90-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase89-1"></script>
+  <script src="medical-parsers.js?v=phase90-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase89-1"></script>
-  <script src="cpet-analyse.js?v=phase89-1"></script>
+  <script src="cpet-graph-preview.js?v=phase90-1"></script>
+  <script src="cpet-analyse.js?v=phase90-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase89-1"></script>
-  <script src="medical-record-ui.js?v=phase89-1"></script>
+  <script src="pdf-extractor.js?v=phase90-1"></script>
+  <script src="medical-record-ui.js?v=phase90-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase89-1"></script>
-  <script src="synthese-ui.js?v=phase89-1"></script>
-  <script src="audit-ui.js?v=phase89-1"></script>
-  <script src="entretien-ui.js?v=phase89-1"></script>
-  <script src="activation-ui.js?v=phase89-1"></script>
-  <script src="document-import.js?v=phase89-1"></script>
-  <script src="activite-ui.js?v=phase89-1"></script>
-  <script src="cpet-detail.js?v=phase89-1"></script>
-  <script src="echo-calculs.js?v=phase89-1"></script>
-  <script src="echo-detail.js?v=phase89-1"></script>
-  <script src="accueil-activite.js?v=phase89-1"></script>
-  <script src="visio-jitsi.js?v=phase89-1"></script>
-  <script src="video-pilotee.js?v=phase89-1"></script>
-  <script src="fiche-apa.js?v=phase89-1"></script>
-  <script src="inactivite.js?v=phase89-1"></script>
-  <script src="bilans-ui.js?v=phase89-1"></script>
-  <script src="etudes-ui.js?v=phase89-1"></script>
-  <script src="ville-hopital.js?v=phase89-1"></script>
-  <script src="qlibres-ui.js?v=phase89-1"></script>
-  <script src="parametres-ui.js?v=phase89-1"></script>
+  <script src="aortic-consultations.js?v=phase90-1"></script>
+  <script src="synthese-ui.js?v=phase90-1"></script>
+  <script src="audit-ui.js?v=phase90-1"></script>
+  <script src="entretien-ui.js?v=phase90-1"></script>
+  <script src="activation-ui.js?v=phase90-1"></script>
+  <script src="document-import.js?v=phase90-1"></script>
+  <script src="activite-ui.js?v=phase90-1"></script>
+  <script src="cpet-detail.js?v=phase90-1"></script>
+  <script src="echo-calculs.js?v=phase90-1"></script>
+  <script src="echo-detail.js?v=phase90-1"></script>
+  <script src="accueil-activite.js?v=phase90-1"></script>
+  <script src="visio-jitsi.js?v=phase90-1"></script>
+  <script src="video-pilotee.js?v=phase90-1"></script>
+  <script src="fiche-apa.js?v=phase90-1"></script>
+  <script src="inactivite.js?v=phase90-1"></script>
+  <script src="bilans-ui.js?v=phase90-1"></script>
+  <script src="etudes-ui.js?v=phase90-1"></script>
+  <script src="ville-hopital.js?v=phase90-1"></script>
+  <script src="qlibres-ui.js?v=phase90-1"></script>
+  <script src="parametres-ui.js?v=phase90-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -12820,6 +12820,32 @@
     return visioStartSession({ rejoindre: true });
   }
 
+  /**
+   * Boutons d'entrée en salle : verrouillés pendant la connexion.
+   *
+   * Entrer dans une salle prend plusieurs secondes — autorisations caméra,
+   * puis jeton du serveur — et pendant ce temps l'écran ne montre rien. Celui
+   * qui attend reclique, c'est la réaction normale. Le verrou interne de
+   * visio-jitsi empêche désormais le doublon, mais laisser un bouton inerte
+   * sous le doigt reste un défaut d'interface : on dit ce qui se passe.
+   */
+  function visioBoutonsEntree(enCours) {
+    document.querySelectorAll('[onclick*="visioStartSession"], [onclick*="visioJoinSession"]')
+      .forEach(b => {
+        if (enCours) {
+          if (!b.dataset.libelleInitial) b.dataset.libelleInitial = b.textContent;
+          b.disabled = true;
+          b.style.opacity = '0.55';
+          b.textContent = '⏳ Connexion à la salle…';
+        } else if (b.dataset.libelleInitial) {
+          b.disabled = false;
+          b.style.opacity = '';
+          b.textContent = b.dataset.libelleInitial;
+          delete b.dataset.libelleInitial;
+        }
+      });
+  }
+
   async function visioStartSession(options) {
     const rejoint = !!(options && options.rejoindre);
     visioState.sessionActive = true;
@@ -12832,6 +12858,7 @@
     if ($('visioSelfStage')) {
       $('visioSelfStage').style.padding = '0';
       $('visioSelfStage').style.minHeight = '480px';
+      visioBoutonsEntree(true);
       try {
         const u = (window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser()) || {};
         await window.VisioJitsi.rejoindre('visioSelfStage', {
@@ -12866,6 +12893,10 @@
           '<p style="color:#94a3b8; margin-top:8px; max-width:460px;">' + (e && e.message ? e.message : '') + '</p></div>';
         toast('⚠ ' + ((e && e.message) ||
           (rejoint ? 'Impossible de rejoindre la salle.' : 'Impossible d\'ouvrir la salle.')), 'error', 9000);
+      } finally {
+        // Dans tous les cas on rend la main : un bouton resté grisé après un
+        // échec enfermerait le soignant hors de sa propre séance.
+        visioBoutonsEntree(false);
       }
     }
 

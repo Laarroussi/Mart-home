@@ -145,8 +145,44 @@
     return true;
   }
 
+  // Jonction protégée contre les appels simultanés.
+  //
+  // rejoindre() est asynchrone : elle attend les autorisations caméra, puis le
+  // jeton du serveur. Entre ces deux attentes, plusieurs secondes s'écoulent,
+  // pendant lesquelles l'écran ne montre rien. Le soignant reclique — c'est
+  // normal, rien ne bouge. Or chaque appel repartait du début : le quitter()
+  // de sécurité s'exécutait AVANT que la conférence précédente n'existe, et
+  // les deux appels finissaient par créer chacun leur instance. _api ne
+  // retenait que la dernière ; la première restait dans la salle, orpheline,
+  // visible de tous et fermable par personne.
+  //
+  // Le 13 octobre 2026, cela a donné trois « Administrateur Marfan APA » dans
+  // la même séance, aucune caméra transmise — les instances se disputaient le
+  // même objectif — et un partage d'écran envoyé à une instance fantôme que
+  // personne ne regardait. Un seul défaut, trois symptômes.
+  let _jonctionEnCours = null;
+
   async function rejoindre(conteneurId, options) {
     options = options || {};
+
+    // Deuxième clic pendant la connexion : on rend la MÊME promesse. Celui qui
+    // a cliqué deux fois attend la même salle, il n'en demande pas une seconde.
+    if (_jonctionEnCours) return _jonctionEnCours;
+
+    // Déjà dans la salle demandée : il n'y a rien à faire. Repartir d'un
+    // dispose/recreate couperait la séance en cours pour y revenir à
+    // l'identique — avec le risque de ne pas récupérer la caméra.
+    if (_api && options.salle && _salle &&
+        _salle.endsWith(construireNomSalle(options.salle))) {
+      return _api;
+    }
+
+    _jonctionEnCours = _rejoindreVraiment(conteneurId, options);
+    try { return await _jonctionEnCours; }
+    finally { _jonctionEnCours = null; }
+  }
+
+  async function _rejoindreVraiment(conteneurId, options) {
     const conteneur = document.getElementById(conteneurId);
     if (!conteneur) throw new Error('Zone d\'affichage introuvable : ' + conteneurId);
 
