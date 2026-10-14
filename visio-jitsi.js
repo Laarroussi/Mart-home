@@ -295,6 +295,19 @@
     // L'attribut « allow » doit être présent AVANT le chargement de l'iframe :
     // appliqué après coup, il est ignoré par le navigateur. On surveille donc
     // la création de l'iframe par Jitsi pour le poser immédiatement.
+    //
+    // ATTENTION — cette surveillance ne suffit pas, et c'est ce qui a coûté
+    // deux jours. Un MutationObserver est notifié APRÈS l'insertion dans la
+    // page ; or Jitsi fixe l'adresse de l'iframe avant de l'insérer, et c'est
+    // à cet instant que le navigateur fige sa politique d'autorisations. Poser
+    // « allow » ensuite ne change plus rien : la barre d'outils s'affiche, les
+    // boutons micro et caméra répondent au clic, et aucun périphérique ne
+    // démarre jamais. On croit à des boutons cassés ; ce sont des permissions
+    // refusées.
+    //
+    // La parade déterministe est plus bas : on intercepte la CRÉATION de
+    // l'iframe, avant que Jitsi ne lui donne son adresse. Celle-ci reste en
+    // second rideau, au cas où une version de Jitsi s'y prendrait autrement.
     const observateur = new MutationObserver(() => {
       const cadre = conteneur.querySelector('iframe');
       if (cadre && !cadre.dataset.permsOk) {
@@ -315,6 +328,31 @@
     if (_battement) clearInterval(_battement);
     _battement = setInterval(() => { if (_api) poserVerrou(salleCourte); }, 4000);
 
+    // Pose de « allow » à la création même de l'iframe.
+    //
+    // On remplace document.createElement le temps d'un appel : dès que Jitsi
+    // fabrique son iframe, l'attribut y est, avant qu'elle reçoive son adresse
+    // et avant son insertion dans la page. C'est le seul instant où le
+    // navigateur accepte encore de l'entendre.
+    //
+    // Le remplacement est rendu dans un `finally` : si le constructeur de
+    // Jitsi échoue, la page ne doit pas rester avec un createElement modifié.
+    const PERMISSIONS =
+      'camera; microphone; display-capture; autoplay; clipboard-write; fullscreen; speaker-selection';
+    const creerElement = document.createElement.bind(document);
+    document.createElement = function (nom) {
+      const el = creerElement.apply(null, arguments);
+      try {
+        if (String(nom).toLowerCase() === 'iframe') {
+          el.setAttribute('allow', PERMISSIONS);
+          el.setAttribute('allowfullscreen', 'true');
+          el.dataset.permsOk = '1';
+        }
+      } catch (_) {}
+      return el;
+    };
+
+    try {
     _api = new window.JitsiMeetExternalAPI(DOMAINE, {
       roomName: _salle,
       jwt: _jaas ? _jaas.token : undefined,
@@ -390,6 +428,9 @@
           : ['microphone','camera','fullscreen','hangup','chat','raisehand','tileview','settings']
       }
     });
+    } finally {
+      document.createElement = creerElement;
+    }
 
     // Une iframe n'a PAS accès à la caméra par défaut : sans cet attribut,
     // la conférence se charge mais reste noire, sans image ni son.
