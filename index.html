@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v97';</script>
-  <script src="api-client.js?v=phase97-1"></script>
+  <script>window.MARFAN_VERSION = 'v98';</script>
+  <script src="api-client.js?v=phase98-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase97-1"></script>
+  <script src="questionnaires-defs.js?v=phase98-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase97-1"></script>
+  <script src="medical-parsers.js?v=phase98-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase97-1"></script>
-  <script src="cpet-analyse.js?v=phase97-1"></script>
+  <script src="cpet-graph-preview.js?v=phase98-1"></script>
+  <script src="cpet-analyse.js?v=phase98-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase97-1"></script>
-  <script src="medical-record-ui.js?v=phase97-1"></script>
+  <script src="pdf-extractor.js?v=phase98-1"></script>
+  <script src="medical-record-ui.js?v=phase98-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase97-1"></script>
-  <script src="synthese-ui.js?v=phase97-1"></script>
-  <script src="audit-ui.js?v=phase97-1"></script>
-  <script src="entretien-ui.js?v=phase97-1"></script>
-  <script src="activation-ui.js?v=phase97-1"></script>
-  <script src="document-import.js?v=phase97-1"></script>
-  <script src="activite-ui.js?v=phase97-1"></script>
-  <script src="cpet-detail.js?v=phase97-1"></script>
-  <script src="echo-calculs.js?v=phase97-1"></script>
-  <script src="echo-detail.js?v=phase97-1"></script>
-  <script src="accueil-activite.js?v=phase97-1"></script>
-  <script src="visio-jitsi.js?v=phase97-1"></script>
-  <script src="video-pilotee.js?v=phase97-1"></script>
-  <script src="fiche-apa.js?v=phase97-1"></script>
-  <script src="inactivite.js?v=phase97-1"></script>
-  <script src="bilans-ui.js?v=phase97-1"></script>
-  <script src="etudes-ui.js?v=phase97-1"></script>
-  <script src="ville-hopital.js?v=phase97-1"></script>
-  <script src="qlibres-ui.js?v=phase97-1"></script>
-  <script src="parametres-ui.js?v=phase97-1"></script>
+  <script src="aortic-consultations.js?v=phase98-1"></script>
+  <script src="synthese-ui.js?v=phase98-1"></script>
+  <script src="audit-ui.js?v=phase98-1"></script>
+  <script src="entretien-ui.js?v=phase98-1"></script>
+  <script src="activation-ui.js?v=phase98-1"></script>
+  <script src="document-import.js?v=phase98-1"></script>
+  <script src="activite-ui.js?v=phase98-1"></script>
+  <script src="cpet-detail.js?v=phase98-1"></script>
+  <script src="echo-calculs.js?v=phase98-1"></script>
+  <script src="echo-detail.js?v=phase98-1"></script>
+  <script src="accueil-activite.js?v=phase98-1"></script>
+  <script src="visio-jitsi.js?v=phase98-1"></script>
+  <script src="video-pilotee.js?v=phase98-1"></script>
+  <script src="fiche-apa.js?v=phase98-1"></script>
+  <script src="inactivite.js?v=phase98-1"></script>
+  <script src="bilans-ui.js?v=phase98-1"></script>
+  <script src="etudes-ui.js?v=phase98-1"></script>
+  <script src="ville-hopital.js?v=phase98-1"></script>
+  <script src="qlibres-ui.js?v=phase98-1"></script>
+  <script src="parametres-ui.js?v=phase98-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -5997,6 +5997,30 @@
   }
 
   // === Rendu du tableau des comptes ===
+  /**
+   * Nom affichable d'un compte dans la table des comptes.
+   *
+   * Un compte patient porte en base un nom qui n'aide pas : souvent ses seules
+   * initiales. La table affichait donc « K.B. » en face de MRF-001, ce qui
+   * oblige à ouvrir le dossier pour savoir de qui l'on parle — et à le fermer
+   * aussitôt. On va chercher l'identité dans la fiche patient correspondante.
+   *
+   * En mode pseudonymisé, on ne se rabat PAS sur les initiales : elles sont
+   * une identité au même titre qu'un nom. Le masque s'applique.
+   */
+  function nomLisibleDuCompte(u) {
+    if (!u) return '';
+    if (u.role !== 'patient') return u.name || '';
+    const p = (typeof patients !== 'undefined' && u.patientId)
+      ? patients.find(x => x.id === u.patientId) : null;
+    const lisible = p && typeof window.nomLisiblePatient === 'function'
+      ? window.nomLisiblePatient(p) : '';
+    if (lisible) return lisible;
+    return typeof window.pseudoValue === 'function'
+      ? window.pseudoValue(u.name || '', 'name')
+      : (u.name || '');
+  }
+
   function renderAccountsTable(filter = '') {
     if (!$('accountsTableBody')) return;
     const norm = (filter || '').toLowerCase();
@@ -6007,7 +6031,11 @@
       if (roleFilter && u.role !== roleFilter) return false;
       if (activeFilter === 'active' && !u.active) return false;
       if (activeFilter === 'inactive' && u.active) return false;
-      return [u.name, u.email, u.service || '', u.id].join(' ').toLowerCase().includes(norm);
+      // On cherche aussi sur le prénom : taper « yanis » doit trouver le
+      // compte de MRF-007, sans quoi la recherche ne sert qu'à ceux qui
+      // connaissent déjà le code — c'est-à-dire à personne.
+      return [u.name, u.email, u.service || '', u.id, u.patientId || '',
+              nomLisibleDuCompte(u)].join(' ').toLowerCase().includes(norm);
     });
 
     const tbody = $('accountsTableBody');
@@ -6027,7 +6055,7 @@
         : '';
       return `<tr>
         <td><strong>${u.id}</strong></td>
-        <td>${u.name}</td>
+        <td>${nomLisibleDuCompte(u)}</td>
         <td><span style="background:${b.bg}; color:${b.color}; border:1px solid ${b.border}; padding:3px 8px; border-radius:99px; font-weight:800; font-size:11.5px;">${b.icon} ${ROLE_LABELS[u.role]}</span></td>
         <td>${u.email}</td>
         <td>${liaison}</td>
