@@ -197,5 +197,51 @@ router.get('/patient/:id', requireAuth, soignants, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ============================================================
+// GET /api/carnet/apercu/:id — le strict nécessaire sur un patient
+// ------------------------------------------------------------
+// Alimente le bandeau latéral. On ne renvoie que ce qui sert à reconnaître la
+// personne et à savoir où elle en est : identité, âge, et le dernier diamètre
+// des sinus de Valsalva.
+//
+// Ce diamètre est lu dans `echo_reports`, et nulle part ailleurs. La table
+// `patients` porte une colonne `aorta` qui a pu être remplie à la main lors
+// de la création du dossier : c'est une valeur rapportée, pas une mesure, et
+// les règles du dépôt interdisent qu'elle prenne la place du compte rendu
+// d'échocardiographie. En l'absence d'examen, on renvoie null — et le bandeau
+// affichera « non mesuré », jamais un chiffre d'origine incertaine.
+// ============================================================
+router.get('/apercu/:id', requireAuth, soignants, async (req, res, next) => {
+  try {
+    const p = await query(
+      'SELECT id, age, sex, civil FROM patients WHERE id = $1', [req.params.id]);
+    if (!p.rows.length) return res.status(404).json({ error: 'Patient introuvable' });
+
+    const echo = await query(
+      `SELECT sinus_valsalva_mm, exam_date
+         FROM echo_reports
+        WHERE patient_id = $1 AND sinus_valsalva_mm IS NOT NULL
+        ORDER BY exam_date DESC NULLS LAST
+        LIMIT 1`,
+      [req.params.id]
+    );
+
+    const civil = p.rows[0].civil || {};
+    res.json({
+      apercu: {
+        id: p.rows[0].id,
+        age: p.rows[0].age,
+        sexe: p.rows[0].sex,
+        prenom: civil.firstName || null,
+        nom: civil.lastName || null,
+        ipp: civil.ipp || null,
+        sinus_valsalva_mm: echo.rows.length ? echo.rows[0].sinus_valsalva_mm : null,
+        sinus_date: echo.rows.length ? echo.rows[0].exam_date : null
+      }
+    });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
 module.exports.rubrique = rubrique;
+module.exports.jourLocal = jourLocal;

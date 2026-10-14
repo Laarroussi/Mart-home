@@ -401,9 +401,20 @@
       config: () => request('GET', '/visio-jaas/config')
     },
 
+    /** ===== Photographie d'identification du patient ===== */
+    photos: {
+      // Renvoie null quand il n'y a pas de photo : le serveur répond 204, une
+      // absence et non une erreur.
+      lire:      (id)        => request('GET', '/photos/' + encodeURIComponent(id)),
+      enregistrer: (id, data, mime) => request('POST', '/photos/' + encodeURIComponent(id),
+                                               { data, mime, consentement: true }),
+      supprimer: (id)        => request('DELETE', '/photos/' + encodeURIComponent(id))
+    },
+
     /** ===== Carnet de suivi : les actions à ne pas oublier ===== */
     carnet: {
       lister:   ()                 => request('GET',   '/carnet'),
+      apercu:   (id)               => request('GET',   '/carnet/apercu/' + encodeURIComponent(id)),
       duPatient:(id)               => request('GET',   '/carnet/patient/' + encodeURIComponent(id)),
       ajouter:  (donnees)          => request('POST',  '/carnet', donnees),
       modifier: (id, donnees)      => request('PATCH', '/carnet/' + id, donnees),

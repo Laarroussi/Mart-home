@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v99';</script>
-  <script src="api-client.js?v=phase99-1"></script>
+  <script>window.MARFAN_VERSION = 'v101';</script>
+  <script src="api-client.js?v=phase101-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase99-1"></script>
+  <script src="questionnaires-defs.js?v=phase101-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase99-1"></script>
+  <script src="medical-parsers.js?v=phase101-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase99-1"></script>
-  <script src="cpet-analyse.js?v=phase99-1"></script>
+  <script src="cpet-graph-preview.js?v=phase101-1"></script>
+  <script src="cpet-analyse.js?v=phase101-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase99-1"></script>
-  <script src="medical-record-ui.js?v=phase99-1"></script>
+  <script src="pdf-extractor.js?v=phase101-1"></script>
+  <script src="medical-record-ui.js?v=phase101-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase99-1"></script>
-  <script src="synthese-ui.js?v=phase99-1"></script>
-  <script src="audit-ui.js?v=phase99-1"></script>
-  <script src="entretien-ui.js?v=phase99-1"></script>
-  <script src="activation-ui.js?v=phase99-1"></script>
-  <script src="document-import.js?v=phase99-1"></script>
-  <script src="activite-ui.js?v=phase99-1"></script>
-  <script src="cpet-detail.js?v=phase99-1"></script>
-  <script src="echo-calculs.js?v=phase99-1"></script>
-  <script src="echo-detail.js?v=phase99-1"></script>
-  <script src="accueil-activite.js?v=phase99-1"></script>
-  <script src="visio-jitsi.js?v=phase99-1"></script>
-  <script src="video-pilotee.js?v=phase99-1"></script>
-  <script src="fiche-apa.js?v=phase99-1"></script>
-  <script src="inactivite.js?v=phase99-1"></script>
-  <script src="bilans-ui.js?v=phase99-1"></script>
-  <script src="etudes-ui.js?v=phase99-1"></script>
-  <script src="ville-hopital.js?v=phase99-1"></script>
-  <script src="qlibres-ui.js?v=phase99-1"></script>
-  <script src="parametres-ui.js?v=phase99-1"></script>
+  <script src="aortic-consultations.js?v=phase101-1"></script>
+  <script src="synthese-ui.js?v=phase101-1"></script>
+  <script src="audit-ui.js?v=phase101-1"></script>
+  <script src="entretien-ui.js?v=phase101-1"></script>
+  <script src="activation-ui.js?v=phase101-1"></script>
+  <script src="document-import.js?v=phase101-1"></script>
+  <script src="activite-ui.js?v=phase101-1"></script>
+  <script src="cpet-detail.js?v=phase101-1"></script>
+  <script src="echo-calculs.js?v=phase101-1"></script>
+  <script src="echo-detail.js?v=phase101-1"></script>
+  <script src="accueil-activite.js?v=phase101-1"></script>
+  <script src="visio-jitsi.js?v=phase101-1"></script>
+  <script src="video-pilotee.js?v=phase101-1"></script>
+  <script src="fiche-apa.js?v=phase101-1"></script>
+  <script src="inactivite.js?v=phase101-1"></script>
+  <script src="bilans-ui.js?v=phase101-1"></script>
+  <script src="etudes-ui.js?v=phase101-1"></script>
+  <script src="ville-hopital.js?v=phase101-1"></script>
+  <script src="qlibres-ui.js?v=phase101-1"></script>
+  <script src="parametres-ui.js?v=phase101-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -5264,7 +5264,14 @@
           <div id="carnetMessage" style="display:none; margin-top:11px; padding:10px 12px; border-radius:9px; font-size:12.5px;"></div>
         </div>
 
-        <div id="carnetListe"></div>
+        <!-- Deux colonnes : le carnet, et le bandeau d'identité du patient
+             sur lequel on travaille. Le bandeau reste visible pendant qu'on
+             fait défiler la liste — c'est tout son intérêt. -->
+        <div style="display:flex; gap:16px; align-items:flex-start;">
+          <div id="carnetListe" style="flex:1; min-width:0;"></div>
+          <aside id="carnetBandeau"
+                 style="flex:0 0 272px; position:sticky; top:14px; display:none;"></aside>
+        </div>
       </section>
 
       <section id="listing" class="tab-panel hidden">
@@ -13149,7 +13156,10 @@
       <div style="flex:1; min-width:0;">
         <div style="font-size:13.5px; color:#0b1530; ${faite ? 'text-decoration:line-through; opacity:.6;' : ''}">${a.texte}</div>
         <div style="font-size:11.5px; color:#64748b; margin-top:3px; display:flex; gap:9px; flex-wrap:wrap;">
-          ${qui ? `<span style="font-weight:700; color:#334155;">${qui}</span>` : '<span style="font-style:italic;">sans patient</span>'}
+          ${qui ? `<button onclick="carnetVoirPatient('${a.patient_id}')" title="Voir le résumé de ce patient"
+                     style="border:0; background:transparent; padding:0; font:inherit; font-weight:700;
+                            color:#1d4ed8; cursor:pointer; text-decoration:underline dotted;">${qui}</button>`
+                : '<span style="font-style:italic;">sans patient</span>'}
           ${date ? `<span>· pour le ${date}</span>` : ''}
           <span>· demandé par ${a.cree_par_nom || '—'}</span>
           ${a.statut === 'annulee' ? `<span style="color:#991b1b;">· abandonnée : ${a.motif || ''}</span>` : ''}
@@ -13162,6 +13172,184 @@
                      padding:3px 9px; font-size:11px; cursor:pointer;">Abandonner</button>`}
     </div>`;
   }
+
+  // ----------------------------------------------------------------
+  // Bandeau d'identité : qui est ce patient, et où en est son aorte
+  // ----------------------------------------------------------------
+  // On y met le strict nécessaire pour reconnaître la personne sans ouvrir
+  // son dossier. Le diamètre des sinus de Valsalva y figure parce que c'est
+  // la mesure qui conditionne tout le reste en syndrome de Marfan : savoir
+  // qu'on parle d'une aorte à 37 mm ou à 48 mm change ce qu'on décide.
+  let _carnetPatientVu = null;
+
+  window.carnetVoirPatient = async function (patientId) {
+    const b = $('carnetBandeau');
+    if (!b || !patientId) return;
+    // Recliquer sur le même patient referme le bandeau.
+    if (_carnetPatientVu === patientId) {
+      _carnetPatientVu = null; b.style.display = 'none'; b.innerHTML = ''; return;
+    }
+    _carnetPatientVu = patientId;
+    b.style.display = 'block';
+    b.innerHTML = '<div class="card" style="padding:18px; color:#94a3b8; font-size:12.5px;">Chargement…</div>';
+    try {
+      // Aperçu et photo en parallèle : deux allers-retours en série feraient
+      // clignoter le bandeau à chaque clic.
+      const [r, photo] = await Promise.all([
+        window.MarfanAPI.carnet.apercu(patientId),
+        window.MarfanAPI.photos.lire(patientId).catch(() => null)
+      ]);
+      b.innerHTML = carnetBandeauHtml(r.apercu, photo);
+    } catch (e) {
+      b.innerHTML = '<div class="card" style="padding:18px; color:#991b1b; font-size:12.5px;">'
+                  + 'Aperçu indisponible : ' + ((e && e.message) || 'erreur') + '</div>';
+    }
+  };
+
+  function carnetBandeauHtml(a, photo) {
+    const pseudo = !!(window.AppModes && window.AppModes.pseudoMode);
+    const initiales = pseudo ? '•••'
+      : ((a.prenom || ' ')[0] + (a.nom || ' ')[0]).toUpperCase().trim() || '?';
+
+    // Un visage est une donnée identifiante : la pseudonymisation le masque
+    // au même titre qu'un nom. Afficher la photo d'une personne dont on vient
+    // de cacher le nom n'aurait aucun sens.
+    const cadre = (photo && photo.data && !pseudo)
+      ? `<img src="data:${photo.mime};base64,${photo.data}" alt=""
+              style="width:84px; height:104px; object-fit:cover; border-radius:12px; display:block;">`
+      : `<div style="width:84px; height:104px; border-radius:12px;
+                     background:linear-gradient(135deg,#1e3a8a,#3b82f6); color:white;
+                     display:flex; align-items:center; justify-content:center;
+                     font-size:30px; font-weight:800; letter-spacing:1px;">${initiales}</div>`;
+    const nomComplet = pseudo ? 'Identité masquée'
+      : [a.prenom, a.nom ? a.nom.toUpperCase() : ''].filter(Boolean).join(' ') || 'Identité non renseignée';
+
+    // Le seuil de 45 mm est celui au-delà duquel une aorte ascendante impose
+    // une discussion chirurgicale dans le syndrome de Marfan. On le signale,
+    // on ne conclut pas : la décision tient compte de l'évolution, de la
+    // taille du patient et de ses antécédents familiaux.
+    const v = a.sinus_valsalva_mm != null ? Number(a.sinus_valsalva_mm) : null;
+    const couleur = v == null ? '#94a3b8' : (v >= 45 ? '#b91c1c' : v >= 40 ? '#b45309' : '#047857');
+    const dateEcho = a.sinus_date
+      ? new Date(a.sinus_date).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' })
+      : null;
+
+    const ligne = (etiquette, valeur) => `
+      <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid #f1f5f9; font-size:12.5px;">
+        <span style="color:#64748b;">${etiquette}</span>
+        <span style="color:#0b1530; font-weight:600; text-align:right;">${valeur}</span>
+      </div>`;
+
+    return `<div class="card" style="padding:18px; text-align:center;">
+      <div style="width:84px; margin:0 auto 11px;">
+        ${cadre}
+        ${pseudo ? '' : `<button onclick="carnetChoisirPhoto('${a.id}')"
+          style="width:84px; margin-top:5px; padding:3px; border:1px solid #e2e8f0; background:white;
+                 color:#64748b; border-radius:6px; font-size:10.5px; cursor:pointer;">
+          ${photo && photo.data ? 'Remplacer' : '+ Photo'}</button>`}
+        ${(photo && photo.data && !pseudo) ? `<button onclick="carnetRetirerPhoto('${a.id}')"
+          style="width:84px; margin-top:3px; padding:3px; border:1px solid #fecaca; background:white;
+                 color:#991b1b; border-radius:6px; font-size:10.5px; cursor:pointer;">Retirer</button>` : ''}
+      </div>
+      <strong style="display:block; font-size:15px; color:#0b1530;">${a.id}</strong>
+      <div style="font-size:13px; color:#475569; margin-top:2px;">${nomComplet}</div>
+
+      <div style="margin-top:14px; text-align:left;">
+        ${ligne('IPP', pseudo ? '••••••' : (a.ipp || '<em style="color:#94a3b8;">non renseigné</em>'))}
+        ${ligne('Âge', a.age != null ? a.age + ' ans' : '<em style="color:#94a3b8;">inconnu</em>')}
+        ${ligne('Sexe', a.sexe || '<em style="color:#94a3b8;">non renseigné</em>')}
+      </div>
+
+      <div style="margin-top:14px; padding:12px; border-radius:10px; background:#f8fafc; border:1px solid #e2e8f0; text-align:left;">
+        <div style="font-size:10.5px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.4px;">Sinus de Valsalva</div>
+        ${v != null
+          ? `<div style="font-size:26px; font-weight:800; color:${couleur}; line-height:1.2; margin-top:3px;">${v.toFixed(1)} <span style="font-size:14px; font-weight:600;">mm</span></div>
+             <div style="font-size:11.5px; color:#64748b; margin-top:2px;">${dateEcho ? 'mesuré le ' + dateEcho : 'date inconnue'}</div>`
+          : `<div style="font-size:13px; color:#94a3b8; font-style:italic; margin-top:5px;">Non mesuré — aucune échocardiographie enregistrée</div>`}
+      </div>
+
+      <button class="btn-light" style="width:100%; margin-top:12px; padding:8px; font-size:12px;"
+              onclick="carnetOuvrirDossier('${a.id}')">Ouvrir le dossier →</button>
+    </div>`;
+  }
+
+  /**
+   * Choix et envoi d'une photo d'identification.
+   *
+   * L'image est réduite dans le navigateur AVANT d'être envoyée. Une photo de
+   * téléphone pèse aujourd'hui trois à huit méga-octets ; transmise telle
+   * quelle, elle gonflerait la base, les sauvegardes et chaque affichage du
+   * bandeau, pour un cadre de 84 pixels de large. On ramène le plus grand côté
+   * à 600 pixels, ce qui reste net sur un écran à forte densité.
+   */
+  window.carnetChoisirPhoto = function (patientId) {
+    const champ = document.createElement('input');
+    champ.type = 'file';
+    champ.accept = 'image/jpeg,image/png,image/webp';
+    champ.onchange = async () => {
+      const f = champ.files && champ.files[0];
+      if (!f) return;
+      if (!confirm('Photographie de ' + patientId + '\n\n'
+                 + "Confirmez-vous avoir recueilli l'accord de cette personne pour "
+                 + "conserver sa photographie dans la plateforme ?\n\n"
+                 + "Elle pourra être retirée à tout moment, sans toucher au dossier médical.")) return;
+      try {
+        const reduite = await reduireImage(f, 600);
+        await window.MarfanAPI.photos.enregistrer(patientId, reduite.base64, reduite.mime);
+        _carnetPatientVu = null;            // force le rechargement du bandeau
+        await carnetVoirPatient(patientId);
+        carnetDire('Photographie enregistrée.', 'ok');
+      } catch (e) {
+        carnetDire('Photo refusée : ' + ((e && e.message) || 'erreur inconnue'), 'erreur');
+      }
+    };
+    champ.click();
+  };
+
+  window.carnetRetirerPhoto = async function (patientId) {
+    if (!confirm('Retirer la photographie de ' + patientId + ' ?\n\n'
+               + 'Le dossier médical n\'est pas touché.')) return;
+    try {
+      await window.MarfanAPI.photos.supprimer(patientId);
+      _carnetPatientVu = null;
+      await carnetVoirPatient(patientId);
+      carnetDire('Photographie retirée.', 'ok');
+    } catch (e) {
+      carnetDire('Suppression impossible : ' + ((e && e.message) || 'erreur'), 'erreur');
+    }
+  };
+
+  /** Réduit une image à `cote` pixels sur son plus grand côté, en JPEG. */
+  function reduireImage(fichier, cote) {
+    return new Promise((resolve, reject) => {
+      const lecteur = new FileReader();
+      lecteur.onerror = () => reject(new Error('Fichier illisible.'));
+      lecteur.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("Ce fichier n'est pas une image lisible."));
+        img.onload = () => {
+          const ratio = Math.min(1, cote / Math.max(img.width, img.height));
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * ratio);
+          c.height = Math.round(img.height * ratio);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          const url = c.toDataURL('image/jpeg', 0.85);
+          resolve({ base64: url.split(',')[1], mime: 'image/jpeg' });
+        };
+        img.src = lecteur.result;
+      };
+      lecteur.readAsDataURL(fichier);
+    });
+  }
+
+  window.carnetOuvrirDossier = function (patientId) {
+    try {
+      if (typeof selectPatient === 'function') selectPatient(patientId);
+      const sel = $('quickPatientSelect');
+      if (sel) { sel.value = patientId; sel.dispatchEvent(new Event('change')); }
+      switchMainTab('dossier');
+    } catch (e) { console.warn('[carnet] ouverture du dossier :', e && e.message); }
+  };
 
   window.carnetAjouter = async function () {
     const texte = ($('carnetTexte') || {}).value || '';
