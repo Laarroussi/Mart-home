@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v98';</script>
-  <script src="api-client.js?v=phase98-1"></script>
+  <script>window.MARFAN_VERSION = 'v99';</script>
+  <script src="api-client.js?v=phase99-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase98-1"></script>
+  <script src="questionnaires-defs.js?v=phase99-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase98-1"></script>
+  <script src="medical-parsers.js?v=phase99-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase98-1"></script>
-  <script src="cpet-analyse.js?v=phase98-1"></script>
+  <script src="cpet-graph-preview.js?v=phase99-1"></script>
+  <script src="cpet-analyse.js?v=phase99-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase98-1"></script>
-  <script src="medical-record-ui.js?v=phase98-1"></script>
+  <script src="pdf-extractor.js?v=phase99-1"></script>
+  <script src="medical-record-ui.js?v=phase99-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase98-1"></script>
-  <script src="synthese-ui.js?v=phase98-1"></script>
-  <script src="audit-ui.js?v=phase98-1"></script>
-  <script src="entretien-ui.js?v=phase98-1"></script>
-  <script src="activation-ui.js?v=phase98-1"></script>
-  <script src="document-import.js?v=phase98-1"></script>
-  <script src="activite-ui.js?v=phase98-1"></script>
-  <script src="cpet-detail.js?v=phase98-1"></script>
-  <script src="echo-calculs.js?v=phase98-1"></script>
-  <script src="echo-detail.js?v=phase98-1"></script>
-  <script src="accueil-activite.js?v=phase98-1"></script>
-  <script src="visio-jitsi.js?v=phase98-1"></script>
-  <script src="video-pilotee.js?v=phase98-1"></script>
-  <script src="fiche-apa.js?v=phase98-1"></script>
-  <script src="inactivite.js?v=phase98-1"></script>
-  <script src="bilans-ui.js?v=phase98-1"></script>
-  <script src="etudes-ui.js?v=phase98-1"></script>
-  <script src="ville-hopital.js?v=phase98-1"></script>
-  <script src="qlibres-ui.js?v=phase98-1"></script>
-  <script src="parametres-ui.js?v=phase98-1"></script>
+  <script src="aortic-consultations.js?v=phase99-1"></script>
+  <script src="synthese-ui.js?v=phase99-1"></script>
+  <script src="audit-ui.js?v=phase99-1"></script>
+  <script src="entretien-ui.js?v=phase99-1"></script>
+  <script src="activation-ui.js?v=phase99-1"></script>
+  <script src="document-import.js?v=phase99-1"></script>
+  <script src="activite-ui.js?v=phase99-1"></script>
+  <script src="cpet-detail.js?v=phase99-1"></script>
+  <script src="echo-calculs.js?v=phase99-1"></script>
+  <script src="echo-detail.js?v=phase99-1"></script>
+  <script src="accueil-activite.js?v=phase99-1"></script>
+  <script src="visio-jitsi.js?v=phase99-1"></script>
+  <script src="video-pilotee.js?v=phase99-1"></script>
+  <script src="fiche-apa.js?v=phase99-1"></script>
+  <script src="inactivite.js?v=phase99-1"></script>
+  <script src="bilans-ui.js?v=phase99-1"></script>
+  <script src="etudes-ui.js?v=phase99-1"></script>
+  <script src="ville-hopital.js?v=phase99-1"></script>
+  <script src="qlibres-ui.js?v=phase99-1"></script>
+  <script src="parametres-ui.js?v=phase99-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3124,6 +3124,14 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Listing patients
         </button>
+        <!-- Carnet de suivi : ce qui est à faire, tous patients confondus.
+             Le compteur n'apparaît que s'il y a quelque chose à traiter —
+             une pastille à zéro en permanence cesse vite d'être regardée. -->
+        <button class="tab-button" data-tab="carnet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Carnet de suivi
+          <span id="carnetPastille" style="display:none; margin-left:auto; background:#dc2626; color:white; border-radius:99px; padding:1px 8px; font-size:11px; font-weight:800;"></span>
+        </button>
 
         <!-- Phase 43 — Questionnaires libres. Distincts du SF-36 et du GPAQ :
              ceux-ci partent automatiquement aux patients inclus et nourrissent
@@ -5206,6 +5214,59 @@
       </section>
 
       <!-- ============================== LISTING ============================== -->
+      <!-- ============================== CARNET DE SUIVI ==============================
+           Ce qui est à faire, tous patients confondus, partagé par l'équipe.
+           Distinct des consultations (mesures), des entretiens (transcriptions)
+           et des synthèses (textes rédigés) : ici on note ce qu'on doit faire,
+           pas ce qu'on a observé. -->
+      <section id="carnet" class="tab-panel hidden">
+        <header class="page-header">
+          <div>
+            <h2>Carnet de suivi</h2>
+            <p>Ce qui vous attend, patient par patient. Partagé avec les autres investigateurs.</p>
+          </div>
+          <div class="actions">
+            <button class="btn-light" onclick="carnetCharger()">↻ Actualiser</button>
+          </div>
+        </header>
+
+        <div class="card" style="padding:16px 20px; margin-bottom:16px;">
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+            <div style="flex:2; min-width:260px;">
+              <label for="carnetTexte" style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:5px;">
+                À faire
+              </label>
+              <input id="carnetTexte" type="text" placeholder="Relancer pour la spirométrie, revoir dans 3 semaines…"
+                     onkeydown="if(event.key==='Enter') carnetAjouter()"
+                     style="width:100%; padding:11px; border:1px solid #cbd5e1; border-radius:9px; font-size:13.5px; font-family:inherit;">
+            </div>
+            <div style="min-width:210px;">
+              <label for="carnetPatient" style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:5px;">
+                Patient <span style="font-weight:400; color:#94a3b8;">(facultatif)</span>
+              </label>
+              <select id="carnetPatient" style="width:100%; padding:11px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;">
+                <option value="">— Aucun patient —</option>
+              </select>
+            </div>
+            <div style="min-width:160px;">
+              <label for="carnetEcheance" style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:5px;">
+                Pour le <span style="font-weight:400; color:#94a3b8;">(facultatif)</span>
+              </label>
+              <input id="carnetEcheance" type="date"
+                     style="width:100%; padding:11px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;">
+            </div>
+            <button class="btn-gradient" onclick="carnetAjouter()" style="padding:12px 20px; white-space:nowrap;">+ Ajouter</button>
+          </div>
+          <p style="font-size:11.5px; color:#64748b; margin:8px 0 0; line-height:1.5;">
+            Sans date, l'action est conservée mais ne reviendra pas vers vous d'elle-même :
+            elle attend dans « Sans échéance ».
+          </p>
+          <div id="carnetMessage" style="display:none; margin-top:11px; padding:10px 12px; border-radius:9px; font-size:12.5px;"></div>
+        </div>
+
+        <div id="carnetListe"></div>
+      </section>
+
       <section id="listing" class="tab-panel hidden">
         <header class="page-header">
           <div><h2>Listing patients</h2><p>Vue tabulaire compacte. Envoi groupé ou individuel des questionnaires SF-36 et GPAQ.</p></div>
@@ -6340,6 +6401,7 @@
       'invest-account': ['Création compte investigateur', 'Création d\'un compte avec rôle Investigateur — réservé à l\'Administrateur principal.'],
       dossier: ['Consultation dossier patient', 'Évaluations longitudinales et comparaisons ouvertes.'],
       database: ['Base de données', 'Vue longitudinale ou large, structure dynamique.'],
+      carnet: ['Carnet de suivi', 'Ce qui vous attend, patient par patient. Partagé avec l\'équipe.'],
       training: ['Présentation des entraînements en vidéo', 'Bibliothèque complète des vidéos, à visionner en grand.'],
       visio: ['Séance de groupe', 'Patients en visio, vidéo d\'entraînement diffusée et suivi physiologique.'],
       individuel: ['Entraînement individuel', 'Entretien à deux dans une salle privée, sur lien transmis.'],
@@ -6376,6 +6438,7 @@
       try { indivRafraichirListe(); } catch (_) {}
       try { indivRendreVideos(); } catch (_) {}
     }
+    if (tabId === 'carnet') { try { carnetCharger(); } catch (_) {} }
     if (tabId === 'database') renderDbTable();
     // Le listing n'était redessiné qu'à la création d'un patient ou au
     // rechargement de la cohorte. Si l'un de ces appels échouait, le tableau
@@ -12978,6 +13041,171 @@
    * visio-jitsi empêche désormais le doublon, mais laisser un bouton inerte
    * sous le doigt reste un défaut d'interface : on dit ce qui se passe.
    */
+  // ================================================================
+  // CARNET DE SUIVI
+  // ----------------------------------------------------------------
+  // Le regroupement par échéance vient du serveur, pas d'ici : la date du jour
+  // d'un poste peut être fausse, et une action en retard doit se voir en
+  // retard sur tous les écrans de la même façon.
+  // ================================================================
+  const CARNET_RUBRIQUES = [
+    ['en_retard',     'En retard',        '#dc2626', '#fef2f2', '#fecaca'],
+    ['aujourdhui',    "Aujourd'hui",      '#b45309', '#fffbeb', '#fcd34d'],
+    ['cette_semaine', 'Cette semaine',    '#0e7490', '#ecfeff', '#a5f3fc'],
+    ['plus_tard',     'Plus tard',        '#475569', '#f8fafc', '#e2e8f0'],
+    ['sans_echeance', 'Sans échéance',    '#64748b', '#f8fafc', '#e2e8f0'],
+    ['faites',        'Faites récemment', '#047857', '#ecfdf5', '#a7f3d0']
+  ];
+
+  function carnetDire(texte, type) {
+    const d = $('carnetMessage');
+    if (!d) return;
+    const c = { ok:['#ecfdf5','#a7f3d0','#065f46'], erreur:['#fef2f2','#fecaca','#991b1b'],
+                info:['#f8fafc','#e2e8f0','#334155'] }[type || 'info'];
+    d.style.display = 'block';
+    d.style.background = c[0]; d.style.border = '1px solid ' + c[1]; d.style.color = c[2];
+    d.textContent = texte;
+  }
+
+  function carnetDateLisible(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  /** Remplit la liste des patients du formulaire, avec code et prénom. */
+  function carnetRemplirPatients() {
+    const sel = $('carnetPatient');
+    if (!sel || typeof patients === 'undefined') return;
+    const choisi = sel.value;
+    sel.innerHTML = '<option value="">— Aucun patient —</option>' +
+      patients.map(p => `<option value="${p.id}">${window.etiquettePatient(p)}</option>`).join('');
+    if (choisi) sel.value = choisi;
+  }
+
+  window.carnetCharger = async function () {
+    const zone = $('carnetListe');
+    if (!zone) return;
+    carnetRemplirPatients();
+    zone.innerHTML = '<div style="padding:20px; color:#94a3b8; font-size:13px;">Chargement…</div>';
+    try {
+      const r = await window.MarfanAPI.carnet.lister();
+      carnetAfficher(r.groupes || {});
+      carnetMajPastille(r.a_traiter || 0);
+    } catch (e) {
+      zone.innerHTML = '<div style="padding:20px; color:#991b1b; font-size:13px;">Carnet indisponible : '
+                     + ((e && e.message) || 'erreur inconnue') + '</div>';
+    }
+  };
+
+  function carnetMajPastille(n) {
+    const p = $('carnetPastille');
+    if (!p) return;
+    // Une pastille qui affiche zéro en permanence cesse d'être regardée ;
+    // celle-ci ne se montre que lorsqu'il y a vraiment quelque chose.
+    p.style.display = n > 0 ? 'inline-block' : 'none';
+    p.textContent = n > 0 ? String(n) : '';
+  }
+
+  function carnetAfficher(groupes) {
+    const zone = $('carnetListe');
+    const total = CARNET_RUBRIQUES.reduce((n, [cle]) => n + ((groupes[cle] || []).length), 0);
+    if (!total) {
+      zone.innerHTML = `<div class="card" style="padding:34px; text-align:center;">
+        <div style="font-size:40px; margin-bottom:8px;">📓</div>
+        <strong style="font-size:15px;">Le carnet est vide</strong>
+        <p style="color:#64748b; font-size:13px; margin-top:7px; line-height:1.6;">
+          Notez ci-dessus ce que vous ne devez pas oublier : une relance, un contrôle à prévoir,
+          un patient à rappeler. Rien n'est perdu, et tout est partagé avec l'équipe.
+        </p></div>`;
+      return;
+    }
+    zone.innerHTML = CARNET_RUBRIQUES.map(([cle, titre, couleur, fond, bord]) => {
+      const liste = groupes[cle] || [];
+      if (!liste.length) return '';
+      return `<div class="card" style="padding:0; margin-bottom:14px; overflow:hidden;">
+        <div style="padding:10px 16px; background:${fond}; border-bottom:1px solid ${bord}; display:flex; align-items:center; gap:9px;">
+          <strong style="color:${couleur}; font-size:13px;">${titre}</strong>
+          <span style="color:${couleur}; opacity:.75; font-size:12px;">${liste.length}</span>
+        </div>
+        ${liste.map(a => carnetLigne(a, cle)).join('')}
+      </div>`;
+    }).join('');
+  }
+
+  function carnetLigne(a, rubrique) {
+    const faite = (a.statut === 'faite' || a.statut === 'annulee');
+    const p = (typeof patients !== 'undefined' && a.patient_id)
+      ? patients.find(x => x.id === a.patient_id) : null;
+    const qui = p ? window.etiquettePatient(p) : (a.patient_id || '');
+    const date = carnetDateLisible(a.echeance);
+    return `<div style="padding:11px 16px; border-bottom:1px solid #f1f5f9; display:flex; gap:11px; align-items:flex-start;">
+      <button onclick="carnetBasculer(${a.id}, ${faite ? 'false' : 'true'})"
+              title="${faite ? 'Remettre à faire' : 'Marquer comme faite'}"
+              style="flex:0 0 auto; width:21px; height:21px; margin-top:1px; border-radius:5px; cursor:pointer;
+                     border:1.5px solid ${faite ? '#047857' : '#cbd5e1'};
+                     background:${faite ? '#047857' : 'white'}; color:white; font-size:12px; line-height:1;">${faite ? '✓' : ''}</button>
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:13.5px; color:#0b1530; ${faite ? 'text-decoration:line-through; opacity:.6;' : ''}">${a.texte}</div>
+        <div style="font-size:11.5px; color:#64748b; margin-top:3px; display:flex; gap:9px; flex-wrap:wrap;">
+          ${qui ? `<span style="font-weight:700; color:#334155;">${qui}</span>` : '<span style="font-style:italic;">sans patient</span>'}
+          ${date ? `<span>· pour le ${date}</span>` : ''}
+          <span>· demandé par ${a.cree_par_nom || '—'}</span>
+          ${a.statut === 'annulee' ? `<span style="color:#991b1b;">· abandonnée : ${a.motif || ''}</span>` : ''}
+          ${a.statut === 'faite' && a.faite_par_nom ? `<span style="color:#047857;">· faite par ${a.faite_par_nom}</span>` : ''}
+        </div>
+        ${a.note ? `<div style="font-size:12px; color:#475569; margin-top:4px;">${a.note}</div>` : ''}
+      </div>
+      ${faite ? '' : `<button onclick="carnetAbandonner(${a.id})" title="Renoncer à cette action"
+              style="flex:0 0 auto; border:1px solid #e2e8f0; background:white; color:#94a3b8; border-radius:7px;
+                     padding:3px 9px; font-size:11px; cursor:pointer;">Abandonner</button>`}
+    </div>`;
+  }
+
+  window.carnetAjouter = async function () {
+    const texte = ($('carnetTexte') || {}).value || '';
+    if (!texte.trim()) { carnetDire("Écrivez d'abord ce qu'il y a à faire.", 'erreur'); return; }
+    try {
+      await window.MarfanAPI.carnet.ajouter({
+        texte: texte.trim(),
+        patient_id: ($('carnetPatient') || {}).value || null,
+        echeance: ($('carnetEcheance') || {}).value || null
+      });
+      $('carnetTexte').value = '';
+      // On garde le patient et la date : on note souvent plusieurs actions
+      // de suite pour la même personne.
+      carnetDire('Action ajoutée.', 'ok');
+      await carnetCharger();
+    } catch (e) {
+      carnetDire('Impossible d\'ajouter : ' + ((e && e.message) || 'erreur inconnue'), 'erreur');
+    }
+  };
+
+  window.carnetBasculer = async function (id, versFaite) {
+    try {
+      await (versFaite ? window.MarfanAPI.carnet.faite(id) : window.MarfanAPI.carnet.rouvrir(id));
+      await carnetCharger();
+    } catch (e) {
+      carnetDire('Impossible de modifier : ' + ((e && e.message) || 'erreur inconnue'), 'erreur');
+    }
+  };
+
+  window.carnetAbandonner = async function (id) {
+    // On demande pourquoi : une action qui disparaît sans raison laisse penser
+    // qu'elle a été faite. Le motif reste visible dans le carnet.
+    const motif = prompt('Pourquoi renoncez-vous à cette action ?\n\n'
+                       + 'Elle ne sera pas supprimée : elle restera visible, avec ce motif.');
+    if (motif === null) return;
+    if (!motif.trim()) { carnetDire('Un motif est nécessaire pour abandonner une action.', 'erreur'); return; }
+    try {
+      await window.MarfanAPI.carnet.annuler(id, motif.trim());
+      await carnetCharger();
+    } catch (e) {
+      carnetDire('Impossible d\'abandonner : ' + ((e && e.message) || 'erreur inconnue'), 'erreur');
+    }
+  };
+
   // ================================================================
   // ENTRAÎNEMENT INDIVIDUEL
   // ----------------------------------------------------------------

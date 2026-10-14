@@ -401,6 +401,17 @@
       config: () => request('GET', '/visio-jaas/config')
     },
 
+    /** ===== Carnet de suivi : les actions à ne pas oublier ===== */
+    carnet: {
+      lister:   ()                 => request('GET',   '/carnet'),
+      duPatient:(id)               => request('GET',   '/carnet/patient/' + encodeURIComponent(id)),
+      ajouter:  (donnees)          => request('POST',  '/carnet', donnees),
+      modifier: (id, donnees)      => request('PATCH', '/carnet/' + id, donnees),
+      faite:    (id)               => request('PATCH', '/carnet/' + id, { statut: 'faite' }),
+      rouvrir:  (id)               => request('PATCH', '/carnet/' + id, { statut: 'a_faire' }),
+      annuler:  (id, motif)        => request('PATCH', '/carnet/' + id, { statut: 'annulee', motif })
+    },
+
     /** ===== Séances individuelles : une salle par entretien ===== */
     visioIndividuelle: {
       // Une ou plusieurs personnes : on envoie toujours une liste, le cas à
