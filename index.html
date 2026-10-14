@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v95';</script>
-  <script src="api-client.js?v=phase95-1"></script>
+  <script>window.MARFAN_VERSION = 'v97';</script>
+  <script src="api-client.js?v=phase97-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase95-1"></script>
+  <script src="questionnaires-defs.js?v=phase97-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase95-1"></script>
+  <script src="medical-parsers.js?v=phase97-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase95-1"></script>
-  <script src="cpet-analyse.js?v=phase95-1"></script>
+  <script src="cpet-graph-preview.js?v=phase97-1"></script>
+  <script src="cpet-analyse.js?v=phase97-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase95-1"></script>
-  <script src="medical-record-ui.js?v=phase95-1"></script>
+  <script src="pdf-extractor.js?v=phase97-1"></script>
+  <script src="medical-record-ui.js?v=phase97-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase95-1"></script>
-  <script src="synthese-ui.js?v=phase95-1"></script>
-  <script src="audit-ui.js?v=phase95-1"></script>
-  <script src="entretien-ui.js?v=phase95-1"></script>
-  <script src="activation-ui.js?v=phase95-1"></script>
-  <script src="document-import.js?v=phase95-1"></script>
-  <script src="activite-ui.js?v=phase95-1"></script>
-  <script src="cpet-detail.js?v=phase95-1"></script>
-  <script src="echo-calculs.js?v=phase95-1"></script>
-  <script src="echo-detail.js?v=phase95-1"></script>
-  <script src="accueil-activite.js?v=phase95-1"></script>
-  <script src="visio-jitsi.js?v=phase95-1"></script>
-  <script src="video-pilotee.js?v=phase95-1"></script>
-  <script src="fiche-apa.js?v=phase95-1"></script>
-  <script src="inactivite.js?v=phase95-1"></script>
-  <script src="bilans-ui.js?v=phase95-1"></script>
-  <script src="etudes-ui.js?v=phase95-1"></script>
-  <script src="ville-hopital.js?v=phase95-1"></script>
-  <script src="qlibres-ui.js?v=phase95-1"></script>
-  <script src="parametres-ui.js?v=phase95-1"></script>
+  <script src="aortic-consultations.js?v=phase97-1"></script>
+  <script src="synthese-ui.js?v=phase97-1"></script>
+  <script src="audit-ui.js?v=phase97-1"></script>
+  <script src="entretien-ui.js?v=phase97-1"></script>
+  <script src="activation-ui.js?v=phase97-1"></script>
+  <script src="document-import.js?v=phase97-1"></script>
+  <script src="activite-ui.js?v=phase97-1"></script>
+  <script src="cpet-detail.js?v=phase97-1"></script>
+  <script src="echo-calculs.js?v=phase97-1"></script>
+  <script src="echo-detail.js?v=phase97-1"></script>
+  <script src="accueil-activite.js?v=phase97-1"></script>
+  <script src="visio-jitsi.js?v=phase97-1"></script>
+  <script src="video-pilotee.js?v=phase97-1"></script>
+  <script src="fiche-apa.js?v=phase97-1"></script>
+  <script src="inactivite.js?v=phase97-1"></script>
+  <script src="bilans-ui.js?v=phase97-1"></script>
+  <script src="etudes-ui.js?v=phase97-1"></script>
+  <script src="ville-hopital.js?v=phase97-1"></script>
+  <script src="qlibres-ui.js?v=phase97-1"></script>
+  <script src="parametres-ui.js?v=phase97-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -16064,7 +16064,7 @@
           <label style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:7px; cursor:pointer;">
             <input type="checkbox" class="qPatCb" value="${p.id}" style="width:17px; height:17px; cursor:pointer; accent-color:#7c3aed;">
             <strong style="font-size:13px; color:#0b1530;">${p.id}</strong>
-            <span style="font-size:12px; color:#6b7390;">${(p.civil && p.civil.initials) || ''} ${p.sex || ''} ${p.age ? '· ' + p.age + ' ans' : ''}</span>
+            <span style="font-size:12px; color:#6b7390;">${window.nomLisiblePatient(p)} ${p.sex || ''} ${p.age ? '· ' + p.age + ' ans' : ''}</span>
           </label>`).join('');
       }
       const cases = () => Array.from(document.querySelectorAll('.qPatCb'));
@@ -16199,7 +16199,7 @@
                     <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px;" onmouseover="this.style.background='#f3f6fb'" onmouseout="this.style.background='transparent'">
                       <input type="checkbox" class="apiAssignPatCb" data-patient-id="${p.id}" style="width:16px; height:16px;">
                       <strong>${p.id}</strong>
-                      <span style="color:var(--muted);">${p.civil && p.civil.initials ? p.civil.initials : ''}</span>
+                      <span style="color:var(--muted);">${window.nomLisiblePatient(p)}</span>
                     </label>`).join('')}
                 </div>
               </div>
@@ -16315,7 +16315,7 @@
 
     async function openStaffTrainingModal() {
       const patientOpts = (window.patients || []).map(p =>
-        `<option value="${p.id}">${p.id}${p.civil && p.civil.initials ? ' — ' + p.civil.initials : ''}</option>`
+        `<option value="${p.id}">${window.etiquettePatient(p)}</option>`
       ).join('');
       const html = `
         <div id="apiStaffTrainBackdrop" style="position:fixed; inset:0; background:rgba(11,21,48,0.75); z-index:10001; display:flex; align-items:center; justify-content:center; padding:20px;">
@@ -17704,7 +17704,7 @@
     function openCreateVisioModal() {
       // Récupère la liste des patients depuis la cohorte en mémoire
       const patientOptions = (window.patients || []).map(p =>
-        `<option value="${p.id}">${p.id}${p.civil && p.civil.initials ? ' — ' + p.civil.initials : ''}</option>`
+        `<option value="${p.id}">${window.etiquettePatient(p)}</option>`
       ).join('');
 
       const html = `
@@ -20175,6 +20175,45 @@
         if (typeof window.renderUnifiedTable === 'function') window.renderUnifiedTable();
       });
     }
+
+    /**
+     * Comment nommer un patient dans une liste de travail.
+     *
+     * Le code seul — MRF-007 — est irréprochable sur le papier et impraticable
+     * au quotidien : personne ne retient vingt codes, et prescrire une séance
+     * au mauvais patient parce qu'on a confondu MRF-007 et MRF-009 est un
+     * risque clinique bien réel, pas une gêne d'ergonomie.
+     *
+     * On affiche donc le prénom et l'initiale du nom : « MRF-007 · Yanis G. ».
+     * Assez pour reconnaître sans hésiter, pas assez pour constituer une
+     * identité exploitable par un tiers qui verrait l'écran de loin.
+     *
+     * Et dès que la pseudonymisation est active — présentation, export,
+     * partage d'écran en séance — il ne reste que le code. C'est précisément
+     * à cela que sert ce bouton, et aucune liste ne doit lui échapper.
+     */
+    /** La part lisible seule : « Célia C. ». Vide si la pseudonymisation est
+     *  active, ou si aucune identité n'est connue — jamais le code répété. */
+    window.nomLisiblePatient = function (p) {
+      if (!p) return '';
+      if (window.AppModes && window.AppModes.pseudoMode) return '';
+      const c = p.civil || {};
+      const prenom = (c.firstName || '').trim();
+      const nom = (c.lastName || '').trim();
+      if (prenom || nom) {
+        return [prenom, nom ? nom[0].toUpperCase() + '.' : ''].filter(Boolean).join(' ');
+      }
+      // Ni prénom ni nom en mémoire : les initiales valent mieux que rien.
+      return (c.initials || '').trim();
+    };
+
+    /** Code et identité réunis : « MRF-007 · Yanis G. ». */
+    window.etiquettePatient = function (p) {
+      if (!p) return '';
+      const code = p.id || '';
+      const lisible = window.nomLisiblePatient(p);
+      return lisible ? code + ' · ' + lisible : code;
+    };
 
     // Fonction utilitaire globale de pseudonymisation
     // Retourne l'affichage d'un champ selon le mode courant
