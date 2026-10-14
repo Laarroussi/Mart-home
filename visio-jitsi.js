@@ -352,7 +352,24 @@
         // Ne jamais proposer de couper le son du partage : la musique et les
         // consignes de la vidéo font partie de la séance.
         disableScreensharingVirtualBackground: true,
-        startScreenSharing: false
+        startScreenSharing: false,
+
+        // Barre d'outils : la clé moderne, et la seule encore lue.
+        //
+        // La liste était donnée dans interfaceConfigOverwrite.TOOLBAR_BUTTONS,
+        // qui est l'ancienne forme. Jitsi l'a remplacée par
+        // configOverwrite.toolbarButtons et ignore désormais la première. Une
+        // liste ignorée ne laisse pas la barre par défaut : selon la version,
+        // elle peut laisser une barre amputée — micro et caméra absents, ou
+        // présents mais sans effet. C'est ce qu'on observe le 14 octobre, des
+        // deux côtés de l'entretien.
+        //
+        // On fournit les deux formes : la nouvelle pour les versions actuelles,
+        // l'ancienne pour une instance qui serait restée en arrière.
+        toolbarButtons: moderateur
+          ? ['microphone','camera','desktop','sharedvideo','fullscreen','hangup',
+             'chat','raisehand','tileview','settings','videoquality','filmstrip','select-background']
+          : ['microphone','camera','fullscreen','hangup','chat','raisehand','tileview','settings']
       },
       interfaceConfigOverwrite: {
         DEFAULT_BACKGROUND: '#020617',
