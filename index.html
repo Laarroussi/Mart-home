@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v103';</script>
-  <script src="api-client.js?v=phase103-1"></script>
+  <script>window.MARFAN_VERSION = 'v104';</script>
+  <script src="api-client.js?v=phase104-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase103-1"></script>
+  <script src="questionnaires-defs.js?v=phase104-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase103-1"></script>
+  <script src="medical-parsers.js?v=phase104-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase103-1"></script>
-  <script src="cpet-analyse.js?v=phase103-1"></script>
+  <script src="cpet-graph-preview.js?v=phase104-1"></script>
+  <script src="cpet-analyse.js?v=phase104-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase103-1"></script>
-  <script src="medical-record-ui.js?v=phase103-1"></script>
+  <script src="pdf-extractor.js?v=phase104-1"></script>
+  <script src="medical-record-ui.js?v=phase104-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase103-1"></script>
-  <script src="synthese-ui.js?v=phase103-1"></script>
-  <script src="audit-ui.js?v=phase103-1"></script>
-  <script src="entretien-ui.js?v=phase103-1"></script>
-  <script src="activation-ui.js?v=phase103-1"></script>
-  <script src="document-import.js?v=phase103-1"></script>
-  <script src="activite-ui.js?v=phase103-1"></script>
-  <script src="cpet-detail.js?v=phase103-1"></script>
-  <script src="echo-calculs.js?v=phase103-1"></script>
-  <script src="echo-detail.js?v=phase103-1"></script>
-  <script src="accueil-activite.js?v=phase103-1"></script>
-  <script src="visio-jitsi.js?v=phase103-1"></script>
-  <script src="video-pilotee.js?v=phase103-1"></script>
-  <script src="fiche-apa.js?v=phase103-1"></script>
-  <script src="inactivite.js?v=phase103-1"></script>
-  <script src="bilans-ui.js?v=phase103-1"></script>
-  <script src="etudes-ui.js?v=phase103-1"></script>
-  <script src="ville-hopital.js?v=phase103-1"></script>
-  <script src="qlibres-ui.js?v=phase103-1"></script>
-  <script src="parametres-ui.js?v=phase103-1"></script>
+  <script src="aortic-consultations.js?v=phase104-1"></script>
+  <script src="synthese-ui.js?v=phase104-1"></script>
+  <script src="audit-ui.js?v=phase104-1"></script>
+  <script src="entretien-ui.js?v=phase104-1"></script>
+  <script src="activation-ui.js?v=phase104-1"></script>
+  <script src="document-import.js?v=phase104-1"></script>
+  <script src="activite-ui.js?v=phase104-1"></script>
+  <script src="cpet-detail.js?v=phase104-1"></script>
+  <script src="echo-calculs.js?v=phase104-1"></script>
+  <script src="echo-detail.js?v=phase104-1"></script>
+  <script src="accueil-activite.js?v=phase104-1"></script>
+  <script src="visio-jitsi.js?v=phase104-1"></script>
+  <script src="video-pilotee.js?v=phase104-1"></script>
+  <script src="fiche-apa.js?v=phase104-1"></script>
+  <script src="inactivite.js?v=phase104-1"></script>
+  <script src="bilans-ui.js?v=phase104-1"></script>
+  <script src="etudes-ui.js?v=phase104-1"></script>
+  <script src="ville-hopital.js?v=phase104-1"></script>
+  <script src="qlibres-ui.js?v=phase104-1"></script>
+  <script src="parametres-ui.js?v=phase104-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13147,14 +13147,37 @@
     const v = ao.sinus_mm != null ? Number(ao.sinus_mm) : null;
     const tonAorte = v == null ? '#94a3b8' : (v >= 45 ? '#b91c1c' : v >= 40 ? '#b45309' : '#047857');
 
-    const bloc = (titre, contenu, hauteur) => `
-      <div class="card" style="padding:13px 15px; display:flex; flex-direction:column; min-height:0;">
-        <div style="font-size:10.5px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.4px; margin-bottom:7px;">${titre}</div>
-        <div style="flex:1; min-height:0; ${hauteur ? 'max-height:' + hauteur + 'px; overflow-y:auto;' : ''} font-size:12.5px; line-height:1.55; color:#334155;">${contenu}</div>
+    /**
+     * Titre de bloc : il doit se voir avant d'être lu.
+     *
+     * Première version : petites capitales grises sur fond blanc. À l'usage,
+     * l'œil ne les séparait pas du texte en dessous — on cherchait où
+     * commençait « Antécédents ». Trois changements, qui jouent ensemble :
+     * le titre passe en bleu nuit au lieu du gris, il grandit, et il reçoit
+     * un trait de couleur à gauche plus un filet en dessous. La couleur
+     * distingue aussi les blocs entre eux, ce qui aide à revenir toujours au
+     * même endroit du regard.
+     */
+    const bloc = (titre, contenu, hauteur, accent) => `
+      <div class="card" style="padding:0; display:flex; flex-direction:column; min-height:0; overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:9px; padding:11px 15px 9px;
+                    border-bottom:2px solid ${accent}22; background:${accent}0d;">
+          <span style="flex:0 0 auto; width:4px; height:17px; border-radius:2px; background:${accent};"></span>
+          <span style="font-size:13px; font-weight:800; color:#0b1530; letter-spacing:.2px;">${titre}</span>
+        </div>
+        <div style="flex:1; min-height:0; padding:11px 15px 13px;
+                    ${hauteur ? 'max-height:' + hauteur + 'px; overflow-y:auto;' : ''}
+                    font-size:12.5px; line-height:1.55; color:#334155;">${contenu}</div>
       </div>`;
 
     const paire = (k, val) => `<div style="display:flex; justify-content:space-between; gap:10px; padding:3px 0;">
         <span style="color:#64748b;">${k}</span><span style="color:#0b1530; font-weight:600; text-align:right;">${val}</span></div>`;
+
+    // Sous-titre à l'intérieur d'un bloc : plus discret que le titre du bloc,
+    // mais plus affirmé que le texte courant. Sans cette marche intermédiaire,
+    // « Histoire » et la phrase qui suit se confondaient aussi.
+    const sousTitre = (t) => `<div style="font-size:10.5px; font-weight:800; color:#64748b;
+        text-transform:uppercase; letter-spacing:.5px; margin:8px 0 2px;">${t}</div>`;
 
     const liste = (arr) => (arr && arr.length)
       ? arr.map(x => `<span style="display:inline-block; background:#f1f5f9; border-radius:6px; padding:2px 8px; margin:2px 3px 2px 0; font-size:11.5px;">${x}</span>`).join('')
@@ -13174,7 +13197,7 @@
         </div>
       </div>
       <div style="text-align:right; min-width:170px;">
-        <div style="font-size:10.5px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.4px;">Sinus de Valsalva</div>
+        <div style="font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:.5px;">Sinus de Valsalva</div>
         ${v != null
           ? `<div style="font-size:30px; font-weight:800; color:${tonAorte}; line-height:1.1;">${v.toFixed(1)}<span style="font-size:15px;"> mm</span></div>
              <div style="font-size:11.5px; color:#64748b;">${pDate(ao.sinus_date)}</div>${evolution}`
@@ -13190,28 +13213,30 @@
         ${paire('Gène / variant', pTexte(pa.gene))}
         ${paire('Diagnostic', pDate(pa.date_diagnostic))}
         ${paire('Statut', pTexte(pa.statut))}
-        <div style="margin-top:6px; color:#64748b;">Atteintes</div>
+        ${sousTitre('Atteintes')}
         <div>${liste(pa.alterations)}</div>
-        ${(pa.incidents && pa.incidents.length) ? `<div style="margin-top:6px; color:#991b1b; font-weight:700;">Incidents</div><div>${liste(pa.incidents)}</div>` : ''}
-        ${pa.facteur_risque ? `<div style="margin-top:6px; color:#64748b;">Risque</div><div>${pTexte(pa.facteur_risque)}</div>` : ''}
-      `, 184)}
+        ${(pa.incidents && pa.incidents.length)
+          ? `<div style="font-size:10.5px; font-weight:800; color:#991b1b; text-transform:uppercase;
+                         letter-spacing:.5px; margin:8px 0 2px;">Incidents</div><div>${liste(pa.incidents)}</div>` : ''}
+        ${pa.facteur_risque ? sousTitre('Risque') + `<div>${pTexte(pa.facteur_risque)}</div>` : ''}
+      `, 184, '#7c3aed')}
 
       ${bloc('Antécédents et traitements', `
-        <div style="color:#64748b;">Histoire</div><div style="margin-bottom:6px;">${pTexte(an.histoire)}</div>
-        <div style="color:#64748b;">Traitements</div><div style="margin-bottom:6px;">${pTexte(an.traitements)}</div>
+        ${sousTitre('Histoire')}<div>${pTexte(an.histoire)}</div>
+        ${sousTitre('Traitements')}<div style="margin-bottom:6px;">${pTexte(an.traitements)}</div>
         ${paire('Allergies', pTexte(an.allergies))}
         ${paire('Tabac', pTexte(an.tabac))}
         ${paire('PA de repos', pTexte(an.pa_repos))}
-      `, 184)}
+      `, 184, '#0891b2')}
 
       ${bloc('Prise en charge APA', `
         ${paire('Début APA', pDate(ap.debut))}
         ${paire('Inclusion', pDate(ap.inclusion))}
         ${paire('VO₂ max', ap.vo2_max != null ? Number(ap.vo2_max).toFixed(1) + ' mL/kg/min' : PORTRAIT_VIDE)}
         ${ap.vo2_date ? paire('mesurée le', pDate(ap.vo2_date)) : ''}
-        <div style="margin-top:6px; color:#64748b;">Modalités</div><div style="margin-bottom:6px;">${pTexte(ap.modalites)}</div>
-        <div style="color:#64748b;">Objectifs</div><div>${pTexte(ap.objectifs)}</div>
-      `, 184)}
+        ${sousTitre('Modalités')}<div>${pTexte(ap.modalites)}</div>
+        ${sousTitre('Objectifs')}<div>${pTexte(ap.objectifs)}</div>
+      `, 184, '#f59e0b')}
 
       ${bloc('Activité réalisée', `
         <div style="display:flex; gap:14px; margin-bottom:8px;">
@@ -13223,13 +13248,13 @@
                <div style="font-size:11px; color:#64748b;">Borg moyen</div></div>` : ''}
         </div>
         ${ac.seances
-          ? `<div style="color:#64748b; margin-bottom:3px;">Dernières séances</div>
-             ${ac.recentes.map(s => `<div style="display:flex; justify-content:space-between; gap:8px; padding:2px 0; border-bottom:1px solid #f8fafc;">
+          ? sousTitre('Dernières séances') +
+            ac.recentes.map(s => `<div style="display:flex; justify-content:space-between; gap:8px; padding:2px 0; border-bottom:1px solid #f8fafc;">
                  <span>${pDate(s.started_at)}</span>
                  <span style="color:#64748b;">${pDuree(s.duration_s)}${s.borg_cr10 != null ? ' · Borg ' + s.borg_cr10 : ''}${s.modalite ? ' · ' + s.modalite : ''}</span>
-               </div>`).join('')}`
+               </div>`).join('')
           : '<div style="color:#94a3b8; font-style:italic;">Aucune séance enregistrée à ce jour.</div>'}
-      `, 184)}
+      `, 184, '#059669')}
     </div>`;
   }
 
@@ -13551,7 +13576,7 @@
       </div>
 
       <div style="margin-top:14px; padding:12px; border-radius:10px; background:#f8fafc; border:1px solid #e2e8f0; text-align:left;">
-        <div style="font-size:10.5px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.4px;">Sinus de Valsalva</div>
+        <div style="font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:.5px;">Sinus de Valsalva</div>
         ${v != null
           ? `<div style="font-size:26px; font-weight:800; color:${couleur}; line-height:1.2; margin-top:3px;">${v.toFixed(1)} <span style="font-size:14px; font-weight:600;">mm</span></div>
              <div style="font-size:11.5px; color:#64748b; margin-top:2px;">${dateEcho ? 'mesuré le ' + dateEcho : 'date inconnue'}</div>`
