@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v109';</script>
-  <script src="api-client.js?v=phase109-1"></script>
+  <script>window.MARFAN_VERSION = 'v110';</script>
+  <script src="api-client.js?v=phase110-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase109-1"></script>
+  <script src="questionnaires-defs.js?v=phase110-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase109-1"></script>
+  <script src="medical-parsers.js?v=phase110-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase109-1"></script>
-  <script src="cpet-analyse.js?v=phase109-1"></script>
+  <script src="cpet-graph-preview.js?v=phase110-1"></script>
+  <script src="cpet-analyse.js?v=phase110-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase109-1"></script>
-  <script src="medical-record-ui.js?v=phase109-1"></script>
+  <script src="pdf-extractor.js?v=phase110-1"></script>
+  <script src="medical-record-ui.js?v=phase110-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase109-1"></script>
-  <script src="synthese-ui.js?v=phase109-1"></script>
-  <script src="audit-ui.js?v=phase109-1"></script>
-  <script src="entretien-ui.js?v=phase109-1"></script>
-  <script src="activation-ui.js?v=phase109-1"></script>
-  <script src="document-import.js?v=phase109-1"></script>
-  <script src="activite-ui.js?v=phase109-1"></script>
-  <script src="cpet-detail.js?v=phase109-1"></script>
-  <script src="echo-calculs.js?v=phase109-1"></script>
-  <script src="echo-detail.js?v=phase109-1"></script>
-  <script src="accueil-activite.js?v=phase109-1"></script>
-  <script src="visio-jitsi.js?v=phase109-1"></script>
-  <script src="video-pilotee.js?v=phase109-1"></script>
-  <script src="fiche-apa.js?v=phase109-1"></script>
-  <script src="inactivite.js?v=phase109-1"></script>
-  <script src="bilans-ui.js?v=phase109-1"></script>
-  <script src="etudes-ui.js?v=phase109-1"></script>
-  <script src="ville-hopital.js?v=phase109-1"></script>
-  <script src="qlibres-ui.js?v=phase109-1"></script>
-  <script src="parametres-ui.js?v=phase109-1"></script>
+  <script src="aortic-consultations.js?v=phase110-1"></script>
+  <script src="synthese-ui.js?v=phase110-1"></script>
+  <script src="audit-ui.js?v=phase110-1"></script>
+  <script src="entretien-ui.js?v=phase110-1"></script>
+  <script src="activation-ui.js?v=phase110-1"></script>
+  <script src="document-import.js?v=phase110-1"></script>
+  <script src="activite-ui.js?v=phase110-1"></script>
+  <script src="cpet-detail.js?v=phase110-1"></script>
+  <script src="echo-calculs.js?v=phase110-1"></script>
+  <script src="echo-detail.js?v=phase110-1"></script>
+  <script src="accueil-activite.js?v=phase110-1"></script>
+  <script src="visio-jitsi.js?v=phase110-1"></script>
+  <script src="video-pilotee.js?v=phase110-1"></script>
+  <script src="fiche-apa.js?v=phase110-1"></script>
+  <script src="inactivite.js?v=phase110-1"></script>
+  <script src="bilans-ui.js?v=phase110-1"></script>
+  <script src="etudes-ui.js?v=phase110-1"></script>
+  <script src="ville-hopital.js?v=phase110-1"></script>
+  <script src="qlibres-ui.js?v=phase110-1"></script>
+  <script src="parametres-ui.js?v=phase110-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -14509,6 +14509,53 @@
     const ancienne = $('visioEcranModal');
     if (ancienne) ancienne.remove();
 
+    // Navigateur incapable de partager un ONGLET : on s'arrête ici.
+    //
+    // Safari ne propose que l'écran entier ou une fenêtre. Or le lecteur
+    // s'ouvre dans un onglet de la fenêtre où l'on travaille : il n'existe
+    // aucune entrée du sélecteur qui corresponde à la vidéo seule. Partager
+    // la fenêtre revient à diffuser l'onglet qui est devant — c'est-à-dire la
+    // plateforme et les dossiers dès qu'on y revient.
+    //
+    // Jusqu'ici l'application l'écrivait en petits caractères et laissait
+    // essayer. Le 15 octobre 2026, après quatre tentatives infructueuses, il
+    // est clair que prévenir ne suffit pas : on refuse, et on propose ce qui
+    // marche vraiment.
+    if (!audioOk) {
+      document.body.insertAdjacentHTML('beforeend', `
+        <div id="visioEcranModal" style="position:fixed; inset:0; background:rgba(11,21,48,.86); z-index:10070;
+                    display:flex; align-items:center; justify-content:center; padding:18px;">
+          <div style="background:white; border-radius:16px; width:560px; max-width:95vw;
+                      box-shadow:0 26px 70px rgba(0,0,0,.35); overflow:hidden;">
+            <div style="padding:17px 22px; background:linear-gradient(135deg,#b91c1c,#dc2626); color:white;">
+              <h3 style="margin:0; color:white; font-size:16px;">Ce navigateur ne peut pas partager un onglet</h3>
+            </div>
+            <div style="padding:18px 22px; font-size:13.5px; color:#334155; line-height:1.65;">
+              <p style="margin:0 0 12px;">Safari ne propose que <b>l'écran entier</b> ou <b>une fenêtre</b>.
+                Votre vidéo s'ouvre dans un onglet : aucune de ces options ne correspond à elle seule.
+                Partager la fenêtre diffuserait <b>l'onglet affiché à ce moment-là</b> — donc vos dossiers
+                patients dès que vous revenez sur la plateforme.</p>
+              <div style="padding:12px 14px; background:#f0fdfa; border:1px solid #99f6e4; border-radius:10px; margin-bottom:13px;">
+                <strong style="color:#115e59;">Utilisez « 🎬 Diffuser en séance »</strong><br>
+                <span style="font-size:12.5px; color:#115e59;">La vidéo part chez chaque patient, en pleine qualité,
+                avec le son, et vous gardez la main sur lecture et pause. Aucun partage d'écran,
+                donc rien de votre bureau à l'écran. Cela fonctionne dans Safari.</span>
+              </div>
+              <p style="margin:0; font-size:12.5px; color:#64748b;">
+                Pour un document ou une diapositive — qui ne sont pas des vidéos — ouvrez la plateforme
+                dans <b>Google Chrome</b> : lui sait partager un onglet seul, avec son.
+              </p>
+            </div>
+            <div style="padding:13px 22px; border-top:1px solid #e2e8f0; display:flex; gap:9px; justify-content:flex-end;">
+              <button class="btn-light" onclick="document.getElementById('visioEcranModal').remove()">Fermer</button>
+              <button class="btn-gradient" onclick="document.getElementById('visioEcranModal').remove(); visioForcerPartage();"
+                      style="background:#64748b;">Partager quand même l'écran</button>
+            </div>
+          </div>
+        </div>`);
+      return;
+    }
+
     // Bibliothèque : la même que celle de l'onglet Entraînement. Sans elle,
     // le soignant devait retrouver ses vidéos à la main avant de partager.
     const liste = (typeof trainingVideos !== 'undefined' && trainingVideos.length) ? trainingVideos : [];
@@ -14653,6 +14700,14 @@
     d.querySelector('button').addEventListener('click', () => d.remove());
     document.body.appendChild(d);
   }
+
+  /** Porte de sortie : partager malgré tout, en connaissance de cause. */
+  window.visioForcerPartage = function () {
+    if (!confirm("Vous allez partager l'écran entier ou une fenêtre complète.\n\n"
+               + "Tout ce qui s'y affiche sera vu par vos patients, y compris les "
+               + "dossiers que vous ouvririez ensuite.\n\nContinuer ?")) return;
+    visioLancerPartageEcran();
+  };
 
   window.visioLancerPartageEcran = function () {
     const m = $('visioEcranModal');
