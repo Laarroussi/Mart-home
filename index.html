@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v105';</script>
-  <script src="api-client.js?v=phase105-1"></script>
+  <script>window.MARFAN_VERSION = 'v106';</script>
+  <script src="api-client.js?v=phase106-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase105-1"></script>
+  <script src="questionnaires-defs.js?v=phase106-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase105-1"></script>
+  <script src="medical-parsers.js?v=phase106-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase105-1"></script>
-  <script src="cpet-analyse.js?v=phase105-1"></script>
+  <script src="cpet-graph-preview.js?v=phase106-1"></script>
+  <script src="cpet-analyse.js?v=phase106-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase105-1"></script>
-  <script src="medical-record-ui.js?v=phase105-1"></script>
+  <script src="pdf-extractor.js?v=phase106-1"></script>
+  <script src="medical-record-ui.js?v=phase106-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase105-1"></script>
-  <script src="synthese-ui.js?v=phase105-1"></script>
-  <script src="audit-ui.js?v=phase105-1"></script>
-  <script src="entretien-ui.js?v=phase105-1"></script>
-  <script src="activation-ui.js?v=phase105-1"></script>
-  <script src="document-import.js?v=phase105-1"></script>
-  <script src="activite-ui.js?v=phase105-1"></script>
-  <script src="cpet-detail.js?v=phase105-1"></script>
-  <script src="echo-calculs.js?v=phase105-1"></script>
-  <script src="echo-detail.js?v=phase105-1"></script>
-  <script src="accueil-activite.js?v=phase105-1"></script>
-  <script src="visio-jitsi.js?v=phase105-1"></script>
-  <script src="video-pilotee.js?v=phase105-1"></script>
-  <script src="fiche-apa.js?v=phase105-1"></script>
-  <script src="inactivite.js?v=phase105-1"></script>
-  <script src="bilans-ui.js?v=phase105-1"></script>
-  <script src="etudes-ui.js?v=phase105-1"></script>
-  <script src="ville-hopital.js?v=phase105-1"></script>
-  <script src="qlibres-ui.js?v=phase105-1"></script>
-  <script src="parametres-ui.js?v=phase105-1"></script>
+  <script src="aortic-consultations.js?v=phase106-1"></script>
+  <script src="synthese-ui.js?v=phase106-1"></script>
+  <script src="audit-ui.js?v=phase106-1"></script>
+  <script src="entretien-ui.js?v=phase106-1"></script>
+  <script src="activation-ui.js?v=phase106-1"></script>
+  <script src="document-import.js?v=phase106-1"></script>
+  <script src="activite-ui.js?v=phase106-1"></script>
+  <script src="cpet-detail.js?v=phase106-1"></script>
+  <script src="echo-calculs.js?v=phase106-1"></script>
+  <script src="echo-detail.js?v=phase106-1"></script>
+  <script src="accueil-activite.js?v=phase106-1"></script>
+  <script src="visio-jitsi.js?v=phase106-1"></script>
+  <script src="video-pilotee.js?v=phase106-1"></script>
+  <script src="fiche-apa.js?v=phase106-1"></script>
+  <script src="inactivite.js?v=phase106-1"></script>
+  <script src="bilans-ui.js?v=phase106-1"></script>
+  <script src="etudes-ui.js?v=phase106-1"></script>
+  <script src="ville-hopital.js?v=phase106-1"></script>
+  <script src="qlibres-ui.js?v=phase106-1"></script>
+  <script src="parametres-ui.js?v=phase106-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -6514,6 +6514,20 @@
     renderPatientList(search ? search.value : '');
     renderHome();
     renderPatientFile();
+    // Le portrait se recharge AVEC le dossier.
+    //
+    // renderPatientFile() redessine les blocs historiques, mais le portrait
+    // est alimenté par son propre appel au serveur : sans cette ligne, il
+    // restait figé sur le patient précédent. On changeait de patient dans le
+    // sélecteur et c'était toujours le visage et l'aorte de quelqu'un d'autre
+    // qui s'affichaient — l'erreur la plus dangereuse que cet écran puisse
+    // commettre.
+    try {
+      const panneau = document.getElementById('patient-portrait');
+      if (panneau && !panneau.classList.contains('hidden') && typeof portraitCharger === 'function') {
+        portraitCharger();
+      }
+    } catch (e) { console.warn('[portrait] rafraichissement :', e && e.message); }
     // Recharge les dossiers médicaux importés (API) pour ce patient
     try { if (typeof loadMedicalExamsForCurrentPatient === 'function') loadMedicalExamsForCurrentPatient(); } catch (_) {}
   }
@@ -6527,7 +6541,16 @@
       selectedPatient = null;
       return;
     }
-    select.innerHTML = patients.map(p => `<option value="${p.id}">${p.id} · ${p.sex || '?'} · ${p.gene || '—'}</option>`).join('');
+    // Le prénom et l'initiale du nom, comme partout ailleurs. Un sélecteur de
+    // vingt lignes « MRF-0xx · Femme · — » ne permet de choisir personne : le
+    // sexe et le gène ne distinguent pas deux patientes, un prénom si.
+    // `etiquettePatient` est définie dans un bloc de script plus bas :
+    // initQuickSelect peut s'exécuter avant. On se rabat sur le code seul
+    // plutôt que de faire échouer la construction de tout le sélecteur.
+    const nommer = (p) => (typeof window.etiquettePatient === 'function')
+      ? window.etiquettePatient(p) : p.id;
+    select.innerHTML = patients.map(p =>
+      `<option value="${p.id}">${nommer(p)}${p.gene ? ' · ' + p.gene : ''}</option>`).join('');
     // Phase 12.4 : n'ajoute le listener QU'UNE SEULE FOIS (sinon empilement après chaque reload)
     if (!select._changeWired) {
       select.addEventListener('change', e => {
