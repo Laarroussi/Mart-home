@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v106';</script>
-  <script src="api-client.js?v=phase106-1"></script>
+  <script>window.MARFAN_VERSION = 'v107';</script>
+  <script src="api-client.js?v=phase107-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase106-1"></script>
+  <script src="questionnaires-defs.js?v=phase107-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase106-1"></script>
+  <script src="medical-parsers.js?v=phase107-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase106-1"></script>
-  <script src="cpet-analyse.js?v=phase106-1"></script>
+  <script src="cpet-graph-preview.js?v=phase107-1"></script>
+  <script src="cpet-analyse.js?v=phase107-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase106-1"></script>
-  <script src="medical-record-ui.js?v=phase106-1"></script>
+  <script src="pdf-extractor.js?v=phase107-1"></script>
+  <script src="medical-record-ui.js?v=phase107-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase106-1"></script>
-  <script src="synthese-ui.js?v=phase106-1"></script>
-  <script src="audit-ui.js?v=phase106-1"></script>
-  <script src="entretien-ui.js?v=phase106-1"></script>
-  <script src="activation-ui.js?v=phase106-1"></script>
-  <script src="document-import.js?v=phase106-1"></script>
-  <script src="activite-ui.js?v=phase106-1"></script>
-  <script src="cpet-detail.js?v=phase106-1"></script>
-  <script src="echo-calculs.js?v=phase106-1"></script>
-  <script src="echo-detail.js?v=phase106-1"></script>
-  <script src="accueil-activite.js?v=phase106-1"></script>
-  <script src="visio-jitsi.js?v=phase106-1"></script>
-  <script src="video-pilotee.js?v=phase106-1"></script>
-  <script src="fiche-apa.js?v=phase106-1"></script>
-  <script src="inactivite.js?v=phase106-1"></script>
-  <script src="bilans-ui.js?v=phase106-1"></script>
-  <script src="etudes-ui.js?v=phase106-1"></script>
-  <script src="ville-hopital.js?v=phase106-1"></script>
-  <script src="qlibres-ui.js?v=phase106-1"></script>
-  <script src="parametres-ui.js?v=phase106-1"></script>
+  <script src="aortic-consultations.js?v=phase107-1"></script>
+  <script src="synthese-ui.js?v=phase107-1"></script>
+  <script src="audit-ui.js?v=phase107-1"></script>
+  <script src="entretien-ui.js?v=phase107-1"></script>
+  <script src="activation-ui.js?v=phase107-1"></script>
+  <script src="document-import.js?v=phase107-1"></script>
+  <script src="activite-ui.js?v=phase107-1"></script>
+  <script src="cpet-detail.js?v=phase107-1"></script>
+  <script src="echo-calculs.js?v=phase107-1"></script>
+  <script src="echo-detail.js?v=phase107-1"></script>
+  <script src="accueil-activite.js?v=phase107-1"></script>
+  <script src="visio-jitsi.js?v=phase107-1"></script>
+  <script src="video-pilotee.js?v=phase107-1"></script>
+  <script src="fiche-apa.js?v=phase107-1"></script>
+  <script src="inactivite.js?v=phase107-1"></script>
+  <script src="bilans-ui.js?v=phase107-1"></script>
+  <script src="etudes-ui.js?v=phase107-1"></script>
+  <script src="ville-hopital.js?v=phase107-1"></script>
+  <script src="qlibres-ui.js?v=phase107-1"></script>
+  <script src="parametres-ui.js?v=phase107-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -6510,26 +6510,34 @@
     if (sel) sel.value = selectedPatient.id;
     const st = $('quickStatus');
     if (st) { st.textContent = selectedPatient.status || '—'; st.className = 'status ' + (selectedPatient.statusClass || 'ok'); }
-    const search = $('patientSearch');
-    renderPatientList(search ? search.value : '');
-    renderHome();
-    renderPatientFile();
-    // Le portrait se recharge AVEC le dossier.
+    // Le portrait D'ABORD, et isolé.
     //
-    // renderPatientFile() redessine les blocs historiques, mais le portrait
-    // est alimenté par son propre appel au serveur : sans cette ligne, il
-    // restait figé sur le patient précédent. On changeait de patient dans le
-    // sélecteur et c'était toujours le visage et l'aorte de quelqu'un d'autre
-    // qui s'affichaient — l'erreur la plus dangereuse que cet écran puisse
-    // commettre.
-    try {
-      const panneau = document.getElementById('patient-portrait');
-      if (panneau && !panneau.classList.contains('hidden') && typeof portraitCharger === 'function') {
-        portraitCharger();
-      }
-    } catch (e) { console.warn('[portrait] rafraichissement :', e && e.message); }
-    // Recharge les dossiers médicaux importés (API) pour ce patient
-    try { if (typeof loadMedicalExamsForCurrentPatient === 'function') loadMedicalExamsForCurrentPatient(); } catch (_) {}
+    // Il était placé après renderPatientFile(). Celui-ci met à jour le
+    // sous-titre « Résultats détaillés de MRF-002 » très tôt, puis lève une
+    // exception plus loin sur certains dossiers : tout ce qui suivait était
+    // abandonné en silence. On voyait donc le sous-titre changer de patient
+    // pendant que le portrait restait sur le précédent — ce qui ressemblait à
+    // un rafraîchissement oublié, alors que c'était un rendu interrompu.
+    //
+    // Chaque rendu est désormais isolé, comme ailleurs dans ce fichier pour
+    // exactement la même raison. Un bloc qui échoue n'emporte plus les autres,
+    // et il le dit dans la console au lieu de disparaître.
+    const search = $('patientSearch');
+    [
+      ['portrait', () => {
+        const panneau = document.getElementById('patient-portrait');
+        if (panneau && !panneau.classList.contains('hidden') && typeof portraitCharger === 'function') {
+          portraitCharger();
+        }
+      }],
+      ['renderPatientList', () => renderPatientList(search ? search.value : '')],
+      ['renderHome',        () => renderHome()],
+      ['renderPatientFile', () => renderPatientFile()],
+      ['examens',           () => { if (typeof loadMedicalExamsForCurrentPatient === 'function') loadMedicalExamsForCurrentPatient(); }]
+    ].forEach(([nom, fn]) => {
+      try { fn(); }
+      catch (e) { console.warn('[selection patient] ' + nom + ' a echoue :', e && e.message); }
+    });
   }
 
   function initQuickSelect() {
