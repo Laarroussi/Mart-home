@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v108';</script>
-  <script src="api-client.js?v=phase108-1"></script>
+  <script>window.MARFAN_VERSION = 'v109';</script>
+  <script src="api-client.js?v=phase109-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase108-1"></script>
+  <script src="questionnaires-defs.js?v=phase109-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase108-1"></script>
+  <script src="medical-parsers.js?v=phase109-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase108-1"></script>
-  <script src="cpet-analyse.js?v=phase108-1"></script>
+  <script src="cpet-graph-preview.js?v=phase109-1"></script>
+  <script src="cpet-analyse.js?v=phase109-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase108-1"></script>
-  <script src="medical-record-ui.js?v=phase108-1"></script>
+  <script src="pdf-extractor.js?v=phase109-1"></script>
+  <script src="medical-record-ui.js?v=phase109-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase108-1"></script>
-  <script src="synthese-ui.js?v=phase108-1"></script>
-  <script src="audit-ui.js?v=phase108-1"></script>
-  <script src="entretien-ui.js?v=phase108-1"></script>
-  <script src="activation-ui.js?v=phase108-1"></script>
-  <script src="document-import.js?v=phase108-1"></script>
-  <script src="activite-ui.js?v=phase108-1"></script>
-  <script src="cpet-detail.js?v=phase108-1"></script>
-  <script src="echo-calculs.js?v=phase108-1"></script>
-  <script src="echo-detail.js?v=phase108-1"></script>
-  <script src="accueil-activite.js?v=phase108-1"></script>
-  <script src="visio-jitsi.js?v=phase108-1"></script>
-  <script src="video-pilotee.js?v=phase108-1"></script>
-  <script src="fiche-apa.js?v=phase108-1"></script>
-  <script src="inactivite.js?v=phase108-1"></script>
-  <script src="bilans-ui.js?v=phase108-1"></script>
-  <script src="etudes-ui.js?v=phase108-1"></script>
-  <script src="ville-hopital.js?v=phase108-1"></script>
-  <script src="qlibres-ui.js?v=phase108-1"></script>
-  <script src="parametres-ui.js?v=phase108-1"></script>
+  <script src="aortic-consultations.js?v=phase109-1"></script>
+  <script src="synthese-ui.js?v=phase109-1"></script>
+  <script src="audit-ui.js?v=phase109-1"></script>
+  <script src="entretien-ui.js?v=phase109-1"></script>
+  <script src="activation-ui.js?v=phase109-1"></script>
+  <script src="document-import.js?v=phase109-1"></script>
+  <script src="activite-ui.js?v=phase109-1"></script>
+  <script src="cpet-detail.js?v=phase109-1"></script>
+  <script src="echo-calculs.js?v=phase109-1"></script>
+  <script src="echo-detail.js?v=phase109-1"></script>
+  <script src="accueil-activite.js?v=phase109-1"></script>
+  <script src="visio-jitsi.js?v=phase109-1"></script>
+  <script src="video-pilotee.js?v=phase109-1"></script>
+  <script src="fiche-apa.js?v=phase109-1"></script>
+  <script src="inactivite.js?v=phase109-1"></script>
+  <script src="bilans-ui.js?v=phase109-1"></script>
+  <script src="etudes-ui.js?v=phase109-1"></script>
+  <script src="ville-hopital.js?v=phase109-1"></script>
+  <script src="qlibres-ui.js?v=phase109-1"></script>
+  <script src="parametres-ui.js?v=phase109-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1422,6 +1422,12 @@
     .modal-overlay.open { display: flex; }
 
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    /* Battement du bouton de partage, une fois la vidéo ouverte : c'est le
+       seul geste qui reste, il ne doit pas pouvoir être manqué. */
+    @keyframes pulsePartage {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,.55); }
+      50%      { box-shadow: 0 0 0 11px rgba(249,115,22,0); }
+    }
     @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
     .modal {
@@ -14539,6 +14545,7 @@
               </span>
             </div>`}
 
+            <div data-etape="1">
             <div style="font-size:11.5px; font-weight:800; color:#f97316; text-transform:uppercase; letter-spacing:.4px; margin-bottom:7px;">Étape 1 — ouvrez la vidéo dans un onglet</div>
             ${lignes}
             <div style="display:flex; gap:7px; margin-top:9px;">
@@ -14547,6 +14554,7 @@
               <button id="visioEcranUrlBtn" style="padding:10px 16px; border:none; background:#0b1530; color:white; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap;">Ouvrir ↗</button>
             </div>
             <p style="font-size:12px; color:#64748b; margin:9px 0 0; line-height:1.5;">La vidéo s'ouvre dans un nouvel onglet. <b>Laissez-la en pause</b> et revenez ici.</p>
+            </div>
 
             <div style="border-top:1px solid #e2e8f0; margin:16px 0 0; padding-top:15px;">
               <div style="font-size:11.5px; font-weight:800; color:#f97316; text-transform:uppercase; letter-spacing:.4px; margin-bottom:7px;">Étape 2 — partagez cet onglet</div>
@@ -14564,8 +14572,8 @@
             </div>
           </div>
           <div style="padding:14px 22px; border-top:1px solid #e2e8f0; display:flex; gap:10px; justify-content:flex-end;">
-            <button class="btn-light" onclick="document.getElementById('visioEcranModal').remove()">Annuler</button>
-            <button class="btn-gradient" onclick="visioLancerPartageEcran()">🖥 Choisir l'onglet à partager</button>
+            <button class="btn-light" data-bouton-annuler onclick="document.getElementById('visioEcranModal').remove()">Annuler</button>
+            <button class="btn-gradient" data-bouton-partage onclick="visioLancerPartageEcran()">🖥 Choisir l'onglet à partager</button>
           </div>
         </div>
       </div>`);
@@ -14750,8 +14758,49 @@
     const url = 'lecteur.html?v=' + encodeURIComponent(youtubeId) +
                 (titre ? '&t=' + encodeURIComponent(titre) : '');
     window.open(url, '_blank', 'noopener');
-    toast("▶️ Vidéo ouverte dans un onglet propre. Laissez-la en pause, puis cliquez sur « Partager l'onglet de la vidéo ».", 'info', 9000);
+
+    // Revenir ici, tout de suite.
+    //
+    // La fenêtre du lecteur prend le dessus et cache la fenêtre d'aide. Le
+    // soignant voit sa vidéo s'ouvrir et croit le partage lancé — alors qu'il
+    // vient seulement d'ouvrir la vidéo. Le second clic, celui qui partage
+    // vraiment, n'est jamais donné, et les patients ne voient rien.
+    //
+    // On remet donc la plateforme au premier plan et on bascule la fenêtre
+    // d'aide en « étape 2 » : la première est cochée, la seconde devient le
+    // seul élément cliquable, impossible à confondre.
+    try { window.focus(); } catch (_) {}
+    marquerEtape2(titre);
+    toast("▶️ Vidéo ouverte. Il reste UN clic : le bouton orange « Partager maintenant ».", 'info', 11000);
   };
+
+  /**
+   * Bascule la fenêtre d'aide de l'étape 1 à l'étape 2.
+   *
+   * Tant que les deux étapes se ressemblaient, rien ne disait laquelle était
+   * faite. Une fois la vidéo ouverte, l'étape 1 n'a plus d'intérêt : elle se
+   * replie sur une ligne cochée, et le bouton de partage occupe la place.
+   */
+  function marquerEtape2(titre) {
+    const modal = document.getElementById('visioEcranModal');
+    if (!modal) return;
+    const zone1 = modal.querySelector('[data-etape="1"]');
+    if (zone1) {
+      zone1.innerHTML = '<div style="display:flex; align-items:center; gap:9px; padding:10px 12px; '
+        + 'background:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px; font-size:13px; color:#065f46;">'
+        + '<span style="font-size:17px;">✅</span><span><strong>Vidéo ouverte</strong>'
+        + (titre ? ' — ' + titre : '') + '. Elle vous attend dans l\'autre fenêtre.</span></div>';
+    }
+    const btn = modal.querySelector('[data-bouton-partage]');
+    if (btn) {
+      btn.textContent = '🖥 Partager maintenant';
+      btn.style.fontSize = '15px';
+      btn.style.padding = '14px 26px';
+      btn.style.animation = 'pulsePartage 1.4s ease-in-out infinite';
+    }
+    const annuler = modal.querySelector('[data-bouton-annuler]');
+    if (annuler) annuler.style.opacity = '.55';
+  }
 
   // Vue mosaïque : voir tous les patients côte à côte pendant l'exercice
   let _visioMosaique = false;
