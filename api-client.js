@@ -513,6 +513,8 @@
       end:         (id, borg, opts={})      => request('POST', `/training/sessions/${id}/end`,
                                                        Object.assign({ borg_cr10: borg }, opts)),
       mine:        ()                       => request('GET',  '/training/sessions/mine'),
+      // Ce que le patient a écrit en fin de séance, séances muettes exclues.
+      remarques:   (patientId)              => request('GET',  '/training/remarques/' + encodeURIComponent(patientId)),
       // Séances en cours + dernière mesure de chaque patient (monitoring visio)
       live:        ()                       => request('GET',  '/training/live'),
       get:         (id)                     => request('GET',  `/training/sessions/${id}`),

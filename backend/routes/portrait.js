@@ -58,10 +58,25 @@ router.get('/:id', requireAuth, soignants, async (req, res, next) => {
         WHERE patient_id = $1 AND ended_at IS NOT NULL`, [id]);
 
     const sess = await query(
-      `SELECT started_at, duration_s, borg_cr10, modalite
+      `SELECT started_at, duration_s, borg_cr10, modalite, patient_comment
          FROM training_sessions
         WHERE patient_id = $1 AND ended_at IS NOT NULL
         ORDER BY started_at DESC LIMIT 5`, [id]);
+
+    // La dernière remarque écrite par le patient — qui n'est pas forcément
+    // celle de la dernière séance : on ne laisse pas de mot à chaque fois.
+    // La chercher séparément évite d'afficher « aucune remarque » alors que
+    // le patient en a laissé une l'avant-veille.
+    const remarque = await query(
+      `SELECT started_at, patient_comment, borg_cr10
+         FROM training_sessions
+        WHERE patient_id = $1
+          AND patient_comment IS NOT NULL AND btrim(patient_comment) <> ''
+        ORDER BY started_at DESC LIMIT 1`, [id]);
+    const nbRemarques = await query(
+      `SELECT count(*)::int AS n FROM training_sessions
+        WHERE patient_id = $1
+          AND patient_comment IS NOT NULL AND btrim(patient_comment) <> ''`, [id]);
 
     // Dernière épreuve d'effort, pour situer la capacité.
     //
@@ -133,7 +148,9 @@ router.get('/:id', requireAuth, soignants, async (req, res, next) => {
         derniere: act.rows[0].derniere,
         borg_moyen: act.rows[0].borg_moyen,
         fc_moyenne: act.rows[0].fc_moyenne,
-        recentes: sess.rows
+        recentes: sess.rows,
+        derniere_remarque: remarque.rows[0] || null,
+        nb_remarques: nbRemarques.rows[0].n
       }
     });
   } catch (err) { next(err); }

@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v104';</script>
-  <script src="api-client.js?v=phase104-1"></script>
+  <script>window.MARFAN_VERSION = 'v105';</script>
+  <script src="api-client.js?v=phase105-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase104-1"></script>
+  <script src="questionnaires-defs.js?v=phase105-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase104-1"></script>
+  <script src="medical-parsers.js?v=phase105-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase104-1"></script>
-  <script src="cpet-analyse.js?v=phase104-1"></script>
+  <script src="cpet-graph-preview.js?v=phase105-1"></script>
+  <script src="cpet-analyse.js?v=phase105-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase104-1"></script>
-  <script src="medical-record-ui.js?v=phase104-1"></script>
+  <script src="pdf-extractor.js?v=phase105-1"></script>
+  <script src="medical-record-ui.js?v=phase105-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase104-1"></script>
-  <script src="synthese-ui.js?v=phase104-1"></script>
-  <script src="audit-ui.js?v=phase104-1"></script>
-  <script src="entretien-ui.js?v=phase104-1"></script>
-  <script src="activation-ui.js?v=phase104-1"></script>
-  <script src="document-import.js?v=phase104-1"></script>
-  <script src="activite-ui.js?v=phase104-1"></script>
-  <script src="cpet-detail.js?v=phase104-1"></script>
-  <script src="echo-calculs.js?v=phase104-1"></script>
-  <script src="echo-detail.js?v=phase104-1"></script>
-  <script src="accueil-activite.js?v=phase104-1"></script>
-  <script src="visio-jitsi.js?v=phase104-1"></script>
-  <script src="video-pilotee.js?v=phase104-1"></script>
-  <script src="fiche-apa.js?v=phase104-1"></script>
-  <script src="inactivite.js?v=phase104-1"></script>
-  <script src="bilans-ui.js?v=phase104-1"></script>
-  <script src="etudes-ui.js?v=phase104-1"></script>
-  <script src="ville-hopital.js?v=phase104-1"></script>
-  <script src="qlibres-ui.js?v=phase104-1"></script>
-  <script src="parametres-ui.js?v=phase104-1"></script>
+  <script src="aortic-consultations.js?v=phase105-1"></script>
+  <script src="synthese-ui.js?v=phase105-1"></script>
+  <script src="audit-ui.js?v=phase105-1"></script>
+  <script src="entretien-ui.js?v=phase105-1"></script>
+  <script src="activation-ui.js?v=phase105-1"></script>
+  <script src="document-import.js?v=phase105-1"></script>
+  <script src="activite-ui.js?v=phase105-1"></script>
+  <script src="cpet-detail.js?v=phase105-1"></script>
+  <script src="echo-calculs.js?v=phase105-1"></script>
+  <script src="echo-detail.js?v=phase105-1"></script>
+  <script src="accueil-activite.js?v=phase105-1"></script>
+  <script src="visio-jitsi.js?v=phase105-1"></script>
+  <script src="video-pilotee.js?v=phase105-1"></script>
+  <script src="fiche-apa.js?v=phase105-1"></script>
+  <script src="inactivite.js?v=phase105-1"></script>
+  <script src="bilans-ui.js?v=phase105-1"></script>
+  <script src="etudes-ui.js?v=phase105-1"></script>
+  <script src="ville-hopital.js?v=phase105-1"></script>
+  <script src="qlibres-ui.js?v=phase105-1"></script>
+  <script src="parametres-ui.js?v=phase105-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13247,6 +13247,17 @@
           ${ac.borg_moyen != null ? `<div><div style="font-size:21px; font-weight:800; color:#0b1530;">${ac.borg_moyen}</div>
                <div style="font-size:11px; color:#64748b;">Borg moyen</div></div>` : ''}
         </div>
+        ${ac.derniere_remarque ? `
+          <div style="margin-top:4px; padding:9px 11px; border-left:3px solid #059669; background:#f0fdf4;
+                      border-radius:0 8px 8px 0;">
+            <div style="font-size:10.5px; font-weight:800; color:#047857; text-transform:uppercase; letter-spacing:.5px;">
+              Ce que le patient a écrit · ${pDate(ac.derniere_remarque.started_at)}</div>
+            <div style="font-size:12.5px; color:#14532d; font-style:italic; margin-top:3px;">« ${ac.derniere_remarque.patient_comment} »</div>
+            ${ac.nb_remarques > 1 ? `<button onclick="portraitVoirRemarques('${i.id}')"
+              style="margin-top:5px; border:0; background:transparent; padding:0; font:inherit; font-size:11.5px;
+                     color:#047857; text-decoration:underline; cursor:pointer;">
+              Voir les ${ac.nb_remarques} remarques →</button>` : ''}
+          </div>` : ''}
         ${ac.seances
           ? sousTitre('Dernières séances') +
             ac.recentes.map(s => `<div style="display:flex; justify-content:space-between; gap:8px; padding:2px 0; border-bottom:1px solid #f8fafc;">
@@ -13257,6 +13268,57 @@
       `, 184, '#059669')}
     </div>`;
   }
+
+  /**
+   * Toutes les remarques du patient, dans une fenêtre.
+   *
+   * Elles ne sont pas dépliées dans le portrait : une page qui doit tenir
+   * sur un écran ne peut pas accueillir quinze paragraphes. Et elles ne sont
+   * pas noyées dans la liste des séances : les séances sans remarque y
+   * occuperaient la place, alors que ce sont précisément les quelques
+   * phrases écrites qui méritent d'être lues.
+   */
+  window.portraitVoirRemarques = async function (patientId) {
+    const ancienne = document.getElementById('remarquesModal');
+    if (ancienne) ancienne.remove();
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="remarquesModal" style="position:fixed; inset:0; background:rgba(11,21,48,.8); z-index:10080;
+                  display:flex; align-items:center; justify-content:center; padding:18px;">
+        <div style="background:white; border-radius:15px; width:620px; max-width:95vw; max-height:88vh;
+                    display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,.32);">
+          <div style="padding:16px 20px; background:linear-gradient(135deg,#047857,#059669); color:white; border-radius:15px 15px 0 0;">
+            <h3 style="margin:0; color:white; font-size:15.5px;">💬 Ce que ${patientId} a écrit</h3>
+            <p style="margin:3px 0 0; font-size:12px; opacity:.93;">Remarques laissées à la fin de ses séances, de la plus récente à la plus ancienne.</p>
+          </div>
+          <div id="remarquesCorps" style="padding:16px 20px; overflow-y:auto; flex:1;">
+            <div style="color:#94a3b8; font-size:13px;">Chargement…</div>
+          </div>
+          <div style="padding:12px 20px; border-top:1px solid #e2e8f0; text-align:right;">
+            <button class="btn-light" onclick="document.getElementById('remarquesModal').remove()">Fermer</button>
+          </div>
+        </div>
+      </div>`);
+    try {
+      const r = await window.MarfanAPI.training.remarques(patientId);
+      const liste = r.remarques || [];
+      document.getElementById('remarquesCorps').innerHTML = liste.length
+        ? liste.map(s => `
+            <div style="padding:11px 0; border-bottom:1px solid #f1f5f9;">
+              <div style="font-size:11.5px; color:#64748b; margin-bottom:3px;">
+                <strong style="color:#0b1530;">${pDate(s.started_at)}</strong>
+                ${s.duration_s ? ' · ' + pDuree(s.duration_s) : ''}
+                ${s.borg_cr10 != null ? ' · Borg ' + s.borg_cr10 : ''}
+                ${s.modalite ? ' · ' + s.modalite : ''}
+              </div>
+              <div style="font-size:13px; color:#14532d; font-style:italic; line-height:1.55;">« ${s.patient_comment} »</div>
+              ${s.content ? `<div style="font-size:12px; color:#64748b; margin-top:3px;">Contenu déclaré : ${s.content}</div>` : ''}
+            </div>`).join('')
+        : '<div style="color:#64748b; font-size:13px;">Aucune remarque écrite pour l\'instant.</div>';
+    } catch (e) {
+      document.getElementById('remarquesCorps').innerHTML =
+        '<div style="color:#991b1b; font-size:13px;">Lecture impossible : ' + ((e && e.message) || 'erreur') + '</div>';
+    }
+  };
 
   // ================================================================
   // CARNET DE SUIVI

@@ -240,6 +240,36 @@ router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
 });
 
 // ============================================================
+// GET /api/training/remarques/:patientId — ce que le patient a écrit
+// ------------------------------------------------------------
+// `patient_comment` était enregistré à chaque fin de séance et relu nulle
+// part. Les patients écrivaient dans le vide, et le soignant n'avait aucun
+// moyen d'y accéder — il ne savait même pas que ces textes existaient.
+//
+// On ne renvoie que les séances QUI PORTENT une remarque. Lister les autres
+// pour afficher des lignes vides noierait les quelques phrases qui comptent :
+// une page de silences ne se lit pas.
+//
+// Déclarée AVANT /sessions/:id, même raison que /live.
+// ============================================================
+router.get('/remarques/:patientId', requireAuth,
+  requireRole(ROLE.PRINCIPAL_ADMIN, ROLE.INVESTIGATOR), async (req, res, next) => {
+    try {
+      const { rows } = await query(
+        `SELECT id, started_at, duration_s, borg_cr10, modalite, content, patient_comment
+           FROM training_sessions
+          WHERE patient_id = $1
+            AND patient_comment IS NOT NULL
+            AND btrim(patient_comment) <> ''
+          ORDER BY started_at DESC
+          LIMIT 50`,
+        [req.params.patientId]
+      );
+      res.json({ remarques: rows });
+    } catch (err) { next(err); }
+  });
+
+// ============================================================
 // GET /api/training/live — Séances EN COURS avec leur dernière mesure
 // ------------------------------------------------------------
 // Alimente le monitoring physiologique de la salle visio avec de VRAIES

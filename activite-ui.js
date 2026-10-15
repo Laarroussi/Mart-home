@@ -199,7 +199,62 @@
       bilan = tous.filter(b => b.activite).pop() || null;
     } catch (_) {}
 
-    el.innerHTML = rendre(d, bilan);
+    // Les remarques du patient. Elles arrivent en second, après les chiffres :
+    // leur absence ne doit pas retarder l'affichage du reste, et leur présence
+    // ne doit pas empêcher la page de s'afficher si la lecture échoue.
+    let remarques = [];
+    try {
+      const r = await window.MarfanAPI.training.remarques(patientId);
+      remarques = (r && r.remarques) || [];
+    } catch (e) { console.warn('[activite] remarques :', e && e.message); }
+
+    el.innerHTML = rendre(d, bilan) + blocRemarques(remarques);
+  }
+
+  /**
+   * Ce que le patient a écrit, en fin de séance.
+   *
+   * Placé APRÈS les chiffres, et dans son propre cadre. Ces phrases ne sont
+   * pas de même nature que la FC moyenne ou la durée : elles ne se moyennent
+   * pas, elles se lisent. Les mêler aux indicateurs les aurait transformées
+   * en colonne d'un tableau, c'est-à-dire en rien.
+   *
+   * Seules les séances avec une remarque figurent ici. Les autres n'ont rien
+   * à y faire : une liste de lignes vides ferait passer à côté des trois
+   * phrases qui comptent.
+   */
+  function blocRemarques(liste) {
+    if (!liste.length) {
+      return carte(
+        '<div style="font-size:12.5px; color:#64748b; line-height:1.6;">' +
+        '<strong style="color:#0b1530;">💬 Remarques du patient</strong><br>' +
+        'Aucune remarque écrite pour l\'instant. Le patient peut en laisser une ' +
+        'à la fin de chaque séance, au moment où il indique son ressenti d\'effort.' +
+        '</div>');
+    }
+    const APERCU = 3;
+    const ligne = (s) =>
+      '<div style="padding:10px 0; border-top:1px solid #f1f5f9;">' +
+      '<div style="font-size:11.5px; color:#64748b; margin-bottom:3px;">' +
+        '<strong style="color:#0b1530;">' + fmtDate(s.started_at) + '</strong>' +
+        (s.borg_cr10 != null ? ' · Borg ' + s.borg_cr10 : '') +
+        (s.modalite ? ' · ' + esc(s.modalite) : '') +
+      '</div>' +
+      '<div style="font-size:13px; color:#14532d; font-style:italic; line-height:1.55;">« ' +
+        esc(s.patient_comment) + ' »</div>' +
+      '</div>';
+
+    return carte(
+      '<div style="font-size:13px; font-weight:800; color:#0b1530; margin-bottom:4px;">' +
+        '💬 Remarques du patient <span style="font-weight:600; color:#64748b;">· ' + liste.length + '</span></div>' +
+      liste.slice(0, APERCU).map(ligne).join('') +
+      (liste.length > APERCU
+        ? '<details style="margin-top:2px;">' +
+          '<summary style="cursor:pointer; font-size:12.5px; color:#047857; font-weight:700; padding:7px 0;">' +
+            'Voir les ' + (liste.length - APERCU) + ' remarques plus anciennes</summary>' +
+          liste.slice(APERCU).map(ligne).join('') +
+          '</details>'
+        : ''));
   }
 
   window.ActiviteUI = { mount: mount };
