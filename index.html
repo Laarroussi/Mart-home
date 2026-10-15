@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v107';</script>
-  <script src="api-client.js?v=phase107-1"></script>
+  <script>window.MARFAN_VERSION = 'v108';</script>
+  <script src="api-client.js?v=phase108-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase107-1"></script>
+  <script src="questionnaires-defs.js?v=phase108-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase107-1"></script>
+  <script src="medical-parsers.js?v=phase108-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase107-1"></script>
-  <script src="cpet-analyse.js?v=phase107-1"></script>
+  <script src="cpet-graph-preview.js?v=phase108-1"></script>
+  <script src="cpet-analyse.js?v=phase108-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase107-1"></script>
-  <script src="medical-record-ui.js?v=phase107-1"></script>
+  <script src="pdf-extractor.js?v=phase108-1"></script>
+  <script src="medical-record-ui.js?v=phase108-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase107-1"></script>
-  <script src="synthese-ui.js?v=phase107-1"></script>
-  <script src="audit-ui.js?v=phase107-1"></script>
-  <script src="entretien-ui.js?v=phase107-1"></script>
-  <script src="activation-ui.js?v=phase107-1"></script>
-  <script src="document-import.js?v=phase107-1"></script>
-  <script src="activite-ui.js?v=phase107-1"></script>
-  <script src="cpet-detail.js?v=phase107-1"></script>
-  <script src="echo-calculs.js?v=phase107-1"></script>
-  <script src="echo-detail.js?v=phase107-1"></script>
-  <script src="accueil-activite.js?v=phase107-1"></script>
-  <script src="visio-jitsi.js?v=phase107-1"></script>
-  <script src="video-pilotee.js?v=phase107-1"></script>
-  <script src="fiche-apa.js?v=phase107-1"></script>
-  <script src="inactivite.js?v=phase107-1"></script>
-  <script src="bilans-ui.js?v=phase107-1"></script>
-  <script src="etudes-ui.js?v=phase107-1"></script>
-  <script src="ville-hopital.js?v=phase107-1"></script>
-  <script src="qlibres-ui.js?v=phase107-1"></script>
-  <script src="parametres-ui.js?v=phase107-1"></script>
+  <script src="aortic-consultations.js?v=phase108-1"></script>
+  <script src="synthese-ui.js?v=phase108-1"></script>
+  <script src="audit-ui.js?v=phase108-1"></script>
+  <script src="entretien-ui.js?v=phase108-1"></script>
+  <script src="activation-ui.js?v=phase108-1"></script>
+  <script src="document-import.js?v=phase108-1"></script>
+  <script src="activite-ui.js?v=phase108-1"></script>
+  <script src="cpet-detail.js?v=phase108-1"></script>
+  <script src="echo-calculs.js?v=phase108-1"></script>
+  <script src="echo-detail.js?v=phase108-1"></script>
+  <script src="accueil-activite.js?v=phase108-1"></script>
+  <script src="visio-jitsi.js?v=phase108-1"></script>
+  <script src="video-pilotee.js?v=phase108-1"></script>
+  <script src="fiche-apa.js?v=phase108-1"></script>
+  <script src="inactivite.js?v=phase108-1"></script>
+  <script src="bilans-ui.js?v=phase108-1"></script>
+  <script src="etudes-ui.js?v=phase108-1"></script>
+  <script src="ville-hopital.js?v=phase108-1"></script>
+  <script src="qlibres-ui.js?v=phase108-1"></script>
+  <script src="parametres-ui.js?v=phase108-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -5179,6 +5179,7 @@
             </div>
             <div style="padding:10px 14px; background:rgba(11,21,48,.96); border-top:1px solid rgba(255,255,255,.08); display:flex; gap:9px; flex-wrap:wrap; align-items:center;">
               <button class="btn-light" style="padding:7px 12px; font-size:12px;" onclick="indivPartagerEcran()" title="Pour une diapositive ou un document — pour une vidéo, préférez « Diffuser »">🖥 Partager mon écran</button>
+              <button class="btn-light" style="padding:7px 12px; font-size:12px;" onclick="visioDiagnostic()" title="Dire où la chaîne du partage se rompt">🩺 Diagnostic</button>
               <button class="btn-light" id="indivStopVideoBtn" style="display:none; padding:7px 12px; font-size:12px; background:#fef2f2; color:#991b1b; border-color:#fecaca; font-weight:700;" onclick="indivArreterVideo()">⏹ Arrêter la diffusion</button>
               <button class="btn-light" style="padding:7px 12px; font-size:12px; background:#fef2f2; color:#991b1b; border-color:#fecaca; font-weight:700;" onclick="indivTerminer()">⏹ Terminer l'entretien</button>
               <span style="color:#94a3b8; font-size:11px; margin-left:auto;" id="indivStatut">Aucune salle ouverte</span>
@@ -14792,6 +14793,75 @@
    * « La conférence n'a pas encore commencé » sur le serveur public de Jitsi,
    * sans aucune indication de la cause réelle.
    */
+  /**
+   * Pourquoi le partage d'écran ne part pas.
+   *
+   * Quatre tentatives de correction à l'aveugle sur cette fonction, parce que
+   * « rien ne se passe » ne dit pas OÙ la chaîne se rompt. Il y a cinq
+   * maillons, et chacun échoue différemment :
+   *
+   *   1. la salle est-elle ouverte ?                 sinon rien à partager
+   *   2. le navigateur sait-il capturer un écran ?   Safari ne sait pas les onglets
+   *   3. l'iframe Jitsi en a-t-elle le DROIT ?       c'est le piège « allow »
+   *   4. Jitsi a-t-il reçu le flux ?                 témoin screenSharingStatusChanged
+   *   5. les patients le reçoivent-ils ?             celui-là, seul un patient le dit
+   *
+   * Ce diagnostic répond aux quatre premiers. Le cinquième demande quelqu'un
+   * en face : aucun code exécuté ici ne peut voir l'écran d'un autre.
+   */
+  function diagnosticPartage() {
+    const l = [];
+    const ua = navigator.userAgent;
+    const estChrome = /Chrome\//.test(ua) && !/Edg\//.test(ua) && !/OPR\//.test(ua);
+    const estSafari = /Safari\//.test(ua) && !/Chrome\//.test(ua);
+
+    // 1 — la salle
+    const actif = !!(window.VisioJitsi && window.VisioJitsi.estActif && window.VisioJitsi.estActif());
+    l.push('1. Salle ouverte           : ' + (actif ? '✅ oui' : '❌ NON — ouvrez la séance avant de partager'));
+
+    // 2 — le navigateur
+    const sait = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+    l.push('2. Navigateur              : ' + (estChrome ? 'Chrome' : estSafari ? 'Safari' : 'autre')
+           + (sait ? ' · ✅ sait capturer' : ' · ❌ ne sait pas capturer'));
+    if (estSafari) {
+      l.push('   ⚠ Safari ne partage pas un ONGLET, seulement une fenêtre ou');
+      l.push('     l\'écran entier, et ne transmet pas le son. Utilisez Chrome.');
+    }
+
+    // 3 — l'autorisation de l'iframe : la cause historique
+    let cadre = null;
+    try { cadre = document.querySelector('#visioSelfStage iframe, #indivStage iframe'); } catch (_) {}
+    if (!cadre) {
+      l.push('3. Autorisation de l\'iframe: — (salle non affichée)');
+    } else {
+      const allow = cadre.getAttribute('allow') || '';
+      const ok = /display-capture/.test(allow);
+      l.push('3. Autorisation de l\'iframe: ' + (ok ? '✅ display-capture présent'
+                                                    : '❌ MANQUANT — rechargez la page (Cmd+Maj+R)'));
+    }
+
+    // 4 — ce que Jitsi en dit
+    const enCours = !!(window.VisioJitsi && window.VisioJitsi.partageEnCours && window.VisioJitsi.partageEnCours());
+    l.push('4. Jitsi voit un partage   : ' + (enCours ? '✅ OUI, un partage est actif en ce moment'
+                                                      : '⚪ non — aucun partage actif actuellement'));
+
+    l.push('');
+    if (!actif) {
+      l.push('➜ Commencez par ouvrir la salle.');
+    } else if (cadre && !/display-capture/.test(cadre.getAttribute('allow') || '')) {
+      l.push('➜ L\'iframe n\'a pas le droit de capturer : rechargez la page.');
+    } else if (!enCours) {
+      l.push('➜ Tout est en ordre côté technique. Relancez le partage SANS');
+      l.push('  fermer cette fenêtre de diagnostic, puis rouvrez-la : si la');
+      l.push('  ligne 4 reste « non », le partage n\'atteint pas Jitsi.');
+    } else {
+      l.push('➜ Le partage EST actif. Si un patient ne voit rien, le problème');
+      l.push('  est de son côté : qu\'il recharge sa page.');
+    }
+    return l;
+  }
+  window.diagnosticPartage = diagnosticPartage;
+
   window.visioDiagnostic = async function () {
     try {
       const c = await window.MarfanAPI.visioJaas.config();
@@ -14803,7 +14873,10 @@
         'Clé privée                 : ' + (c.cle_privee_ok ? '✅ lue correctement' : '❌ ' + (c.cle_privee_erreur || 'illisible')),
         '',
         c.pret ? '✅ La visioconférence est prête.'
-               : '❌ La visioconférence NE PEUT PAS fonctionner tant que les points ci-dessus ne sont pas corrigés.'
+               : '❌ La visioconférence NE PEUT PAS fonctionner tant que les points ci-dessus ne sont pas corrigés.',
+        '',
+        '— PARTAGE D\'ÉCRAN —',
+        ...diagnosticPartage()
       ];
       alert(lignes.join('\n'));
     } catch (e) {
