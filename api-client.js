@@ -401,6 +401,11 @@
       config: () => request('GET', '/visio-jaas/config')
     },
 
+    /** ===== Portrait : tout le patient en un seul appel ===== */
+    portrait: {
+      lire: (id) => request('GET', '/portrait/' + encodeURIComponent(id))
+    },
+
     /** ===== Photographie d'identification du patient ===== */
     photos: {
       // Renvoie null quand il n'y a pas de photo : le serveur répond 204, une

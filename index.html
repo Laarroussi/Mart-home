@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v101';</script>
-  <script src="api-client.js?v=phase101-1"></script>
+  <script>window.MARFAN_VERSION = 'v103';</script>
+  <script src="api-client.js?v=phase103-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase101-1"></script>
+  <script src="questionnaires-defs.js?v=phase103-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase101-1"></script>
+  <script src="medical-parsers.js?v=phase103-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase101-1"></script>
-  <script src="cpet-analyse.js?v=phase101-1"></script>
+  <script src="cpet-graph-preview.js?v=phase103-1"></script>
+  <script src="cpet-analyse.js?v=phase103-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase101-1"></script>
-  <script src="medical-record-ui.js?v=phase101-1"></script>
+  <script src="pdf-extractor.js?v=phase103-1"></script>
+  <script src="medical-record-ui.js?v=phase103-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase101-1"></script>
-  <script src="synthese-ui.js?v=phase101-1"></script>
-  <script src="audit-ui.js?v=phase101-1"></script>
-  <script src="entretien-ui.js?v=phase101-1"></script>
-  <script src="activation-ui.js?v=phase101-1"></script>
-  <script src="document-import.js?v=phase101-1"></script>
-  <script src="activite-ui.js?v=phase101-1"></script>
-  <script src="cpet-detail.js?v=phase101-1"></script>
-  <script src="echo-calculs.js?v=phase101-1"></script>
-  <script src="echo-detail.js?v=phase101-1"></script>
-  <script src="accueil-activite.js?v=phase101-1"></script>
-  <script src="visio-jitsi.js?v=phase101-1"></script>
-  <script src="video-pilotee.js?v=phase101-1"></script>
-  <script src="fiche-apa.js?v=phase101-1"></script>
-  <script src="inactivite.js?v=phase101-1"></script>
-  <script src="bilans-ui.js?v=phase101-1"></script>
-  <script src="etudes-ui.js?v=phase101-1"></script>
-  <script src="ville-hopital.js?v=phase101-1"></script>
-  <script src="qlibres-ui.js?v=phase101-1"></script>
-  <script src="parametres-ui.js?v=phase101-1"></script>
+  <script src="aortic-consultations.js?v=phase103-1"></script>
+  <script src="synthese-ui.js?v=phase103-1"></script>
+  <script src="audit-ui.js?v=phase103-1"></script>
+  <script src="entretien-ui.js?v=phase103-1"></script>
+  <script src="activation-ui.js?v=phase103-1"></script>
+  <script src="document-import.js?v=phase103-1"></script>
+  <script src="activite-ui.js?v=phase103-1"></script>
+  <script src="cpet-detail.js?v=phase103-1"></script>
+  <script src="echo-calculs.js?v=phase103-1"></script>
+  <script src="echo-detail.js?v=phase103-1"></script>
+  <script src="accueil-activite.js?v=phase103-1"></script>
+  <script src="visio-jitsi.js?v=phase103-1"></script>
+  <script src="video-pilotee.js?v=phase103-1"></script>
+  <script src="fiche-apa.js?v=phase103-1"></script>
+  <script src="inactivite.js?v=phase103-1"></script>
+  <script src="bilans-ui.js?v=phase103-1"></script>
+  <script src="etudes-ui.js?v=phase103-1"></script>
+  <script src="ville-hopital.js?v=phase103-1"></script>
+  <script src="qlibres-ui.js?v=phase103-1"></script>
+  <script src="parametres-ui.js?v=phase103-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3989,15 +3989,25 @@
              position, pas d'avancement. -->
         <div class="card" style="padding:14px 18px; margin-bottom:16px;">
           <div class="subtabs" id="dossierVues" style="display:flex; gap:6px; flex-wrap:wrap; margin:0;">
-            <button class="subtab-button active" data-dgroup="synthese" data-subtab="patient-synthese">1 · Synthèse</button>
-            <button class="subtab-button" data-dgroup="activite">2 · Activité réalisée</button>
-            <button class="subtab-button" data-dgroup="suivi" data-subtab="patient-physio">3 · Graphiques</button>
-            <button class="subtab-button" data-dgroup="questionnaires" data-subtab="patient-questionnaires">4 · Questionnaires</button>
-            <button class="subtab-button" data-dgroup="pieces">5 · Documents</button>
+            <button class="subtab-button active" data-dgroup="portrait" data-subtab="patient-portrait">1 · Portrait</button>
+            <button class="subtab-button" data-dgroup="synthese" data-subtab="patient-synthese">2 · Synthèse</button>
+            <button class="subtab-button" data-dgroup="activite">3 · Activité réalisée</button>
+            <button class="subtab-button" data-dgroup="suivi" data-subtab="patient-physio">4 · Graphiques</button>
+            <button class="subtab-button" data-dgroup="questionnaires" data-subtab="patient-questionnaires">5 · Questionnaires</button>
+            <button class="subtab-button" data-dgroup="pieces">6 · Documents</button>
           </div>
           <div style="margin-top:10px; height:4px; background:#e2e8f0; border-radius:99px; position:relative; overflow:hidden;">
             <div id="dossierReperePos" style="position:absolute; top:0; bottom:0; left:0; width:20%; background:linear-gradient(90deg,#0891b2,#14b8a6); border-radius:99px; transition:left .25s ease, width .25s ease;"></div>
           </div>
+        </div>
+
+        <!-- ===================== PORTRAIT DU PATIENT =====================
+             Une page, un écran, aucun défilement. Qui il est, sa pathologie,
+             son aorte, ses antécédents, sa prise en charge, et l'activité
+             déjà réalisée. Tout ce qu'on veut avoir sous les yeux avant de
+             décider quoi que ce soit. -->
+        <div id="patient-portrait" class="sub-panel hidden" data-dgroup="portrait">
+          <div id="portraitContenu"></div>
         </div>
 
         <!-- Phase 12.4 : Carte d'identité enrichie -->
@@ -5230,47 +5240,54 @@
           </div>
         </header>
 
-        <div class="card" style="padding:16px 20px; margin-bottom:16px;">
-          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-            <div style="flex:2; min-width:260px;">
-              <label for="carnetTexte" style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:5px;">
-                À faire
-              </label>
-              <input id="carnetTexte" type="text" placeholder="Relancer pour la spirométrie, revoir dans 3 semaines…"
-                     onkeydown="if(event.key==='Enter') carnetAjouter()"
-                     style="width:100%; padding:11px; border:1px solid #cbd5e1; border-radius:9px; font-size:13.5px; font-family:inherit;">
-            </div>
-            <div style="min-width:210px;">
-              <label for="carnetPatient" style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:5px;">
-                Patient <span style="font-weight:400; color:#94a3b8;">(facultatif)</span>
-              </label>
-              <select id="carnetPatient" style="width:100%; padding:11px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;">
-                <option value="">— Aucun patient —</option>
+        <div class="card" style="padding:14px 18px; margin-bottom:14px;">
+          <div style="display:flex; gap:9px; flex-wrap:wrap; align-items:flex-end;">
+            <div style="min-width:150px;">
+              <label for="carnetType" style="display:block; font-size:11.5px; font-weight:700; color:#475569; margin-bottom:4px;">Nature</label>
+              <select id="carnetType" onchange="carnetMajFormulaire()"
+                      style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;">
+                <option value="tache">✓ Tâche à faire</option>
+                <option value="rendez_vous">📅 Rendez-vous</option>
+                <option value="prevu">🔭 Prévu / attendu</option>
               </select>
             </div>
-            <div style="min-width:160px;">
-              <label for="carnetEcheance" style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:5px;">
-                Pour le <span style="font-weight:400; color:#94a3b8;">(facultatif)</span>
-              </label>
-              <input id="carnetEcheance" type="date"
-                     style="width:100%; padding:11px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;">
+            <div style="flex:2; min-width:220px;">
+              <label for="carnetTexte" style="display:block; font-size:11.5px; font-weight:700; color:#475569; margin-bottom:4px;">Intitulé</label>
+              <input id="carnetTexte" type="text" placeholder="Relancer pour la spirométrie…"
+                     onkeydown="if(event.key==='Enter') carnetAjouter()"
+                     style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:9px; font-size:13.5px; font-family:inherit;">
             </div>
-            <button class="btn-gradient" onclick="carnetAjouter()" style="padding:12px 20px; white-space:nowrap;">+ Ajouter</button>
+            <div style="min-width:140px;">
+              <label for="carnetEcheance" style="display:block; font-size:11.5px; font-weight:700; color:#475569; margin-bottom:4px;">Date</label>
+              <input id="carnetEcheance" type="date"
+                     style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;">
+            </div>
+            <div id="carnetChampHeure" style="min-width:104px; display:none;">
+              <label for="carnetHeure" style="display:block; font-size:11.5px; font-weight:700; color:#475569; margin-bottom:4px;">Heure</label>
+              <input id="carnetHeure" type="time"
+                     style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;">
+            </div>
+            <div id="carnetChampLieu" style="min-width:150px; display:none;">
+              <label for="carnetLieu" style="display:block; font-size:11.5px; font-weight:700; color:#475569; margin-bottom:4px;">Lieu</label>
+              <input id="carnetLieu" type="text" placeholder="Visio, Bichat…"
+                     style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;">
+            </div>
+            <button class="btn-gradient" onclick="carnetAjouter()" style="padding:11px 19px; white-space:nowrap;">+ Ajouter</button>
           </div>
-          <p style="font-size:11.5px; color:#64748b; margin:8px 0 0; line-height:1.5;">
-            Sans date, l'action est conservée mais ne reviendra pas vers vous d'elle-même :
-            elle attend dans « Sans échéance ».
-          </p>
-          <div id="carnetMessage" style="display:none; margin-top:11px; padding:10px 12px; border-radius:9px; font-size:12.5px;"></div>
+          <p id="carnetAide" style="font-size:11.5px; color:#64748b; margin:7px 0 0; line-height:1.5;"></p>
+          <div id="carnetMessage" style="display:none; margin-top:10px; padding:10px 12px; border-radius:9px; font-size:12.5px;"></div>
         </div>
 
-        <!-- Deux colonnes : le carnet, et le bandeau d'identité du patient
-             sur lequel on travaille. Le bandeau reste visible pendant qu'on
-             fait défiler la liste — c'est tout son intérêt. -->
-        <div style="display:flex; gap:16px; align-items:flex-start;">
+        <!-- Trois colonnes : les patients à gauche, ce qui les concerne au
+             centre, l'identité du patient retenu à droite. La colonne de
+             gauche est la clé de l'organisation : on part de la personne, pas
+             d'une liste indifférenciée où vingt dossiers se mélangent. -->
+        <div style="display:flex; gap:14px; align-items:flex-start;">
+          <aside id="carnetPatients"
+                 style="flex:0 0 228px; position:sticky; top:14px; max-height:calc(100vh - 120px); overflow-y:auto;"></aside>
           <div id="carnetListe" style="flex:1; min-width:0;"></div>
           <aside id="carnetBandeau"
-                 style="flex:0 0 272px; position:sticky; top:14px; display:none;"></aside>
+                 style="flex:0 0 250px; position:sticky; top:14px; display:none;"></aside>
         </div>
       </section>
 
@@ -6436,7 +6453,9 @@
       renderPatientFile();
       // Le dossier s'ouvre toujours sur la synthèse : c'est ce qu'on relit
       // en premier avant une consultation.
-      try { afficherVueDossier('synthese', 'patient-synthese'); } catch (_) {}
+      // Le dossier s'ouvre sur le portrait : avant de lire une synthèse, on
+      // veut savoir de qui l'on parle.
+      try { afficherVueDossier('portrait', 'patient-portrait'); } catch (_) {}
     }
     if (tabId === 'training') renderTrainingVideos();
     // La liste des personnes se recharge à chaque ouverture : un compte créé
@@ -11264,6 +11283,7 @@
                           !['patient-vo2', 'patient-pulse'].includes(panneau);
       board.style.display = avecTableau ? '' : 'none';
     }
+    if (panneau === 'patient-portrait') { try { portraitCharger(); } catch (e) { console.warn('[portrait]', e); } }
     if (panneau === 'patient-vo2') { syncEvalSelectors(); renderVo2Analysis(); }
     if (panneau === 'patient-pulse') { syncEvalSelectors(); renderPulseAnalysis(); }
     majReperePositionDossier();
@@ -13049,21 +13069,177 @@
    * sous le doigt reste un défaut d'interface : on dit ce qui se passe.
    */
   // ================================================================
+  // PORTRAIT DU PATIENT — une page, un écran
+  // ----------------------------------------------------------------
+  // La contrainte « tout tient sans défiler » n'est pas une coquetterie : une
+  // information qu'il faut aller chercher en bas de page n'est pas consultée
+  // avant une décision, elle est consultée après, quand on cherche pourquoi.
+  //
+  // Elle impose des choix. On montre la DERNIÈRE valeur de chaque chose, pas
+  // son historique — l'historique a ses propres onglets. Les textes libres
+  // (antécédents, objectifs) sont bornés en hauteur avec leur propre
+  // défilement interne : un antécédent de trente lignes ne doit pas repousser
+  // l'aorte hors de l'écran.
+  // ================================================================
+  const PORTRAIT_VIDE = '<span style="color:#94a3b8; font-style:italic;">non renseigné</span>';
+
+  function pTexte(v) {
+    if (v === null || v === undefined || String(v).trim() === '') return PORTRAIT_VIDE;
+    return String(v);
+  }
+  function pDate(v) {
+    if (!v) return PORTRAIT_VIDE;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? PORTRAIT_VIDE
+      : d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+  function pDuree(s) {
+    if (!s) return '0 min';
+    const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+    return h ? h + ' h ' + String(m).padStart(2, '0') : m + ' min';
+  }
+
+  window.portraitCharger = async function () {
+    const zone = $('portraitContenu');
+    if (!zone) return;
+    // `selectedPatient` est la variable que tout le dossier utilise déjà ;
+    // le sélecteur du haut sert de repli si elle n'est pas encore posée.
+    const id = (typeof selectedPatient !== 'undefined' && selectedPatient && selectedPatient.id)
+      || (($('quickPatientSelect') || {}).value) || null;
+    if (!id) {
+      zone.innerHTML = '<div class="card" style="padding:28px; text-align:center; color:#64748b;">'
+                     + 'Choisissez un patient pour afficher son portrait.</div>';
+      return;
+    }
+    zone.innerHTML = '<div class="card" style="padding:28px; color:#94a3b8;">Chargement du portrait…</div>';
+    try {
+      const d = await window.MarfanAPI.portrait.lire(id);
+      zone.innerHTML = portraitHtml(d);
+    } catch (e) {
+      zone.innerHTML = '<div class="card" style="padding:24px; color:#991b1b;">Portrait indisponible : '
+                     + ((e && e.message) || 'erreur inconnue') + '</div>';
+    }
+  };
+
+  function portraitHtml(d) {
+    const pseudo = !!(window.AppModes && window.AppModes.pseudoMode);
+    const i = d.identite, pa = d.pathologie, ao = d.aorte, an = d.antecedents, ap = d.apa, ac = d.activite;
+
+    const nom = pseudo ? 'Identité masquée'
+      : [i.prenom, i.nom ? i.nom.toUpperCase() : ''].filter(Boolean).join(' ') || 'Identité non renseignée';
+    const portrait = (i.photo && !pseudo)
+      ? `<img src="data:${i.photo.mime};base64,${i.photo.data}" alt=""
+             style="width:92px; height:114px; object-fit:cover; border-radius:11px; display:block;">`
+      : `<div style="width:92px; height:114px; border-radius:11px; background:linear-gradient(135deg,#1e3a8a,#3b82f6);
+                     color:white; display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:800;">
+           ${pseudo ? '•••' : (((i.prenom||' ')[0] + (i.nom||' ')[0]).toUpperCase().trim() || '?')}</div>`;
+
+    // Évolution des sinus : un diamètre ne se lit pas seul. On affiche l'écart
+    // avec la mesure précédente, et la durée qui les sépare — un écart sans sa
+    // durée ne veut rien dire, c'est la règle du dépôt.
+    let evolution = '';
+    if (ao.sinus_mm != null && ao.sinus_precedent_mm != null && ao.sinus_date && ao.sinus_precedent_date) {
+      const ecart = Number(ao.sinus_mm) - Number(ao.sinus_precedent_mm);
+      const mois = Math.round((new Date(ao.sinus_date) - new Date(ao.sinus_precedent_date)) / 2629800000);
+      evolution = `<div style="font-size:11.5px; color:${ecart > 0 ? '#b45309' : '#047857'}; margin-top:3px;">
+        ${ecart > 0 ? '+' : ''}${ecart.toFixed(1)} mm en ${mois} mois</div>`;
+    }
+    const v = ao.sinus_mm != null ? Number(ao.sinus_mm) : null;
+    const tonAorte = v == null ? '#94a3b8' : (v >= 45 ? '#b91c1c' : v >= 40 ? '#b45309' : '#047857');
+
+    const bloc = (titre, contenu, hauteur) => `
+      <div class="card" style="padding:13px 15px; display:flex; flex-direction:column; min-height:0;">
+        <div style="font-size:10.5px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.4px; margin-bottom:7px;">${titre}</div>
+        <div style="flex:1; min-height:0; ${hauteur ? 'max-height:' + hauteur + 'px; overflow-y:auto;' : ''} font-size:12.5px; line-height:1.55; color:#334155;">${contenu}</div>
+      </div>`;
+
+    const paire = (k, val) => `<div style="display:flex; justify-content:space-between; gap:10px; padding:3px 0;">
+        <span style="color:#64748b;">${k}</span><span style="color:#0b1530; font-weight:600; text-align:right;">${val}</span></div>`;
+
+    const liste = (arr) => (arr && arr.length)
+      ? arr.map(x => `<span style="display:inline-block; background:#f1f5f9; border-radius:6px; padding:2px 8px; margin:2px 3px 2px 0; font-size:11.5px;">${x}</span>`).join('')
+      : PORTRAIT_VIDE;
+
+    return `
+    <!-- En-tête : qui, et l'aorte. Les deux choses qu'on regarde en premier. -->
+    <div class="card" style="padding:15px 18px; margin-bottom:11px; display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+      ${portrait}
+      <div style="flex:1; min-width:190px;">
+        <div style="font-size:20px; font-weight:800; color:#0b1530;">${i.id}</div>
+        <div style="font-size:14px; color:#334155;">${nom}</div>
+        <div style="font-size:12px; color:#64748b; margin-top:4px;">
+          ${i.age != null ? i.age + ' ans' : 'âge inconnu'} · ${pTexte(i.sexe)}
+          ${i.profession ? ' · ' + (pseudo ? '••••••' : i.profession) : ''}
+          ${i.ipp ? ' · IPP ' + (pseudo ? '••••••' : i.ipp) : ''}
+        </div>
+      </div>
+      <div style="text-align:right; min-width:170px;">
+        <div style="font-size:10.5px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.4px;">Sinus de Valsalva</div>
+        ${v != null
+          ? `<div style="font-size:30px; font-weight:800; color:${tonAorte}; line-height:1.1;">${v.toFixed(1)}<span style="font-size:15px;"> mm</span></div>
+             <div style="font-size:11.5px; color:#64748b;">${pDate(ao.sinus_date)}</div>${evolution}`
+          : `<div style="font-size:14px; color:#94a3b8; font-style:italic; margin-top:6px;">Non mesuré</div>`}
+        ${ao.operee ? `<div style="margin-top:5px; display:inline-block; background:#fef2f2; color:#991b1b; border:1px solid #fecaca;
+             border-radius:99px; padding:2px 10px; font-size:11px; font-weight:800;">Aorte opérée${ao.operee_date ? ' · ' + pDate(ao.operee_date) : ''}</div>` : ''}
+      </div>
+    </div>
+
+    <!-- Quatre blocs de même hauteur : rien ne pousse le reste hors de l'écran. -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(255px, 1fr)); gap:11px;">
+      ${bloc('Pathologie', `
+        ${paire('Gène / variant', pTexte(pa.gene))}
+        ${paire('Diagnostic', pDate(pa.date_diagnostic))}
+        ${paire('Statut', pTexte(pa.statut))}
+        <div style="margin-top:6px; color:#64748b;">Atteintes</div>
+        <div>${liste(pa.alterations)}</div>
+        ${(pa.incidents && pa.incidents.length) ? `<div style="margin-top:6px; color:#991b1b; font-weight:700;">Incidents</div><div>${liste(pa.incidents)}</div>` : ''}
+        ${pa.facteur_risque ? `<div style="margin-top:6px; color:#64748b;">Risque</div><div>${pTexte(pa.facteur_risque)}</div>` : ''}
+      `, 184)}
+
+      ${bloc('Antécédents et traitements', `
+        <div style="color:#64748b;">Histoire</div><div style="margin-bottom:6px;">${pTexte(an.histoire)}</div>
+        <div style="color:#64748b;">Traitements</div><div style="margin-bottom:6px;">${pTexte(an.traitements)}</div>
+        ${paire('Allergies', pTexte(an.allergies))}
+        ${paire('Tabac', pTexte(an.tabac))}
+        ${paire('PA de repos', pTexte(an.pa_repos))}
+      `, 184)}
+
+      ${bloc('Prise en charge APA', `
+        ${paire('Début APA', pDate(ap.debut))}
+        ${paire('Inclusion', pDate(ap.inclusion))}
+        ${paire('VO₂ max', ap.vo2_max != null ? Number(ap.vo2_max).toFixed(1) + ' mL/kg/min' : PORTRAIT_VIDE)}
+        ${ap.vo2_date ? paire('mesurée le', pDate(ap.vo2_date)) : ''}
+        <div style="margin-top:6px; color:#64748b;">Modalités</div><div style="margin-bottom:6px;">${pTexte(ap.modalites)}</div>
+        <div style="color:#64748b;">Objectifs</div><div>${pTexte(ap.objectifs)}</div>
+      `, 184)}
+
+      ${bloc('Activité réalisée', `
+        <div style="display:flex; gap:14px; margin-bottom:8px;">
+          <div><div style="font-size:21px; font-weight:800; color:#0b1530;">${ac.seances}</div>
+               <div style="font-size:11px; color:#64748b;">séance${ac.seances > 1 ? 's' : ''}</div></div>
+          <div><div style="font-size:21px; font-weight:800; color:#0b1530;">${pDuree(ac.duree_totale_s)}</div>
+               <div style="font-size:11px; color:#64748b;">au total</div></div>
+          ${ac.borg_moyen != null ? `<div><div style="font-size:21px; font-weight:800; color:#0b1530;">${ac.borg_moyen}</div>
+               <div style="font-size:11px; color:#64748b;">Borg moyen</div></div>` : ''}
+        </div>
+        ${ac.seances
+          ? `<div style="color:#64748b; margin-bottom:3px;">Dernières séances</div>
+             ${ac.recentes.map(s => `<div style="display:flex; justify-content:space-between; gap:8px; padding:2px 0; border-bottom:1px solid #f8fafc;">
+                 <span>${pDate(s.started_at)}</span>
+                 <span style="color:#64748b;">${pDuree(s.duration_s)}${s.borg_cr10 != null ? ' · Borg ' + s.borg_cr10 : ''}${s.modalite ? ' · ' + s.modalite : ''}</span>
+               </div>`).join('')}`
+          : '<div style="color:#94a3b8; font-style:italic;">Aucune séance enregistrée à ce jour.</div>'}
+      `, 184)}
+    </div>`;
+  }
+
+  // ================================================================
   // CARNET DE SUIVI
   // ----------------------------------------------------------------
   // Le regroupement par échéance vient du serveur, pas d'ici : la date du jour
   // d'un poste peut être fausse, et une action en retard doit se voir en
   // retard sur tous les écrans de la même façon.
   // ================================================================
-  const CARNET_RUBRIQUES = [
-    ['en_retard',     'En retard',        '#dc2626', '#fef2f2', '#fecaca'],
-    ['aujourdhui',    "Aujourd'hui",      '#b45309', '#fffbeb', '#fcd34d'],
-    ['cette_semaine', 'Cette semaine',    '#0e7490', '#ecfeff', '#a5f3fc'],
-    ['plus_tard',     'Plus tard',        '#475569', '#f8fafc', '#e2e8f0'],
-    ['sans_echeance', 'Sans échéance',    '#64748b', '#f8fafc', '#e2e8f0'],
-    ['faites',        'Faites récemment', '#047857', '#ecfdf5', '#a7f3d0']
-  ];
-
   function carnetDire(texte, type) {
     const d = $('carnetMessage');
     if (!d) return;
@@ -13081,25 +13257,21 @@
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
-  /** Remplit la liste des patients du formulaire, avec code et prénom. */
-  function carnetRemplirPatients() {
-    const sel = $('carnetPatient');
-    if (!sel || typeof patients === 'undefined') return;
-    const choisi = sel.value;
-    sel.innerHTML = '<option value="">— Aucun patient —</option>' +
-      patients.map(p => `<option value="${p.id}">${window.etiquettePatient(p)}</option>`).join('');
-    if (choisi) sel.value = choisi;
-  }
+  // Patient retenu dans la colonne de gauche. `null` = tous les patients.
+  let _carnetFiltre = null;
+  let _carnetDonnees = null;
 
   window.carnetCharger = async function () {
     const zone = $('carnetListe');
     if (!zone) return;
-    carnetRemplirPatients();
     zone.innerHTML = '<div style="padding:20px; color:#94a3b8; font-size:13px;">Chargement…</div>';
     try {
       const r = await window.MarfanAPI.carnet.lister();
+      _carnetDonnees = r;
+      carnetRendrePatients(r.par_patient || {});
       carnetAfficher(r.groupes || {});
       carnetMajPastille(r.a_traiter || 0);
+      carnetMajFormulaire();
     } catch (e) {
       zone.innerHTML = '<div style="padding:20px; color:#991b1b; font-size:13px;">Carnet indisponible : '
                      + ((e && e.message) || 'erreur inconnue') + '</div>';
@@ -13115,38 +13287,155 @@
     p.textContent = n > 0 ? String(n) : '';
   }
 
+  /**
+   * Colonne de gauche : un onglet par patient.
+   *
+   * Classés par urgence, pas par ordre alphabétique : celui qui a trois
+   * retards doit être en haut, pas noyé au milieu parce que son nom commence
+   * par M. Un patient sans rien en attente reste listé — on doit pouvoir
+   * cliquer dessus pour lui ajouter quelque chose.
+   */
+  function carnetRendrePatients(parPatient) {
+    const col = $('carnetPatients');
+    if (!col || typeof patients === 'undefined') return;
+
+    const liste = patients.map(p => ({
+      p, compte: parPatient[p.id] || { total: 0, en_retard: 0 }
+    })).sort((a, b) =>
+      (b.compte.en_retard - a.compte.en_retard) ||
+      (b.compte.total - a.compte.total) ||
+      String(a.p.id).localeCompare(String(b.p.id))
+    );
+
+    const onglet = (id, libelle, compte, actif) => {
+      const retard = compte && compte.en_retard > 0;
+      return `<button onclick="carnetSelectionner(${id === null ? 'null' : `'${id}'`})"
+        style="display:flex; align-items:center; gap:7px; width:100%; text-align:left; cursor:pointer;
+               padding:9px 11px; margin-bottom:3px; border-radius:9px; font-family:inherit; font-size:12.5px;
+               border:1px solid ${actif ? '#1d4ed8' : 'transparent'};
+               background:${actif ? '#eff6ff' : 'transparent'};
+               color:${actif ? '#1d4ed8' : '#334155'}; font-weight:${actif ? '700' : '500'};">
+        <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${libelle}</span>
+        ${compte && compte.total ? `<span style="flex:0 0 auto; background:${retard ? '#dc2626' : '#cbd5e1'};
+          color:${retard ? 'white' : '#334155'}; border-radius:99px; padding:1px 7px; font-size:11px; font-weight:800;">${compte.total}</span>` : ''}
+      </button>`;
+    };
+
+    const totalGeneral = Object.values(parPatient)
+      .reduce((n, c) => n + c.total, 0);
+
+    col.innerHTML = `<div class="card" style="padding:10px;">
+      <div style="font-size:10.5px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.4px; padding:3px 8px 7px;">Patients</div>
+      ${onglet(null, 'Tous les patients', { total: totalGeneral, en_retard: 0 }, _carnetFiltre === null)}
+      <div style="height:1px; background:#f1f5f9; margin:6px 2px;"></div>
+      ${liste.map(({ p, compte }) =>
+        onglet(p.id, window.etiquettePatient(p), compte, _carnetFiltre === p.id)).join('')}
+    </div>`;
+  }
+
+  window.carnetSelectionner = function (patientId) {
+    _carnetFiltre = patientId;
+    if (_carnetDonnees) {
+      carnetRendrePatients(_carnetDonnees.par_patient || {});
+      carnetAfficher(_carnetDonnees.groupes || {});
+    }
+    carnetMajFormulaire();
+    // Le bandeau d'identité suit la sélection : c'est le même geste.
+    const b = $('carnetBandeau');
+    if (!patientId) { _carnetPatientVu = null; if (b) { b.style.display = 'none'; b.innerHTML = ''; } }
+    else { _carnetPatientVu = null; carnetVoirPatient(patientId); }
+  };
+
+  // Les trois natures, dans l'ordre où on les regarde : ce que je dois faire,
+  // ce qui est fixé, ce qui vient.
+  const CARNET_NATURES = [
+    ['tache',       '✓ Tâches',      '#1d4ed8', '#eff6ff', '#bfdbfe'],
+    ['rendez_vous', '📅 Rendez-vous', '#7c3aed', '#f5f3ff', '#ddd6fe'],
+    ['prevu',       '🔭 Prévu',       '#0e7490', '#ecfeff', '#a5f3fc']
+  ];
+
   function carnetAfficher(groupes) {
     const zone = $('carnetListe');
-    const total = CARNET_RUBRIQUES.reduce((n, [cle]) => n + ((groupes[cle] || []).length), 0);
+    if (!zone) return;
+
+    // On repart de toutes les entrées, puis on filtre sur le patient retenu.
+    // L'ordre d'urgence est conservé : il vient du serveur.
+    const ordre = ['en_retard', 'aujourdhui', 'cette_semaine', 'plus_tard', 'sans_echeance'];
+    let toutes = [];
+    for (const cle of ordre) for (const a of (groupes[cle] || [])) toutes.push({ a, urgence: cle });
+    const faites = (groupes.faites || []).map(a => ({ a, urgence: 'faites' }));
+
+    if (_carnetFiltre) {
+      toutes = toutes.filter(x => x.a.patient_id === _carnetFiltre);
+    }
+
+    const parNature = { tache: [], rendez_vous: [], prevu: [] };
+    for (const x of toutes) (parNature[x.a.type || 'tache'] || parNature.tache).push(x);
+
+    const total = toutes.length;
     if (!total) {
       zone.innerHTML = `<div class="card" style="padding:34px; text-align:center;">
         <div style="font-size:40px; margin-bottom:8px;">📓</div>
-        <strong style="font-size:15px;">Le carnet est vide</strong>
+        <strong style="font-size:15px;">${_carnetFiltre ? 'Rien en attente pour ce patient' : 'Le carnet est vide'}</strong>
         <p style="color:#64748b; font-size:13px; margin-top:7px; line-height:1.6;">
-          Notez ci-dessus ce que vous ne devez pas oublier : une relance, un contrôle à prévoir,
-          un patient à rappeler. Rien n'est perdu, et tout est partagé avec l'équipe.
+          Notez ci-dessus une tâche, un rendez-vous ou quelque chose à prévoir.
+          Tout est partagé avec l'équipe.
         </p></div>`;
       return;
     }
-    zone.innerHTML = CARNET_RUBRIQUES.map(([cle, titre, couleur, fond, bord]) => {
-      const liste = groupes[cle] || [];
-      if (!liste.length) return '';
-      return `<div class="card" style="padding:0; margin-bottom:14px; overflow:hidden;">
-        <div style="padding:10px 16px; background:${fond}; border-bottom:1px solid ${bord}; display:flex; align-items:center; gap:9px;">
-          <strong style="color:${couleur}; font-size:13px;">${titre}</strong>
-          <span style="color:${couleur}; opacity:.75; font-size:12px;">${liste.length}</span>
+
+    zone.innerHTML = CARNET_NATURES.map(([nature, titre, couleur, fond, bord]) => {
+      const liste = parNature[nature] || [];
+      return `<div class="card" style="padding:0; margin-bottom:12px; overflow:hidden;">
+        <div style="padding:9px 15px; background:${fond}; border-bottom:1px solid ${bord}; display:flex; align-items:center; gap:8px;">
+          <strong style="color:${couleur}; font-size:12.5px;">${titre}</strong>
+          <span style="color:${couleur}; opacity:.7; font-size:11.5px;">${liste.length}</span>
         </div>
-        ${liste.map(a => carnetLigne(a, cle)).join('')}
+        ${liste.length
+          ? liste.map(x => carnetLigne(x.a, x.urgence)).join('')
+          : `<div style="padding:14px 15px; color:#94a3b8; font-size:12px; font-style:italic;">Rien ${_carnetFiltre ? 'pour ce patient' : 'pour l\'instant'}.</div>`}
       </div>`;
-    }).join('');
+    }).join('')
+    + (faites.length ? `<details class="card" style="padding:0; overflow:hidden;">
+        <summary style="padding:9px 15px; background:#ecfdf5; border-bottom:1px solid #a7f3d0; color:#047857;
+                        font-size:12.5px; font-weight:700; cursor:pointer;">Faites récemment · ${faites.length}</summary>
+        ${faites.filter(x => !_carnetFiltre || x.a.patient_id === _carnetFiltre)
+                .map(x => carnetLigne(x.a, 'faites')).join('')}
+      </details>` : '');
   }
 
-  function carnetLigne(a, rubrique) {
+  /** Le formulaire s'adapte à la nature choisie, et au patient retenu. */
+  window.carnetMajFormulaire = function () {
+    const t = ($('carnetType') || {}).value || 'tache';
+    const rdv = (t === 'rendez_vous');
+    if ($('carnetChampHeure')) $('carnetChampHeure').style.display = rdv ? 'block' : 'none';
+    if ($('carnetChampLieu'))  $('carnetChampLieu').style.display  = rdv ? 'block' : 'none';
+
+    const p = (_carnetFiltre && typeof patients !== 'undefined')
+      ? patients.find(x => x.id === _carnetFiltre) : null;
+    const pour = p ? 'pour <strong>' + window.etiquettePatient(p) + '</strong>'
+                   : 'sans patient rattaché — choisissez-en un à gauche pour le rattacher';
+    const explication = {
+      tache:       'Une tâche se coche quand elle est faite.',
+      rendez_vous: "Un rendez-vous a une heure et un lieu ; il n'attend pas d'être « fait ».",
+      prevu:       "Ce qui est attendu plus tard : un contrôle à six mois, une échéance d'étude."
+    }[t];
+    const aide = $('carnetAide');
+    if (aide) aide.innerHTML = explication + ' Enregistré ' + pour + '.'
+      + ' Sans date, l\'entrée attend dans « sans échéance » et ne revient pas d\'elle-même.';
+  };
+
+  function carnetLigne(a, urgence) {
     const faite = (a.statut === 'faite' || a.statut === 'annulee');
     const p = (typeof patients !== 'undefined' && a.patient_id)
       ? patients.find(x => x.id === a.patient_id) : null;
     const qui = p ? window.etiquettePatient(p) : (a.patient_id || '');
     const date = carnetDateLisible(a.echeance);
+    // L'urgence se lit sur la date, pas sur un ton de gris : en retard en
+    // rouge, pour aujourd'hui en orange. C'est la seule couleur de la ligne.
+    const tonDate = { en_retard: '#b91c1c', aujourdhui: '#b45309' }[urgence] || '#64748b';
+    const grasDate = (urgence === 'en_retard' || urgence === 'aujourdhui') ? '700' : '400';
+    const heure = a.heure ? String(a.heure).slice(0, 5) : null;
     return `<div style="padding:11px 16px; border-bottom:1px solid #f1f5f9; display:flex; gap:11px; align-items:flex-start;">
       <button onclick="carnetBasculer(${a.id}, ${faite ? 'false' : 'true'})"
               title="${faite ? 'Remettre à faire' : 'Marquer comme faite'}"
@@ -13160,7 +13449,8 @@
                      style="border:0; background:transparent; padding:0; font:inherit; font-weight:700;
                             color:#1d4ed8; cursor:pointer; text-decoration:underline dotted;">${qui}</button>`
                 : '<span style="font-style:italic;">sans patient</span>'}
-          ${date ? `<span>· pour le ${date}</span>` : ''}
+          ${date ? `<span style="color:${tonDate}; font-weight:${grasDate};">· ${urgence === 'en_retard' ? 'était pour le' : 'le'} ${date}${heure ? ' à ' + heure : ''}</span>` : ''}
+          ${a.lieu ? `<span>· ${a.lieu}</span>` : ''}
           <span>· demandé par ${a.cree_par_nom || '—'}</span>
           ${a.statut === 'annulee' ? `<span style="color:#991b1b;">· abandonnée : ${a.motif || ''}</span>` : ''}
           ${a.statut === 'faite' && a.faite_par_nom ? `<span style="color:#047857;">· faite par ${a.faite_par_nom}</span>` : ''}
@@ -13353,17 +13643,24 @@
 
   window.carnetAjouter = async function () {
     const texte = ($('carnetTexte') || {}).value || '';
-    if (!texte.trim()) { carnetDire("Écrivez d'abord ce qu'il y a à faire.", 'erreur'); return; }
+    if (!texte.trim()) { carnetDire("Écrivez d'abord l'intitulé.", 'erreur'); return; }
+    const type = ($('carnetType') || {}).value || 'tache';
     try {
       await window.MarfanAPI.carnet.ajouter({
         texte: texte.trim(),
-        patient_id: ($('carnetPatient') || {}).value || null,
-        echeance: ($('carnetEcheance') || {}).value || null
+        type: type,
+        // Le patient est celui retenu à gauche : on ne le redemande pas, ce
+        // serait l'occasion de se tromper entre deux dossiers voisins.
+        patient_id: _carnetFiltre || null,
+        echeance: ($('carnetEcheance') || {}).value || null,
+        heure: type === 'rendez_vous' ? (($('carnetHeure') || {}).value || null) : null,
+        lieu:  type === 'rendez_vous' ? (($('carnetLieu')  || {}).value || null) : null
       });
       $('carnetTexte').value = '';
-      // On garde le patient et la date : on note souvent plusieurs actions
-      // de suite pour la même personne.
-      carnetDire('Action ajoutée.', 'ok');
+      if ($('carnetHeure')) $('carnetHeure').value = '';
+      // On garde la date, la nature et le patient : on note souvent plusieurs
+      // entrées de suite pour la même personne.
+      carnetDire('Ajouté.', 'ok');
       await carnetCharger();
     } catch (e) {
       carnetDire('Impossible d\'ajouter : ' + ((e && e.message) || 'erreur inconnue'), 'erreur');

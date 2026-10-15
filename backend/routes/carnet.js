@@ -67,6 +67,7 @@ router.get('/', requireAuth, soignants, async (req, res, next) => {
   try {
     const { rows } = await query(
       `SELECT a.id, a.patient_id, a.texte, a.note, a.echeance, a.statut,
+              a.type, a.heure, a.lieu,
               a.cree_le, a.faite_le, a.motif,
               c.name AS cree_par_nom, a.cree_par,
               f.name AS faite_par_nom
@@ -75,7 +76,7 @@ router.get('/', requireAuth, soignants, async (req, res, next) => {
          LEFT JOIN users f ON f.id = a.faite_par
         WHERE a.statut = 'a_faire'
            OR a.faite_le > NOW() - INTERVAL '14 days'
-        ORDER BY a.echeance NULLS LAST, a.cree_le`
+        ORDER BY a.echeance NULLS LAST, a.heure NULLS LAST, a.cree_le`
     );
 
     // Minuit, heure du serveur : la frontière entre « en retard » et « pour
@@ -92,8 +93,21 @@ router.get('/', requireAuth, soignants, async (req, res, next) => {
       else groupes[rubrique(a.echeance, aujourdhui)].push(a);
     }
 
+    // Compte par patient : alimente la colonne de gauche, où l'on voit d'un
+    // coup d'œil qui réclame quelque chose. Seul ce qui est encore à faire
+    // est compté — une liste où les actions terminées gonflent le chiffre ne
+    // sert à rien.
+    const parPatient = {};
+    for (const a of rows) {
+      if (a.statut !== 'a_faire' || !a.patient_id) continue;
+      const p = parPatient[a.patient_id] || (parPatient[a.patient_id] = { total: 0, en_retard: 0 });
+      p.total++;
+      if (rubrique(a.echeance, aujourdhui) === 'en_retard') p.en_retard++;
+    }
+
     res.json({
       groupes,
+      par_patient: parPatient,
       // Le compte de ce qui réclame une décision aujourd'hui : c'est ce
       // chiffre qu'on regarde en premier.
       a_traiter: groupes.en_retard.length + groupes.aujourdhui.length
@@ -106,9 +120,19 @@ router.get('/', requireAuth, soignants, async (req, res, next) => {
 // ============================================================
 router.post('/', requireAuth, soignants, async (req, res, next) => {
   try {
-    const { patient_id, texte, note, echeance } = req.body || {};
+    const { patient_id, texte, note, echeance, type, heure, lieu } = req.body || {};
     if (!texte || !String(texte).trim()) {
       return res.status(400).json({ error: "Ecrivez ce qu'il y a a faire." });
+    }
+    const TYPES = ['tache', 'rendez_vous', 'prevu'];
+    const nature = TYPES.includes(type) ? type : 'tache';
+    // Une heure sans date ne situe rien : on la refuse plutôt que de
+    // l'enregistrer orpheline, où elle n'apparaîtrait nulle part.
+    if (heure && !echeance) {
+      return res.status(400).json({ error: "Une heure demande une date : precisez le jour." });
+    }
+    if (heure && !/^\d{1,2}:\d{2}$/.test(String(heure))) {
+      return res.status(400).json({ error: 'Heure incomprehensible. Format attendu : 14:30' });
     }
     if (patient_id) {
       const p = await query('SELECT id FROM patients WHERE id = $1', [patient_id]);
@@ -121,10 +145,10 @@ router.post('/', requireAuth, soignants, async (req, res, next) => {
     }
 
     const { rows } = await query(
-      `INSERT INTO carnet_actions (patient_id, texte, note, echeance, cree_par)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      `INSERT INTO carnet_actions (patient_id, texte, note, echeance, cree_par, type, heure, lieu)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
       [patient_id || null, String(texte).trim(), (note || '').trim() || null,
-       echeance || null, req.user.id]
+       echeance || null, req.user.id, nature, heure || null, (lieu || '').trim() || null]
     );
     res.status(201).json({ action: rows[0] });
   } catch (err) { next(err); }
