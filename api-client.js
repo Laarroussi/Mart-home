@@ -428,7 +428,9 @@
       modifier: (id, donnees)      => request('PATCH', '/carnet/' + id, donnees),
       faite:    (id)               => request('PATCH', '/carnet/' + id, { statut: 'faite' }),
       rouvrir:  (id)               => request('PATCH', '/carnet/' + id, { statut: 'a_faire' }),
-      annuler:  (id, motif)        => request('PATCH', '/carnet/' + id, { statut: 'annulee', motif })
+      annuler:  (id, motif)        => request('PATCH', '/carnet/' + id, { statut: 'annulee', motif }),
+      // Envoi du rendez-vous au patient, fichier d'agenda joint.
+      envoyer:  (id)               => request('POST',  '/carnet/' + id + '/envoyer')
     },
 
     /** ===== Séances individuelles : une salle par entretien ===== */

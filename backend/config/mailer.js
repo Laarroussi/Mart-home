@@ -41,28 +41,56 @@ function encodeSubject(s) {
   return '=?UTF-8?B?' + Buffer.from(s, 'utf8').toString('base64') + '?=';
 }
 
-/** Envoi via le binaire sendmail local (cPanel/o2switch) */
-function sendViaSendmail({ to, subject, text, html }) {
+/**
+ * Envoi via le binaire sendmail local (cPanel/o2switch)
+ *
+ * `piece` est facultative : { nom, type, contenu }. Quand elle est présente,
+ * la structure du message change — c'est une exigence de la norme MIME, pas
+ * un choix. Sans pièce jointe, `multipart/alternative` suffit : il annonce
+ * deux versions du MÊME contenu, texte et HTML, et le client en choisit une.
+ * Avec une pièce jointe, il faut `multipart/mixed` : le fichier n'est pas une
+ * variante du message, c'est une partie supplémentaire. Les emboîter à
+ * l'envers donne un courriel où la pièce jointe n'apparaît jamais, ou pire,
+ * où le texte disparaît au profit du fichier.
+ */
+function sendViaSendmail({ to, subject, text, html, piece }) {
   return new Promise((resolve, reject) => {
     const bin = process.env.SENDMAIL_PATH || '/usr/sbin/sendmail';
-    const boundary = 'mrf_' + Date.now().toString(36);
+    const alt = 'alt_' + Date.now().toString(36);
+    const mix = 'mix_' + Date.now().toString(36) + 'x';
+
+    const corpsAlternatif =
+      '--' + alt + '\r\n' +
+      'Content-Type: text/plain; charset=UTF-8\r\n' +
+      'Content-Transfer-Encoding: 8bit\r\n\r\n' + text + '\r\n' +
+      '--' + alt + '\r\n' +
+      'Content-Type: text/html; charset=UTF-8\r\n' +
+      'Content-Transfer-Encoding: 8bit\r\n\r\n' + html + '\r\n' +
+      '--' + alt + '--\r\n';
+
     const headers = [
       'From: ' + FROM,
       'To: ' + to,
       REPLY_TO ? 'Reply-To: ' + REPLY_TO : null,
       'Subject: ' + encodeSubject(subject),
       'MIME-Version: 1.0',
-      'Content-Type: multipart/alternative; boundary="' + boundary + '"'
+      piece
+        ? 'Content-Type: multipart/mixed; boundary="' + mix + '"'
+        : 'Content-Type: multipart/alternative; boundary="' + alt + '"'
     ].filter(Boolean).join('\r\n');
 
-    const body =
-      '\r\n\r\n--' + boundary + '\r\n' +
-      'Content-Type: text/plain; charset=UTF-8\r\n' +
-      'Content-Transfer-Encoding: 8bit\r\n\r\n' + text + '\r\n' +
-      '--' + boundary + '\r\n' +
-      'Content-Type: text/html; charset=UTF-8\r\n' +
-      'Content-Transfer-Encoding: 8bit\r\n\r\n' + html + '\r\n' +
-      '--' + boundary + '--\r\n';
+    const body = piece
+      ? '\r\n\r\n--' + mix + '\r\n' +
+        'Content-Type: multipart/alternative; boundary="' + alt + '"\r\n\r\n' +
+        corpsAlternatif +
+        '--' + mix + '\r\n' +
+        'Content-Type: ' + (piece.type || 'application/octet-stream') +
+          '; name="' + piece.nom + '"\r\n' +
+        'Content-Transfer-Encoding: base64\r\n' +
+        'Content-Disposition: attachment; filename="' + piece.nom + '"\r\n\r\n' +
+        Buffer.from(piece.contenu, 'utf8').toString('base64').replace(/(.{76})/g, '$1\r\n') + '\r\n' +
+        '--' + mix + '--\r\n'
+      : '\r\n\r\n' + corpsAlternatif;
 
     let child;
     try {
@@ -83,7 +111,7 @@ function sendViaSendmail({ to, subject, text, html }) {
 }
 
 /** Envoi via SMTP (nodemailer) */
-async function sendViaSmtp({ to, subject, text, html }) {
+async function sendViaSmtp({ to, subject, text, html, piece }) {
   const nodemailer = getNodemailer();
   if (!nodemailer) throw new Error('nodemailer non installé');
   const port = parseInt(process.env.SMTP_PORT, 10) || 465;
@@ -95,7 +123,12 @@ async function sendViaSmtp({ to, subject, text, html }) {
   });
   await transporter.sendMail({
     from: FROM, to, subject, text, html,
-    ...(REPLY_TO ? { replyTo: REPLY_TO } : {})
+    ...(REPLY_TO ? { replyTo: REPLY_TO } : {}),
+    ...(piece ? { attachments: [{
+      filename: piece.nom,
+      content: piece.contenu,
+      contentType: piece.type || 'application/octet-stream'
+    }] } : {})
   });
   return { mode: 'smtp' };
 }
@@ -104,14 +137,14 @@ async function sendViaSmtp({ to, subject, text, html }) {
  * Envoie un e-mail. Tente SMTP puis sendmail.
  * Ne lève une erreur que si les deux modes échouent.
  */
-async function sendMail({ to, subject, text, html }) {
+async function sendMail({ to, subject, text, html, piece }) {
   if (!to) throw new Error('Destinataire manquant');
   const erreurs = [];
   if (smtpConfigured() && getNodemailer()) {
-    try { return await sendViaSmtp({ to, subject, text, html }); }
+    try { return await sendViaSmtp({ to, subject, text, html, piece }); }
     catch (e) { erreurs.push('SMTP : ' + e.message); }
   }
-  try { return await sendViaSendmail({ to, subject, text, html }); }
+  try { return await sendViaSendmail({ to, subject, text, html, piece }); }
   catch (e) { erreurs.push('sendmail : ' + e.message); }
   throw new Error(erreurs.join(' | '));
 }

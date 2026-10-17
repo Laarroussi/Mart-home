@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v112';</script>
-  <script src="api-client.js?v=phase112-1"></script>
+  <script>window.MARFAN_VERSION = 'v114';</script>
+  <script src="api-client.js?v=phase114-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase112-1"></script>
+  <script src="questionnaires-defs.js?v=phase114-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase112-1"></script>
+  <script src="medical-parsers.js?v=phase114-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase112-1"></script>
-  <script src="cpet-analyse.js?v=phase112-1"></script>
+  <script src="cpet-graph-preview.js?v=phase114-1"></script>
+  <script src="cpet-analyse.js?v=phase114-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase112-1"></script>
-  <script src="medical-record-ui.js?v=phase112-1"></script>
+  <script src="pdf-extractor.js?v=phase114-1"></script>
+  <script src="medical-record-ui.js?v=phase114-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase112-1"></script>
-  <script src="synthese-ui.js?v=phase112-1"></script>
-  <script src="audit-ui.js?v=phase112-1"></script>
-  <script src="entretien-ui.js?v=phase112-1"></script>
-  <script src="activation-ui.js?v=phase112-1"></script>
-  <script src="document-import.js?v=phase112-1"></script>
-  <script src="activite-ui.js?v=phase112-1"></script>
-  <script src="cpet-detail.js?v=phase112-1"></script>
-  <script src="echo-calculs.js?v=phase112-1"></script>
-  <script src="echo-detail.js?v=phase112-1"></script>
-  <script src="accueil-activite.js?v=phase112-1"></script>
-  <script src="visio-jitsi.js?v=phase112-1"></script>
-  <script src="video-pilotee.js?v=phase112-1"></script>
-  <script src="fiche-apa.js?v=phase112-1"></script>
-  <script src="inactivite.js?v=phase112-1"></script>
-  <script src="bilans-ui.js?v=phase112-1"></script>
-  <script src="etudes-ui.js?v=phase112-1"></script>
-  <script src="ville-hopital.js?v=phase112-1"></script>
-  <script src="qlibres-ui.js?v=phase112-1"></script>
-  <script src="parametres-ui.js?v=phase112-1"></script>
+  <script src="aortic-consultations.js?v=phase114-1"></script>
+  <script src="synthese-ui.js?v=phase114-1"></script>
+  <script src="audit-ui.js?v=phase114-1"></script>
+  <script src="entretien-ui.js?v=phase114-1"></script>
+  <script src="activation-ui.js?v=phase114-1"></script>
+  <script src="document-import.js?v=phase114-1"></script>
+  <script src="activite-ui.js?v=phase114-1"></script>
+  <script src="cpet-detail.js?v=phase114-1"></script>
+  <script src="echo-calculs.js?v=phase114-1"></script>
+  <script src="echo-detail.js?v=phase114-1"></script>
+  <script src="accueil-activite.js?v=phase114-1"></script>
+  <script src="visio-jitsi.js?v=phase114-1"></script>
+  <script src="video-pilotee.js?v=phase114-1"></script>
+  <script src="fiche-apa.js?v=phase114-1"></script>
+  <script src="inactivite.js?v=phase114-1"></script>
+  <script src="bilans-ui.js?v=phase114-1"></script>
+  <script src="etudes-ui.js?v=phase114-1"></script>
+  <script src="ville-hopital.js?v=phase114-1"></script>
+  <script src="qlibres-ui.js?v=phase114-1"></script>
+  <script src="parametres-ui.js?v=phase114-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13663,6 +13663,120 @@
     </div>`;
   }
 
+  // ----------------------------------------------------------------
+  // Rendez-vous → agenda
+  // ----------------------------------------------------------------
+  // Deux fichiers, deux intitulés. Celui du soignant porte le motif réel ;
+  // celui du patient reste neutre — « Séance Marfan APA ».
+  //
+  // La raison n'est pas théorique : un agenda s'affiche sur un écran
+  // verrouillé, se partage avec un conjoint, se synchronise sur un ordinateur
+  // de bureau. « Contrôle aorte » qui s'affiche en notification devant des
+  // collègues, c'est le diagnostic d'une personne qui sort de chez elle.
+  //
+  // Le fichier est fabriqué ici, dans la page. Aucun serveur tiers n'est
+  // consulté et rien ne transite : le patient reçoit un fichier, pas un accès.
+  const AGENDA_NEUTRE = 'Séance Marfan APA';
+
+  function icsEchapper(t) {
+    return String(t || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;')
+                          .replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  }
+
+  /** Instant au format iCalendar, en heure locale puis converti en UTC. */
+  function icsInstant(dateIso, heure) {
+    const m = String(dateIso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    const [hh, mm] = (heure || '09:00').split(':').map(Number);
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), hh || 0, mm || 0, 0);
+    if (isNaN(d.getTime())) return null;
+    const p = n => String(n).padStart(2, '0');
+    return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate()) + 'T'
+         + p(d.getUTCHours()) + p(d.getUTCMinutes()) + '00Z';
+  }
+
+  window.carnetAgenda = function (id, pour) {
+    const a = carnetTrouverAction(id);
+    if (!a) { carnetDire('Rendez-vous introuvable.', 'erreur'); return; }
+    if (!a.echeance) {
+      carnetDire("Ce rendez-vous n'a pas de date : ajoutez-en une avant de l'envoyer dans un agenda.", 'erreur');
+      return;
+    }
+    const debut = icsInstant(a.echeance, a.heure ? String(a.heure).slice(0, 5) : '09:00');
+    if (!debut) { carnetDire('Date illisible.', 'erreur'); return; }
+
+    // Une heure par défaut : on ne connaît pas la durée réelle, et un
+    // événement sans durée s'affiche mal dans la plupart des agendas.
+    const finDate = new Date(Date.UTC(
+      +debut.slice(0, 4), +debut.slice(4, 6) - 1, +debut.slice(6, 8),
+      +debut.slice(9, 11) + 1, +debut.slice(11, 13)));
+    const p = n => String(n).padStart(2, '0');
+    const fin = finDate.getUTCFullYear() + p(finDate.getUTCMonth() + 1) + p(finDate.getUTCDate())
+              + 'T' + p(finDate.getUTCHours()) + p(finDate.getUTCMinutes()) + '00Z';
+
+    const pat = (typeof patients !== 'undefined' && a.patient_id)
+      ? patients.find(x => x.id === a.patient_id) : null;
+    const pourPatient = (pour === 'patient');
+    const titre = pourPatient ? AGENDA_NEUTRE
+      : a.texte + (pat ? ' — ' + window.etiquettePatient(pat) : '');
+    const details = pourPatient
+      ? 'Rendez-vous fixé par votre équipe de suivi en activité physique adaptée.'
+      : (a.note || '');
+
+    const ics = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Marfan APA//Carnet//FR',
+      'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+      'UID:carnet-' + id + (pourPatient ? '-p' : '-s') + '@marfan-sport-sante.fr',
+      'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''),
+      'DTSTART:' + debut, 'DTEND:' + fin,
+      'SUMMARY:' + icsEchapper(titre),
+      details ? 'DESCRIPTION:' + icsEchapper(details) : null,
+      a.lieu ? 'LOCATION:' + icsEchapper(a.lieu) : null,
+      'BEGIN:VALARM', 'TRIGGER:-PT1440M', 'ACTION:DISPLAY',
+      'DESCRIPTION:' + icsEchapper(pourPatient ? AGENDA_NEUTRE : titre), 'END:VALARM',
+      'END:VEVENT', 'END:VCALENDAR'
+    ].filter(Boolean).join('\r\n');   // CRLF exigé par la norme iCalendar
+
+    const nom = (pourPatient ? 'rendez-vous-patient-' : 'rendez-vous-') + id + '.ics';
+    const lien = document.createElement('a');
+    lien.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+    lien.download = nom;
+    document.body.appendChild(lien); lien.click(); lien.remove();
+    setTimeout(() => URL.revokeObjectURL(lien.href), 2000);
+
+    carnetDire(pourPatient
+      ? '📅 Fichier pour le patient téléchargé — intitulé neutre, aucun motif. Transmettez-le-lui.'
+      : '📅 Fichier téléchargé. Ouvrez-le pour l\'ajouter à votre agenda.', 'ok');
+  };
+
+  window.carnetEnvoyer = async function (id) {
+    const a = carnetTrouverAction(id);
+    const quand = a ? carnetDateLisible(a.echeance) + (a.heure ? ' à ' + String(a.heure).slice(0,5) : '') : '';
+    // Un courriel part et ne se rattrape pas : on confirme, en rappelant ce
+    // que le patient va recevoir exactement.
+    if (!confirm('Envoyer ce rendez-vous au patient par courriel ?\n\n'
+               + 'Date : ' + quand + '\n'
+               + 'Intitulé reçu : « Séance Marfan APA » — le motif réel n\'est pas transmis.\n\n'
+               + 'Un fichier d\'agenda sera joint.')) return;
+    try {
+      const r = await window.MarfanAPI.carnet.envoyer(id);
+      carnetDire('✉️ Envoyé à ' + (r.destinataire || 'son adresse') + '.', 'ok');
+      await carnetCharger();
+    } catch (e) {
+      carnetDire('Envoi impossible : ' + ((e && e.message) || 'erreur inconnue'), 'erreur');
+    }
+  };
+
+  /** Retrouve une action dans les données déjà chargées. */
+  function carnetTrouverAction(id) {
+    if (!_carnetDonnees || !_carnetDonnees.groupes) return null;
+    for (const liste of Object.values(_carnetDonnees.groupes)) {
+      const t = (liste || []).find(a => String(a.id) === String(id));
+      if (t) return t;
+    }
+    return null;
+  }
+
   /**
    * Ouvrir la saisie sur une nature donnée.
    *
@@ -13736,6 +13850,18 @@
         </div>
         ${a.note ? `<div style="font-size:12px; color:#475569; margin-top:4px;">${a.note}</div>` : ''}
       </div>
+      ${(!faite && a.type === 'rendez_vous' && a.echeance) ? `
+      <span style="flex:0 0 auto; display:flex; gap:4px;">
+        <button onclick="carnetAgenda(${a.id}, 'soignant')" title="Ajouter à mon agenda, avec le motif"
+                style="border:1px solid #ddd6fe; background:white; color:#7c3aed; border-radius:7px;
+                       padding:3px 8px; font-size:11px; cursor:pointer;">📅 Moi</button>
+        <button onclick="carnetAgenda(${a.id}, 'patient')" title="Fichier pour le patient, intitulé neutre"
+                style="border:1px solid #ddd6fe; background:white; color:#7c3aed; border-radius:7px;
+                       padding:3px 8px; font-size:11px; cursor:pointer;">📅 Fichier</button>
+        <button onclick="carnetEnvoyer(${a.id})" title="Envoyer le rendez-vous au patient par courriel"
+                style="border:1px solid #a7f3d0; background:white; color:#047857; border-radius:7px;
+                       padding:3px 8px; font-size:11px; font-weight:700; cursor:pointer;">✉️ Envoyer</button>
+      </span>` : ''}
       ${faite ? '' : `<button onclick="carnetAbandonner(${a.id})" title="Renoncer à cette action"
               style="flex:0 0 auto; border:1px solid #e2e8f0; background:white; color:#94a3b8; border-radius:7px;
                      padding:3px 9px; font-size:11px; cursor:pointer;">Abandonner</button>`}

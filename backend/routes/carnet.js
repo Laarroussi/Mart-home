@@ -350,6 +350,119 @@ router.get('/affiche/:id', requireAuth, soignants, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ============================================================
+// POST /api/carnet/:id/envoyer — le rendez-vous part chez le patient
+// ------------------------------------------------------------
+// Un courriel, avec le fichier d'agenda en pièce jointe. Le patient l'ouvre,
+// son agenda propose de l'ajouter, c'est fini.
+//
+// L'INTITULÉ EST NEUTRE, et c'est le point entier de cette route. Un agenda
+// s'affiche sur un écran verrouillé et se synchronise sur d'autres appareils :
+// « Contrôle aorte » qui apparaît en notification devant des collègues, c'est
+// le diagnostic de quelqu'un qui sort de chez lui. Le motif réel ne quitte
+// jamais le serveur ; seule la date part.
+// ============================================================
+const INTITULE_NEUTRE = 'Séance Marfan APA';
+
+function echapperIcs(t) {
+  return String(t || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;')
+                        .replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+}
+
+/** AAAAMMJJTHHMMSSZ à partir d'une date et d'une heure locales du serveur. */
+function instantIcs(echeance, heure) {
+  const j = jourLocal(echeance);
+  if (!j) return null;
+  const [hh, mm] = String(heure || '09:00').split(':').map(Number);
+  const d = new Date(j.getFullYear(), j.getMonth(), j.getDate(), hh || 0, mm || 0, 0);
+  const p = n => String(n).padStart(2, '0');
+  return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate()) + 'T'
+       + p(d.getUTCHours()) + p(d.getUTCMinutes()) + '00Z';
+}
+
+router.post('/:id/envoyer', requireAuth, soignants, async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      `SELECT a.*, p.civil FROM carnet_actions a
+         LEFT JOIN patients p ON p.id = a.patient_id
+        WHERE a.id = $1`, [req.params.id]);
+    const a = rows[0];
+    if (!a) return res.status(404).json({ error: 'Rendez-vous introuvable' });
+    if (a.type !== 'rendez_vous') {
+      return res.status(400).json({ error: "Seuls les rendez-vous s'envoient dans un agenda." });
+    }
+    if (!a.echeance) return res.status(400).json({ error: 'Ce rendez-vous n a pas de date.' });
+    if (!a.patient_id) return res.status(400).json({ error: 'Ce rendez-vous n est rattache a aucun patient.' });
+
+    // L'adresse : d'abord le compte du patient, sinon la fiche. Un compte
+    // vaut mieux — c'est l'adresse par laquelle il se connecte, donc celle
+    // qu'il relève.
+    const u = await query(
+      `SELECT email FROM users WHERE patient_id = $1 AND role = 'patient' AND active = TRUE LIMIT 1`,
+      [a.patient_id]);
+    const civil = a.civil || {};
+    const destinataire = (u.rows[0] && u.rows[0].email) || civil.email || null;
+    if (!destinataire) {
+      return res.status(400).json({
+        error: "Aucune adresse de courriel connue pour ce patient. Renseignez-la dans sa fiche."
+      });
+    }
+
+    const debut = instantIcs(a.echeance, a.heure ? String(a.heure).slice(0, 5) : '09:00');
+    if (!debut) return res.status(400).json({ error: 'Date illisible.' });
+    const d1 = new Date(Date.UTC(+debut.slice(0,4), +debut.slice(4,6)-1, +debut.slice(6,8),
+                                 +debut.slice(9,11) + 1, +debut.slice(11,13)));
+    const p = n => String(n).padStart(2, '0');
+    const fin = d1.getUTCFullYear() + p(d1.getUTCMonth()+1) + p(d1.getUTCDate()) + 'T'
+              + p(d1.getUTCHours()) + p(d1.getUTCMinutes()) + '00Z';
+
+    const ics = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Marfan APA//Carnet//FR',
+      'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+      'UID:carnet-' + a.id + '-p@marfan-sport-sante.fr',
+      'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''),
+      'DTSTART:' + debut, 'DTEND:' + fin,
+      'SUMMARY:' + echapperIcs(INTITULE_NEUTRE),
+      'DESCRIPTION:' + echapperIcs('Rendez-vous fixe par votre equipe de suivi en activite physique adaptee.'),
+      a.lieu ? 'LOCATION:' + echapperIcs(a.lieu) : null,
+      'BEGIN:VALARM', 'TRIGGER:-PT1440M', 'ACTION:DISPLAY',
+      'DESCRIPTION:' + echapperIcs(INTITULE_NEUTRE), 'END:VALARM',
+      'END:VEVENT', 'END:VCALENDAR'
+    ].filter(Boolean).join('\r\n');
+
+    const quand = new Date(a.echeance).toLocaleDateString('fr-FR',
+      { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const heureTxt = a.heure ? ' à ' + String(a.heure).slice(0, 5) : '';
+    const texte = 'Bonjour,\n\nUn rendez-vous vous est proposé le ' + quand + heureTxt + '.'
+      + (a.lieu ? '\nLieu : ' + a.lieu : '')
+      + '\n\nLe fichier joint ajoute ce rendez-vous à votre agenda : ouvrez-le, votre '
+      + 'application vous proposera de l\'enregistrer.\n\n'
+      + 'Si cette date ne vous convient pas, répondez à ce message.\n\nMarfan APA';
+
+    const { sendMail } = require('../config/mailer');
+    await sendMail({
+      to: destinataire,
+      subject: 'Rendez-vous du ' + quand,
+      text: texte,
+      html: '<p>' + texte.replace(/\n/g, '<br>') + '</p>',
+      piece: { nom: 'rendez-vous.ics', type: 'text/calendar; charset=UTF-8', contenu: ics }
+    });
+
+    // Trace dans la note : on doit pouvoir dire quand, et à qui, sans avoir
+    // à fouiller les journaux du serveur de messagerie.
+    const marque = 'Envoyé au patient le ' + new Date().toLocaleDateString('fr-FR');
+    await query(
+      `UPDATE carnet_actions SET note = CASE
+         WHEN note IS NULL OR btrim(note) = '' THEN $2 ELSE note || ' · ' || $2 END
+       WHERE id = $1`, [a.id, marque]);
+
+    // L'adresse est masquée dans la réponse : elle s'affichera à l'écran, et
+    // un écran se partage.
+    const masquee = destinataire.replace(/^(.).*(@.*)$/, '$1•••$2');
+    res.json({ ok: true, destinataire: masquee });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
 module.exports.rubrique = rubrique;
 module.exports.jourLocal = jourLocal;
