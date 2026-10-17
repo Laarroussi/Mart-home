@@ -266,6 +266,90 @@ router.get('/apercu/:id', requireAuth, soignants, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ============================================================
+// GET /api/carnet/affiche/:id — tout ce qui concerne un patient
+// ------------------------------------------------------------
+// Ce que le soignant veut voir en cliquant sur une vignette : où en est cette
+// personne, et qu'est-ce qui l'attend.
+//
+// Quatre questions, quatre requêtes, une seule réponse :
+//   • a-t-elle une séance EN COURS, maintenant ?
+//   • qu'a-t-elle réellement fait ?
+//   • les séances qu'on lui a prescrites, les a-t-elle faites ?
+//   • que reste-t-il à faire la concernant ?
+//
+// La troisième est la plus utile et la plus absente ailleurs : prescrire une
+// séance et ne jamais savoir si elle a été suivie, c'est prescrire dans le
+// vide.
+// ============================================================
+router.get('/affiche/:id', requireAuth, soignants, async (req, res, next) => {
+  try {
+    const id = req.params.id;
+
+    // Une séance ouverte et non refermée. Si elle date d'hier, ce n'est pas
+    // une séance en cours : c'est une séance que personne n'a close.
+    const enCours = await query(
+      `SELECT id, started_at, session_type,
+              EXTRACT(EPOCH FROM (NOW() - started_at))::INTEGER AS depuis_s
+         FROM training_sessions
+        WHERE patient_id = $1 AND ended_at IS NULL
+        ORDER BY started_at DESC LIMIT 1`, [id]);
+
+    const bilan = await query(
+      `SELECT count(*)::int AS seances,
+              COALESCE(sum(duration_s), 0)::int AS duree_totale_s,
+              max(started_at) AS derniere,
+              round(avg(borg_cr10)::numeric, 1) AS borg_moyen,
+              count(*) FILTER (WHERE started_at > NOW() - INTERVAL '28 days')::int AS seances_4_semaines
+         FROM training_sessions
+        WHERE patient_id = $1 AND ended_at IS NOT NULL`, [id]);
+
+    // Séances prescrites, et ce qui en a été fait. Une prescription compte
+    // comme suivie dès qu'une séance terminée s'y rattache.
+    const prescrites = await query(
+      `SELECT p.id, p.title, tpp.assigned_at,
+              (SELECT count(*)::int FROM training_sessions s
+                WHERE s.patient_id = tpp.patient_id
+                  AND s.training_program_id = p.id
+                  AND s.ended_at IS NOT NULL) AS realisees,
+              (SELECT max(s.started_at) FROM training_sessions s
+                WHERE s.patient_id = tpp.patient_id
+                  AND s.training_program_id = p.id
+                  AND s.ended_at IS NOT NULL) AS derniere_fois
+         FROM training_program_patients tpp
+         JOIN training_programs p ON p.id = tpp.program_id
+        WHERE tpp.patient_id = $1 AND p.archived IS NOT TRUE
+        ORDER BY tpp.assigned_at DESC
+        LIMIT 20`, [id]);
+
+    // Ce qui reste à faire : les entrées du carnet, rangées par nature.
+    const actions = await query(
+      `SELECT a.id, a.texte, a.note, a.echeance, a.statut, a.type, a.heure, a.lieu,
+              a.cree_le, c.name AS cree_par_nom
+         FROM carnet_actions a
+         JOIN users c ON c.id = a.cree_par
+        WHERE a.patient_id = $1 AND a.statut = 'a_faire'
+        ORDER BY a.echeance NULLS LAST, a.heure NULLS LAST`, [id]);
+
+    const aujourdhui = new Date(); aujourdhui.setHours(0, 0, 0, 0);
+    const parNature = { tache: [], rendez_vous: [], prevu: [] };
+    let enRetard = 0;
+    for (const a of actions.rows) {
+      a.urgence = rubrique(a.echeance, aujourdhui);
+      if (a.urgence === 'en_retard') enRetard++;
+      (parNature[a.type] || parNature.tache).push(a);
+    }
+
+    res.json({
+      en_cours: enCours.rows[0] || null,
+      bilan: bilan.rows[0],
+      prescrites: prescrites.rows,
+      actions: parNature,
+      en_retard: enRetard
+    });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
 module.exports.rubrique = rubrique;
 module.exports.jourLocal = jourLocal;

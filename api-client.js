@@ -411,8 +411,10 @@
       // Renvoie null quand il n'y a pas de photo : le serveur répond 204, une
       // absence et non une erreur.
       lire:      (id)        => request('GET', '/photos/' + encodeURIComponent(id)),
-      enregistrer: (id, data, mime) => request('POST', '/photos/' + encodeURIComponent(id),
-                                               { data, mime, consentement: true }),
+      // Toutes les vignettes en un appel, pour la bande latérale du carnet.
+      vignettes: ()          => request('GET', '/photos/vignettes'),
+      enregistrer: (id, data, mime, vignette) => request('POST', '/photos/' + encodeURIComponent(id),
+                                               { data, mime, vignette, consentement: true }),
       supprimer: (id)        => request('DELETE', '/photos/' + encodeURIComponent(id))
     },
 
@@ -420,6 +422,7 @@
     carnet: {
       lister:   ()                 => request('GET',   '/carnet'),
       apercu:   (id)               => request('GET',   '/carnet/apercu/' + encodeURIComponent(id)),
+      affiche:  (id)               => request('GET',   '/carnet/affiche/' + encodeURIComponent(id)),
       duPatient:(id)               => request('GET',   '/carnet/patient/' + encodeURIComponent(id)),
       ajouter:  (donnees)          => request('POST',  '/carnet', donnees),
       modifier: (id, donnees)      => request('PATCH', '/carnet/' + id, donnees),

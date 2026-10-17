@@ -23,6 +23,25 @@ const FORMATS = ['image/jpeg', 'image/png', 'image/webp'];
 const TAILLE_MAX = 2 * 1024 * 1024;
 
 // ============================================================
+// GET /api/photos/vignettes — toutes les vignettes, en un appel
+// ------------------------------------------------------------
+// Pour la bande latérale du carnet. Un appel par patient aurait fait vingt
+// allers-retours au chargement d'une page qu'on ouvre chaque matin.
+//
+// Déclarée AVANT /:patientId, sinon « vignettes » serait pris pour un
+// identifiant de patient — et la route répondrait 204 sans jamais rien dire.
+// ============================================================
+router.get('/vignettes', requireAuth, soignants, async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      `SELECT patient_id, mime, vignette FROM patient_photos WHERE vignette IS NOT NULL`);
+    const v = {};
+    for (const r of rows) v[r.patient_id] = { mime: r.mime, data: r.vignette.toString('base64') };
+    res.json({ vignettes: v });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
 // GET /api/photos/:patientId — lire la photo
 // ------------------------------------------------------------
 // 204 quand il n'y en a pas : c'est une absence, pas une erreur. Un 404
@@ -48,7 +67,7 @@ router.get('/:patientId', requireAuth, soignants, async (req, res, next) => {
 // ============================================================
 router.post('/:patientId', requireAuth, soignants, async (req, res, next) => {
   try {
-    const { data, mime, consentement } = req.body || {};
+    const { data, mime, consentement, vignette } = req.body || {};
     if (!data || !mime) return res.status(400).json({ error: 'Image manquante.' });
     if (!FORMATS.includes(mime)) {
       return res.status(400).json({ error: 'Format non accepte : ' + mime + '. Attendu JPEG, PNG ou WebP.' });
@@ -72,15 +91,28 @@ router.post('/:patientId', requireAuth, soignants, async (req, res, next) => {
       });
     }
 
+    // Vignette : facultative, et jamais fabriquée ici. Le serveur ne sait pas
+    // redimensionner une image sans bibliothèque supplémentaire ; le
+    // navigateur le fait déjà pour la photo principale, autant qu'il livre
+    // les deux tailles d'un coup.
+    let vig = null;
+    if (vignette) {
+      vig = Buffer.from(String(vignette).replace(/^data:[^,]+,/, ''), 'base64');
+      if (!vig.length || vig.length > 61440) vig = null;   // hors bornes : on l'ignore
+    }
+
     await query(
-      `INSERT INTO patient_photos (patient_id, mime, donnees, octets, ajoutee_par, consentement)
-       VALUES ($1, $2, $3, $4, $5, TRUE)
+      `INSERT INTO patient_photos (patient_id, mime, donnees, octets, ajoutee_par, consentement,
+                                   vignette, vignette_octets)
+       VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7)
        ON CONFLICT (patient_id) DO UPDATE
          SET mime = EXCLUDED.mime, donnees = EXCLUDED.donnees, octets = EXCLUDED.octets,
-             ajoutee_par = EXCLUDED.ajoutee_par, ajoutee_le = NOW(), consentement = TRUE`,
-      [req.params.patientId, mime, binaire, binaire.length, req.user.id]
+             ajoutee_par = EXCLUDED.ajoutee_par, ajoutee_le = NOW(), consentement = TRUE,
+             vignette = EXCLUDED.vignette, vignette_octets = EXCLUDED.vignette_octets`,
+      [req.params.patientId, mime, binaire, binaire.length, req.user.id,
+       vig, vig ? vig.length : null]
     );
-    res.status(201).json({ ok: true, octets: binaire.length });
+    res.status(201).json({ ok: true, octets: binaire.length, vignette: !!vig });
   } catch (err) { next(err); }
 });
 

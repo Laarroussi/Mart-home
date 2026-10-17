@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v110';</script>
-  <script src="api-client.js?v=phase110-1"></script>
+  <script>window.MARFAN_VERSION = 'v111';</script>
+  <script src="api-client.js?v=phase111-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase110-1"></script>
+  <script src="questionnaires-defs.js?v=phase111-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase110-1"></script>
+  <script src="medical-parsers.js?v=phase111-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase110-1"></script>
-  <script src="cpet-analyse.js?v=phase110-1"></script>
+  <script src="cpet-graph-preview.js?v=phase111-1"></script>
+  <script src="cpet-analyse.js?v=phase111-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase110-1"></script>
-  <script src="medical-record-ui.js?v=phase110-1"></script>
+  <script src="pdf-extractor.js?v=phase111-1"></script>
+  <script src="medical-record-ui.js?v=phase111-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase110-1"></script>
-  <script src="synthese-ui.js?v=phase110-1"></script>
-  <script src="audit-ui.js?v=phase110-1"></script>
-  <script src="entretien-ui.js?v=phase110-1"></script>
-  <script src="activation-ui.js?v=phase110-1"></script>
-  <script src="document-import.js?v=phase110-1"></script>
-  <script src="activite-ui.js?v=phase110-1"></script>
-  <script src="cpet-detail.js?v=phase110-1"></script>
-  <script src="echo-calculs.js?v=phase110-1"></script>
-  <script src="echo-detail.js?v=phase110-1"></script>
-  <script src="accueil-activite.js?v=phase110-1"></script>
-  <script src="visio-jitsi.js?v=phase110-1"></script>
-  <script src="video-pilotee.js?v=phase110-1"></script>
-  <script src="fiche-apa.js?v=phase110-1"></script>
-  <script src="inactivite.js?v=phase110-1"></script>
-  <script src="bilans-ui.js?v=phase110-1"></script>
-  <script src="etudes-ui.js?v=phase110-1"></script>
-  <script src="ville-hopital.js?v=phase110-1"></script>
-  <script src="qlibres-ui.js?v=phase110-1"></script>
-  <script src="parametres-ui.js?v=phase110-1"></script>
+  <script src="aortic-consultations.js?v=phase111-1"></script>
+  <script src="synthese-ui.js?v=phase111-1"></script>
+  <script src="audit-ui.js?v=phase111-1"></script>
+  <script src="entretien-ui.js?v=phase111-1"></script>
+  <script src="activation-ui.js?v=phase111-1"></script>
+  <script src="document-import.js?v=phase111-1"></script>
+  <script src="activite-ui.js?v=phase111-1"></script>
+  <script src="cpet-detail.js?v=phase111-1"></script>
+  <script src="echo-calculs.js?v=phase111-1"></script>
+  <script src="echo-detail.js?v=phase111-1"></script>
+  <script src="accueil-activite.js?v=phase111-1"></script>
+  <script src="visio-jitsi.js?v=phase111-1"></script>
+  <script src="video-pilotee.js?v=phase111-1"></script>
+  <script src="fiche-apa.js?v=phase111-1"></script>
+  <script src="inactivite.js?v=phase111-1"></script>
+  <script src="bilans-ui.js?v=phase111-1"></script>
+  <script src="etudes-ui.js?v=phase111-1"></script>
+  <script src="ville-hopital.js?v=phase111-1"></script>
+  <script src="qlibres-ui.js?v=phase111-1"></script>
+  <script src="parametres-ui.js?v=phase111-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13385,13 +13385,24 @@
   // Patient retenu dans la colonne de gauche. `null` = tous les patients.
   let _carnetFiltre = null;
   let _carnetDonnees = null;
+  // Vignettes photo, chargées une fois pour toute la bande latérale.
+  // Déclarée ici, avant toutes les fonctions qui la lisent : une variable
+  // `let` utilisée plus haut que sa déclaration fonctionne tant que l'appel
+  // vient après, mais c'est une fragilité gratuite qu'on évite.
+  let _carnetVignettes = {};
 
   window.carnetCharger = async function () {
     const zone = $('carnetListe');
     if (!zone) return;
     zone.innerHTML = '<div style="padding:20px; color:#94a3b8; font-size:13px;">Chargement…</div>';
     try {
-      const r = await window.MarfanAPI.carnet.lister();
+      // Les vignettes en parallèle : leur absence ne doit pas retarder le
+      // carnet, et un échec de leur côté ne doit pas le vider.
+      const [r, vig] = await Promise.all([
+        window.MarfanAPI.carnet.lister(),
+        window.MarfanAPI.photos.vignettes().catch(() => null)
+      ]);
+      if (vig && vig.vignettes) _carnetVignettes = vig.vignettes;
       _carnetDonnees = r;
       carnetRendrePatients(r.par_patient || {});
       carnetAfficher(r.groupes || {});
@@ -13432,14 +13443,32 @@
       String(a.p.id).localeCompare(String(b.p.id))
     );
 
-    const onglet = (id, libelle, compte, actif) => {
+    const pseudo = !!(window.AppModes && window.AppModes.pseudoMode);
+
+    /** Vignette : la photo quand elle existe, les initiales sinon. */
+    const visage = (p) => {
+      const v = p && _carnetVignettes[p.id];
+      if (v && v.data && !pseudo) {
+        return `<img src="data:${v.mime};base64,${v.data}" alt=""
+                 style="width:38px; height:38px; border-radius:9px; object-fit:cover; display:block; flex:0 0 auto;">`;
+      }
+      const c = (p && p.civil) || {};
+      const ini = pseudo ? '•' : (((c.firstName || ' ')[0] + (c.lastName || ' ')[0]).toUpperCase().trim() || '?');
+      return `<span style="width:38px; height:38px; border-radius:9px; flex:0 0 auto; display:flex;
+               align-items:center; justify-content:center; background:linear-gradient(135deg,#1e3a8a,#3b82f6);
+               color:white; font-size:13px; font-weight:800;">${ini}</span>`;
+    };
+
+    const onglet = (id, libelle, compte, actif, p) => {
       const retard = compte && compte.en_retard > 0;
       return `<button onclick="carnetSelectionner(${id === null ? 'null' : `'${id}'`})"
-        style="display:flex; align-items:center; gap:7px; width:100%; text-align:left; cursor:pointer;
-               padding:9px 11px; margin-bottom:3px; border-radius:9px; font-family:inherit; font-size:12.5px;
+        style="display:flex; align-items:center; gap:9px; width:100%; text-align:left; cursor:pointer;
+               padding:7px 9px; margin-bottom:3px; border-radius:11px; font-family:inherit; font-size:12.5px;
                border:1px solid ${actif ? '#1d4ed8' : 'transparent'};
                background:${actif ? '#eff6ff' : 'transparent'};
                color:${actif ? '#1d4ed8' : '#334155'}; font-weight:${actif ? '700' : '500'};">
+        ${p ? visage(p) : `<span style="width:38px; height:38px; border-radius:9px; flex:0 0 auto; display:flex;
+               align-items:center; justify-content:center; background:#e2e8f0; color:#475569; font-size:15px;">👥</span>`}
         <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${libelle}</span>
         ${compte && compte.total ? `<span style="flex:0 0 auto; background:${retard ? '#dc2626' : '#cbd5e1'};
           color:${retard ? 'white' : '#334155'}; border-radius:99px; padding:1px 7px; font-size:11px; font-weight:800;">${compte.total}</span>` : ''}
@@ -13451,10 +13480,10 @@
 
     col.innerHTML = `<div class="card" style="padding:10px;">
       <div style="font-size:10.5px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.4px; padding:3px 8px 7px;">Patients</div>
-      ${onglet(null, 'Tous les patients', { total: totalGeneral, en_retard: 0 }, _carnetFiltre === null)}
+      ${onglet(null, 'Tous les patients', { total: totalGeneral, en_retard: 0 }, _carnetFiltre === null, null)}
       <div style="height:1px; background:#f1f5f9; margin:6px 2px;"></div>
       ${liste.map(({ p, compte }) =>
-        onglet(p.id, window.etiquettePatient(p), compte, _carnetFiltre === p.id)).join('')}
+        onglet(p.id, window.etiquettePatient(p), compte, _carnetFiltre === p.id, p)).join('')}
     </div>`;
   }
 
@@ -13464,6 +13493,8 @@
       carnetRendrePatients(_carnetDonnees.par_patient || {});
       carnetAfficher(_carnetDonnees.groupes || {});
     }
+    // L'affiche du patient : où il en est, et ce qui l'attend.
+    if (patientId) carnetAfficherAffiche(patientId);
     carnetMajFormulaire();
     // Le bandeau d'identité suit la sélection : c'est le même geste.
     const b = $('carnetBandeau');
@@ -13527,6 +13558,91 @@
         ${faites.filter(x => !_carnetFiltre || x.a.patient_id === _carnetFiltre)
                 .map(x => carnetLigne(x.a, 'faites')).join('')}
       </details>` : '');
+  }
+
+  /**
+   * L'affiche du patient : où il en est, et ce qui l'attend.
+   *
+   * Elle s'insère AU-DESSUS des trois rubriques, pas à leur place. Les
+   * rubriques disent ce qu'il reste à faire ; l'affiche dit ce qui a été
+   * fait — et c'est la deuxième question qu'on se pose en ouvrant un dossier,
+   * juste après « de qui s'agit-il ».
+   */
+  window.carnetAfficherAffiche = async function (patientId) {
+    const zone = $('carnetListe');
+    if (!zone) return;
+    try {
+      const d = await window.MarfanAPI.carnet.affiche(patientId);
+      const ancienne = document.getElementById('carnetAffiche');
+      const html = carnetAfficheHtml(d, patientId);
+      if (ancienne) ancienne.outerHTML = html;
+      else zone.insertAdjacentHTML('afterbegin', html);
+    } catch (e) {
+      console.warn('[carnet] affiche :', e && e.message);
+    }
+  };
+
+  function carnetAfficheHtml(d, patientId) {
+    const b = d.bilan || {};
+    const p = (typeof patients !== 'undefined') ? patients.find(x => x.id === patientId) : null;
+
+    const chiffre = (valeur, libelle, ton) => `
+      <div style="flex:1; min-width:84px;">
+        <div style="font-size:21px; font-weight:800; color:${ton || '#0b1530'}; line-height:1.15;">${valeur}</div>
+        <div style="font-size:11px; color:#64748b;">${libelle}</div>
+      </div>`;
+
+    // Séance ouverte : on distingue « en cours maintenant » de « jamais
+    // refermée ». Au-delà de trois heures, ce n'est plus une séance, c'est un
+    // oubli — et l'annoncer « en cours » tromperait sur l'état du patient.
+    let banniere = '';
+    if (d.en_cours) {
+      const h = Math.floor((d.en_cours.depuis_s || 0) / 3600);
+      const oubliee = h >= 3;
+      banniere = `<div style="padding:10px 14px; border-radius:10px; margin-bottom:11px; font-size:12.5px; line-height:1.5;
+                   background:${oubliee ? '#fffbeb' : '#f0fdf4'}; border:1px solid ${oubliee ? '#fcd34d' : '#a7f3d0'};
+                   color:${oubliee ? '#92400e' : '#065f46'};">
+        ${oubliee
+          ? `<strong>Séance jamais refermée</strong> — ouverte depuis ${h} h, le ${carnetDateLisible(d.en_cours.started_at)}.
+             Le patient a probablement fermé sa page sans cliquer sur « Arrêter ».`
+          : `<strong>⏺ Séance en cours</strong> — démarrée il y a ${Math.round((d.en_cours.depuis_s||0)/60)} min.`}
+      </div>`;
+    }
+
+    const prescrites = d.prescrites || [];
+    const faites = prescrites.filter(x => x.realisees > 0).length;
+
+    return `<div id="carnetAffiche" class="card" style="padding:0; margin-bottom:12px; overflow:hidden;">
+      <div style="display:flex; align-items:center; gap:9px; padding:11px 15px 9px;
+                  border-bottom:2px solid #05966922; background:#0596690d;">
+        <span style="flex:0 0 auto; width:4px; height:17px; border-radius:2px; background:#059669;"></span>
+        <span style="font-size:13px; font-weight:800; color:#0b1530;">Où en est ${p ? window.etiquettePatient(p) : patientId}</span>
+      </div>
+      <div style="padding:13px 15px;">
+        ${banniere}
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+          ${chiffre(b.seances || 0, 'séances réalisées')}
+          ${chiffre(b.seances_4_semaines || 0, 'ces 4 semaines', (b.seances_4_semaines || 0) === 0 ? '#b45309' : '#0b1530')}
+          ${chiffre(b.derniere ? carnetDateLisible(b.derniere) : '—', 'dernière séance')}
+          ${chiffre(b.borg_moyen != null ? b.borg_moyen : '—', 'Borg moyen')}
+        </div>
+
+        <div style="font-size:10.5px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px;">
+          Séances prescrites ${prescrites.length ? '· ' + faites + ' sur ' + prescrites.length + ' entamées' : ''}
+        </div>
+        ${prescrites.length
+          ? prescrites.map(x => `
+              <div style="display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid #f8fafc; font-size:12.5px;">
+                <span style="flex:0 0 auto; font-size:14px;">${x.realisees > 0 ? '✅' : '⬜️'}</span>
+                <span style="flex:1; min-width:0; color:#0b1530;">${x.title}</span>
+                <span style="flex:0 0 auto; font-size:11.5px; color:${x.realisees > 0 ? '#047857' : '#b45309'};">
+                  ${x.realisees > 0
+                    ? x.realisees + ' fois · dernière ' + carnetDateLisible(x.derniere_fois)
+                    : 'jamais faite'}</span>
+              </div>`).join('')
+          : '<div style="font-size:12.5px; color:#94a3b8; font-style:italic;">Aucune séance prescrite à ce jour.</div>'}
+      </div>
+    </div>`;
   }
 
   /** Le formulaire s'adapte à la nature choisie, et au patient retenu. */
@@ -13709,8 +13825,12 @@
                  + "conserver sa photographie dans la plateforme ?\n\n"
                  + "Elle pourra être retirée à tout moment, sans toucher au dossier médical.")) return;
       try {
+        // Deux tailles d'un coup : la photo du portrait, et la vignette de la
+        // bande latérale. La fabriquer ici évite au serveur d'avoir à
+        // redimensionner, et à la bande de télécharger vingt grandes images.
         const reduite = await reduireImage(f, 600);
-        await window.MarfanAPI.photos.enregistrer(patientId, reduite.base64, reduite.mime);
+        const vignette = await reduireImage(f, 96);
+        await window.MarfanAPI.photos.enregistrer(patientId, reduite.base64, reduite.mime, vignette.base64);
         _carnetPatientVu = null;            // force le rechargement du bandeau
         await carnetVoirPatient(patientId);
         carnetDire('Photographie enregistrée.', 'ok');
