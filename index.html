@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v116';</script>
-  <script src="api-client.js?v=phase116-1"></script>
+  <script>window.MARFAN_VERSION = 'v117';</script>
+  <script src="api-client.js?v=phase117-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase116-1"></script>
+  <script src="questionnaires-defs.js?v=phase117-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase116-1"></script>
+  <script src="medical-parsers.js?v=phase117-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase116-1"></script>
-  <script src="cpet-analyse.js?v=phase116-1"></script>
+  <script src="cpet-graph-preview.js?v=phase117-1"></script>
+  <script src="cpet-analyse.js?v=phase117-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase116-1"></script>
-  <script src="medical-record-ui.js?v=phase116-1"></script>
+  <script src="pdf-extractor.js?v=phase117-1"></script>
+  <script src="medical-record-ui.js?v=phase117-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase116-1"></script>
-  <script src="synthese-ui.js?v=phase116-1"></script>
-  <script src="audit-ui.js?v=phase116-1"></script>
-  <script src="entretien-ui.js?v=phase116-1"></script>
-  <script src="activation-ui.js?v=phase116-1"></script>
-  <script src="document-import.js?v=phase116-1"></script>
-  <script src="activite-ui.js?v=phase116-1"></script>
-  <script src="cpet-detail.js?v=phase116-1"></script>
-  <script src="echo-calculs.js?v=phase116-1"></script>
-  <script src="echo-detail.js?v=phase116-1"></script>
-  <script src="accueil-activite.js?v=phase116-1"></script>
-  <script src="visio-jitsi.js?v=phase116-1"></script>
-  <script src="video-pilotee.js?v=phase116-1"></script>
-  <script src="fiche-apa.js?v=phase116-1"></script>
-  <script src="inactivite.js?v=phase116-1"></script>
-  <script src="bilans-ui.js?v=phase116-1"></script>
-  <script src="etudes-ui.js?v=phase116-1"></script>
-  <script src="ville-hopital.js?v=phase116-1"></script>
-  <script src="qlibres-ui.js?v=phase116-1"></script>
-  <script src="parametres-ui.js?v=phase116-1"></script>
+  <script src="aortic-consultations.js?v=phase117-1"></script>
+  <script src="synthese-ui.js?v=phase117-1"></script>
+  <script src="audit-ui.js?v=phase117-1"></script>
+  <script src="entretien-ui.js?v=phase117-1"></script>
+  <script src="activation-ui.js?v=phase117-1"></script>
+  <script src="document-import.js?v=phase117-1"></script>
+  <script src="activite-ui.js?v=phase117-1"></script>
+  <script src="cpet-detail.js?v=phase117-1"></script>
+  <script src="echo-calculs.js?v=phase117-1"></script>
+  <script src="echo-detail.js?v=phase117-1"></script>
+  <script src="accueil-activite.js?v=phase117-1"></script>
+  <script src="visio-jitsi.js?v=phase117-1"></script>
+  <script src="video-pilotee.js?v=phase117-1"></script>
+  <script src="fiche-apa.js?v=phase117-1"></script>
+  <script src="inactivite.js?v=phase117-1"></script>
+  <script src="bilans-ui.js?v=phase117-1"></script>
+  <script src="etudes-ui.js?v=phase117-1"></script>
+  <script src="ville-hopital.js?v=phase117-1"></script>
+  <script src="qlibres-ui.js?v=phase117-1"></script>
+  <script src="parametres-ui.js?v=phase117-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13683,12 +13683,39 @@
                           .replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
   }
 
+  /**
+   * Le jour de calendrier d'une échéance, quelle que soit sa forme.
+   *
+   * Une échéance arrive sous DEUX formes, et les confondre décale d'un jour :
+   *
+   *   « 2026-10-19 »                 saisie dans le formulaire, c'est une date
+   *   « 2026-10-18T22:00:00.000Z »   venue de PostgreSQL, c'est un INSTANT —
+   *                                  minuit du 19 à Paris, écrit en heure
+   *                                  universelle, donc daté du 18 en UTC
+   *
+   * Découper les dix premiers caractères de la seconde donne le 18. C'est
+   * l'erreur qui a mis le rendez-vous du 19 octobre au dimanche 18 dans
+   * l'agenda. On lit donc une date écrite comme une date, et un instant par
+   * ses composantes LOCALES — jamais l'inverse.
+   */
+  function jourDeLEcheance(valeur) {
+    const s = String(valeur || '');
+    const seulementDate = /^\d{4}-\d{2}-\d{2}$/.test(s);
+    if (seulementDate) {
+      const [a, m, j] = s.split('-').map(Number);
+      return { a: a, m: m - 1, j: j };
+    }
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return null;
+    return { a: d.getFullYear(), m: d.getMonth(), j: d.getDate() };
+  }
+
   /** Instant au format iCalendar, en heure locale puis converti en UTC. */
   function icsInstant(dateIso, heure) {
-    const m = String(dateIso).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!m) return null;
+    const j = jourDeLEcheance(dateIso);
+    if (!j) return null;
     const [hh, mm] = (heure || '09:00').split(':').map(Number);
-    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), hh || 0, mm || 0, 0);
+    const d = new Date(j.a, j.m, j.j, hh || 0, mm || 0, 0);
     if (isNaN(d.getTime())) return null;
     const p = n => String(n).padStart(2, '0');
     return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate()) + 'T'
