@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v111';</script>
-  <script src="api-client.js?v=phase111-1"></script>
+  <script>window.MARFAN_VERSION = 'v112';</script>
+  <script src="api-client.js?v=phase112-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase111-1"></script>
+  <script src="questionnaires-defs.js?v=phase112-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase111-1"></script>
+  <script src="medical-parsers.js?v=phase112-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase111-1"></script>
-  <script src="cpet-analyse.js?v=phase111-1"></script>
+  <script src="cpet-graph-preview.js?v=phase112-1"></script>
+  <script src="cpet-analyse.js?v=phase112-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase111-1"></script>
-  <script src="medical-record-ui.js?v=phase111-1"></script>
+  <script src="pdf-extractor.js?v=phase112-1"></script>
+  <script src="medical-record-ui.js?v=phase112-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase111-1"></script>
-  <script src="synthese-ui.js?v=phase111-1"></script>
-  <script src="audit-ui.js?v=phase111-1"></script>
-  <script src="entretien-ui.js?v=phase111-1"></script>
-  <script src="activation-ui.js?v=phase111-1"></script>
-  <script src="document-import.js?v=phase111-1"></script>
-  <script src="activite-ui.js?v=phase111-1"></script>
-  <script src="cpet-detail.js?v=phase111-1"></script>
-  <script src="echo-calculs.js?v=phase111-1"></script>
-  <script src="echo-detail.js?v=phase111-1"></script>
-  <script src="accueil-activite.js?v=phase111-1"></script>
-  <script src="visio-jitsi.js?v=phase111-1"></script>
-  <script src="video-pilotee.js?v=phase111-1"></script>
-  <script src="fiche-apa.js?v=phase111-1"></script>
-  <script src="inactivite.js?v=phase111-1"></script>
-  <script src="bilans-ui.js?v=phase111-1"></script>
-  <script src="etudes-ui.js?v=phase111-1"></script>
-  <script src="ville-hopital.js?v=phase111-1"></script>
-  <script src="qlibres-ui.js?v=phase111-1"></script>
-  <script src="parametres-ui.js?v=phase111-1"></script>
+  <script src="aortic-consultations.js?v=phase112-1"></script>
+  <script src="synthese-ui.js?v=phase112-1"></script>
+  <script src="audit-ui.js?v=phase112-1"></script>
+  <script src="entretien-ui.js?v=phase112-1"></script>
+  <script src="activation-ui.js?v=phase112-1"></script>
+  <script src="document-import.js?v=phase112-1"></script>
+  <script src="activite-ui.js?v=phase112-1"></script>
+  <script src="cpet-detail.js?v=phase112-1"></script>
+  <script src="echo-calculs.js?v=phase112-1"></script>
+  <script src="echo-detail.js?v=phase112-1"></script>
+  <script src="accueil-activite.js?v=phase112-1"></script>
+  <script src="visio-jitsi.js?v=phase112-1"></script>
+  <script src="video-pilotee.js?v=phase112-1"></script>
+  <script src="fiche-apa.js?v=phase112-1"></script>
+  <script src="inactivite.js?v=phase112-1"></script>
+  <script src="bilans-ui.js?v=phase112-1"></script>
+  <script src="etudes-ui.js?v=phase112-1"></script>
+  <script src="ville-hopital.js?v=phase112-1"></script>
+  <script src="qlibres-ui.js?v=phase112-1"></script>
+  <script src="parametres-ui.js?v=phase112-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13530,13 +13530,28 @@
 
     const total = toutes.length;
     if (!total) {
-      zone.innerHTML = `<div class="card" style="padding:34px; text-align:center;">
-        <div style="font-size:40px; margin-bottom:8px;">📓</div>
+      // Trois boutons, et non une phrase qui renvoie « ci-dessus ».
+      //
+      // Quand il n'y a rien en attente, les rubriques disparaissent et le
+      // formulaire de saisie reste tout en haut de la page, hors de l'écran.
+      // On se retrouve devant un carnet vide sans aucun endroit où écrire —
+      // c'est exactement ce qu'on reproche à cette page. Chaque bouton choisit
+      // la nature, remonte au formulaire et place le curseur dans le champ.
+      zone.innerHTML = `<div class="card" style="padding:30px 24px; text-align:center;">
+        <div style="font-size:38px; margin-bottom:6px;">📓</div>
         <strong style="font-size:15px;">${_carnetFiltre ? 'Rien en attente pour ce patient' : 'Le carnet est vide'}</strong>
         <p style="color:#64748b; font-size:13px; margin-top:7px; line-height:1.6;">
-          Notez ci-dessus une tâche, un rendez-vous ou quelque chose à prévoir.
-          Tout est partagé avec l'équipe.
-        </p></div>`;
+          Qu'avez-vous à noter ? Tout est partagé avec l'équipe.
+        </p>
+        <div style="display:flex; gap:9px; justify-content:center; flex-wrap:wrap; margin-top:14px;">
+          <button class="btn-light" onclick="carnetNouvelle('tache')"
+                  style="padding:10px 16px; font-size:13px; font-weight:700;">✓ Une tâche</button>
+          <button class="btn-light" onclick="carnetNouvelle('rendez_vous')"
+                  style="padding:10px 16px; font-size:13px; font-weight:700;">📅 Un rendez-vous</button>
+          <button class="btn-light" onclick="carnetNouvelle('prevu')"
+                  style="padding:10px 16px; font-size:13px; font-weight:700;">🔭 Quelque chose à prévoir</button>
+        </div>
+      </div>`;
       return;
     }
 
@@ -13546,6 +13561,9 @@
         <div style="padding:9px 15px; background:${fond}; border-bottom:1px solid ${bord}; display:flex; align-items:center; gap:8px;">
           <strong style="color:${couleur}; font-size:12.5px;">${titre}</strong>
           <span style="color:${couleur}; opacity:.7; font-size:11.5px;">${liste.length}</span>
+          <button onclick="carnetNouvelle('${nature}')" title="Ajouter dans cette rubrique"
+                  style="margin-left:auto; border:1px solid ${bord}; background:white; color:${couleur};
+                         border-radius:7px; padding:2px 9px; font-size:12px; font-weight:800; cursor:pointer;">+</button>
         </div>
         ${liste.length
           ? liste.map(x => carnetLigne(x.a, x.urgence)).join('')
@@ -13644,6 +13662,26 @@
       </div>
     </div>`;
   }
+
+  /**
+   * Ouvrir la saisie sur une nature donnée.
+   *
+   * Appelée depuis l'état vide et depuis les en-têtes de rubrique : d'où
+   * qu'on parte, on arrive au même endroit, la nature déjà choisie et le
+   * curseur dans le champ. Écrire ne doit jamais demander de chercher où.
+   */
+  window.carnetNouvelle = function (type) {
+    const sel = $('carnetType');
+    if (sel) { sel.value = type || 'tache'; }
+    carnetMajFormulaire();
+    const champ = $('carnetTexte');
+    if (champ) {
+      champ.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Le focus après le défilement : le poser avant ferait sauter la page
+      // d'un coup au lieu de glisser, et on perdrait le repère visuel.
+      setTimeout(() => { try { champ.focus(); } catch (_) {} }, 320);
+    }
+  };
 
   /** Le formulaire s'adapte à la nature choisie, et au patient retenu. */
   window.carnetMajFormulaire = function () {
