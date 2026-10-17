@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v115';</script>
-  <script src="api-client.js?v=phase115-1"></script>
+  <script>window.MARFAN_VERSION = 'v116';</script>
+  <script src="api-client.js?v=phase116-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase115-1"></script>
+  <script src="questionnaires-defs.js?v=phase116-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase115-1"></script>
+  <script src="medical-parsers.js?v=phase116-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase115-1"></script>
-  <script src="cpet-analyse.js?v=phase115-1"></script>
+  <script src="cpet-graph-preview.js?v=phase116-1"></script>
+  <script src="cpet-analyse.js?v=phase116-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase115-1"></script>
-  <script src="medical-record-ui.js?v=phase115-1"></script>
+  <script src="pdf-extractor.js?v=phase116-1"></script>
+  <script src="medical-record-ui.js?v=phase116-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase115-1"></script>
-  <script src="synthese-ui.js?v=phase115-1"></script>
-  <script src="audit-ui.js?v=phase115-1"></script>
-  <script src="entretien-ui.js?v=phase115-1"></script>
-  <script src="activation-ui.js?v=phase115-1"></script>
-  <script src="document-import.js?v=phase115-1"></script>
-  <script src="activite-ui.js?v=phase115-1"></script>
-  <script src="cpet-detail.js?v=phase115-1"></script>
-  <script src="echo-calculs.js?v=phase115-1"></script>
-  <script src="echo-detail.js?v=phase115-1"></script>
-  <script src="accueil-activite.js?v=phase115-1"></script>
-  <script src="visio-jitsi.js?v=phase115-1"></script>
-  <script src="video-pilotee.js?v=phase115-1"></script>
-  <script src="fiche-apa.js?v=phase115-1"></script>
-  <script src="inactivite.js?v=phase115-1"></script>
-  <script src="bilans-ui.js?v=phase115-1"></script>
-  <script src="etudes-ui.js?v=phase115-1"></script>
-  <script src="ville-hopital.js?v=phase115-1"></script>
-  <script src="qlibres-ui.js?v=phase115-1"></script>
-  <script src="parametres-ui.js?v=phase115-1"></script>
+  <script src="aortic-consultations.js?v=phase116-1"></script>
+  <script src="synthese-ui.js?v=phase116-1"></script>
+  <script src="audit-ui.js?v=phase116-1"></script>
+  <script src="entretien-ui.js?v=phase116-1"></script>
+  <script src="activation-ui.js?v=phase116-1"></script>
+  <script src="document-import.js?v=phase116-1"></script>
+  <script src="activite-ui.js?v=phase116-1"></script>
+  <script src="cpet-detail.js?v=phase116-1"></script>
+  <script src="echo-calculs.js?v=phase116-1"></script>
+  <script src="echo-detail.js?v=phase116-1"></script>
+  <script src="accueil-activite.js?v=phase116-1"></script>
+  <script src="visio-jitsi.js?v=phase116-1"></script>
+  <script src="video-pilotee.js?v=phase116-1"></script>
+  <script src="fiche-apa.js?v=phase116-1"></script>
+  <script src="inactivite.js?v=phase116-1"></script>
+  <script src="bilans-ui.js?v=phase116-1"></script>
+  <script src="etudes-ui.js?v=phase116-1"></script>
+  <script src="ville-hopital.js?v=phase116-1"></script>
+  <script src="qlibres-ui.js?v=phase116-1"></script>
+  <script src="parametres-ui.js?v=phase116-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -16104,6 +16104,23 @@
          présentation ou un export. -->
     <button id="btnPseudoMode" title="Masquer nom, prénom, IPP et coordonnées — utile pour présenter ou exporter" style="border:1px solid #e2e8f0; background:white; color:#64748b; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer;">🔒 Pseudo : off</button>
     <button id="apiLogoutBtn" style="border:none; background:#f3f6fb; color:#5a6280; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer;">Déconnexion</button>
+    <!--
+      Numéro de version, bien visible.
+
+      Il existait déjà, caché dans une ligne de statut du tableau. Une demi-
+      douzaine de fois cette semaine, la question « est-ce déployé ? » a coûté
+      plusieurs échanges, et une fois un diagnostic entier à côté de la plaque :
+      le correctif était sur le serveur, le navigateur servait sa copie en
+      cache, et rien à l'écran ne permettait de le voir.
+
+      Un clic dessus affiche ce que le serveur sert réellement, et le compare
+      à ce que la page exécute : c'est la différence entre les deux qui
+      signale un cache à vider.
+    -->
+    <button id="apiVersionBadge" onclick="afficherVersion()" title="Version de l'application — cliquez pour vérifier le cache"
+            style="border:1px solid #e2e8f0; background:white; color:#94a3b8; padding:4px 9px;
+                   border-radius:999px; font-size:11px; font-weight:700; cursor:pointer;
+                   font-family:ui-monospace,monospace;">—</button>
   </div>
 
   <!-- Bandeau d'alerte quand un mode est actif (Phase 12.2) -->
@@ -21538,6 +21555,44 @@
       const code = p.id || '';
       const lisible = window.nomLisiblePatient(p);
       return lisible ? code + ' · ' + lisible : code;
+    };
+
+    /**
+     * Version affichée, et contrôle du cache.
+     *
+     * Deux numéros peuvent diverger : celui que la page exécute (chargé au
+     * démarrage, peut-être depuis le cache) et celui que le serveur sert
+     * maintenant. Quand ils diffèrent, le navigateur travaille sur une
+     * ancienne copie — c'est exactement ce qui nous a fait chercher pendant
+     * deux jours un correctif pourtant déployé.
+     */
+    (function afficherLaVersion() {
+      const b = document.getElementById('apiVersionBadge');
+      if (b) b.textContent = window.MARFAN_VERSION || '—';
+    })();
+
+    window.afficherVersion = async function () {
+      const ici = window.MARFAN_VERSION || 'inconnue';
+      let surLeServeur = null;
+      try {
+        const h = await fetch('index.html?v=' + Date.now(), { cache: 'no-store' }).then(r => r.text());
+        surLeServeur = (h.match(/MARFAN_VERSION\s*=\s*'([^']+)'/) || [])[1] || null;
+      } catch (_) {}
+
+      if (!surLeServeur) {
+        alert('Version affichée : ' + ici + '\n\nLe serveur n\'a pas pu être interrogé.');
+        return;
+      }
+      if (surLeServeur === ici) {
+        alert('Version ' + ici + '\n\n✅ Votre navigateur exécute bien la dernière version déployée.');
+      } else {
+        alert('⚠ Votre navigateur est en retard.\n\n'
+            + 'Il exécute : ' + ici + '\n'
+            + 'Le serveur sert : ' + surLeServeur + '\n\n'
+            + 'Rechargez en forçant le cache :\n'
+            + '   Mac   : Cmd + Maj + R\n'
+            + '   PC    : Ctrl + Maj + R');
+      }
     };
 
     // Fonction utilitaire globale de pseudonymisation
