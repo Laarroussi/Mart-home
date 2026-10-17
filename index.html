@@ -21,40 +21,40 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v114';</script>
-  <script src="api-client.js?v=phase114-1"></script>
+  <script>window.MARFAN_VERSION = 'v115';</script>
+  <script src="api-client.js?v=phase115-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase114-1"></script>
+  <script src="questionnaires-defs.js?v=phase115-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase114-1"></script>
+  <script src="medical-parsers.js?v=phase115-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase114-1"></script>
-  <script src="cpet-analyse.js?v=phase114-1"></script>
+  <script src="cpet-graph-preview.js?v=phase115-1"></script>
+  <script src="cpet-analyse.js?v=phase115-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase114-1"></script>
-  <script src="medical-record-ui.js?v=phase114-1"></script>
+  <script src="pdf-extractor.js?v=phase115-1"></script>
+  <script src="medical-record-ui.js?v=phase115-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase114-1"></script>
-  <script src="synthese-ui.js?v=phase114-1"></script>
-  <script src="audit-ui.js?v=phase114-1"></script>
-  <script src="entretien-ui.js?v=phase114-1"></script>
-  <script src="activation-ui.js?v=phase114-1"></script>
-  <script src="document-import.js?v=phase114-1"></script>
-  <script src="activite-ui.js?v=phase114-1"></script>
-  <script src="cpet-detail.js?v=phase114-1"></script>
-  <script src="echo-calculs.js?v=phase114-1"></script>
-  <script src="echo-detail.js?v=phase114-1"></script>
-  <script src="accueil-activite.js?v=phase114-1"></script>
-  <script src="visio-jitsi.js?v=phase114-1"></script>
-  <script src="video-pilotee.js?v=phase114-1"></script>
-  <script src="fiche-apa.js?v=phase114-1"></script>
-  <script src="inactivite.js?v=phase114-1"></script>
-  <script src="bilans-ui.js?v=phase114-1"></script>
-  <script src="etudes-ui.js?v=phase114-1"></script>
-  <script src="ville-hopital.js?v=phase114-1"></script>
-  <script src="qlibres-ui.js?v=phase114-1"></script>
-  <script src="parametres-ui.js?v=phase114-1"></script>
+  <script src="aortic-consultations.js?v=phase115-1"></script>
+  <script src="synthese-ui.js?v=phase115-1"></script>
+  <script src="audit-ui.js?v=phase115-1"></script>
+  <script src="entretien-ui.js?v=phase115-1"></script>
+  <script src="activation-ui.js?v=phase115-1"></script>
+  <script src="document-import.js?v=phase115-1"></script>
+  <script src="activite-ui.js?v=phase115-1"></script>
+  <script src="cpet-detail.js?v=phase115-1"></script>
+  <script src="echo-calculs.js?v=phase115-1"></script>
+  <script src="echo-detail.js?v=phase115-1"></script>
+  <script src="accueil-activite.js?v=phase115-1"></script>
+  <script src="visio-jitsi.js?v=phase115-1"></script>
+  <script src="video-pilotee.js?v=phase115-1"></script>
+  <script src="fiche-apa.js?v=phase115-1"></script>
+  <script src="inactivite.js?v=phase115-1"></script>
+  <script src="bilans-ui.js?v=phase115-1"></script>
+  <script src="etudes-ui.js?v=phase115-1"></script>
+  <script src="ville-hopital.js?v=phase115-1"></script>
+  <script src="qlibres-ui.js?v=phase115-1"></script>
+  <script src="parametres-ui.js?v=phase115-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13846,7 +13846,12 @@
           ${a.lieu ? `<span>· ${a.lieu}</span>` : ''}
           <span>· demandé par ${a.cree_par_nom || '—'}</span>
           ${a.statut === 'annulee' ? `<span style="color:#991b1b;">· abandonnée : ${a.motif || ''}</span>` : ''}
-          ${a.statut === 'faite' && a.faite_par_nom ? `<span style="color:#047857;">· faite par ${a.faite_par_nom}</span>` : ''}
+          ${a.statut === 'faite' && a.faite_par_nom
+              ? `<span style="color:#047857;">· faite par ${a.faite_par_nom}</span>`
+              : ''}
+          ${a.statut === 'faite' && !a.faite_par_nom
+              ? `<span style="color:#047857; font-weight:700;">· ✅ validée automatiquement</span>`
+              : ''}
         </div>
         ${a.note ? `<div style="font-size:12px; color:#475569; margin-top:4px;">${a.note}</div>` : ''}
       </div>

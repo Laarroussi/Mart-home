@@ -235,7 +235,48 @@ router.post('/sessions/:id/end', requireAuth, async (req, res, next) => {
       ]
     );
     if (!rows.length) return res.status(404).json({ error: 'Séance introuvable' });
-    res.json({ session: rows[0] });
+
+    // ========================================================
+    // Le rendez-vous du jour se valide tout seul
+    // --------------------------------------------------------
+    // Le soignant note « Séance Individuel, le 19 octobre à 10 h » dans le
+    // carnet. Le patient fait la séance. Le système sait donc qu'elle a eu
+    // lieu — et pourtant il attendait qu'on vienne cocher la case à la main.
+    // Demander à quelqu'un de confirmer ce qu'on vient de lui apprendre, ce
+    // n'est pas une vérification, c'est une corvée.
+    //
+    // La règle est volontairement étroite : MÊME patient, MÊME jour, et
+    // rendez-vous encore à faire. Pas de fenêtre de tolérance à trois jours,
+    // qui finirait par valider le mauvais rendez-vous.
+    //
+    // `faite_par` reste NULL : personne ne l'a coché. C'est à cela que
+    // l'interface reconnaît une validation automatique, et l'affiche comme
+    // telle — une coche posée par un humain et une coche déduite d'une
+    // mesure n'ont pas la même valeur dans un dossier.
+    let valides = [];
+    try {
+      const auto = await query(
+        `UPDATE carnet_actions
+            SET statut = 'faite', faite_le = NOW(), faite_par = NULL,
+                note = CASE WHEN note IS NULL OR btrim(note) = ''
+                            THEN $3 ELSE note || ' · ' || $3 END
+          WHERE patient_id = $1
+            AND statut = 'a_faire'
+            AND type = 'rendez_vous'
+            AND echeance = $2::date
+          RETURNING id, texte`,
+        [own.session.patient_id,
+         rows[0].started_at,
+         'Validé automatiquement : séance réalisée ce jour-là.']
+      );
+      valides = auto.rows;
+    } catch (e) {
+      // Une validation automatique qui échoue ne doit jamais empêcher
+      // l'enregistrement de la séance : c'est la séance qui compte.
+      console.warn('[carnet] validation automatique :', e && e.message);
+    }
+
+    res.json({ session: rows[0], rendez_vous_valides: valides });
   } catch (err) { next(err); }
 });
 
