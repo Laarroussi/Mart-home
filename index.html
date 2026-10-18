@@ -21,41 +21,42 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v121';</script>
-  <script src="api-client.js?v=phase121-1"></script>
+  <script>window.MARFAN_VERSION = 'v122';</script>
+  <script src="api-client.js?v=phase122-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase121-1"></script>
+  <script src="questionnaires-defs.js?v=phase122-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase121-1"></script>
+  <script src="medical-parsers.js?v=phase122-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase121-1"></script>
-  <script src="cpet-analyse.js?v=phase121-1"></script>
+  <script src="cpet-graph-preview.js?v=phase122-1"></script>
+  <script src="cpet-analyse.js?v=phase122-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase121-1"></script>
-  <script src="medical-record-ui.js?v=phase121-1"></script>
+  <script src="pdf-extractor.js?v=phase122-1"></script>
+  <script src="medical-record-ui.js?v=phase122-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase121-1"></script>
-  <script src="synthese-ui.js?v=phase121-1"></script>
-  <script src="audit-ui.js?v=phase121-1"></script>
-  <script src="entretien-ui.js?v=phase121-1"></script>
-  <script src="activation-ui.js?v=phase121-1"></script>
-  <script src="document-import.js?v=phase121-1"></script>
-  <script src="activite-ui.js?v=phase121-1"></script>
-  <script src="cpet-detail.js?v=phase121-1"></script>
-  <script src="echo-calculs.js?v=phase121-1"></script>
-  <script src="mecanique-aortique.js?v=phase121-1"></script>
-  <script src="echo-detail.js?v=phase121-1"></script>
-  <script src="accueil-activite.js?v=phase121-1"></script>
-  <script src="visio-jitsi.js?v=phase121-1"></script>
-  <script src="video-pilotee.js?v=phase121-1"></script>
-  <script src="fiche-apa.js?v=phase121-1"></script>
-  <script src="inactivite.js?v=phase121-1"></script>
-  <script src="bilans-ui.js?v=phase121-1"></script>
-  <script src="etudes-ui.js?v=phase121-1"></script>
-  <script src="ville-hopital.js?v=phase121-1"></script>
-  <script src="qlibres-ui.js?v=phase121-1"></script>
-  <script src="parametres-ui.js?v=phase121-1"></script>
+  <script src="aortic-consultations.js?v=phase122-1"></script>
+  <script src="synthese-ui.js?v=phase122-1"></script>
+  <script src="audit-ui.js?v=phase122-1"></script>
+  <script src="entretien-ui.js?v=phase122-1"></script>
+  <script src="activation-ui.js?v=phase122-1"></script>
+  <script src="document-import.js?v=phase122-1"></script>
+  <script src="activite-ui.js?v=phase122-1"></script>
+  <script src="cpet-detail.js?v=phase122-1"></script>
+  <script src="echo-calculs.js?v=phase122-1"></script>
+  <script src="mecanique-aortique.js?v=phase122-1"></script>
+  <script src="projet-etude.js?v=phase122-1"></script>
+  <script src="echo-detail.js?v=phase122-1"></script>
+  <script src="accueil-activite.js?v=phase122-1"></script>
+  <script src="visio-jitsi.js?v=phase122-1"></script>
+  <script src="video-pilotee.js?v=phase122-1"></script>
+  <script src="fiche-apa.js?v=phase122-1"></script>
+  <script src="inactivite.js?v=phase122-1"></script>
+  <script src="bilans-ui.js?v=phase122-1"></script>
+  <script src="etudes-ui.js?v=phase122-1"></script>
+  <script src="ville-hopital.js?v=phase122-1"></script>
+  <script src="qlibres-ui.js?v=phase122-1"></script>
+  <script src="parametres-ui.js?v=phase122-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3979,10 +3980,12 @@
         <div class="subtabs" id="rechercheVues" style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 14px;">
           <button class="subtab-button active" data-rvue="etudes">Études</button>
           <button class="subtab-button" data-rvue="mecanique">Mécanique aortique</button>
+          <button class="subtab-button" data-rvue="projet">Projet d'étude</button>
         </div>
 
         <div id="etudesMount" data-rvue-panneau="etudes"></div>
         <div id="mecaMount" data-rvue-panneau="mecanique" style="display:none;"></div>
+        <div id="projetMount" data-rvue-panneau="projet" style="display:none;"></div>
       </section>
 
       <!-- ============================== DOSSIER ============================== -->
@@ -5365,6 +5368,240 @@
 
         <!-- ---------- Méthode et références ---------- -->
         <div id="mecaMethode" style="margin-top:14px;"></div>
+      </template>
+
+      <!-- ============================== PROJET D'ÉTUDE ==============================
+           Une étude qui n'existe pas encore n'a pas sa place dans la
+           bibliothèque : elle n'a ni numéro, ni promoteur, ni patient inclus,
+           et elle polluerait la liste de ce qui tourne réellement. Elle a
+           pourtant besoin d'un endroit — sinon elle reste dans un carnet, et
+           le calcul d'effectif se refait de mémoire à chaque discussion.
+
+           D'où ce sous-onglet : le synopsis d'un projet, avec son
+           échantillonnage calculé sur place, et un bouton pour le verser dans
+           la bibliothèque le jour où il devient une étude. -->
+      <template id="projetGabarit">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+          <div style="flex:1; min-width:260px;">
+            <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:4px;">
+              <span style="font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#64748b; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:3px 9px;">Proposition — non soumise</span>
+              <span style="font-size:11px; font-weight:800; color:#0891b2;">SINUS-EFFORT</span>
+            </div>
+            <div style="font-size:16px; font-weight:800; color:#0b1530; line-height:1.4;">
+              Réponse de la racine aortique à une élévation aiguë de pression :
+              contraction dynamique versus isométrique
+            </div>
+            <div style="font-size:12.5px; color:#64748b; margin-top:3px;">
+              Projet d'étude · monocentrique · plan croisé intra-individuel
+            </div>
+          </div>
+          <button class="btn-secondary" onclick="projetVersBibliotheque()">+ Verser dans la bibliothèque</button>
+        </div>
+
+        <!-- ---------- Abstract ---------- -->
+        <div class="card" style="padding:22px 24px; margin-bottom:14px;">
+          <div style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#0891b2; margin-bottom:12px;">Abstract</div>
+          <div style="font-size:13.5px; line-height:1.75; color:#1e293b; max-width:80ch;">
+            <p style="margin:0 0 11px;"><strong>Contexte.</strong> Dans le syndrome de Marfan, la contrainte exercée sur la racine
+            aortique est au centre des recommandations d'activité physique, et l'effort de résistance en est
+            le point le plus discuté. Les conseils donnés reposent largement sur un raisonnement
+            physiopathologique : une élévation aiguë de pression augmente la contrainte pariétale. Ce que
+            devient la <em>mécanique</em> de la racine — sa déformation et sa rigidité instantanées — pendant
+            cette élévation est en revanche peu documenté.</p>
+
+            <p style="margin:0 0 11px;"><strong>Objectif principal.</strong> Déterminer si une contraction isométrique modifie la
+            mécanique des sinus de Valsalva différemment d'une contraction dynamique de charge comparable,
+            chez le même participant.</p>
+
+            <p style="margin:0 0 11px;"><strong>Objectifs secondaires.</strong> Décrire l'amplitude de ces variations pour la rigidité β,
+            le strain, la compliance et le module Ep ; vérifier si la réponse dépend du profil
+            d'entraînement (endurance, force, mixte, peu actif) ; établir la faisabilité d'une acquisition
+            échographique exploitable pendant l'effort.</p>
+
+            <p style="margin:0 0 11px;"><strong>Méthode.</strong> Chaque participant réalise les deux modalités sur presse à cuisses,
+            dans un ordre tiré au sort, lors d'une même séance : repos → modalité A → retour au repos →
+            modalité B. À chaque temps : Dd, Ds, PAS, PAD, FC, puis calcul du strain, de l'area strain, de
+            la distensibilité surfacique, de β, de la compliance et de Ep.</p>
+
+            <p style="margin:0 0 11px;"><strong>Critère de jugement principal.</strong> Pour chaque participant, la différence entre la
+            variation de distensibilité sous isométrique et sa variation sous dynamique, le repos servant
+            de référence — soit une seule valeur par sujet, analysée en test apparié.</p>
+
+            <p style="margin:0;"><strong>Retombée attendue.</strong> Remplacer, sur un point précis du conseil en activité physique
+            adaptée, un raisonnement par une mesure.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:14px; margin-bottom:14px;">
+
+          <!-- ---------- Schéma ---------- -->
+          <div class="card" style="padding:20px 22px;">
+            <div style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#0891b2; margin-bottom:10px;">Schéma</div>
+            <div style="font-size:13px; line-height:1.65; color:#334155;">
+              <p style="margin:0 0 9px;"><strong>Interventionnelle</strong> — l'exercice est administré pour les besoins de la
+              recherche, et non dans le cadre du soin. Le mot « observationnelle » ne convient pas ici,
+              même si l'on ne fait que mesurer.</p>
+              <p style="margin:0 0 9px;"><strong>Croisée, en ordre randomisé</strong> — chaque participant est son propre témoin.
+              La variabilité de la mécanique aortique d'un sujet à l'autre est large, celle d'un sujet à
+              lui-même est petite : l'appariement supprime la première. C'est le choix qui rend l'étude
+              faisable, et il divise l'effectif par environ quatre à effet égal.</p>
+              <p style="margin:0 0 9px;"><strong>Facteur de groupe</strong> — le profil d'entraînement est un facteur inter-sujets,
+              analysé en second. Si l'on veut une réponse ferme <em>entre</em> profils, c'est ce
+              facteur-là qui commande l'effectif, pas le critère principal.</p>
+              <p style="margin:0;"><strong>Monocentrique</strong>, sans insu : ni le participant ni l'opérateur ne peuvent
+              ignorer la modalité réalisée. Les mesures échographiques peuvent en revanche être relues en
+              aveugle de l'ordre de passage, et c'est la parade retenue.</p>
+            </div>
+          </div>
+
+          <!-- ---------- Catégorie réglementaire ---------- -->
+          <div class="card" style="padding:20px 22px;">
+            <div style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#0891b2; margin-bottom:10px;">Catégorie de recherche impliquant la personne humaine</div>
+            <div style="padding:11px 13px; background:#fffbeb; border:1px solid #fde68a; border-radius:9px; font-size:12.5px; line-height:1.6; color:#92400e; margin-bottom:12px;">
+              <strong>Point à arbitrer avant toute rédaction.</strong> La catégorie ne dépend pas du
+              protocole mais de <strong>qui est inclus</strong>. Le choix ci-dessous change le circuit, les
+              délais et le niveau de surveillance exigé.
+            </div>
+            <label style="display:block; padding:11px 13px; border:1px solid #e2e8f0; border-radius:9px; margin-bottom:8px; cursor:pointer;">
+              <input type="radio" name="projetRiph" value="riph2" checked onchange="projetCalculer()" style="margin-right:7px;">
+              <strong style="font-size:12.5px;">RIPH 2 — risques et contraintes minimes</strong>
+              <div style="font-size:12px; color:#64748b; line-height:1.55; margin-top:4px;">
+                Participants <strong>sans pathologie aortique</strong> : athlètes et témoins peu actifs.
+                Avis d'un CPP tiré au sort, consentement écrit, pas d'autorisation ANSM — à condition que
+                l'épreuve d'effort figure bien dans la liste fixée par arrêté.
+              </div>
+            </label>
+            <label style="display:block; padding:11px 13px; border:1px solid #e2e8f0; border-radius:9px; cursor:pointer;">
+              <input type="radio" name="projetRiph" value="riph1" onchange="projetCalculer()" style="margin-right:7px;">
+              <strong style="font-size:12.5px;">RIPH 1 — interventionnelle avec risque</strong>
+              <div style="font-size:12px; color:#64748b; line-height:1.55; margin-top:4px;">
+                Dès qu'un participant <strong>porteur d'un syndrome de Marfan</strong> ou d'une dilatation
+                aortique est inclus. L'effort isométrique est précisément la modalité dont on se méfie
+                dans cette population : la soumettre à un protocole de recherche n'est pas une contrainte
+                minime. Avis du CPP <em>et</em> autorisation de l'ANSM, plafond de pression artérielle
+                défini à l'avance, cardiologue co-investigateur, arrêt sur critères écrits.
+              </div>
+            </label>
+            <p style="margin:12px 0 0; font-size:12px; color:#64748b; line-height:1.6;">
+              La voie la plus réaliste est souvent de commencer sans patient Marfan : établir la
+              faisabilité et la dispersion des mesures en RIPH 2, puis déposer une RIPH 1 argumentée par
+              ces résultats plutôt que par une hypothèse.
+            </p>
+          </div>
+        </div>
+
+        <!-- ---------- Échantillonnage ---------- -->
+        <div class="card" style="padding:22px 24px; margin-bottom:14px;">
+          <div style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#0891b2; margin-bottom:6px;">Échantillonnage</div>
+          <p style="margin:0 0 14px; font-size:12.5px; line-height:1.65; color:#475569; max-width:80ch;">
+            L'effectif ne dépend que du rapport entre la différence à détecter et sa dispersion.
+            <strong>Ces deux nombres ne peuvent pas venir de cette page</strong> : ils viennent de vos
+            propres mesures ou d'une série publiée. Laissez-les vides et lisez la table de sensibilité
+            dessous — elle ne suppose rien.
+          </p>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+            <label style="flex:1; min-width:150px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">Différence à détecter Δ</span>
+              <input id="projetDelta" type="number" step="0.01" min="0" placeholder="dans l'unité du critère" oninput="projetCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;"></label>
+            <label style="flex:1; min-width:150px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">Écart-type σ de la différence</span>
+              <input id="projetSigma" type="number" step="0.01" min="0" placeholder="intra-individuel" oninput="projetCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;"></label>
+            <label style="flex:1; min-width:110px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">Risque α</span>
+              <input id="projetAlpha" type="number" step="0.01" min="0.001" max="0.5" value="0.05" oninput="projetCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;"></label>
+            <label style="flex:1; min-width:110px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">Puissance</span>
+              <input id="projetPuissance" type="number" step="0.05" min="0.5" max="0.99" value="0.8" oninput="projetCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;"></label>
+            <label style="flex:1; min-width:110px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">Perdus de vue</span>
+              <input id="projetAttrition" type="number" step="0.05" min="0" max="0.5" value="0.1" oninput="projetCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;"></label>
+            <label style="flex:1; min-width:170px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">Comparaison</span>
+              <select id="projetPlan" onchange="projetCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;">
+                <option value="apparie">Appariée — intra-sujet</option>
+                <option value="groupes">Deux groupes indépendants</option>
+              </select></label>
+          </div>
+
+          <div id="projetResultat"></div>
+        </div>
+
+        <!-- ---------- Population et déroulement ---------- -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:14px; margin-bottom:14px;">
+          <div class="card" style="padding:20px 22px;">
+            <div style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#0891b2; margin-bottom:10px;">Population — proposition à arrêter</div>
+            <div style="font-size:12.5px; line-height:1.65; color:#334155;">
+              <strong>Inclusion</strong>
+              <ul style="margin:5px 0 11px; padding-left:19px;">
+                <li>majeur, consentement écrit ;</li>
+                <li>aptitude à l'effort de résistance établie par un médecin ;</li>
+                <li>fenêtre échographique permettant une mesure exploitable des sinus — vérifiée avant
+                    inclusion, sinon l'effort est fait pour rien ;</li>
+                <li>profil d'entraînement documenté : endurance, force, mixte ou peu actif.</li>
+              </ul>
+              <strong>Non-inclusion</strong>
+              <ul style="margin:5px 0 11px; padding-left:19px;">
+                <li>antécédent de dissection ou de chirurgie de l'aorte ;</li>
+                <li>hypertension artérielle non contrôlée ;</li>
+                <li>valvulopathie significative, insuffisance aortique plus que minime ;</li>
+                <li>grossesse ;</li>
+                <li>contre-indication cardiologique à l'effort.</li>
+              </ul>
+              <p style="margin:0; padding:9px 11px; background:#f8fafc; border-radius:8px; color:#64748b;">
+                Ces critères sont une base de discussion, pas une décision : ils doivent être arrêtés avec
+                le cardiologue co-investigateur, et c'est lui qui fixe le plafond de pression artérielle et
+                les critères d'arrêt.
+              </p>
+            </div>
+          </div>
+
+          <div class="card" style="padding:20px 22px;">
+            <div style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#0891b2; margin-bottom:10px;">Déroulement d'une séance</div>
+            <div style="font-size:12.5px; line-height:1.65; color:#334155;">
+              <ol style="margin:0 0 11px; padding-left:19px;">
+                <li><strong>T0 — repos</strong>, après dix minutes en décubitus : Dd, Ds, PAS, PAD, FC.</li>
+                <li><strong>T1 — modalité A</strong> (tirée au sort) : acquisition pendant l'effort, ou
+                    immédiatement à son terme si l'image n'est pas exploitable sous charge.</li>
+                <li><strong>T2 — retour au repos</strong> : mêmes mesures, jusqu'au retour aux valeurs de T0.</li>
+                <li><strong>T3 — modalité B</strong> : même acquisition.</li>
+                <li><strong>T4 — récupération</strong> : contrôle final.</li>
+              </ol>
+              <p style="margin:0 0 9px;">La charge des deux modalités est appariée sur un même indice —
+              à définir : pourcentage d'une répétition maximale, ou produit charge × temps sous tension.
+              Sans cet appariement, on compare deux efforts différents et non deux types de contraction.</p>
+              <p style="margin:0; color:#64748b;">Les conventions de mesure sont celles du sous-onglet
+              <strong>Mécanique aortique</strong> : même niveau anatomique, inner-edge, moyenne de trois
+              cycles, pression relevée au moment de l'acquisition. Elles ne sont pas redéfinies ici — une
+              convention écrite deux fois finit par différer.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ---------- Limites et reste à faire ---------- -->
+        <div class="card" style="padding:20px 22px;">
+          <div style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#0891b2; margin-bottom:10px;">Limites annoncées, et ce qui manque</div>
+          <div style="font-size:12.5px; line-height:1.7; color:#334155; max-width:85ch;">
+            <p style="margin:0 0 9px;"><strong>Une réponse aiguë n'est pas un effet chronique.</strong> Cette étude dit ce qui se
+            passe pendant l'effort. Elle ne dit pas ce que devient la racine après des mois
+            d'entraînement, et ne doit pas être présentée comme telle.</p>
+            <p style="margin:0 0 9px;"><strong>La faisabilité est le premier risque.</strong> Une image exploitable des sinus pendant
+            une contraction isométrique n'est pas acquise. D'où l'intérêt d'une phase pilote de huit à dix
+            sujets : elle tranche la faisabilité et, surtout, elle donne le σ sans lequel l'effectif
+            ci-dessus reste une case vide.</p>
+            <p style="margin:0 0 9px;"><strong>Effet d'ordre et effet d'apprentissage</strong> : la randomisation de l'ordre les
+            neutralise en moyenne ; le retour aux valeurs de repos entre les deux modalités doit être
+            vérifié sujet par sujet, et un retour incomplet est un critère d'exclusion de l'analyse.</p>
+            <p style="margin:0 0 11px;"><strong>Variabilité inter-opérateur</strong> : un seul échographiste si possible, sinon une
+            mesure de reproductibilité sur un sous-échantillon.</p>
+            <div style="padding:12px 14px; background:#f8fafc; border-left:3px solid #0891b2; border-radius:0 9px 9px 0;">
+              <strong>Avant de rédiger le protocole</strong>
+              <ul style="margin:6px 0 0; padding-left:19px; color:#475569;">
+                <li>σ de la différence intra-individuelle — phase pilote ;</li>
+                <li>catégorie RIPH arbitrée, donc population arrêtée ;</li>
+                <li>cardiologue co-investigateur, plafond de PA et critères d'arrêt écrits ;</li>
+                <li>indice d'appariement de la charge entre les deux modalités ;</li>
+                <li>lieu, matériel, échographe et disponibilité de l'opérateur ;</li>
+                <li>bibliographie — à saisir avec ses sources exactes, aucune valeur n'est reprise ici
+                    de mémoire.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </template>
 
       <!-- ============================== CARNET DE SUIVI ==============================
@@ -13530,6 +13767,15 @@
       }
       try { mecaCalculer(); } catch (e) { console.warn('[meca]', e); }
     }
+
+    if (vue === 'projet') {
+      const hote = $('projetMount');
+      if (hote && !hote.dataset.pose) {
+        const gabarit = document.getElementById('projetGabarit');
+        if (gabarit) { hote.appendChild(gabarit.content.cloneNode(true)); hote.dataset.pose = '1'; }
+      }
+      try { projetCalculer(); } catch (e) { console.warn('[projet]', e); }
+    }
   };
 
   document.querySelectorAll('#rechercheVues .subtab-button').forEach(b =>
@@ -13739,6 +13985,189 @@
       </div>
     </details>`;
   }
+
+  // ================================================================
+  // PROJET D'ÉTUDE — échantillonnage
+  // ----------------------------------------------------------------
+  // Le calcul vit dans projet-etude.js, testé à part. Ici on ne fait que
+  // lire les champs et écrire le résultat : aucune formule dans cette
+  // fonction, sinon elle finirait par diverger de celle qui est testée.
+  //
+  // Δ et σ restent vides par défaut, volontairement. Les préremplir avec des
+  // valeurs « plausibles » produirait un effectif d'apparence sérieuse qui ne
+  // reposerait sur rien — et c'est précisément ce chiffre-là qu'on finit par
+  // recopier dans un protocole.
+  // ================================================================
+  let _projetDernier = null;
+
+  function projetVal(id) { const e = $(id); return e ? e.value : ''; }
+
+  window.projetCalculer = function () {
+    const z = $('projetResultat');
+    if (!z || !window.ProjetEtude) return;
+    const P = window.ProjetEtude;
+
+    const plan = projetVal('projetPlan') || 'apparie';
+    const alpha = projetVal('projetAlpha');
+    const puissance = projetVal('projetPuissance');
+    const r = P.effectif({
+      delta: projetVal('projetDelta'), sigma: projetVal('projetSigma'),
+      alpha: alpha, puissance: puissance, plan: plan,
+      attrition: projetVal('projetAttrition')
+    });
+    _projetDernier = r;
+
+    const nb = (v) => String(v).replace('.', ',');
+    const pct = (v) => {
+      const x = parseFloat(String(v).replace(',', '.'));
+      return Number.isFinite(x) ? nb(Math.round(x * 1000) / 10) + ' %' : '—';
+    };
+
+    let html = '';
+
+    if (r) {
+      const apparie = r.plan === 'apparie';
+      html +=
+        '<div style="display:flex; gap:18px; flex-wrap:wrap; align-items:flex-end; padding:16px 18px; ' +
+          'background:#ecfeff; border:1px solid #a5f3fc; border-radius:12px; margin-bottom:12px;">' +
+          '<div>' +
+            '<div style="font-size:38px; font-weight:800; line-height:1; color:#0b1530;">' + r.aInclure + '</div>' +
+            '<div style="font-size:12.5px; color:#0e7490; font-weight:700; margin-top:3px;">' +
+              'participants à inclure' + (apparie ? '' : ' (les deux groupes)') + '</div>' +
+          '</div>' +
+          '<div style="font-size:12.5px; color:#334155; line-height:1.7;">' +
+            '<div><strong>' + r.analysables + '</strong> analysables requis' +
+              (apparie ? '' : ', soit <strong>' + r.parBras + '</strong> par groupe') + '</div>' +
+            '<div>effet standardisé <strong>d = ' + nb(r.d) + '</strong> · ' +
+              'α ' + pct(alpha) + ' bilatéral · puissance ' + pct(puissance) + '</div>' +
+            '<div>perdus de vue prévus : ' + pct(r.attrition) + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<p style="margin:0 0 14px; font-size:12px; color:#64748b; line-height:1.65;">' +
+          'n = ' + (apparie ? '' : '2 × ') + '(z<sub>1−α/2</sub> + z<sub>1−β</sub>)² / d² ' +
+          '= ' + (apparie ? '' : '2 × ') + '(' + nb(r.za) + ' + ' + nb(r.zb) + ')² / ' + nb(r.d) + '² ' +
+          '→ ' + r.parBras + (apparie ? '' : ' par groupe') +
+          ', un sujet ajouté pour l\'approximation normale, puis division par (1 − perdus de vue). ' +
+          (apparie
+            ? 'σ est ici l\'écart-type de la <strong>différence intra-individuelle</strong>, pas celui de la mesure.'
+            : 'Deux groupes indépendants : à effet égal, environ quatre fois l\'effectif du plan apparié.') +
+        '</p>';
+    } else {
+      html +=
+        '<div style="padding:14px 16px; background:#fffbeb; border:1px solid #fde68a; border-radius:11px; ' +
+          'font-size:12.5px; line-height:1.7; color:#92400e; margin-bottom:14px;">' +
+          '<strong>Effectif non calculable en l\'état.</strong> Il manque Δ, σ, ou l\'une des deux ' +
+          'probabilités est hors de l\'intervalle (0 ; 1) — une puissance se saisit <em>0,80</em>, pas ' +
+          '<em>80</em>. Rien n\'est affiché à la place : un effectif inventé est pire qu\'une case vide.' +
+        '</div>';
+    }
+
+    // Table de sensibilité — toujours affichable, car elle ne suppose aucune
+    // valeur clinique : seul le rapport d = Δ/σ y figure.
+    const t = P.sensibilite(alpha, puissance, plan);
+    if (t && t[0] && t[0].parBras !== null) {
+      html +=
+        '<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; ' +
+          'color:#94a3b8; margin-bottom:6px;">Sensibilité — effectif selon l\'effet détectable</div>' +
+        '<div style="overflow-x:auto;"><table style="border-collapse:collapse; font-size:12.5px;">' +
+          '<thead><tr>' + t.map(x =>
+            '<th style="padding:6px 13px; background:#f8fafc; border:1px solid #e2e8f0; ' +
+              'font-weight:700; color:#475569;">d = ' + nb(x.d) + '</th>').join('') + '</tr></thead>' +
+          '<tbody><tr>' + t.map(x =>
+            '<td style="padding:8px 13px; border:1px solid #e2e8f0; text-align:center; ' +
+              'font-weight:800; color:#0b1530;">' + x.analysables + '</td>').join('') + '</tr></tbody>' +
+        '</table></div>' +
+        '<p style="margin:8px 0 0; font-size:12px; color:#64748b; line-height:1.6;">' +
+          'Lecture : diviser par deux l\'effet que l\'on veut détecter multiplie l\'effectif par quatre. ' +
+          'C\'est pourquoi la phase pilote, qui donne σ, décide de la faisabilité de l\'étude entière.' +
+        '</p>';
+    }
+
+    z.innerHTML = html;
+  };
+
+  /**
+   * Verse le projet dans la bibliothèque des études.
+   *
+   * Le synopsis reste ici tant que l'étude n'existe pas ; le jour où elle
+   * existe, elle doit vivre au même endroit que les autres — avec son
+   * effectif et sa justification, pour ne pas les recalculer de mémoire.
+   */
+  window.projetVersBibliotheque = async function () {
+    if (!window.MarfanAPI || !window.MarfanAPI.etudes) {
+      alert('Bibliothèque indisponible.'); return;
+    }
+    const r = _projetDernier;
+    const choix = document.querySelector('input[name="projetRiph"]:checked');
+    const categorie = choix ? choix.value : null;
+
+    const nb = (v) => String(v).replace('.', ',');
+    const justification = r
+      ? 'Test ' + (r.plan === 'apparie' ? 'apparié (plan croisé intra-individuel)' : 'de comparaison de deux groupes indépendants') +
+        ', α = ' + nb(projetVal('projetAlpha')) + ' bilatéral, puissance = ' + nb(projetVal('projetPuissance')) +
+        '. Δ = ' + nb(projetVal('projetDelta')) + ' pour σ = ' + nb(projetVal('projetSigma')) +
+        ', soit d = ' + nb(r.d) + '. n = ' + (r.plan === 'apparie' ? '' : '2 × ') +
+        '(z₁₋α/₂ + z₁₋β)²/d² = ' + r.parBras + (r.plan === 'apparie' ? '' : ' par groupe') +
+        ' (un sujet ajouté pour l\'approximation normale), ' + r.analysables + ' analysables, ' +
+        r.aInclure + ' à inclure après ' + Math.round(r.attrition * 100) + ' % de perdus de vue. ' +
+        'σ reste à confirmer sur la phase pilote.'
+      : 'Effectif non encore calculé : Δ et σ doivent venir de la phase pilote.';
+
+    if (!confirm('Créer cette étude dans la bibliothèque' +
+                 (r ? ', avec un effectif calculé de ' + r.aInclure + ' participants' : ', sans effectif calculé') +
+                 ' ?\n\nElle sera créée au statut « en préparation » et restera modifiable.')) return;
+
+    try {
+      const res = await window.MarfanAPI.etudes.creer({
+        intitule: 'Réponse de la racine aortique à une élévation aiguë de pression : ' +
+                  'contraction dynamique versus isométrique',
+        acronyme: 'SINUS-EFFORT',
+        statut: 'preparation',
+        schema_etude: 'interventionnelle_croisee',
+        categorie_riph: categorie,
+        type_etude: 'monocentrique',
+        population_cible: categorie === 'riph1'
+          ? 'Adultes, incluant des participants porteurs d\'un syndrome de Marfan — à arrêter avec le cardiologue co-investigateur.'
+          : 'Adultes sans pathologie aortique : athlètes d\'endurance, de force, sports mixtes, et témoins peu actifs.',
+        critere_jugement_principal:
+          'Différence intra-individuelle entre la variation de distensibilité des sinus de Valsalva ' +
+          'sous contraction isométrique et sa variation sous contraction dynamique (×10⁻³ mmHg⁻¹), ' +
+          'le repos servant de référence.',
+        criteres_secondaires:
+          'Δβ, Δstrain, Δarea strain, Δcompliance, ΔEp, ΔPAS, ΔPAD, ΔFC, double produit ; ' +
+          'comparaison entre profils d\'entraînement ; faisabilité de l\'acquisition sous charge.',
+        effectif_calcule: r ? r.aInclure : null,
+        puissance: projetVal('projetPuissance'),
+        alpha: projetVal('projetAlpha'),
+        taille_effet: r ? 'Δ ' + nb(projetVal('projetDelta')) + ' ; σ ' + nb(projetVal('projetSigma')) +
+                          ' ; d = ' + nb(r.d) : '',
+        calcul_effectif: justification,
+        resume:
+          'Contexte. Dans le syndrome de Marfan, le conseil en activité physique repose largement sur un ' +
+          'raisonnement physiopathologique : une élévation aiguë de pression augmente la contrainte ' +
+          'pariétale. Ce que devient la mécanique de la racine pendant cette élévation est peu documenté.\n\n' +
+          'Objectif principal. Déterminer si une contraction isométrique modifie la mécanique des sinus ' +
+          'de Valsalva différemment d\'une contraction dynamique de charge comparable, chez le même ' +
+          'participant.\n\n' +
+          'Méthode. Plan croisé : chaque participant réalise les deux modalités sur presse à cuisses dans ' +
+          'un ordre tiré au sort, lors d\'une même séance (repos → modalité A → repos → modalité B). À ' +
+          'chaque temps : Dd, Ds, PAS, PAD, FC, puis strain, area strain, distensibilité surfacique, β, ' +
+          'compliance et Ep.\n\n' +
+          'Limites annoncées. Une réponse aiguë n\'est pas un effet chronique. La faisabilité d\'une image ' +
+          'exploitable sous contraction isométrique est le premier risque du projet, d\'où une phase pilote ' +
+          'de huit à dix sujets qui donnera aussi le σ du calcul d\'effectif.',
+        notes: 'Projet versé depuis le sous-onglet « Projet d\'étude ». ' +
+               'Catégorie réglementaire à confirmer : elle dépend de la population incluse.'
+      });
+      if (window.toast) window.toast('Étude créée dans la bibliothèque.', 'success', 6000);
+      if (window.EtudesUI && window.EtudesUI.charger) await window.EtudesUI.charger();
+      rechercheVue('etudes');
+      void res;
+    } catch (e) {
+      if (window.toast) window.toast('Création impossible : ' + (e && e.message), 'error', 8000);
+      else alert('Création impossible : ' + (e && e.message));
+    }
+  };
 
   // ================================================================
   // CARNET DE SUIVI
