@@ -31,6 +31,52 @@ const TYPES_VAR = ['texte', 'nombre', 'date', 'choix', 'choix_multiple', 'oui_no
 
 const vide = (v) => v === undefined ? null : (v === '' ? null : v);
 
+const SCHEMAS = [
+  'observationnelle_transversale', 'observationnelle_prospective',
+  'observationnelle_retrospective', 'cas_temoins',
+  'interventionnelle_randomisee', 'interventionnelle_croisee',
+  'interventionnelle_non_randomisee', 'pilote_faisabilite', 'serie_de_cas'
+];
+const RIPH = ['riph1', 'riph2', 'riph3', 'hors_riph'];
+
+/**
+ * Puissance et alpha sont stockés en fractions. Un « 80 » saisi à la place de
+ * « 0,80 » est une faute de frappe fréquente et sans ambiguïté : au-delà de 1,
+ * la valeur ne peut être qu'un pourcentage. On la ramène donc, plutôt que de
+ * la refuser (l'utilisateur ne verrait pas pourquoi) ou de l'accepter telle
+ * quelle (la contrainte SQL casserait avec un message illisible).
+ */
+const fraction = (v) => {
+  if (v === undefined || v === null || v === '') return null;
+  let x = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.'));
+  if (!Number.isFinite(x)) return null;
+  if (x > 1) x = x / 100;
+  if (x <= 0 || x >= 1) return null;
+  return Math.round(x * 1000) / 1000;
+};
+
+const entier = (v) => {
+  if (v === undefined || v === null || v === '') return null;
+  const x = parseInt(v, 10);
+  return Number.isFinite(x) && x > 0 ? x : null;
+};
+
+/** Les champs du synopsis, dans l'ordre où ils sont passés au SQL. */
+function synopsis(b) {
+  return [
+    SCHEMAS.includes(b.schema_etude) ? b.schema_etude : null,
+    RIPH.includes(b.categorie_riph) ? b.categorie_riph : null,
+    vide(b.critere_jugement_principal),
+    vide(b.criteres_secondaires),
+    vide(b.population_cible),
+    entier(b.effectif_calcule),
+    fraction(b.puissance),
+    fraction(b.alpha),
+    vide(b.taille_effet),
+    vide(b.calcul_effectif)
+  ];
+}
+
 // ============================================================
 // GET / — la bibliothèque
 // ------------------------------------------------------------
@@ -104,12 +150,17 @@ router.post('/', requireAuth, staff, async (req, res, next) => {
     const r = await query(
       `INSERT INTO etudes (intitule, acronyme, resume, numero_cpp, numero_nct, promoteur,
                            investigateur_principal, type_etude, statut, date_debut, date_fin,
-                           objectif_inclusions, notes, cree_par, maj_par)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$14) RETURNING *`,
+                           objectif_inclusions, notes, cree_par, maj_par,
+                           schema_etude, categorie_riph, critere_jugement_principal,
+                           criteres_secondaires, population_cible, effectif_calcule,
+                           puissance, alpha, taille_effet, calcul_effectif)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$14,
+               $15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING *`,
       [b.intitule.trim(), vide(b.acronyme), vide(b.resume), vide(b.numero_cpp),
        vide(b.numero_nct), vide(b.promoteur), vide(b.investigateur_principal),
        vide(b.type_etude), statut, vide(b.date_debut), vide(b.date_fin),
-       b.objectif_inclusions || null, vide(b.notes), req.user.id]);
+       b.objectif_inclusions || null, vide(b.notes), req.user.id]
+        .concat(synopsis(b)));
     res.status(201).json({ etude: r.rows[0] });
   } catch (e) { next(erreurLisible(e)); }
 });
@@ -129,13 +180,18 @@ router.put('/:id(\\d+)', requireAuth, staff, async (req, res, next) => {
          statut = COALESCE($10, statut),
          date_debut = $11::date, date_fin = $12::date,
          objectif_inclusions = $13, notes = $14,
-         maj_le = NOW(), maj_par = $15
+         maj_le = NOW(), maj_par = $15,
+         schema_etude = $16, categorie_riph = $17,
+         critere_jugement_principal = $18, criteres_secondaires = $19,
+         population_cible = $20, effectif_calcule = $21,
+         puissance = $22, alpha = $23, taille_effet = $24, calcul_effectif = $25
        WHERE id = $1 RETURNING *`,
       [req.params.id, vide(b.intitule), vide(b.acronyme), vide(b.resume),
        vide(b.numero_cpp), vide(b.numero_nct), vide(b.promoteur),
        vide(b.investigateur_principal), vide(b.type_etude), statut,
        vide(b.date_debut), vide(b.date_fin), b.objectif_inclusions || null,
-       vide(b.notes), req.user.id]);
+       vide(b.notes), req.user.id]
+        .concat(synopsis(b)));
     if (!r.rows.length) return res.status(404).json({ error: 'Étude introuvable.' });
     res.json({ etude: r.rows[0] });
   } catch (e) { next(erreurLisible(e)); }

@@ -22,6 +22,7 @@
   var _etudes = [];
   var _ouverte = null;   // { etude, sections, patients }
   var _occupe = false;
+  var _vue = 'resume';   // 'resume' = synopsis en lecture · 'edition' = fiche + cahier
 
   function el(id) { return document.getElementById(id); }
   function esc(t) {
@@ -35,15 +36,57 @@
   }
   function note(m, t) { if (typeof window.toast === 'function') window.toast(m, t || 'info', 6000); }
 
+  // `l` est le libellé administratif, `r` celui du synopsis : en haut d'une
+  // présentation, ce qu'on veut lire est « Proposition » ou « En cours », pas
+  // l'état de la file d'inclusions.
   var STATUTS = [
-    { v: 'preparation',       l: 'En préparation',   c: '#64748b', f: '#f8fafc', b: '#e2e8f0' },
-    { v: 'en_cours',          l: 'Inclusions ouvertes', c: '#065f46', f: '#ecfdf5', b: '#a7f3d0' },
-    { v: 'inclusions_closes', l: 'Inclusions closes', c: '#b45309', f: '#fffbeb', b: '#fde68a' },
-    { v: 'suspendue',         l: 'Suspendue',        c: '#991b1b', f: '#fef2f2', b: '#fecaca' },
-    { v: 'terminee',          l: 'Terminée',         c: '#5b21b6', f: '#faf5ff', b: '#ddd6fe' }
+    { v: 'preparation',       l: 'En préparation',      r: 'Proposition',      c: '#64748b', f: '#f8fafc', b: '#e2e8f0' },
+    { v: 'en_cours',          l: 'Inclusions ouvertes', r: 'En cours',         c: '#065f46', f: '#ecfdf5', b: '#a7f3d0' },
+    { v: 'inclusions_closes', l: 'Inclusions closes',   r: 'Inclusions closes', c: '#b45309', f: '#fffbeb', b: '#fde68a' },
+    { v: 'suspendue',         l: 'Suspendue',           r: 'Suspendue',        c: '#991b1b', f: '#fef2f2', b: '#fecaca' },
+    { v: 'terminee',          l: 'Terminée',            r: 'Terminée',         c: '#5b21b6', f: '#faf5ff', b: '#ddd6fe' }
   ];
   function statut(v) {
     return STATUTS.filter(function (s) { return s.v === v; })[0] || STATUTS[0];
+  }
+
+  // ------------------------------------------------------------
+  // Schéma d'étude et catégorie réglementaire
+  // ------------------------------------------------------------
+  // Le schéma commande tout le reste : ce qu'on peut conclure, le calcul
+  // d'effectif, et le circuit réglementaire. Il est donc choisi dans une
+  // liste fermée plutôt que saisi librement — « observationnelle » écrit à
+  // la main dans un champ texte ne dit pas si elle est transversale ou
+  // prospective, et c'est toute la différence au moment de l'analyse.
+  var SCHEMAS = [
+    { v: 'observationnelle_transversale',   l: 'Observationnelle transversale',  a: 'Mesure à un instant donné — prévalence, corrélations. Aucune causalité.' },
+    { v: 'observationnelle_prospective',    l: 'Observationnelle prospective (cohorte)', a: 'Suivi dans le temps, exposition connue avant l\'événement.' },
+    { v: 'observationnelle_retrospective',  l: 'Observationnelle rétrospective', a: 'Données déjà recueillies, reprises après coup.' },
+    { v: 'cas_temoins',                     l: 'Cas-témoins',                    a: 'Comparaison de sujets avec et sans l\'événement, exposition reconstituée.' },
+    { v: 'interventionnelle_randomisee',    l: 'Interventionnelle randomisée contrôlée', a: 'Attribution par tirage au sort, groupe comparateur.' },
+    { v: 'interventionnelle_croisee',       l: 'Interventionnelle randomisée en cross-over', a: 'Chaque sujet est son propre témoin, ordre tiré au sort.' },
+    { v: 'interventionnelle_non_randomisee', l: 'Interventionnelle non randomisée', a: 'Intervention sans tirage au sort — avant/après, ou groupes constitués.' },
+    { v: 'pilote_faisabilite',              l: 'Étude pilote / de faisabilité',  a: 'Vise la faisabilité et les paramètres de l\'étude suivante, pas une conclusion d\'efficacité.' },
+    { v: 'serie_de_cas',                    l: 'Série de cas',                   a: 'Description sans groupe de comparaison.' }
+  ];
+  function schemaEtude(v) {
+    return SCHEMAS.filter(function (s) { return s.v === v; })[0] || null;
+  }
+
+  // Loi Jardé — la catégorie décide du circuit, et la retrouver au moment du
+  // dépôt coûte des semaines. Elle est donc inscrite dans la fiche.
+  var RIPH = [
+    { v: 'riph1',     l: 'RIPH 1 — interventionnelle',
+      a: 'Avis du CPP et autorisation de l\'ANSM. Consentement libre, éclairé et écrit.' },
+    { v: 'riph2',     l: 'RIPH 2 — risques et contraintes minimes',
+      a: 'Intervention sans risque pour la personne, liste fixée par arrêté. Avis du CPP tiré au sort, consentement écrit.' },
+    { v: 'riph3',     l: 'RIPH 3 — non interventionnelle',
+      a: 'Aucun acte en dehors du soin courant. Avis du CPP tiré au sort, non-opposition.' },
+    { v: 'hors_riph', l: 'Hors RIPH — réutilisation de données',
+      a: 'Pas de recherche impliquant la personne humaine : données déjà recueillies. Méthodologie de référence (MR-004) et information des personnes.' }
+  ];
+  function riph(v) {
+    return RIPH.filter(function (s) { return s.v === v; })[0] || null;
   }
 
   var TYPES = [
@@ -135,6 +178,179 @@
   }
 
   // ============================================================
+  // Synopsis — ce qu'on lit en ouvrant une étude
+  // ------------------------------------------------------------
+  // Ouvrir une étude donnait d'abord le cahier d'observation : cinquante-sept
+  // champs de saisie avant la première phrase de science. Or on ouvre une
+  // étude pour la relire, pas pour la saisir. Le synopsis passe donc devant,
+  // en lecture seule, et la saisie attend qu'on la demande.
+  //
+  // Un champ vide s'affiche vide, et dit ce qu'il attend. Rien n'est inventé
+  // pour remplir la page : une fiche incomplète qui le montre vaut mieux
+  // qu'une fiche d'apparence complète.
+  // ============================================================
+  /**
+   * PostgreSQL rend un NUMERIC sous forme de chaîne : « 0.800 ». Le relire
+   * tel quel dans un champ de saisie donne l'impression d'une précision
+   * qu'on n'a pas, et la virgule décimale est ce que l'on tape en français.
+   */
+  function fracTexte(v) {
+    if (v === null || v === undefined || v === '') return '';
+    var x = parseFloat(String(v).replace(',', '.'));
+    if (!isFinite(x)) return '';
+    return String(Math.round(x * 1000) / 1000).replace('.', ',');
+  }
+
+  function manque(quoi) {
+    return '<span style="color:#94a3b8; font-weight:500;">' + esc(quoi) + '</span>';
+  }
+
+  /** Une ligne « libellé → valeur », avec une note explicative facultative. */
+  function ligne(libelle, valeur, aide) {
+    return '<div style="padding:9px 0; border-top:1px solid var(--line);">' +
+      '<div style="font-size:10.5px; font-weight:800; text-transform:uppercase; ' +
+        'letter-spacing:.05em; color:#94a3b8; margin-bottom:3px;">' + esc(libelle) + '</div>' +
+      '<div style="font-size:13px; line-height:1.5; color:#0b1530; font-weight:600;">' +
+        (valeur || manque('à renseigner')) + '</div>' +
+      (aide ? '<div style="font-size:11.5px; line-height:1.5; color:#64748b; margin-top:3px;">' +
+        esc(aide) + '</div>' : '') +
+      '</div>';
+  }
+
+  function carte(titre, corps, pied) {
+    return '<article class="card" style="padding:20px 22px; display:flex; flex-direction:column;">' +
+      '<h3 style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; ' +
+        'color:#0891b2; margin:0 0 10px;">' + titre + '</h3>' + corps +
+      (pied ? '<div style="margin-top:auto; padding-top:12px;">' + pied + '</div>' : '') +
+      '</article>';
+  }
+
+  function dessinerResume() {
+    var z = el('etContenu');
+    if (!z || !_ouverte) return;
+    var e = _ouverte.etude;
+    var s = statut(e.statut);
+    var sch = schemaEtude(e.schema_etude);
+    var cat = riph(e.categorie_riph);
+    var nbVar = _ouverte.sections.reduce(function (n, x) { return n + x.variables.length; }, 0);
+    var inclus = _ouverte.patients.length;
+    var objectif = e.objectif_inclusions || 0;
+    var requis = e.effectif_calcule || 0;
+    var part = objectif ? Math.min(100, Math.round(inclus / objectif * 100)) : 0;
+
+    // Puissance et alpha sont stockés en fractions ; on les relit en
+    // pourcentages, qui est la façon dont on en parle.
+    var pc = function (v) {
+      var x = parseFloat(v);
+      return Number.isFinite(x) ? String(Math.round(x * 1000) / 10).replace('.', ',') + ' %' : null;
+    };
+    var hyp = [
+      pc(e.puissance) ? 'puissance ' + pc(e.puissance) : null,
+      pc(e.alpha) ? 'α ' + pc(e.alpha) : null,
+      e.taille_effet ? 'effet attendu ' + esc(e.taille_effet) : null
+    ].filter(Boolean).join(' · ');
+
+    z.innerHTML = '' +
+    '<div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;">' +
+      '<button type="button" class="btn-secondary" id="etRetourBib">← Bibliothèque</button>' +
+      '<div style="flex:1; min-width:220px;">' +
+        '<div style="font-size:16px; font-weight:800; line-height:1.35;">' + esc(e.intitule) +
+          (e.acronyme ? ' <span style="color:#0891b2;">(' + esc(e.acronyme) + ')</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; ' +
+        'color:' + s.c + '; background:' + s.f + '; border:1px solid ' + s.b + '; ' +
+        'border-radius:6px; padding:4px 10px; white-space:nowrap;">' + esc(s.r) + '</span>' +
+      '<button type="button" class="btn-secondary" id="etVersEdition">✎ Fiche et cahier d\'observation</button>' +
+    '</div>' +
+
+    // ---- Abstract ----
+    '<article class="card" style="padding:24px 26px; margin-bottom:14px;">' +
+      '<h3 style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; ' +
+        'color:#0891b2; margin:0 0 10px;">Abstract</h3>' +
+      (e.resume
+        ? '<p style="margin:0; font-size:13.5px; line-height:1.75; color:#1e293b; max-width:78ch; ' +
+            'white-space:pre-line;">' + esc(e.resume) + '</p>'
+        : '<p style="margin:0; padding:14px 16px; background:#f8fafc; border:1px dashed #cbd5e1; ' +
+            'border-radius:10px; font-size:12.5px; line-height:1.65; color:#64748b;">' +
+            'Pas encore d\'abstract. Quatre phrases suffisent à en tenir lieu : la question posée, ' +
+            'la population, ce qu\'on mesure, ce qu\'on attend. Il se saisit dans la fiche.</p>') +
+      (e.population_cible
+        ? '<p style="margin:14px 0 0; font-size:12.5px; line-height:1.65; color:#475569;">' +
+            '<strong style="color:#0b1530;">Population —</strong> ' + esc(e.population_cible) + '</p>'
+        : '') +
+    '</article>' +
+
+    // ---- Schéma / critères · Échantillonnage ----
+    '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(330px, 1fr)); gap:14px; margin-bottom:14px;">' +
+
+      carte('Schéma et cadre réglementaire',
+        ligne('Schéma de l\'étude',
+              sch ? esc(sch.l) : (e.type_etude ? esc(e.type_etude) : null),
+              sch ? sch.a : null) +
+        ligne('Catégorie de recherche',
+              cat ? esc(cat.l) : null,
+              cat ? cat.a : 'Recherche impliquant la personne humaine : catégorie 1, 2, 3 ou hors RIPH.') +
+        ligne('Critère de jugement principal', e.critere_jugement_principal ? esc(e.critere_jugement_principal) : null) +
+        (e.criteres_secondaires ? ligne('Critères secondaires', esc(e.criteres_secondaires)) : '')
+      ) +
+
+      carte('Échantillonnage',
+        '<div style="display:flex; align-items:baseline; gap:10px; margin-bottom:4px;">' +
+          '<span style="font-size:34px; font-weight:800; line-height:1; color:' +
+            (requis ? '#0b1530' : '#cbd5e1') + ';">' + (requis || '—') + '</span>' +
+          '<span style="font-size:12.5px; color:#64748b; line-height:1.4;">' +
+            (requis ? 'sujets nécessaires' : 'effectif non calculé') + '</span>' +
+        '</div>' +
+        (hyp ? '<div style="font-size:12px; color:#0891b2; font-weight:700; margin-bottom:8px;">' + hyp + '</div>' : '') +
+        (e.calcul_effectif
+          ? '<p style="margin:0 0 10px; font-size:12.5px; line-height:1.65; color:#475569; ' +
+              'white-space:pre-line;">' + esc(e.calcul_effectif) + '</p>'
+          : '<p style="margin:0 0 10px; padding:11px 13px; background:#fffbeb; border:1px solid #fde68a; ' +
+              'border-radius:9px; font-size:12px; line-height:1.6; color:#92400e;">' +
+              'Un effectif sans sa justification n\'est pas un effectif : il faut le risque α, ' +
+              'la puissance visée, l\'écart attendu sur le critère principal et sa dispersion. ' +
+              'Ces quatre valeurs se saisissent dans la fiche, et la phrase de méthode se relit ici.</p>') +
+        ligne('Inclusions',
+              inclus + ' patient' + (inclus > 1 ? 's' : '') +
+              (objectif ? ' sur un objectif de ' + objectif : '') +
+              (requis && objectif && objectif > requis
+                ? ' <span style="font-weight:500; color:#64748b;">(' + requis + ' requis, marge pour les perdus de vue)</span>'
+                : '')) +
+        (objectif ? '<div style="height:5px; background:#e2e8f0; border-radius:99px; overflow:hidden; margin-top:6px;">' +
+          '<div style="height:100%; width:' + part + '%; background:linear-gradient(90deg,#0891b2,#14b8a6);"></div></div>' : '')
+      ) +
+    '</div>' +
+
+    // ---- Identification et calendrier ----
+    '<article class="card" style="padding:20px 22px;">' +
+      '<h3 style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; ' +
+        'color:#0891b2; margin:0 0 4px;">Identification et calendrier</h3>' +
+      '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:0 22px;">' +
+        ligne('Promoteur', e.promoteur ? esc(e.promoteur) : null) +
+        ligne('Investigateur principal', e.investigateur_principal ? esc(e.investigateur_principal) : null) +
+        ligne('Numéro CPP', e.numero_cpp ? esc(e.numero_cpp) : null) +
+        ligne('Numéro d\'enregistrement', e.numero_nct ? esc(e.numero_nct) : null) +
+        ligne('Début', e.date_debut ? jour(e.date_debut) : null) +
+        ligne('Fin prévue', e.date_fin ? jour(e.date_fin) : null) +
+        ligne('Cahier d\'observation',
+              _ouverte.sections.length + ' chapitre' + (_ouverte.sections.length > 1 ? 's' : '') +
+              ' · ' + nbVar + ' variable' + (nbVar > 1 ? 's' : '')) +
+      '</div>' +
+      (e.notes ? '<p style="margin:14px 0 0; padding:11px 13px; background:#f8fafc; ' +
+        'border-left:3px solid #cbd5e1; border-radius:0 8px 8px 0; font-size:12.5px; ' +
+        'line-height:1.6; color:#475569; white-space:pre-line;">' +
+        '<strong style="color:#0b1530;">Notes internes —</strong> ' + esc(e.notes) + '</p>' : '') +
+    '</article>';
+
+    el('etRetourBib').addEventListener('click', function () { info(''); dessinerBibliotheque(); });
+    el('etVersEdition').addEventListener('click', function () {
+      info(''); _vue = 'edition'; dessinerEdition();
+      var c = el('etContenu'); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'start' });
+    });
+  }
+
+  // ============================================================
   // Fiche d'une étude
   // ============================================================
   function champ(id, libelle, valeur, type, aide) {
@@ -145,7 +361,13 @@
       '</div>';
   }
 
+  /** Point d'entrée unique : le synopsis d'abord, la saisie sur demande. */
   function dessinerFiche() {
+    if (_vue === 'edition') dessinerEdition();
+    else dessinerResume();
+  }
+
+  function dessinerEdition() {
     var z = el('etContenu');
     if (!z || !_ouverte) return;
     var e = _ouverte.etude;
@@ -153,7 +375,7 @@
 
     z.innerHTML = '' +
     '<div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;">' +
-      '<button type="button" class="btn-secondary" id="etRetour">← Bibliothèque</button>' +
+      '<button type="button" class="btn-secondary" id="etRetour">← Synopsis</button>' +
       '<strong style="flex:1; min-width:200px; font-size:15px;">' + esc(e.intitule) + '</strong>' +
       '<button type="button" class="btn-secondary" id="etImprimer">🖨 Dictionnaire de données</button>' +
       '<button type="button" class="btn-gradient" id="etEnregistrer">💾 Enregistrer la fiche</button>' +
@@ -182,7 +404,49 @@
             return '<option value="' + s.v + '"' + (s.v === e.statut ? ' selected' : '') + '>' + esc(s.l) + '</option>';
           }).join('') + '</select>' +
         '</div>' +
-        champ('et_type', 'Type d\'étude', e.type_etude, 'text', 'ex. interventionnelle, monocentrique') +
+        '<div>' +
+          '<label class="control-label" for="et_schema">Schéma</label>' +
+          '<select id="et_schema">' +
+            '<option value="">— à préciser —</option>' +
+            SCHEMAS.map(function (x) {
+              return '<option value="' + x.v + '"' + (x.v === e.schema_etude ? ' selected' : '') + '>' +
+                esc(x.l) + '</option>';
+            }).join('') + '</select>' +
+        '</div>' +
+        '<div>' +
+          '<label class="control-label" for="et_riph">Catégorie de recherche</label>' +
+          '<select id="et_riph">' +
+            '<option value="">— à préciser —</option>' +
+            RIPH.map(function (x) {
+              return '<option value="' + x.v + '"' + (x.v === e.categorie_riph ? ' selected' : '') + '>' +
+                esc(x.l) + '</option>';
+            }).join('') + '</select>' +
+        '</div>' +
+        champ('et_type', 'Monocentrique / multicentrique', e.type_etude, 'text', 'ex. monocentrique, 1 centre') +
+        '<div style="grid-column:1 / -1;">' +
+          '<label class="control-label" for="et_population">Population cible</label>' +
+          '<input type="text" id="et_population" value="' + esc(e.population_cible || '') +
+            '" placeholder="ex. adultes Marfan confirmé, sinus ≥ 40 mm, inscrits en APA" />' +
+        '</div>' +
+        '<div style="grid-column:1 / 3;">' +
+          '<label class="control-label" for="et_cjp">Critère de jugement principal</label>' +
+          '<input type="text" id="et_cjp" value="' + esc(e.critere_jugement_principal || '') +
+            '" placeholder="ex. variation du diamètre des sinus à 12 mois (mm)" />' +
+        '</div>' +
+        '<div style="grid-column:3 / -1;">' +
+          '<label class="control-label" for="et_cjs">Critères secondaires</label>' +
+          '<input type="text" id="et_cjs" value="' + esc(e.criteres_secondaires || '') +
+            '" placeholder="ex. VO2 pic, distensibilité, qualité de vie" />' +
+        '</div>' +
+        champ('et_effectif', 'Effectif calculé', e.effectif_calcule, 'number', 'sujets nécessaires') +
+        champ('et_puissance', 'Puissance', fracTexte(e.puissance), 'text', '0,80') +
+        champ('et_alpha', 'Risque α', fracTexte(e.alpha), 'text', '0,05') +
+        champ('et_effet', 'Effet attendu', e.taille_effet, 'text', 'ex. Δ 1,5 mm ; σ 2,0') +
+        '<div style="grid-column:1 / -1;">' +
+          '<label class="control-label" for="et_calcul">Justification de l\'effectif</label>' +
+          '<textarea id="et_calcul" rows="3" placeholder="Méthode, hypothèses et source — de sorte que le calcul puisse être refait à l\'identique.">' +
+            esc(e.calcul_effectif || '') + '</textarea>' +
+        '</div>' +
         champ('et_debut', 'Début', e.date_debut ? String(e.date_debut).slice(0, 10) : '', 'date') +
         champ('et_fin', 'Fin prévue', e.date_fin ? String(e.date_fin).slice(0, 10) : '', 'date') +
         champ('et_objectif', 'Objectif d\'inclusions', e.objectif_inclusions, 'number') +
@@ -227,7 +491,9 @@
 
     dessinerSections();
 
-    el('etRetour').addEventListener('click', function () { info(''); dessinerBibliotheque(); });
+    el('etRetour').addEventListener('click', function () {
+      info(''); _vue = 'resume'; dessinerResume();
+    });
     el('etEnregistrer').addEventListener('click', enregistrerFiche);
     el('etImprimer').addEventListener('click', imprimerDictionnaire);
     el('etAjoutSection').addEventListener('click', ajouterSection);
@@ -324,9 +590,18 @@
     }
   }
 
+  /**
+   * Ouvre une étude. On revient au synopsis quand on change d'étude, et on
+   * reste où l'on est quand c'est la même : les actions du cahier
+   * (ajouter une variable, renommer un chapitre) rechargent l'étude en
+   * cours, et renvoyer l'utilisateur au synopsis à chaque geste rendrait la
+   * construction du cahier insupportable.
+   */
   async function ouvrir(id) {
+    var changement = !_ouverte || _ouverte.etude.id !== id;
     try {
       _ouverte = await window.MarfanAPI.etudes.detail(id);
+      if (changement) _vue = 'resume';
       info('');
       dessinerFiche();
     } catch (e) {
@@ -341,8 +616,12 @@
     try {
       var r = await window.MarfanAPI.etudes.creer({ intitule: titre.trim() });
       await charger();
+      // Une étude qui vient de naître n'a pas de synopsis à lire : on entre
+      // directement dans la fiche.
       await ouvrir(r.etude.id);
-      info("Étude créée. Complétez la fiche, puis construisez le cahier d'observation.", 'ok');
+      _vue = 'edition'; dessinerEdition();
+      info("Étude créée. Complétez la fiche — schéma, catégorie de recherche, " +
+           "critère principal, effectif — puis construisez le cahier d'observation.", 'ok');
     } catch (e) {
       info('Création impossible : ' + esc(e && e.message), 'erreur');
     }
@@ -361,7 +640,13 @@
         investigateur_principal: val('et_ip'), type_etude: val('et_type'),
         statut: val('et_statut'), date_debut: val('et_debut'), date_fin: val('et_fin'),
         objectif_inclusions: val('et_objectif') ? Number(val('et_objectif')) : null,
-        notes: val('et_notes')
+        notes: val('et_notes'),
+        schema_etude: val('et_schema'), categorie_riph: val('et_riph'),
+        critere_jugement_principal: val('et_cjp'), criteres_secondaires: val('et_cjs'),
+        population_cible: val('et_population'),
+        effectif_calcule: val('et_effectif') ? Number(val('et_effectif')) : null,
+        puissance: val('et_puissance'), alpha: val('et_alpha'),
+        taille_effet: val('et_effet'), calcul_effectif: val('et_calcul')
       });
       _ouverte.etude = r.etude;
       note('💾 Fiche enregistrée.', 'success');
