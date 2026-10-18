@@ -21,40 +21,41 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v117';</script>
-  <script src="api-client.js?v=phase117-1"></script>
+  <script>window.MARFAN_VERSION = 'v120';</script>
+  <script src="api-client.js?v=phase120-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase117-1"></script>
+  <script src="questionnaires-defs.js?v=phase120-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase117-1"></script>
+  <script src="medical-parsers.js?v=phase120-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase117-1"></script>
-  <script src="cpet-analyse.js?v=phase117-1"></script>
+  <script src="cpet-graph-preview.js?v=phase120-1"></script>
+  <script src="cpet-analyse.js?v=phase120-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase117-1"></script>
-  <script src="medical-record-ui.js?v=phase117-1"></script>
+  <script src="pdf-extractor.js?v=phase120-1"></script>
+  <script src="medical-record-ui.js?v=phase120-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase117-1"></script>
-  <script src="synthese-ui.js?v=phase117-1"></script>
-  <script src="audit-ui.js?v=phase117-1"></script>
-  <script src="entretien-ui.js?v=phase117-1"></script>
-  <script src="activation-ui.js?v=phase117-1"></script>
-  <script src="document-import.js?v=phase117-1"></script>
-  <script src="activite-ui.js?v=phase117-1"></script>
-  <script src="cpet-detail.js?v=phase117-1"></script>
-  <script src="echo-calculs.js?v=phase117-1"></script>
-  <script src="echo-detail.js?v=phase117-1"></script>
-  <script src="accueil-activite.js?v=phase117-1"></script>
-  <script src="visio-jitsi.js?v=phase117-1"></script>
-  <script src="video-pilotee.js?v=phase117-1"></script>
-  <script src="fiche-apa.js?v=phase117-1"></script>
-  <script src="inactivite.js?v=phase117-1"></script>
-  <script src="bilans-ui.js?v=phase117-1"></script>
-  <script src="etudes-ui.js?v=phase117-1"></script>
-  <script src="ville-hopital.js?v=phase117-1"></script>
-  <script src="qlibres-ui.js?v=phase117-1"></script>
-  <script src="parametres-ui.js?v=phase117-1"></script>
+  <script src="aortic-consultations.js?v=phase120-1"></script>
+  <script src="synthese-ui.js?v=phase120-1"></script>
+  <script src="audit-ui.js?v=phase120-1"></script>
+  <script src="entretien-ui.js?v=phase120-1"></script>
+  <script src="activation-ui.js?v=phase120-1"></script>
+  <script src="document-import.js?v=phase120-1"></script>
+  <script src="activite-ui.js?v=phase120-1"></script>
+  <script src="cpet-detail.js?v=phase120-1"></script>
+  <script src="echo-calculs.js?v=phase120-1"></script>
+  <script src="mecanique-aortique.js?v=phase120-1"></script>
+  <script src="echo-detail.js?v=phase120-1"></script>
+  <script src="accueil-activite.js?v=phase120-1"></script>
+  <script src="visio-jitsi.js?v=phase120-1"></script>
+  <script src="video-pilotee.js?v=phase120-1"></script>
+  <script src="fiche-apa.js?v=phase120-1"></script>
+  <script src="inactivite.js?v=phase120-1"></script>
+  <script src="bilans-ui.js?v=phase120-1"></script>
+  <script src="etudes-ui.js?v=phase120-1"></script>
+  <script src="ville-hopital.js?v=phase120-1"></script>
+  <script src="qlibres-ui.js?v=phase120-1"></script>
+  <script src="parametres-ui.js?v=phase120-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3970,7 +3971,18 @@
             <button class="btn-secondary" onclick="switchMainTab('accueil')">← Accueil</button>
           </div>
         </header>
-        <div id="etudesMount"></div>
+        <!-- Deux outils sous le même toit : les études en cours, et
+             l'instrument de mesure qui les alimente. La mécanique aortique
+             ne dépend d'aucune étude en particulier — elle sert au protocole
+             actuel comme aux travaux à venir — d'où un sous-onglet plutôt
+             qu'une rubrique enfouie dans une étude. -->
+        <div class="subtabs" id="rechercheVues" style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 14px;">
+          <button class="subtab-button active" data-rvue="etudes">Études</button>
+          <button class="subtab-button" data-rvue="mecanique">Mécanique aortique</button>
+        </div>
+
+        <div id="etudesMount" data-rvue-panneau="etudes"></div>
+        <div id="mecaMount" data-rvue-panneau="mecanique" style="display:none;"></div>
       </section>
 
       <!-- ============================== DOSSIER ============================== -->
@@ -5231,6 +5243,130 @@
       </section>
 
       <!-- ============================== LISTING ============================== -->
+      <!-- ===================== MÉCANIQUE AORTIQUE =====================
+           Un calculateur ne suffirait pas : la convention de mesure, les
+           limites des équations de référence et la citation des sources font
+           partie du résultat. Un chiffre sans sa méthode n'est pas
+           exploitable dans une publication.
+
+           L'interface est progressive. Chaque bloc apparaît dès que ses
+           données sont présentes, et jamais avant : demander une pression
+           artérielle pour afficher un strain qui n'en a pas besoin, c'est
+           faire renoncer l'utilisateur à une mesure déjà calculable. -->
+      <template id="mecaGabarit">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+          <div>
+            <div style="font-size:16px; font-weight:800; color:#0b1530;">Mécanique de la racine aortique</div>
+            <div style="font-size:12.5px; color:#64748b;">Sinus de Valsalva — déformation, distensibilité et rigidité.</div>
+          </div>
+          <button class="btn-light" onclick="mecaReinitialiser()">↺ Effacer</button>
+        </div>
+
+        <!-- Convention de mesure : rappelée avant les champs, pas après.
+             Deux diamètres mesurés selon deux conventions différentes
+             donnent un strain faux, et rien dans le résultat ne le dit. -->
+        <div class="card" style="padding:14px 18px; margin-bottom:14px; background:#f8fafc; border-left:3px solid #0891b2;">
+          <div style="font-size:11px; font-weight:800; color:#0e7490; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px;">Convention de mesure</div>
+          <div style="font-size:12.5px; color:#334155; line-height:1.6;">
+            <strong>Dd</strong> — diamètre télédiastolique des sinus, au début du QRS, valve aortique fermée, juste avant son ouverture.<br>
+            <strong>Ds</strong> — diamètre systolique maximal, expansion maximale pendant l'éjection, valve ouverte.<br>
+            Les deux au <strong>même niveau anatomique</strong>, idéalement sur la même ligne de mode TM, faisceau aussi perpendiculaire que possible à la racine.
+            Convention <strong>inner-edge to inner-edge</strong>. Moyenne de trois cycles si possible.
+          </div>
+        </div>
+
+        <!-- ---------- Saisie ---------- -->
+        <div class="card" style="padding:16px 20px; margin-bottom:14px;">
+          <div style="font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.5px; margin-bottom:9px;">Diamètres des sinus — indispensables</div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <label style="flex:1; min-width:150px;">
+              <span style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:4px;">Dd — télédiastolique</span>
+              <span style="display:flex; align-items:center; gap:6px;">
+                <input id="mecaDd" type="number" step="0.1" min="5" max="90" placeholder="35,0" oninput="mecaCalculer()"
+                       style="flex:1; min-width:0; padding:10px; border:1px solid #cbd5e1; border-radius:9px; font-size:14px; font-family:inherit;">
+                <span style="color:#64748b; font-size:12.5px;">mm</span>
+              </span>
+            </label>
+            <label style="flex:1; min-width:150px;">
+              <span style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:4px;">Ds — systolique maximal</span>
+              <span style="display:flex; align-items:center; gap:6px;">
+                <input id="mecaDs" type="number" step="0.1" min="5" max="90" placeholder="38,0" oninput="mecaCalculer()"
+                       style="flex:1; min-width:0; padding:10px; border:1px solid #cbd5e1; border-radius:9px; font-size:14px; font-family:inherit;">
+                <span style="color:#64748b; font-size:12.5px;">mm</span>
+              </span>
+            </label>
+          </div>
+
+          <div style="font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.5px; margin:16px 0 9px;">Pression artérielle au moment de l'examen</div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <label style="flex:1; min-width:130px;">
+              <span style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:4px;">PAS</span>
+              <span style="display:flex; align-items:center; gap:6px;">
+                <input id="mecaPas" type="number" step="1" min="50" max="280" placeholder="120" oninput="mecaCalculer()"
+                       style="flex:1; min-width:0; padding:10px; border:1px solid #cbd5e1; border-radius:9px; font-size:14px; font-family:inherit;">
+                <span style="color:#64748b; font-size:12.5px;">mmHg</span>
+              </span>
+            </label>
+            <label style="flex:1; min-width:130px;">
+              <span style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:4px;">PAD</span>
+              <span style="display:flex; align-items:center; gap:6px;">
+                <input id="mecaPad" type="number" step="1" min="20" max="180" placeholder="70" oninput="mecaCalculer()"
+                       style="flex:1; min-width:0; padding:10px; border:1px solid #cbd5e1; border-radius:9px; font-size:14px; font-family:inherit;">
+                <span style="color:#64748b; font-size:12.5px;">mmHg</span>
+              </span>
+            </label>
+            <label style="flex:1; min-width:130px;">
+              <span style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:4px;">FC <span style="font-weight:400; color:#94a3b8;">(facultatif)</span></span>
+              <span style="display:flex; align-items:center; gap:6px;">
+                <input id="mecaFc" type="number" step="1" min="25" max="230" placeholder="62" oninput="mecaCalculer()"
+                       style="flex:1; min-width:0; padding:10px; border:1px solid #cbd5e1; border-radius:9px; font-size:14px; font-family:inherit;">
+                <span style="color:#64748b; font-size:12.5px;">bpm</span>
+              </span>
+            </label>
+          </div>
+
+          <details style="margin-top:14px;">
+            <summary style="cursor:pointer; font-size:12.5px; color:#0e7490; font-weight:700;">Morphométrie — pour les indexations (facultatif)</summary>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:10px;">
+              <label style="flex:1; min-width:110px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">Âge (ans)</span>
+                <input id="mecaAge" type="number" step="1" min="0" max="110" oninput="mecaCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;"></label>
+              <label style="flex:1; min-width:110px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">Sexe</span>
+                <select id="mecaSexe" onchange="mecaCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;">
+                  <option value="">—</option><option value="F">Femme</option><option value="H">Homme</option></select></label>
+              <label style="flex:1; min-width:110px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">Taille (cm)</span>
+                <input id="mecaTaille" type="number" step="0.5" min="50" max="230" oninput="mecaCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;"></label>
+              <label style="flex:1; min-width:110px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">Poids (kg)</span>
+                <input id="mecaPoids" type="number" step="0.5" min="10" max="250" oninput="mecaCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;"></label>
+            </div>
+          </details>
+        </div>
+
+        <!-- ---------- Résultats, remplis par le script ---------- -->
+        <div id="mecaResultats"></div>
+
+        <!-- ---------- Doppler, bloc séparé ---------- -->
+        <div class="card" style="padding:16px 20px; margin-top:14px;">
+          <div style="font-size:13px; font-weight:800; color:#0b1530; margin-bottom:3px;">Évaluation hémodynamique complémentaire</div>
+          <p style="font-size:12px; color:#64748b; margin:0 0 11px; line-height:1.55;">
+            Données Doppler. Elles complètent l'examen et ne participent pas aux calculs de mécanique des sinus — elles sont présentées à part pour cette raison.
+          </p>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <label style="flex:1; min-width:130px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">Diamètre CCVG (cm)</span>
+              <input id="mecaLvotD" type="number" step="0.01" min="0.5" max="4" placeholder="2,00" oninput="mecaCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;"></label>
+            <label style="flex:1; min-width:130px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">ITV CCVG (cm)</span>
+              <input id="mecaLvotItv" type="number" step="0.1" min="1" max="60" placeholder="20,0" oninput="mecaCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;"></label>
+            <label style="flex:1; min-width:130px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">Vmax aortique (m/s)</span>
+              <input id="mecaVmax" type="number" step="0.01" min="0.3" max="7" placeholder="1,30" oninput="mecaCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;"></label>
+            <label style="flex:1; min-width:130px;"><span style="display:block; font-size:12px; color:#475569; margin-bottom:4px;">ITV aortique (cm)</span>
+              <input id="mecaAoItv" type="number" step="0.1" min="1" max="120" placeholder="22,0" oninput="mecaCalculer()" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; font-size:13px; font-family:inherit;"></label>
+          </div>
+          <div id="mecaDoppler" style="margin-top:12px;"></div>
+        </div>
+
+        <!-- ---------- Méthode et références ---------- -->
+        <div id="mecaMethode" style="margin-top:14px;"></div>
+      </template>
+
       <!-- ============================== CARNET DE SUIVI ==============================
            Ce qui est à faire, tous patients confondus, partagé par l'équipe.
            Distinct des consultations (mesures), des entretiens (transcriptions)
@@ -6472,6 +6608,9 @@
       try { indivRendreVideos(); } catch (_) {}
     }
     if (tabId === 'carnet') { try { carnetCharger(); } catch (_) {} }
+    // Recherche clinique s'ouvre toujours sur les études : c'est ce qu'on
+    // vient y chercher. La mécanique aortique attend son sous-onglet.
+    if (tabId === 'recherche') { try { rechercheVue('etudes'); } catch (e) { console.warn('[recherche]', e); } }
     if (tabId === 'database') renderDbTable();
     // Le listing n'était redessiné qu'à la création d'un patient ou au
     // rechargement de la cohorte. Si l'un de ces appels échouait, le tableau
@@ -13359,6 +13498,249 @@
   };
 
   // ================================================================
+  // MÉCANIQUE AORTIQUE — affichage progressif
+  // ----------------------------------------------------------------
+  // Un résultat apparaît dès que ses données sont là, et jamais avant.
+  // Réclamer une pression artérielle pour afficher un strain qui n'en a pas
+  // besoin ferait renoncer à une mesure déjà calculable.
+  //
+  // Chaque chiffre porte son unité et une phrase de sens. Un nombre seul,
+  // dans un domaine où quatre paramètres portent des informations voisines
+  // mais distinctes, invite à la confusion plus qu'il n'informe.
+  // ================================================================
+  /**
+   * Sous-onglets de Recherche clinique.
+   *
+   * Le contenu de la mécanique aortique vit dans un <template> : il n'est
+   * déposé dans la page qu'au premier affichage. Une page qui construit
+   * d'emblée tout ce qu'elle pourrait montrer paie ce coût à chaque
+   * ouverture, y compris pour ce que personne ne regarde.
+   */
+  window.rechercheVue = function (vue) {
+    document.querySelectorAll('#rechercheVues .subtab-button').forEach(b =>
+      b.classList.toggle('active', b.dataset.rvue === vue));
+    document.querySelectorAll('[data-rvue-panneau]').forEach(p =>
+      p.style.display = (p.dataset.rvuePanneau === vue) ? '' : 'none');
+
+    if (vue === 'mecanique') {
+      const hote = $('mecaMount');
+      if (hote && !hote.dataset.pose) {
+        const gabarit = document.getElementById('mecaGabarit');
+        if (gabarit) { hote.appendChild(gabarit.content.cloneNode(true)); hote.dataset.pose = '1'; }
+      }
+      try { mecaCalculer(); } catch (e) { console.warn('[meca]', e); }
+    }
+  };
+
+  document.querySelectorAll('#rechercheVues .subtab-button').forEach(b =>
+    b.addEventListener('click', () => rechercheVue(b.dataset.rvue)));
+
+  const MECA_CHAMPS = ['mecaDd','mecaDs','mecaPas','mecaPad','mecaFc','mecaAge',
+                       'mecaSexe','mecaTaille','mecaPoids','mecaLvotD','mecaLvotItv',
+                       'mecaVmax','mecaAoItv'];
+
+  function mecaVal(id) { const e = $(id); return e ? e.value : ''; }
+
+  window.mecaReinitialiser = function () {
+    MECA_CHAMPS.forEach(id => { const e = $(id); if (e) e.value = ''; });
+    mecaCalculer();
+  };
+
+  /** Une carte de résultat : valeur, unité, et ce que ça veut dire. */
+  function mecaCarte(titre, valeur, unite, sens, accent) {
+    const absent = (valeur === null || valeur === undefined);
+    return `<div style="flex:1; min-width:210px; padding:13px 15px; border:1px solid #e2e8f0;
+                 border-radius:11px; background:white; border-left:3px solid ${accent || '#cbd5e1'};">
+      <div style="font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.4px;">${titre}</div>
+      ${absent
+        ? '<div style="font-size:14px; color:#94a3b8; font-style:italic; margin-top:5px;">en attente de données</div>'
+        : `<div style="font-size:25px; font-weight:800; color:#0b1530; line-height:1.15; margin-top:3px;">${String(valeur).replace('.', ',')}
+             <span style="font-size:13px; font-weight:600; color:#64748b;">${unite}</span></div>`}
+      <div style="font-size:11.5px; color:#475569; line-height:1.5; margin-top:5px;">${sens}</div>
+    </div>`;
+  }
+
+  function mecaBloc(titre, contenu) {
+    return `<div class="card" style="padding:0; margin-bottom:14px; overflow:hidden;">
+      <div style="padding:11px 16px; border-bottom:1px solid #e2e8f0; background:#fafbfc;">
+        <span style="font-size:13px; font-weight:800; color:#0b1530;">${titre}</span>
+      </div>
+      <div style="padding:14px 16px; display:flex; gap:11px; flex-wrap:wrap;">${contenu}</div>
+    </div>`;
+  }
+
+  window.mecaCalculer = function () {
+    const M = window.MecaniqueAortique;
+    const zone = $('mecaResultats');
+    if (!M || !zone) return;
+
+    const Dd = mecaVal('mecaDd'), Ds = mecaVal('mecaDs');
+    const PAS = mecaVal('mecaPas'), PAD = mecaVal('mecaPad'), FC = mecaVal('mecaFc');
+    const taille = mecaVal('mecaTaille'), poids = mecaVal('mecaPoids');
+
+    const aDiametres = (M.n(Dd) !== null && M.n(Ds) !== null);
+    if (!aDiametres) {
+      zone.innerHTML = `<div class="card" style="padding:30px; text-align:center;">
+        <div style="font-size:34px; margin-bottom:8px;">📐</div>
+        <strong style="font-size:15px;">Saisissez Dd et Ds</strong>
+        <p style="color:#64748b; font-size:13px; margin-top:7px; line-height:1.6; max-width:460px; margin-left:auto; margin-right:auto;">
+          Ces deux diamètres suffisent pour obtenir la déformation. La pression artérielle,
+          la fréquence cardiaque et la morphométrie enrichissent le résultat sans être nécessaires.
+        </p></div>`;
+      mecaMethode();
+      mecaDoppler();
+      return;
+    }
+
+    let html = '';
+
+    // --- Avec la pression : les quatre paramètres principaux, dans l'ordre demandé ---
+    const pp = M.pressionPulsee(PAS, PAD);
+    if (pp !== null) {
+      html += mecaBloc('Paramètres principaux',
+        mecaCarte('Distensibilité', M.distensibilite(Dd, Ds, PAS, PAD), '×10⁻³ mmHg⁻¹',
+          'Capacité de la racine à se dilater pour une variation de pression donnée. Plus la valeur est élevée, plus l\'aorte est distensible.', '#0891b2') +
+        mecaCarte('β — indice de rigidité', M.beta(Dd, Ds, PAS, PAD), '',
+          'Rigidité de la paroi, sans dimension. Plus β est élevé, plus l\'aorte est rigide. Moins sensible au niveau de pression que la distensibilité.', '#7c3aed') +
+        mecaCarte('Strain', M.strain(Dd, Ds), '%',
+          'Pourcentage de déformation du diamètre entre diastole et systole.', '#059669') +
+        mecaCarte('Compliance', M.compliance(Dd, Ds, PAS, PAD), 'mm²/mmHg',
+          'Variation absolue de surface par mmHg. Dépend davantage de la taille initiale de l\'aorte que la distensibilité.', '#b45309'));
+
+      html += mecaBloc('Paramètres secondaires',
+        mecaCarte('Pression pulsée', pp, 'mmHg', 'PAS − PAD. C\'est elle qui sollicite la paroi à chaque battement.') +
+        mecaCarte('Ep — module pression-déformation', M.ep(Dd, Ds, PAS, PAD), 'mmHg',
+          'Rigidité de paroi, sans correction logarithmique. Porte une information voisine de β.') +
+        (M.n(FC) !== null
+          ? mecaCarte('Double produit', M.doubleProduit(PAS, FC), 'mmHg·bpm',
+              'PAS × FC. Reflet de la charge cardiovasculaire globale ; n\'entre dans aucun calcul de mécanique.')
+          : ''));
+    }
+
+    // --- Déformation seule : toujours affichée ---
+    html += mecaBloc(pp !== null ? 'Géométrie' : 'Déformation — à partir des diamètres seuls',
+      (pp === null ? mecaCarte('Strain', M.strain(Dd, Ds), '%',
+          'Pourcentage de déformation du diamètre entre diastole et systole.', '#059669') : '') +
+      mecaCarte('Area strain', M.areaStrain(Dd, Ds), '%',
+        'Variation relative de la surface de la racine entre diastole et systole.') +
+      mecaCarte('Surface diastolique', M.surface(Dd), 'mm²', 'π·Dd²/4') +
+      mecaCarte('Surface systolique', M.surface(Ds), 'mm²', 'π·Ds²/4'));
+
+    // --- Morphométrie ---
+    const bsa = M.bsaDuBois(taille, poids);
+    if (M.n(taille) !== null || bsa !== null) {
+      html += mecaBloc('Références morphométriques',
+        mecaCarte('Dd absolu', M.n(Dd), 'mm', 'Diamètre télédiastolique brut.') +
+        mecaCarte('Dd indexé à la taille', M.indexeTaille(Dd, taille), 'mm/m',
+          'Indexation la plus robuste chez l\'adulte de grande taille — fréquent dans le syndrome de Marfan.') +
+        (bsa !== null
+          ? mecaCarte('Dd indexé à la BSA', M.indexeBsa(Dd, bsa), 'mm/m²',
+              'Surface corporelle selon Du Bois : ' + String(bsa).replace('.', ',') + ' m².')
+          : '') +
+        `<div style="flex:1 1 100%; padding:11px 13px; background:#fffbeb; border:1px solid #fcd34d; border-radius:10px; font-size:12px; color:#92400e; line-height:1.6;">
+          <strong>Note méthodologique sur le Z-score.</strong> Le protocole mesure en <em>inner-edge</em>, en télédiastole.
+          Plusieurs équations historiques de Z-score — notamment Devereux — ont été établies en <em>leading-edge</em>.
+          Un Z-score calculé à partir de mesures inner-edge doit donc être lu comme un <strong>repère comparatif</strong>,
+          non comme une valeur directement superposable à la littérature. Aucun Z-score n'est affiché ici tant que la
+          convention de l'équation de référence n'est pas explicitement choisie et documentée.
+        </div>`);
+    }
+
+    zone.innerHTML = html;
+    mecaDoppler();
+    mecaMethode();
+  };
+
+  function mecaDoppler() {
+    const M = window.MecaniqueAortique, zone = $('mecaDoppler');
+    if (!M || !zone) return;
+    const d = mecaVal('mecaLvotD'), itvL = mecaVal('mecaLvotItv');
+    const vmax = mecaVal('mecaVmax'), itvAo = mecaVal('mecaAoItv'), fc = mecaVal('mecaFc');
+
+    const surface = M.surfaceLvot(d);
+    const volume = (surface !== null) ? M.ves(surface, itvL) : null;
+    const debit = (volume !== null) ? M.debitCardiaque(volume, fc) : null;
+    const grad = M.gradientMax(vmax);
+    const avaV = (surface !== null) ? M.ava(surface, itvL, itvAo) : null;
+
+    if (surface === null && grad === null) { zone.innerHTML = ''; return; }
+    zone.innerHTML = '<div style="display:flex; gap:11px; flex-wrap:wrap;">'
+      + mecaCarte('Surface CCVG', surface, 'cm²', 'π·(D/2)²')
+      + mecaCarte('Volume d\'éjection', volume, 'mL', 'Surface CCVG × ITV CCVG.')
+      + mecaCarte('Débit cardiaque', debit, 'L/min', 'VES × FC. Nécessite la fréquence cardiaque.')
+      + mecaCarte('Gradient maximal', grad, 'mmHg', 'Équation de Bernoulli simplifiée : 4·Vmax².')
+      + mecaCarte('Surface valvulaire', avaV, 'cm²', 'Équation de continuité.')
+      + '</div>';
+  }
+
+  /** Méthode, vue petit axe, références, et protocole expérimental. */
+  function mecaMethode() {
+    const z = $('mecaMethode');
+    if (!z || z.dataset.pret) return;      // contenu fixe : écrit une seule fois
+    z.dataset.pret = '1';
+    z.innerHTML = `
+    <details class="card" style="padding:0; margin-bottom:12px; overflow:hidden;">
+      <summary style="padding:12px 16px; cursor:pointer; font-size:13px; font-weight:800; color:#0b1530;">Vue parasternale petit axe — acquisition complémentaire</summary>
+      <div style="padding:0 16px 14px; font-size:12.5px; color:#334155; line-height:1.65;">
+        Depuis le grand axe parasternal, tourner la sonde d'environ 90°, puis l'incliner légèrement
+        vers la tête pour obtenir la valve aortique et les trois sinus en coupe transversale.
+        <br><br>Cette vue permet d'évaluer les trois sinus, la symétrie de la racine, une éventuelle
+        dilatation asymétrique et le diamètre transverse maximal — points d'un intérêt particulier
+        dans le syndrome de Marfan.
+        <br><br><strong>Elle complète l'analyse sans la remplacer :</strong> les calculs de mécanique
+        reposent sur Dd et Ds mesurés en grand axe, au même niveau et sur la même ligne.
+      </div>
+    </details>
+
+    <details class="card" style="padding:0; margin-bottom:12px; overflow:hidden;">
+      <summary style="padding:12px 16px; cursor:pointer; font-size:13px; font-weight:800; color:#0b1530;">Références et publications</summary>
+      <div style="padding:0 16px 14px; font-size:12.5px; color:#334155; line-height:1.65;">
+        <p style="margin:0 0 10px; padding:9px 11px; background:#f8fafc; border-radius:8px;">
+          Les valeurs publiées dépendent étroitement de la <strong>population</strong>, du <strong>segment aortique</strong>
+          étudié et de la <strong>méthode de mesure</strong>. Elles ne constituent pas des seuils universels, et cette
+          rubrique ne les présente pas comme tels.
+        </p>
+        <strong>À documenter pour chaque paramètre retenu :</strong>
+        <ul style="margin:6px 0 0; padding-left:20px;">
+          <li>population de référence — âge, sexe, pathologie, effectif ;</li>
+          <li>segment étudié — racine, aorte ascendante, descendante ; ces segments ne sont pas interchangeables ;</li>
+          <li>méthode — TM ou 2D, inner-edge ou leading-edge, nombre de cycles moyennés ;</li>
+          <li>valeurs publiées, avec leur dispersion.</li>
+        </ul>
+        <p style="margin:10px 0 0; color:#64748b;">
+          Cette rubrique est volontairement vide de chiffres : les références du protocole doivent y être
+          saisies par l'équipe, avec leur source exacte. Un tableau de normes recopié sans sa provenance
+          est plus dangereux qu'une absence de normes.
+        </p>
+      </div>
+    </details>
+
+    <details class="card" style="padding:0; overflow:hidden;">
+      <summary style="padding:12px 16px; cursor:pointer; font-size:13px; font-weight:800; color:#0b1530;">Extension expérimentale — activité physique et contrainte aortique</summary>
+      <div style="padding:0 16px 14px; font-size:12.5px; color:#334155; line-height:1.65;">
+        <strong>Question centrale.</strong> Une augmentation aiguë de la pression artérielle lors d'un exercice
+        de résistance modifie-t-elle la mécanique des sinus de Valsalva, et cette réponse dépend-elle du type
+        de contraction musculaire et du profil d'entraînement de l'athlète ?
+        <br><br>
+        <strong>Hypothèse associée.</strong> Les adaptations chroniques liées à l'entraînement pourraient
+        influencer la manière dont la racine aortique répond à une élévation aiguë de pression.
+        <br><br>
+        <strong>Protocole envisagé.</strong> Repos → exercice dynamique → exercice isométrique, sur presse à cuisses.
+        Relevé de Dd, Ds, PAS, PAD et FC à chaque temps, puis calcul des variations ΔStrain, ΔDistensibilité,
+        Δβ, ΔCompliance, ΔPAS, ΔPAD, ΔFC.
+        <br><br>
+        <strong>Plan statistique privilégié — croisement intra-individuel.</strong> Le même participant réalise
+        les deux modalités, dans un ordre randomisé, plutôt que deux groupes indépendants. La variabilité
+        interindividuelle de la mécanique aortique est large ; comparer un sujet à lui-même l'élimine, et
+        réduit considérablement l'effectif nécessaire.
+        <br><br>
+        <strong>Groupes envisagés.</strong> Athlètes d'endurance, athlètes de force, éventuellement sports mixtes,
+        avec un groupe témoin peu actif.
+      </div>
+    </details>`;
+  }
+
+  // ================================================================
   // CARNET DE SUIVI
   // ----------------------------------------------------------------
   // Le regroupement par échéance vient du serveur, pas d'ici : la date du jour
@@ -17977,6 +18359,17 @@
             <button class="apiBtnConnectBelt pat-btn-secondary" style="padding:14px; font-size:13px;">⌁ Connecter la ceinture</button>
             <button onclick="bleAfficherTousAppareils()" type="button"
               style="border:none; background:transparent; color:#64748b; font-size:11.5px; text-decoration:underline; cursor:pointer; padding:2px;">Ma ceinture n'apparaît pas — afficher tous les appareils</button>
+            <!--
+              Verdict automatique sur l'appareil du patient.
+
+              Trois patients ont essayé, échoué, et personne — eux compris —
+              ne savait dire pourquoi. Un iPhone ne peut PAS connecter une
+              ceinture depuis un navigateur : c'est une limite d'Apple, et
+              aucune manipulation ne la franchit. Laisser quelqu'un chercher
+              pendant une demi-heure une solution qui n'existe pas, c'est le
+              défaut de l'application, pas le sien.
+            -->
+            <div id="bleVerdict" style="display:none; font-size:11.5px; line-height:1.5; padding:8px 10px; border-radius:8px;"></div>
           </div>
           <button class="apiBtnStartSession pat-btn-success" style="padding:14px; font-size:13px;">▶ Démarrer la séance</button>
           <button class="apiBtnStopSession pat-btn-secondary" disabled style="padding:14px; font-size:13px; background:#fee2e2; color:#991b1b; opacity:0.4;">■ Arrêter la séance</button>
@@ -18120,6 +18513,62 @@
     //   byte 0 = flags ; bit 0 = format FC (0 = 8 bits uint, 1 = 16 bits uint LE)
     //   byte 1+ = valeur FC selon le format
     // ====================================================================
+
+    /**
+     * Dire au patient, sur son écran, si son appareil peut connecter la
+     * ceinture — et sinon pourquoi, en une phrase qu'il peut vous répéter.
+     *
+     * On n'interroge pas l'appareil : on constate. `navigator.bluetooth`
+     * existe ou n'existe pas. Le reste du texte sert seulement à nommer la
+     * cause, parce qu'« indisponible » n'aide personne.
+     */
+    function bleAfficherVerdict() {
+      const z = document.getElementById('bleVerdict');
+      if (!z) return;
+      const ua = navigator.userAgent;
+      const estiOS = /iPhone|iPad|iPod/.test(ua) ||
+                     (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+      const estSafari = /Safari\//.test(ua) && !/Chrome\/|CriOS|Edg\//.test(ua);
+      const dispo = !!(navigator.bluetooth);
+
+      let fond, bord, encre, texte;
+      if (dispo) {
+        fond = '#ecfdf5'; bord = '#a7f3d0'; encre = '#065f46';
+        texte = '✅ <strong>Votre appareil peut connecter la ceinture.</strong><br>'
+              + 'Portez-la, humidifiez les électrodes, et fermez l\'application Decathlon Coach : '
+              + 'une ceinture ne parle qu\'à un seul appareil à la fois.';
+      } else if (estiOS) {
+        fond = '#fef2f2'; bord = '#fecaca'; encre = '#991b1b';
+        texte = '⚠ <strong>Sur iPhone et iPad, aucun navigateur ne peut connecter une ceinture.</strong><br>'
+              + 'C\'est une restriction d\'Apple, et elle vaut aussi pour Chrome sur iPhone. '
+              + 'Vous pouvez suivre la séance normalement : seule la fréquence cardiaque sera absente. '
+              + 'Signalez-le à votre soignant.';
+      } else if (estSafari) {
+        fond = '#fffbeb'; bord = '#fcd34d'; encre = '#92400e';
+        texte = '⚠ <strong>Safari ne gère pas le Bluetooth.</strong><br>'
+              + 'Ouvrez cette page dans <strong>Google Chrome</strong> et la ceinture fonctionnera.';
+      } else {
+        fond = '#fffbeb'; bord = '#fcd34d'; encre = '#92400e';
+        texte = '⚠ <strong>Ce navigateur ne gère pas le Bluetooth.</strong><br>'
+              + 'Utilisez <strong>Google Chrome</strong> sur ordinateur ou sur Android.';
+      }
+      z.style.display = 'block';
+      z.style.background = fond;
+      z.style.border = '1px solid ' + bord;
+      z.style.color = encre;
+      z.innerHTML = texte;
+
+      // Un bouton qui ne peut rien faire ne doit pas rester cliquable : il
+      // enverrait le patient vers un échec que l'on vient de lui annoncer.
+      if (!dispo) {
+        document.querySelectorAll('.apiBtnConnectBelt').forEach(b => {
+          b.disabled = true; b.style.opacity = '0.45'; b.style.cursor = 'not-allowed';
+          b.title = 'Indisponible sur cet appareil';
+        });
+      }
+    }
+    window.bleAfficherVerdict = bleAfficherVerdict;
+    try { bleAfficherVerdict(); } catch (e) { console.warn('[ble] verdict :', e && e.message); }
 
     function isWebBluetoothSupported() {
       return typeof navigator !== 'undefined' && !!navigator.bluetooth;
