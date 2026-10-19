@@ -452,43 +452,184 @@
     }).join('');
   }
 
-  /**
-   * Schéma des niveaux de mesure de la racine aortique.
-   *
-   * Dessiné plutôt que décrit : « 20 mm au-dessus de la jonction » se lit
-   * vite, mais se situe mal. Le dessin n'est ni une image anatomique ni une
-   * illustration : c'est un repère de mesure, avec les quatre niveaux dans
-   * leur ordre réel et le niveau du critère principal mis en évidence.
-   */
-  function schemaRacine() {
+  // ------------------------------------------------------------
+  // Figures
+  // ------------------------------------------------------------
+  // Dessinées, et non reprises d'une publication. Reproduire la figure d'un
+  // article sur un site accessible engage la responsabilité de l'équipe, et
+  // une figure qu'on ne possède pas ne se corrige pas : si le repère de
+  // l'aorte ascendante passe de 20 à 10 mm, il faut pouvoir le changer.
+  //
+  // Elles ne prétendent pas remplacer les images de l'examen. Leur rôle est
+  // de fixer OÙ l'on mesure et À QUEL INSTANT — les deux erreurs qui ruinent
+  // ce type d'étude sans laisser de trace dans le résultat.
+
+  /** Repère des quatre niveaux, en coupe parasternale grand axe. */
+  function figureGrandAxe(surligne) {
     var niveaux = [
-      { y: 196, l: 'Anneau aortique',        n: 'pour mémoire — suit la valve, hors calcul', d: 0 },
-      { y: 150, l: 'Sinus de Valsalva',      n: 'critère de jugement principal',            d: 1 },
-      { y: 104, l: 'Jonction sinotubulaire', n: 'critère secondaire',                       d: 0 },
-      { y: 52,  l: 'Aorte ascendante',       n: '20 mm au-dessus de la jonction',           d: 0 }
+      { n: 1, y: 236, x1: 150, x2: 216, l: 'Anneau aortique',
+        d: 'repère de la valve — hors calcul de mécanique', cle: 'anneau' },
+      { n: 2, y: 188, x1: 136, x2: 230, l: 'Sinus de Valsalva',
+        d: 'plus grand diamètre du sinus', cle: 'sinus' },
+      { n: 3, y: 142, x1: 156, x2: 208, l: 'Jonction sinotubulaire',
+        d: 'rétrécissement net au-dessus des sinus', cle: 'jst' },
+      { n: 4, y: 95,  x1: 162, x2: 215, l: 'Aorte ascendante proximale',
+        d: '20 mm au-dessus de la jonction', cle: 'ascendante' }
     ];
     return '' +
-    '<svg viewBox="0 0 430 240" width="100%" style="max-width:430px; display:block;" ' +
-      'role="img" aria-label="Niveaux de mesure de la racine aortique">' +
-      // paroi : deux courbes symétriques, renflées au niveau des sinus
-      '<path d="M96 210 L96 198 C96 168 76 170 76 150 C76 128 96 120 100 104 L112 52" ' +
-        'fill="none" stroke="#0b1530" stroke-width="2.4" stroke-linecap="round"/>' +
-      '<path d="M168 210 L168 198 C168 168 188 170 188 150 C188 128 168 120 164 104 L152 52" ' +
-        'fill="none" stroke="#0b1530" stroke-width="2.4" stroke-linecap="round"/>' +
-      '<path d="M96 198 L168 198" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="3 3"/>' +
+    '<svg viewBox="0 0 470 280" width="100%" style="max-width:470px; display:block;" ' +
+      'role="img" aria-label="Niveaux de mesure de la racine aortique en coupe parasternale grand axe">' +
+      '<rect x="0" y="0" width="470" height="280" fill="#fbfdfe"/>' +
+
+      // ---- cavités repères, en trait léger : sans elles le dessin flotte ----
+      '<path d="M150 250 C150 272 108 276 96 262" fill="none" stroke="#cbd5e1" stroke-width="1.4"/>' +
+      '<path d="M216 250 C216 272 258 276 270 262" fill="none" stroke="#cbd5e1" stroke-width="1.4"/>' +
+      '<text x="104" y="272" font-size="10" fill="#94a3b8">VG</text>' +
+      '<text x="258" y="272" font-size="10" fill="#94a3b8">OG</text>' +
+
+      // ---- parois aortiques : renflement des sinus, pincement à la JST ----
+      '<path d="M150 250 L150 236 C150 212 134 206 136 188 C138 166 152 160 156 142 L162 60" ' +
+        'fill="none" stroke="#0b1530" stroke-width="3" stroke-linecap="round"/>' +
+      '<path d="M216 250 L216 236 C216 212 232 206 230 188 C228 166 212 160 208 142 L215 60" ' +
+        'fill="none" stroke="#0b1530" stroke-width="3" stroke-linecap="round"/>' +
+
+      // ---- sigmoïdes fermées : l'instant de Dd, valve close ----
+      '<path d="M152 237 L183 221 L214 237" fill="none" stroke="#64748b" stroke-width="1.6"/>' +
+      '<text x="246" y="258" font-size="9.5" fill="#94a3b8">valve fermée — instant de Dd</text>' +
+
       niveaux.map(function (n) {
-        var c = n.d ? '#0891b2' : '#94a3b8';
+        var vif = !surligne || surligne === n.cle;
+        var c = vif ? '#0891b2' : '#cbd5e1';
+        var ct = vif ? '#0b1530' : '#94a3b8';
         return '<g>' +
-          '<line x1="60" y1="' + n.y + '" x2="204" y2="' + n.y + '" stroke="' + c + '" ' +
-            'stroke-width="' + (n.d ? 2 : 1.2) + '" stroke-dasharray="' + (n.d ? '' : '4 3') + '"/>' +
-          '<circle cx="204" cy="' + n.y + '" r="' + (n.d ? 4 : 3) + '" fill="' + c + '"/>' +
-          '<text x="216" y="' + (n.y - 2) + '" font-size="12.5" font-weight="' + (n.d ? '800' : '600') +
-            '" fill="' + (n.d ? '#0b1530' : '#475569') + '">' + esc(n.l) + '</text>' +
-          '<text x="216" y="' + (n.y + 12) + '" font-size="10.5" fill="#94a3b8">' + esc(n.n) + '</text>' +
+          '<line x1="' + n.x1 + '" y1="' + n.y + '" x2="' + n.x2 + '" y2="' + n.y + '" ' +
+            'stroke="' + c + '" stroke-width="2.2"/>' +
+          '<line x1="' + n.x1 + '" y1="' + (n.y - 5) + '" x2="' + n.x1 + '" y2="' + (n.y + 5) + '" stroke="' + c + '" stroke-width="2.2"/>' +
+          '<line x1="' + n.x2 + '" y1="' + (n.y - 5) + '" x2="' + n.x2 + '" y2="' + (n.y + 5) + '" stroke="' + c + '" stroke-width="2.2"/>' +
+          '<line x1="' + n.x2 + '" y1="' + n.y + '" x2="258" y2="' + n.y + '" stroke="' + c + '" stroke-width="1" stroke-dasharray="3 3"/>' +
+          '<circle cx="268" cy="' + n.y + '" r="9" fill="' + (vif ? '#0891b2' : '#e2e8f0') + '"/>' +
+          '<text x="268" y="' + (n.y + 3.5) + '" font-size="11" font-weight="800" text-anchor="middle" ' +
+            'fill="' + (vif ? '#fff' : '#94a3b8') + '">' + n.n + '</text>' +
+          '<text x="284" y="' + (n.y - 1) + '" font-size="12" font-weight="700" fill="' + ct + '">' + esc(n.l) + '</text>' +
+          '<text x="284" y="' + (n.y + 12) + '" font-size="9.5" fill="#94a3b8">' + esc(n.d) + '</text>' +
         '</g>';
       }).join('') +
-      '<text x="132" y="228" font-size="10.5" fill="#94a3b8" text-anchor="middle">Coupe parasternale grand axe</text>' +
+
+      '<text x="24" y="30" font-size="11.5" font-weight="800" fill="#0891b2">A</text>' +
+      '<text x="40" y="30" font-size="11.5" font-weight="700" fill="#475569">Coupe parasternale grand axe</text>' +
+      '<text x="40" y="44" font-size="9.5" fill="#94a3b8">mesures inner-edge, faisceau perpendiculaire à la paroi</text>' +
     '</svg>';
+  }
+
+  /**
+   * Mode TM : où se prennent Dd et Ds dans le cycle.
+   *
+   * Le tracé est calculé, pas dessiné à la main : la courbe doit monter vite
+   * et redescendre lentement, comme l'expansion systolique réelle, sinon la
+   * figure suggère un instant de mesure qui n'existe pas.
+   */
+  function figureTM() {
+    var x0 = 56, x1 = 392, periode = 96;
+    var yAntD = 118, yAntS = 100, yPostD = 176, yPostS = 194;
+    // Déplacement pariétal : montée rapide (15 % du cycle), retour progressif.
+    var depl = function (t) {
+      return t < 0.15 ? Math.pow(t / 0.15, 0.75)
+                      : Math.pow(1 - (t - 0.15) / 0.85, 1.6);
+    };
+    var courbe = function (yD, yS) {
+      var p = '', x;
+      for (x = x0; x <= x1; x += 3) {
+        var t = ((x - x0) % periode) / periode;
+        var y = yD + (yS - yD) * depl(t);
+        p += (x === x0 ? 'M' : 'L') + x.toFixed(0) + ' ' + y.toFixed(1) + ' ';
+      }
+      return p;
+    };
+    // Instants de mesure : Dd au début du QRS (t = 0), Ds à l'expansion maximale.
+    var xDd = x0 + periode;              // début du 2ᵉ cycle
+    var xDs = x0 + periode + periode * 0.15;
+    var ecg = function () {
+      var p = '', c;
+      for (c = 0; c <= 3; c++) {
+        var b = x0 + c * periode;
+        p += 'M' + b + ' 252 L' + (b + 14) + ' 252 L' + (b + 20) + ' 246 L' + (b + 26) + ' 252 ' +
+             'L' + (b + 32) + ' 252 L' + (b + 36) + ' 258 L' + (b + 40) + ' 232 L' + (b + 44) + ' 262 ' +
+             'L' + (b + 48) + ' 252 L' + (b + 62) + ' 252 L' + (b + 72) + ' 243 L' + (b + 82) + ' 252 ' +
+             'L' + (b + 96) + ' 252 ';
+      }
+      return p;
+    };
+    return '' +
+    '<svg viewBox="0 0 470 280" width="100%" style="max-width:470px; display:block;" ' +
+      'role="img" aria-label="Mode TM : diamètres télédiastolique et systolique maximal">' +
+      '<rect x="0" y="0" width="470" height="280" fill="#fbfdfe"/>' +
+
+      '<path d="' + courbe(yAntD, yAntS) + '" fill="none" stroke="#0b1530" stroke-width="2.6"/>' +
+      '<path d="' + courbe(yPostD, yPostS) + '" fill="none" stroke="#0b1530" stroke-width="2.6"/>' +
+
+      // ---- Dd : au début du QRS, valve fermée ----
+      '<line x1="' + xDd + '" y1="86" x2="' + xDd + '" y2="262" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3"/>' +
+      '<line x1="' + xDd + '" y1="' + yAntD + '" x2="' + xDd + '" y2="' + yPostD + '" stroke="#0891b2" stroke-width="2.4"/>' +
+      '<line x1="' + (xDd - 6) + '" y1="' + yAntD + '" x2="' + (xDd + 6) + '" y2="' + yAntD + '" stroke="#0891b2" stroke-width="2.4"/>' +
+      '<line x1="' + (xDd - 6) + '" y1="' + yPostD + '" x2="' + (xDd + 6) + '" y2="' + yPostD + '" stroke="#0891b2" stroke-width="2.4"/>' +
+      '<text x="' + (xDd - 10) + '" y="' + ((yAntD + yPostD) / 2) + '" font-size="12.5" font-weight="800" ' +
+        'fill="#0891b2" text-anchor="end">Dd</text>' +
+
+      // ---- Ds : expansion maximale ----
+      '<line x1="' + xDs + '" y1="86" x2="' + xDs + '" y2="262" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3"/>' +
+      '<line x1="' + xDs + '" y1="' + yAntS + '" x2="' + xDs + '" y2="' + yPostS + '" stroke="#7c3aed" stroke-width="2.4"/>' +
+      '<line x1="' + (xDs - 6) + '" y1="' + yAntS + '" x2="' + (xDs + 6) + '" y2="' + yAntS + '" stroke="#7c3aed" stroke-width="2.4"/>' +
+      '<line x1="' + (xDs - 6) + '" y1="' + yPostS + '" x2="' + (xDs + 6) + '" y2="' + yPostS + '" stroke="#7c3aed" stroke-width="2.4"/>' +
+      '<text x="' + (xDs + 12) + '" y="' + ((yAntS + yPostS) / 2) + '" font-size="12.5" font-weight="800" fill="#7c3aed">Ds</text>' +
+
+      '<text x="' + x0 + '" y="92" font-size="9.5" fill="#94a3b8">paroi antérieure</text>' +
+      '<text x="' + x0 + '" y="214" font-size="9.5" fill="#94a3b8">paroi postérieure</text>' +
+
+      '<path d="' + ecg() + '" fill="none" stroke="#059669" stroke-width="1.6"/>' +
+      '<text x="' + (xDd + 6) + '" y="274" font-size="9.5" fill="#059669">début du QRS</text>' +
+
+      '<text x="24" y="30" font-size="11.5" font-weight="800" fill="#0891b2">B</text>' +
+      '<text x="40" y="30" font-size="11.5" font-weight="700" fill="#475569">Mode TM — instants de mesure</text>' +
+      '<text x="40" y="44" font-size="9.5" fill="#94a3b8">Dd au début du QRS, valve fermée · Ds à l\'expansion maximale · moyenne de trois cycles</text>' +
+    '</svg>';
+  }
+
+  /** Les six indices, avec leur formule, leur unité et ce qu'ils disent. */
+  function blocFormules() {
+    var f = [
+      { n: 'Strain', e: '(D<tspan>s</tspan> − D<tspan>d</tspan>) / D<tspan>d</tspan> × 100',
+        u: '%', d: 'Déformation du diamètre sur un cycle.' },
+      { n: 'Area strain', e: '(D<tspan>s</tspan>² − D<tspan>d</tspan>²) / D<tspan>d</tspan>² × 100',
+        u: '%', d: 'Variation relative de surface.' },
+      { n: 'Distensibilité', e: '(D<tspan>s</tspan>² − D<tspan>d</tspan>²) / (D<tspan>d</tspan>² × ΔPP)',
+        u: '×10⁻³ mmHg⁻¹', d: 'Capacité à se dilater pour une variation de pression. Forme surfacique.' },
+      { n: 'Compliance', e: 'π (D<tspan>s</tspan>² − D<tspan>d</tspan>²) / (4 ΔPP)',
+        u: 'mm²/mmHg', d: 'Variation absolue de surface par mmHg. Dépend de la taille initiale.' },
+      { n: 'Indice β', e: 'ln(PAS / PAD) / [(D<tspan>s</tspan> − D<tspan>d</tspan>) / D<tspan>d</tspan>]',
+        u: 'sans dimension', d: 'Rigidité, peu dépendante du niveau de pression.' },
+      { n: 'Module Ep', e: 'ΔPP / [(D<tspan>s</tspan> − D<tspan>d</tspan>) / D<tspan>d</tspan>]',
+        u: 'mmHg', d: 'Rigidité sans correction logarithmique. Information voisine de β.' }
+    ];
+    return '' +
+    '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:10px;">' +
+      f.map(function (x) {
+        return '<div style="border:1px solid var(--line); border-radius:10px; padding:11px 13px; background:#fff;">' +
+          '<div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;">' +
+            '<span style="font-size:12.5px; font-weight:800; color:#0b1530;">' + x.n + '</span>' +
+            '<span style="font-size:10.5px; color:#0891b2; font-weight:700;">' + x.u + '</span>' +
+          '</div>' +
+          '<div style="font-family:ui-serif,Georgia,serif; font-size:13.5px; color:#1e293b; ' +
+            'margin:6px 0 5px; padding:6px 9px; background:#f8fafc; border-radius:7px; overflow-x:auto;">' +
+            x.e.replace(/<tspan>/g, '<sub>').replace(/<\/tspan>/g, '</sub>') + '</div>' +
+          '<div style="font-size:11px; line-height:1.5; color:#64748b;">' + esc(x.d) + '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>' +
+    '<p style="margin:10px 0 0; font-size:11.5px; line-height:1.6; color:#64748b;">' +
+      'D<sub>d</sub> et D<sub>s</sub> en mm, ΔPP = PAS − PAD en mmHg. ' +
+      'Quatre de ces six indices n\'existent pas sans pression artérielle : une acquisition sans PA ' +
+      'relevée ne donne qu\'un strain et un area strain.' +
+    '</p>';
   }
 
   function vueMethode() {
@@ -529,18 +670,22 @@
               }).join('') + '</div>')
         : '') +
 
-      bloc('Coupes et mesures',
-        '<div style="display:flex; gap:22px; flex-wrap:wrap; align-items:flex-start;">' +
-          '<div style="flex:0 0 auto;">' + schemaRacine() + '</div>' +
-          '<div style="flex:1; min-width:280px;">' +
-            (e.protocole_mesure
-              ? texteProtocole(e.protocole_mesure)
-              : '<p style="margin:0; padding:12px 14px; background:#f8fafc; border:1px dashed #cbd5e1; ' +
-                'border-radius:9px; font-size:12.5px; line-height:1.6; color:#64748b;">' +
-                'Protocole de mesure à rédiger : coupes utilisées, convention de mesure des diamètres, ' +
-                'moment du relevé de la pression artérielle.</p>') +
-          '</div>' +
-        '</div>') +
+      bloc('Coupes et instants de mesure',
+        '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(330px,1fr)); gap:16px; ' +
+          'margin-bottom:14px;">' +
+          '<div style="border:1px solid var(--line); border-radius:11px; overflow:hidden;">' +
+            figureGrandAxe() + '</div>' +
+          '<div style="border:1px solid var(--line); border-radius:11px; overflow:hidden;">' +
+            figureTM() + '</div>' +
+        '</div>' +
+        (e.protocole_mesure
+          ? texteProtocole(e.protocole_mesure)
+          : '<p style="margin:0; padding:12px 14px; background:#f8fafc; border:1px dashed #cbd5e1; ' +
+            'border-radius:9px; font-size:12.5px; line-height:1.6; color:#64748b;">' +
+            'Protocole de mesure à rédiger : coupes utilisées, convention de mesure des diamètres, ' +
+            'moment du relevé de la pression artérielle.</p>')) +
+
+      bloc('Indices calculés', blocFormules()) +
 
       bloc('Critère de jugement principal',
         prose(e.critere_jugement_principal,
@@ -571,6 +716,37 @@
    * exactement le genre de figure qu'on retrouve ensuite dans un article en
    * croyant qu'elle décrit l'observé.
    */
+  // --- Primitives du diagramme, en SVG : un diagramme de flux se lit, se
+  // --- copie dans un protocole et s'imprime. Des <div> ne s'exportent pas.
+  function fBoite(x, y, w, lignes, ton) {
+    var c = ton === 'fort'   ? ['#0b1530', '#ecfeff', '#67e8f9']
+          : ton === 'sortie' ? ['#92400e', '#fffbeb', '#fde68a']
+                             : ['#0b1530', '#ffffff', '#cbd5e1'];
+    var h = 16 + lignes.length * 15;
+    return '<g>' +
+      '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="7" ' +
+        'fill="' + c[1] + '" stroke="' + c[2] + '" stroke-width="1.4"/>' +
+      lignes.map(function (l, i) {
+        var gras = i === 0;
+        return '<text x="' + (x + 11) + '" y="' + (y + 19 + i * 15) + '" font-size="' +
+          (gras ? 11.5 : 10.5) + '" font-weight="' + (gras ? '800' : '500') +
+          '" fill="' + (gras ? c[0] : '#64748b') + '">' + esc(l) + '</text>';
+      }).join('') +
+      '</g>';
+  }
+  function hBoite(lignes) { return 16 + lignes.length * 15; }
+
+  function fFleche(x, y1, y2) {
+    return '<line x1="' + x + '" y1="' + y1 + '" x2="' + x + '" y2="' + (y2 - 7) + '" ' +
+      'stroke="#94a3b8" stroke-width="1.6"/>' +
+      '<path d="M' + (x - 4) + ' ' + (y2 - 7) + ' L' + x + ' ' + y2 + ' L' + (x + 4) + ' ' + (y2 - 7) + 'Z" fill="#94a3b8"/>';
+  }
+  function fCoude(x, y, xFin) {
+    return '<line x1="' + x + '" y1="' + y + '" x2="' + (xFin - 7) + '" y2="' + y + '" ' +
+      'stroke="#94a3b8" stroke-width="1.6"/>' +
+      '<path d="M' + (xFin - 7) + ' ' + (y - 4) + ' L' + xFin + ' ' + y + ' L' + (xFin - 7) + ' ' + (y + 4) + 'Z" fill="#94a3b8"/>';
+  }
+
   function boite(titre, valeur, note, ton) {
     var c = ton === 'fort' ? ['#0b1530', '#ecfeff', '#a5f3fc']
           : ton === 'sortie' ? ['#92400e', '#fffbeb', '#fde68a']
@@ -598,60 +774,106 @@
     var inclus = _ouverte.patients.length;
     var objectif = e.objectif_inclusions || 0;
     var requis = e.effectif_calcule || 0;
-    var perdus = (objectif && requis && objectif > requis) ? objectif - requis : 0;
+    var ecartes = (objectif && requis && objectif > requis) ? objectif - requis : 0;
     var previsionnel = inclus === 0;
-    var visites = (e.calendrier_visites || '').split('·')
+    var croise = String(e.schema_etude || '').indexOf('croisee') >= 0;
+    var etapes = (e.calendrier_visites || '').split('·')
       .map(function (v) { return v.split('—')[0].trim(); }).filter(Boolean);
-    if (!visites.length) visites = ['Inclusion', 'Fin de suivi'];
 
     if (!objectif && !requis && !inclus) {
-      return '<article class="card" style="padding:26px; text-align:center;">' +
-        '<p style="margin:0; font-size:13px; line-height:1.7; color:#64748b; max-width:60ch; ' +
-        'margin:0 auto;">Le diagramme se construit sur l\'effectif de l\'étude. ' +
+      return '<article class="card" style="padding:26px;">' +
+        '<p style="margin:0 auto; font-size:13px; line-height:1.7; color:#64748b; max-width:60ch; ' +
+        'text-align:center;">Le diagramme se construit sur l\'effectif de l\'étude. ' +
         'Renseignez l\'effectif calculé et l\'objectif d\'inclusions dans la fiche, et il apparaîtra ici.</p>' +
         '</article>';
     }
 
-    var etapes = '';
-    etapes += boite('Éligibles', null, 'Patients de la file active répondant aux critères — à dénombrer au démarrage');
-    etapes += fleche();
-    etapes += '<div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">' +
-      boite(previsionnel ? 'À inclure' : 'Inclus', objectif || inclus,
-            previsionnel ? 'objectif d\'inclusions' : (objectif ? 'objectif : ' + objectif : ''), 'fort') +
-      (perdus ? boite('Non-inclusions et sorties prévues', perdus,
-                      'marge prévue entre l\'objectif et l\'effectif requis', 'sortie') : '') +
-      '</div>';
+    var n = objectif || inclus || requis;
+    var nA = Math.ceil(n / 2), nB = n - nA;
+    var L = 70, W = 230, CX = L + W / 2;          // colonne principale
+    var XS = L + W + 48, WS = 182;                // colonne des sorties
+    var y = 24, svg = '';
 
-    visites.forEach(function (v, i) {
-      etapes += fleche();
-      etapes += boite(v, i === visites.length - 1 ? (requis || null) : null,
-                      i === visites.length - 1
-                        ? 'analysables requis pour le critère principal'
-                        : 'mesures prévues au protocole',
-                      i === visites.length - 1 ? 'fort' : '');
-    });
+    var poser = function (lignes, ton) {
+      svg += fBoite(L, y, W, lignes, ton);
+      var h = hBoite(lignes);
+      y += h;
+      return h;
+    };
+    var sortie = function (lignes, decalage) {
+      var yb = y - hBoite(lignes) - (decalage || 0);
+      svg += fCoude(CX, yb + hBoite(lignes) / 2, XS);
+      svg += fBoite(XS, yb, WS, lignes, 'sortie');
+    };
+    var versLeBas = function (h) { svg += fFleche(CX, y, y + h); y += h; };
 
-    etapes += fleche();
-    etapes += boite('Analysés — critère principal', requis || null,
-                    'une visite sans pression artérielle relevée ne donne ni distensibilité ni ' +
-                    'compliance : elle sort de l\'analyse, et se compte ici');
+    // ---- 1. éligibilité ----
+    poser(['Sujets évalués pour éligibilité', 'n = à dénombrer au démarrage']);
+    versLeBas(34);
+    svg += fCoude(CX, y - 17, XS);
+    svg += fBoite(XS, y - 17 - hBoite(['Non inclus', 'critères non remplis', 'refus de participer',
+      'fenêtre échographique insuffisante']) / 2, WS,
+      ['Non inclus', 'critères non remplis', 'refus de participer',
+       'fenêtre échographique insuffisante'], 'sortie');
+
+    // ---- 2. inclusion ----
+    poser([previsionnel ? 'Inclus — effectif prévu' : 'Inclus',
+           'n = ' + (objectif || inclus)], 'fort');
+
+    if (croise) {
+      // ---- 3. randomisation de l'ordre, deux bras ----
+      versLeBas(30);
+      poser(['Randomisation de l\'ordre des modalités', 'n = ' + n]);
+      versLeBas(26);
+      var wB = (W - 16) / 2;
+      var lA = ['Ordre A → B', 'n = ' + nA, 'dynamique puis isométrique'];
+      var lB = ['Ordre B → A', 'n = ' + nB, 'isométrique puis dynamique'];
+      var hB = Math.max(hBoite(lA), hBoite(lB));
+      svg += '<line x1="' + CX + '" y1="' + (y - 10) + '" x2="' + (L + wB / 2) + '" y2="' + (y - 10) + '" stroke="#94a3b8" stroke-width="1.6"/>';
+      svg += '<line x1="' + CX + '" y1="' + (y - 10) + '" x2="' + (L + W - wB / 2) + '" y2="' + (y - 10) + '" stroke="#94a3b8" stroke-width="1.6"/>';
+      svg += fFleche(L + wB / 2, y - 10, y);
+      svg += fFleche(L + W - wB / 2, y - 10, y);
+      svg += fBoite(L, y, wB, lA);
+      svg += fBoite(L + W - wB, y, wB, lB);
+      y += hB;
+      versLeBas(26);
+      poser(['Séance de mesure complète', 'repos → modalité 1 → repos → modalité 2']);
+      sortie(['Séances non exploitables', 'arrêt pour critère de sécurité',
+              'image inexploitable sous charge', 'retour au repos incomplet']);
+    } else {
+      // ---- 3. suivi longitudinal ----
+      (etapes.length ? etapes : ['Inclusion', 'Fin de suivi']).forEach(function (v, i) {
+        versLeBas(30);
+        poser([v, i === 0 ? 'mesures de référence' : 'mesures prévues au protocole']);
+        if (i > 0) sortie(['Perdus de vue et sorties', 'n = ' + (ecartes || 'à compter')]);
+      });
+    }
+
+    // ---- 4. analyse ----
+    versLeBas(30);
+    poser(['Analysés — critère de jugement principal', 'n = ' + (requis || '—')], 'fort');
+    sortie(['Exclus de l\'analyse', 'pression artérielle non relevée', 'aucune imputation']);
+
+    var hauteur = y + 30;
 
     return '' +
       (previsionnel
         ? '<div style="padding:12px 15px; background:#fffbeb; border:1px solid #fde68a; ' +
           'border-radius:10px; font-size:12.5px; line-height:1.65; color:#92400e; margin-bottom:14px;">' +
-          '<strong>Diagramme prévisionnel.</strong> Aucun patient n\'est encore inclus : les chiffres ' +
-          'ci-dessous sont ceux du calcul d\'effectif, pas des observations. Ils seront remplacés par ' +
-          'les effectifs réels au fil des inclusions.</div>'
+          '<strong>Diagramme prévisionnel.</strong> Aucun participant n\'est encore inclus : les ' +
+          'effectifs sont ceux du calcul de puissance, pas des observations. Ils seront remplacés par ' +
+          'les nombres réels au fil de l\'étude, et c\'est cette version-là qui ira dans l\'article.</div>'
         : '<div style="padding:12px 15px; background:#ecfdf5; border:1px solid #a7f3d0; ' +
           'border-radius:10px; font-size:12.5px; line-height:1.65; color:#065f46; margin-bottom:14px;">' +
-          '<strong>' + inclus + ' patient' + (inclus > 1 ? 's' : '') + ' inclus' +
-          (objectif ? ' sur ' + objectif : '') + '.</strong> Les étapes suivantes restent prévisionnelles ' +
-          'tant que les visites n\'ont pas eu lieu.</div>') +
-      '<article class="card" style="padding:22px 24px;">' +
-        '<div style="display:flex; flex-direction:column; gap:0; align-items:flex-start;">' +
-          etapes +
-        '</div>' +
+          '<strong>' + inclus + ' participant' + (inclus > 1 ? 's' : '') + ' inclus' +
+          (objectif ? ' sur ' + objectif : '') + '.</strong> Les étapes suivantes restent prévisionnelles.</div>') +
+      '<article class="card" style="padding:18px;">' +
+        '<svg viewBox="0 0 ' + (XS + WS + 24) + ' ' + hauteur + '" width="100%" ' +
+          'style="max-width:' + (XS + WS + 24) + 'px; display:block; margin:0 auto;" ' +
+          'role="img" aria-label="Diagramme de flux de l\'étude">' +
+          '<rect x="0" y="0" width="' + (XS + WS + 24) + '" height="' + hauteur + '" fill="#fff"/>' +
+          svg +
+        '</svg>' +
       '</article>';
   }
 
