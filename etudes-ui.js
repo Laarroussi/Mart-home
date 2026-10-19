@@ -22,7 +22,8 @@
   var _etudes = [];
   var _ouverte = null;   // { etude, sections, patients }
   var _occupe = false;
-  var _vue = 'resume';   // 'resume' = synopsis en lecture · 'edition' = fiche + cahier
+  var _vue = 'resume';        // 'resume' = consultation · 'edition' = fiche + cahier
+  var _vueFiche = 'abstract'; // onglet de la consultation : abstract · methode · flux
 
   function el(id) { return document.getElementById(id); }
   function esc(t) {
@@ -201,6 +202,12 @@
     return String(Math.round(x * 1000) / 1000).replace('.', ',');
   }
 
+  /** Puissance et alpha sont stockés en fractions ; on les lit en pourcentages. */
+  function pc(v) {
+    var x = parseFloat(v);
+    return Number.isFinite(x) ? String(Math.round(x * 1000) / 10).replace('.', ',') + ' %' : null;
+  }
+
   function manque(quoi) {
     return '<span style="color:#94a3b8; font-weight:500;">' + esc(quoi) + '</span>';
   }
@@ -225,33 +232,25 @@
       '</article>';
   }
 
-  function dessinerResume() {
+  // Les trois façons de lire une étude. Elles ne se complètent pas, elles se
+  // relaient : on lit l'abstract pour savoir de quoi il s'agit, la
+  // méthodologie pour savoir comment on mesure, le diagramme pour savoir
+  // combien de patients traversent quoi. Les empiler sur une seule page
+  // donnait l'écran illisible qu'on vient de quitter.
+  var VUES_FICHE = [
+    { v: 'abstract', l: 'Abstract' },
+    { v: 'methode',  l: 'Méthodologie' },
+    { v: 'flux',     l: 'Diagramme de flux' }
+  ];
+
+  function dessinerConsultation() {
     var z = el('etContenu');
     if (!z || !_ouverte) return;
     var e = _ouverte.etude;
     var s = statut(e.statut);
-    var sch = schemaEtude(e.schema_etude);
-    var cat = riph(e.categorie_riph);
-    var nbVar = _ouverte.sections.reduce(function (n, x) { return n + x.variables.length; }, 0);
-    var inclus = _ouverte.patients.length;
-    var objectif = e.objectif_inclusions || 0;
-    var requis = e.effectif_calcule || 0;
-    var part = objectif ? Math.min(100, Math.round(inclus / objectif * 100)) : 0;
-
-    // Puissance et alpha sont stockés en fractions ; on les relit en
-    // pourcentages, qui est la façon dont on en parle.
-    var pc = function (v) {
-      var x = parseFloat(v);
-      return Number.isFinite(x) ? String(Math.round(x * 1000) / 10).replace('.', ',') + ' %' : null;
-    };
-    var hyp = [
-      pc(e.puissance) ? 'puissance ' + pc(e.puissance) : null,
-      pc(e.alpha) ? 'α ' + pc(e.alpha) : null,
-      e.taille_effet ? 'effet attendu ' + esc(e.taille_effet) : null
-    ].filter(Boolean).join(' · ');
 
     z.innerHTML = '' +
-    '<div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;">' +
+    '<div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">' +
       '<button type="button" class="btn-secondary" id="etRetourBib">← Bibliothèque</button>' +
       '<div style="flex:1; min-width:220px;">' +
         '<div style="font-size:16px; font-weight:800; line-height:1.35;">' + esc(e.intitule) +
@@ -264,6 +263,59 @@
       '<button type="button" class="btn-secondary" id="etVersEdition">✎ Fiche et cahier d\'observation</button>' +
     '</div>' +
 
+    '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">' +
+      VUES_FICHE.map(function (x) {
+        var actif = x.v === _vueFiche;
+        return '<button type="button" data-vuefiche="' + x.v + '" style="' +
+          'font-size:12.5px; font-weight:700; padding:7px 15px; border-radius:999px; cursor:pointer; ' +
+          (actif
+            ? 'background:#0b1530; color:#fff; border:1px solid #0b1530;'
+            : 'background:#fff; color:#475569; border:1px solid var(--line);') +
+          '">' + esc(x.l) + '</button>';
+      }).join('') +
+    '</div>' +
+
+    '<div id="etVue"></div>';
+
+    dessinerVueFiche();
+
+    el('etRetourBib').addEventListener('click', function () { info(''); dessinerBibliotheque(); });
+    el('etVersEdition').addEventListener('click', function () {
+      info(''); _vue = 'edition'; dessinerEdition();
+      var c = el('etContenu'); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'start' });
+    });
+    Array.prototype.forEach.call(z.querySelectorAll('[data-vuefiche]'), function (b) {
+      b.addEventListener('click', function () {
+        _vueFiche = b.getAttribute('data-vuefiche');
+        dessinerConsultation();
+      });
+    });
+  }
+
+  function dessinerVueFiche() {
+    var z = el('etVue');
+    if (!z || !_ouverte) return;
+    z.innerHTML = _vueFiche === 'methode' ? vueMethode()
+                : _vueFiche === 'flux'    ? vueFlux()
+                                          : vueAbstract();
+  }
+
+  function vueAbstract() {
+    var e = _ouverte.etude;
+    var sch = schemaEtude(e.schema_etude);
+    var cat = riph(e.categorie_riph);
+    var nbVar = _ouverte.sections.reduce(function (n, x) { return n + x.variables.length; }, 0);
+    var inclus = _ouverte.patients.length;
+    var objectif = e.objectif_inclusions || 0;
+    var requis = e.effectif_calcule || 0;
+    var part = objectif ? Math.min(100, Math.round(inclus / objectif * 100)) : 0;
+    var hyp = [
+      pc(e.puissance) ? 'puissance ' + pc(e.puissance) : null,
+      pc(e.alpha) ? 'α ' + pc(e.alpha) : null,
+      e.taille_effet ? 'effet attendu ' + esc(e.taille_effet) : null
+    ].filter(Boolean).join(' · ');
+
+    return '' +
     // ---- Abstract ----
     '<article class="card" style="padding:24px 26px; margin-bottom:14px;">' +
       '<h3 style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; ' +
@@ -342,12 +394,265 @@
         'line-height:1.6; color:#475569; white-space:pre-line;">' +
         '<strong style="color:#0b1530;">Notes internes —</strong> ' + esc(e.notes) + '</p>' : '') +
     '</article>';
+  }
 
-    el('etRetourBib').addEventListener('click', function () { info(''); dessinerBibliotheque(); });
-    el('etVersEdition').addEventListener('click', function () {
-      info(''); _vue = 'edition'; dessinerEdition();
-      var c = el('etContenu'); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'start' });
+  // ------------------------------------------------------------
+  // Méthodologie
+  // ------------------------------------------------------------
+  /**
+   * Rend un texte de protocole tel qu'il a été rédigé.
+   *
+   * Les champs de méthodologie sont du texte libre, mais ils sont écrits
+   * avec une structure : une ligne en capitales ouvre une rubrique, une ligne
+   * commençant par « • » est un item. On la respecte à l'affichage plutôt
+   * que de tout aplatir en un pavé — un protocole qu'on ne peut pas parcourir
+   * des yeux ne se relit pas, donc ne se corrige pas.
+   */
+  function estTitre(ligne) {
+    var tete = ligne.split('—')[0].trim();
+    if (tete.length < 4) return false;
+    var lettres = tete.replace(/[^A-Za-zÀ-ÿ]/g, '');
+    return lettres.length >= 4 && tete === tete.toUpperCase();
+  }
+
+  function texteProtocole(txt) {
+    if (!txt) return '';
+    return String(txt).split(/\n\s*\n/).map(function (bloc) {
+      var lignes = bloc.split('\n').filter(function (l) { return l.trim(); });
+      if (!lignes.length) return '';
+      var html = '';
+      var items = [];
+      var viderItems = function () {
+        if (!items.length) return;
+        html += '<ul style="margin:4px 0 8px; padding-left:18px; font-size:12.5px; ' +
+          'line-height:1.65; color:#334155;">' +
+          items.map(function (i) { return '<li style="margin-bottom:3px;">' + esc(i) + '</li>'; }).join('') +
+          '</ul>';
+        items = [];
+      };
+      lignes.forEach(function (l, i) {
+        var t = l.trim();
+        if (t.indexOf('•') === 0) { items.push(t.slice(1).trim()); return; }
+        viderItems();
+        if (i === 0 && estTitre(t)) {
+          var bout = t.split('—');
+          html += '<div style="font-size:11.5px; font-weight:800; text-transform:uppercase; ' +
+            'letter-spacing:.05em; color:#0891b2; margin:0 0 6px;">' + esc(bout[0].trim()) +
+            (bout.length > 1
+              ? ' <span style="font-weight:600; text-transform:none; letter-spacing:0; color:#94a3b8;">— ' +
+                esc(bout.slice(1).join('—').trim()) + '</span>'
+              : '') + '</div>';
+        } else {
+          html += '<p style="margin:0 0 7px; font-size:12.5px; line-height:1.7; color:#334155;">' +
+            esc(t) + '</p>';
+        }
+      });
+      viderItems();
+      return '<div style="margin-bottom:16px;">' + html + '</div>';
+    }).join('');
+  }
+
+  /**
+   * Schéma des niveaux de mesure de la racine aortique.
+   *
+   * Dessiné plutôt que décrit : « 20 mm au-dessus de la jonction » se lit
+   * vite, mais se situe mal. Le dessin n'est ni une image anatomique ni une
+   * illustration : c'est un repère de mesure, avec les quatre niveaux dans
+   * leur ordre réel et le niveau du critère principal mis en évidence.
+   */
+  function schemaRacine() {
+    var niveaux = [
+      { y: 196, l: 'Anneau aortique',        n: 'pour mémoire — suit la valve, hors calcul', d: 0 },
+      { y: 150, l: 'Sinus de Valsalva',      n: 'critère de jugement principal',            d: 1 },
+      { y: 104, l: 'Jonction sinotubulaire', n: 'critère secondaire',                       d: 0 },
+      { y: 52,  l: 'Aorte ascendante',       n: '20 mm au-dessus de la jonction',           d: 0 }
+    ];
+    return '' +
+    '<svg viewBox="0 0 430 240" width="100%" style="max-width:430px; display:block;" ' +
+      'role="img" aria-label="Niveaux de mesure de la racine aortique">' +
+      // paroi : deux courbes symétriques, renflées au niveau des sinus
+      '<path d="M96 210 L96 198 C96 168 76 170 76 150 C76 128 96 120 100 104 L112 52" ' +
+        'fill="none" stroke="#0b1530" stroke-width="2.4" stroke-linecap="round"/>' +
+      '<path d="M168 210 L168 198 C168 168 188 170 188 150 C188 128 168 120 164 104 L152 52" ' +
+        'fill="none" stroke="#0b1530" stroke-width="2.4" stroke-linecap="round"/>' +
+      '<path d="M96 198 L168 198" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="3 3"/>' +
+      niveaux.map(function (n) {
+        var c = n.d ? '#0891b2' : '#94a3b8';
+        return '<g>' +
+          '<line x1="60" y1="' + n.y + '" x2="204" y2="' + n.y + '" stroke="' + c + '" ' +
+            'stroke-width="' + (n.d ? 2 : 1.2) + '" stroke-dasharray="' + (n.d ? '' : '4 3') + '"/>' +
+          '<circle cx="204" cy="' + n.y + '" r="' + (n.d ? 4 : 3) + '" fill="' + c + '"/>' +
+          '<text x="216" y="' + (n.y - 2) + '" font-size="12.5" font-weight="' + (n.d ? '800' : '600') +
+            '" fill="' + (n.d ? '#0b1530' : '#475569') + '">' + esc(n.l) + '</text>' +
+          '<text x="216" y="' + (n.y + 12) + '" font-size="10.5" fill="#94a3b8">' + esc(n.n) + '</text>' +
+        '</g>';
+      }).join('') +
+      '<text x="132" y="228" font-size="10.5" fill="#94a3b8" text-anchor="middle">Coupe parasternale grand axe</text>' +
+    '</svg>';
+  }
+
+  function vueMethode() {
+    var e = _ouverte.etude;
+    var visites = (e.calendrier_visites || '').split('·')
+      .map(function (v) { return v.trim(); }).filter(Boolean);
+
+    var bloc = function (titre, corps, fond) {
+      return '<article class="card" style="padding:20px 22px; margin-bottom:14px;' +
+        (fond ? ' background:' + fond + ';' : '') + '">' +
+        '<h3 style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; ' +
+          'color:#0891b2; margin:0 0 10px;">' + titre + '</h3>' + corps + '</article>';
+    };
+    var prose = function (txt, quoi) {
+      return txt
+        ? '<p style="margin:0; font-size:12.5px; line-height:1.75; color:#334155; ' +
+            'white-space:pre-line;">' + esc(txt) + '</p>'
+        : '<p style="margin:0; padding:12px 14px; background:#f8fafc; border:1px dashed #cbd5e1; ' +
+            'border-radius:9px; font-size:12.5px; line-height:1.6; color:#64748b;">' + esc(quoi) + '</p>';
+    };
+
+    return '' +
+      bloc('Population',
+        prose(e.population_cible,
+              'Critères d\'inclusion et de non-inclusion à saisir dans la fiche.')) +
+
+      (visites.length
+        ? bloc('Calendrier des visites',
+            '<div style="display:flex; gap:10px; flex-wrap:wrap;">' +
+              visites.map(function (v, i) {
+                var p = v.split('—');
+                return '<div style="flex:1; min-width:140px; padding:12px 14px; border:1px solid var(--line); ' +
+                  'border-radius:10px; background:' + (i === 0 ? '#ecfeff' : '#fff') + ';">' +
+                  '<div style="font-size:15px; font-weight:800; color:#0b1530;">' + esc(p[0].trim()) + '</div>' +
+                  (p.length > 1 ? '<div style="font-size:11.5px; color:#64748b; margin-top:2px;">' +
+                    esc(p.slice(1).join('—').trim()) + '</div>' : '') +
+                  '</div>';
+              }).join('') + '</div>')
+        : '') +
+
+      bloc('Coupes et mesures',
+        '<div style="display:flex; gap:22px; flex-wrap:wrap; align-items:flex-start;">' +
+          '<div style="flex:0 0 auto;">' + schemaRacine() + '</div>' +
+          '<div style="flex:1; min-width:280px;">' +
+            (e.protocole_mesure
+              ? texteProtocole(e.protocole_mesure)
+              : '<p style="margin:0; padding:12px 14px; background:#f8fafc; border:1px dashed #cbd5e1; ' +
+                'border-radius:9px; font-size:12.5px; line-height:1.6; color:#64748b;">' +
+                'Protocole de mesure à rédiger : coupes utilisées, convention de mesure des diamètres, ' +
+                'moment du relevé de la pression artérielle.</p>') +
+          '</div>' +
+        '</div>') +
+
+      bloc('Critère de jugement principal',
+        prose(e.critere_jugement_principal,
+              'Aucun critère principal défini. C\'est lui qui fixe l\'effectif : sans lui, le calcul ' +
+              'd\'échantillonnage ne repose sur rien.'),
+        '#f0fdfa') +
+
+      bloc('Critères secondaires',
+        prose(e.criteres_secondaires, 'Aucun critère secondaire défini.')) +
+
+      bloc('Plan d\'analyse',
+        e.plan_analyse
+          ? texteProtocole(e.plan_analyse)
+          : '<p style="margin:0; padding:12px 14px; background:#fffbeb; border:1px solid #fde68a; ' +
+            'border-radius:9px; font-size:12.5px; line-height:1.65; color:#92400e;">' +
+            'Plan d\'analyse non rédigé. Tant qu\'il ne l\'est pas, l\'ordre des tests reste ouvert — ' +
+            'et un ordre choisi après avoir vu les résultats n\'est plus un plan d\'analyse.</p>');
+  }
+
+  // ------------------------------------------------------------
+  // Diagramme de flux
+  // ------------------------------------------------------------
+  /**
+   * Diagramme de flux, construit sur les chiffres de l'étude.
+   *
+   * Tant qu'aucun patient n'est inclus, il est PRÉVISIONNEL et le dit. Un
+   * diagramme de flux qui affiche des effectifs prévus sans le préciser est
+   * exactement le genre de figure qu'on retrouve ensuite dans un article en
+   * croyant qu'elle décrit l'observé.
+   */
+  function boite(titre, valeur, note, ton) {
+    var c = ton === 'fort' ? ['#0b1530', '#ecfeff', '#a5f3fc']
+          : ton === 'sortie' ? ['#92400e', '#fffbeb', '#fde68a']
+                             : ['#0b1530', '#ffffff', '#e2e8f0'];
+    return '<div style="border:1px solid ' + c[2] + '; background:' + c[1] + '; border-radius:11px; ' +
+      'padding:12px 16px; min-width:190px;">' +
+      '<div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; ' +
+        'color:#64748b; margin-bottom:3px;">' + esc(titre) + '</div>' +
+      (valeur !== null && valeur !== undefined
+        ? '<div style="font-size:20px; font-weight:800; color:' + c[0] + '; line-height:1.2;">' + valeur + '</div>'
+        : '') +
+      (note ? '<div style="font-size:11.5px; color:#64748b; line-height:1.5; margin-top:2px;">' +
+        esc(note) + '</div>' : '') +
+      '</div>';
+  }
+
+  function fleche() {
+    return '<div style="display:flex; align-items:center; gap:0; margin:0 0 0 24px;">' +
+      '<div style="width:2px; height:18px; background:#cbd5e1;"></div>' +
+      '</div>';
+  }
+
+  function vueFlux() {
+    var e = _ouverte.etude;
+    var inclus = _ouverte.patients.length;
+    var objectif = e.objectif_inclusions || 0;
+    var requis = e.effectif_calcule || 0;
+    var perdus = (objectif && requis && objectif > requis) ? objectif - requis : 0;
+    var previsionnel = inclus === 0;
+    var visites = (e.calendrier_visites || '').split('·')
+      .map(function (v) { return v.split('—')[0].trim(); }).filter(Boolean);
+    if (!visites.length) visites = ['Inclusion', 'Fin de suivi'];
+
+    if (!objectif && !requis && !inclus) {
+      return '<article class="card" style="padding:26px; text-align:center;">' +
+        '<p style="margin:0; font-size:13px; line-height:1.7; color:#64748b; max-width:60ch; ' +
+        'margin:0 auto;">Le diagramme se construit sur l\'effectif de l\'étude. ' +
+        'Renseignez l\'effectif calculé et l\'objectif d\'inclusions dans la fiche, et il apparaîtra ici.</p>' +
+        '</article>';
+    }
+
+    var etapes = '';
+    etapes += boite('Éligibles', null, 'Patients de la file active répondant aux critères — à dénombrer au démarrage');
+    etapes += fleche();
+    etapes += '<div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">' +
+      boite(previsionnel ? 'À inclure' : 'Inclus', objectif || inclus,
+            previsionnel ? 'objectif d\'inclusions' : (objectif ? 'objectif : ' + objectif : ''), 'fort') +
+      (perdus ? boite('Non-inclusions et sorties prévues', perdus,
+                      'marge prévue entre l\'objectif et l\'effectif requis', 'sortie') : '') +
+      '</div>';
+
+    visites.forEach(function (v, i) {
+      etapes += fleche();
+      etapes += boite(v, i === visites.length - 1 ? (requis || null) : null,
+                      i === visites.length - 1
+                        ? 'analysables requis pour le critère principal'
+                        : 'mesures prévues au protocole',
+                      i === visites.length - 1 ? 'fort' : '');
     });
+
+    etapes += fleche();
+    etapes += boite('Analysés — critère principal', requis || null,
+                    'une visite sans pression artérielle relevée ne donne ni distensibilité ni ' +
+                    'compliance : elle sort de l\'analyse, et se compte ici');
+
+    return '' +
+      (previsionnel
+        ? '<div style="padding:12px 15px; background:#fffbeb; border:1px solid #fde68a; ' +
+          'border-radius:10px; font-size:12.5px; line-height:1.65; color:#92400e; margin-bottom:14px;">' +
+          '<strong>Diagramme prévisionnel.</strong> Aucun patient n\'est encore inclus : les chiffres ' +
+          'ci-dessous sont ceux du calcul d\'effectif, pas des observations. Ils seront remplacés par ' +
+          'les effectifs réels au fil des inclusions.</div>'
+        : '<div style="padding:12px 15px; background:#ecfdf5; border:1px solid #a7f3d0; ' +
+          'border-radius:10px; font-size:12.5px; line-height:1.65; color:#065f46; margin-bottom:14px;">' +
+          '<strong>' + inclus + ' patient' + (inclus > 1 ? 's' : '') + ' inclus' +
+          (objectif ? ' sur ' + objectif : '') + '.</strong> Les étapes suivantes restent prévisionnelles ' +
+          'tant que les visites n\'ont pas eu lieu.</div>') +
+      '<article class="card" style="padding:22px 24px;">' +
+        '<div style="display:flex; flex-direction:column; gap:0; align-items:flex-start;">' +
+          etapes +
+        '</div>' +
+      '</article>';
   }
 
   // ============================================================
@@ -364,7 +669,7 @@
   /** Point d'entrée unique : le synopsis d'abord, la saisie sur demande. */
   function dessinerFiche() {
     if (_vue === 'edition') dessinerEdition();
-    else dessinerResume();
+    else dessinerConsultation();
   }
 
   function dessinerEdition() {
@@ -447,6 +752,24 @@
           '<textarea id="et_calcul" rows="3" placeholder="Méthode, hypothèses et source — de sorte que le calcul puisse être refait à l\'identique.">' +
             esc(e.calcul_effectif || '') + '</textarea>' +
         '</div>' +
+        '<div style="grid-column:1 / -1;">' +
+          '<label class="control-label" for="et_visites">Calendrier des visites</label>' +
+          '<input type="text" id="et_visites" value="' + esc(e.calendrier_visites || '') +
+            '" placeholder="M0 — inclusion · M6 — intermédiaire · M12 — fin de suivi" />' +
+        '</div>' +
+        // Ces deux champs nourrissent l'onglet Méthodologie. Une ligne en
+        // capitales y ouvre une rubrique, une ligne commençant par « • » est
+        // un item : la mise en forme suit ce que vous écrivez.
+        '<div style="grid-column:1 / -1;">' +
+          '<label class="control-label" for="et_protocole">Protocole de mesure</label>' +
+          '<textarea id="et_protocole" rows="6" placeholder="Coupes utilisées, convention de mesure, moment du relevé de la pression artérielle. Une ligne en CAPITALES ouvre une rubrique, une ligne « • » est un item.">' +
+            esc(e.protocole_mesure || '') + '</textarea>' +
+        '</div>' +
+        '<div style="grid-column:1 / -1;">' +
+          '<label class="control-label" for="et_analyse">Plan d\'analyse</label>' +
+          '<textarea id="et_analyse" rows="5" placeholder="Tests, ordre dans lequel ils sont faits, gestion des données manquantes.">' +
+            esc(e.plan_analyse || '') + '</textarea>' +
+        '</div>' +
         champ('et_debut', 'Début', e.date_debut ? String(e.date_debut).slice(0, 10) : '', 'date') +
         champ('et_fin', 'Fin prévue', e.date_fin ? String(e.date_fin).slice(0, 10) : '', 'date') +
         champ('et_objectif', 'Objectif d\'inclusions', e.objectif_inclusions, 'number') +
@@ -492,7 +815,7 @@
     dessinerSections();
 
     el('etRetour').addEventListener('click', function () {
-      info(''); _vue = 'resume'; dessinerResume();
+      info(''); _vue = 'resume'; dessinerConsultation();
     });
     el('etEnregistrer').addEventListener('click', enregistrerFiche);
     el('etImprimer').addEventListener('click', imprimerDictionnaire);
@@ -601,7 +924,7 @@
     var changement = !_ouverte || _ouverte.etude.id !== id;
     try {
       _ouverte = await window.MarfanAPI.etudes.detail(id);
-      if (changement) _vue = 'resume';
+      if (changement) { _vue = 'resume'; _vueFiche = 'abstract'; }
       info('');
       dessinerFiche();
     } catch (e) {
@@ -646,7 +969,9 @@
         population_cible: val('et_population'),
         effectif_calcule: val('et_effectif') ? Number(val('et_effectif')) : null,
         puissance: val('et_puissance'), alpha: val('et_alpha'),
-        taille_effet: val('et_effet'), calcul_effectif: val('et_calcul')
+        taille_effet: val('et_effet'), calcul_effectif: val('et_calcul'),
+        calendrier_visites: val('et_visites'), protocole_mesure: val('et_protocole'),
+        plan_analyse: val('et_analyse')
       });
       _ouverte.etude = r.etude;
       note('💾 Fiche enregistrée.', 'success');

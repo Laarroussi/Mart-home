@@ -36,16 +36,42 @@
 --   → 22, +1 pour l'approximation normale = 23 analysables
 --   → 23 / 0,90 = 25,6 → 26 à inclure avec 10 % de perdus de vue.
 --
+-- ── Trois paramètres sur le critère principal ───────────────────────────
+-- Le critère principal porte sur les sinus avec compliance, distensibilité
+-- ET strain. Trois paramètres, c'est trois tests : conclure dès que l'un des
+-- trois est significatif porte le risque réel de 5 % à près de 14 %. Deux
+-- parades honnêtes, et il faut en choisir une AVANT de mesurer :
+--
+--   hiérarchie      la distensibilité est testée la première ; les deux
+--                   autres ne sont interprétés que si elle est positive.
+--                   Effectif inchangé : 23 analysables, 26 à inclure.
+--   correction      les trois sont testés à α = 0,0167 (Bonferroni).
+--                   Effectif : 31 analysables, 35 à inclure.
+--
+-- La hiérarchie est retenue ici, parce qu'elle ne coûte pas d'effectif et
+-- que la distensibilité est le paramètre le plus documenté des trois. Le
+-- champ `plan_analyse` le dit explicitement : un ordre de test décidé après
+-- coup n'est plus un ordre de test.
+--
 -- IDEMPOTENT — rejouable sans créer de doublon. PostgreSQL 9.6.
 -- Prérequis : migration 043 (colonnes du synopsis).
 -- ============================================================
+
+-- Trois champs que la fiche affiche dans son onglet Méthodologie. Ils sont
+-- en texte libre et non en colonnes structurées : une méthodologie se rédige,
+-- et la découper en cases obligerait à inventer un modèle commun à toutes les
+-- études avant d'en avoir écrit deux.
+ALTER TABLE etudes ADD COLUMN IF NOT EXISTS protocole_mesure   TEXT;
+ALTER TABLE etudes ADD COLUMN IF NOT EXISTS calendrier_visites TEXT;
+ALTER TABLE etudes ADD COLUMN IF NOT EXISTS plan_analyse       TEXT;
 
 INSERT INTO etudes (
   intitule, acronyme, statut, type_etude,
   schema_etude, categorie_riph,
   population_cible, critere_jugement_principal, criteres_secondaires,
   effectif_calcule, objectif_inclusions, puissance, alpha, taille_effet,
-  calcul_effectif, resume, notes
+  calcul_effectif, resume, notes,
+  protocole_mesure, calendrier_visites, plan_analyse
 )
 SELECT
   'Mécanique de l''aorte proximale sous activité physique adaptée dans le syndrome de Marfan : '
@@ -66,15 +92,19 @@ SELECT
   || 'Non-inclusion : antécédent de chirurgie ou de dissection aortique, valve aortique '
   || 'prothétique, hypertension artérielle non contrôlée, grossesse.',
 
-  'Variation de la distensibilité des sinus de Valsalva entre l''inclusion et le douzième mois '
-  || '(×10⁻³ mmHg⁻¹), calculée sous forme surfacique D = (Ds² − Dd²) / (Dd² × ΔPP), '
-  || 'à partir de diamètres mesurés en inner-edge au même niveau anatomique, moyennés sur trois '
-  || 'cycles, et d''une pression artérielle relevée au moment de l''examen.',
+  'Mécanique des SINUS DE VALSALVA entre l''inclusion et le douzième mois, évaluée par trois '
+  || 'paramètres calculés sur les mêmes diamètres et la même pression artérielle :' || chr(10)
+  || '• distensibilité (×10⁻³ mmHg⁻¹) — D = (Ds² − Dd²) / (Dd² × ΔPP)' || chr(10)
+  || '• compliance (mm²/mmHg) — C = π (Ds² − Dd²) / (4 ΔPP)' || chr(10)
+  || '• strain (%) — (Ds − Dd) / Dd' || chr(10)
+  || 'Les trois exigent une pression artérielle relevée PENDANT l''examen : sans ΔPP, ni la '
+  || 'distensibilité ni la compliance n''existent, et le strain seul ne dit rien de la rigidité. '
+  || 'Test hiérarchisé, la distensibilité en premier (voir le plan d''analyse).',
 
-  'Aux trois niveaux (sinus de Valsalva, jonction sinotubulaire, aorte ascendante) : distensibilité, '
-  || 'compliance, indice de rigidité β, strain, area strain, module Ep. '
-  || 'Diamètres absolus et indexés à la taille et à la surface corporelle (Du Bois). '
-  || 'Capacité à l''effort (VO₂ pic, SV1, pente VE/VCO₂), assiduité au programme, '
+  'Mêmes trois paramètres à la JONCTION SINOTUBULAIRE et sur l''AORTE ASCENDANTE, analysés de '
+  || 'façon exploratoire et comparés entre niveaux. Indice de rigidité β et module Ep aux trois '
+  || 'niveaux. Area strain. Diamètres absolus et indexés à la taille et à la surface corporelle '
+  || '(Du Bois). Capacité à l''effort (VO₂ pic, SV1, pente VE/VCO₂), assiduité au programme, '
   || 'double produit de repos. Reproductibilité intra- et inter-opérateur sur un sous-échantillon.',
 
   23, 26, 0.800, 0.050,
@@ -114,7 +144,67 @@ SELECT
   || 'Mêmes patients, question différente. '
   || 'Points à arrêter avant rédaction du protocole : σ de la variation intra-individuelle '
   || '(phase pilote), opérateur unique ou mesure de reproductibilité, et confirmation de la '
-  || 'catégorie RIPH selon que les échocardiographies relèvent ou non du suivi habituel.'
+  || 'catégorie RIPH selon que les échocardiographies relèvent ou non du suivi habituel.',
+
+  -- ---- protocole_mesure : les coupes et la convention ----
+  'COUPE PARASTERNALE GRAND AXE — coupe de référence' || chr(10)
+  || 'Les trois niveaux sont mesurés sur cette coupe, sur la même ligne, faisceau aussi '
+  || 'perpendiculaire que possible à la paroi :' || chr(10)
+  || '• sinus de Valsalva — plus grand diamètre du sinus, niveau du critère principal ;' || chr(10)
+  || '• jonction sinotubulaire — rétrécissement net au-dessus des sinus ;' || chr(10)
+  || '• aorte ascendante — 20 mm au-dessus de la jonction, repère à noter sur le compte rendu.' || chr(10)
+  || 'L''anneau aortique est relevé pour mémoire mais n''entre dans aucun calcul de mécanique : '
+  || 'sa déformation suit la valve, pas la paroi.' || chr(10) || chr(10)
+
+  || 'COUPE PARASTERNALE PETIT AXE — complément, jamais substitut' || chr(10)
+  || 'Depuis le grand axe, rotation d''environ 90° puis légère inclinaison céphalique. Elle montre '
+  || 'les trois sinus en coupe transversale : symétrie de la racine, dilatation asymétrique, '
+  || 'diamètre transverse maximal. Les calculs restent fondés sur les diamètres du grand axe.' || chr(10) || chr(10)
+
+  || 'CONVENTION — la même à toutes les visites' || chr(10)
+  || '• Dd : diamètre télédiastolique, au début du QRS, valve fermée.' || chr(10)
+  || '• Ds : diamètre systolique maximal, expansion maximale, valve ouverte.' || chr(10)
+  || '• Inner-edge to inner-edge, moyenne de trois cycles.' || chr(10)
+  || 'Mélanger inner-edge et leading-edge entre deux visites produit une variation qui n''existe '
+  || 'pas, et rien dans le résultat ne le signale. C''est la première cause d''erreur de ce type '
+  || 'd''étude.' || chr(10) || chr(10)
+
+  || 'PRESSION ARTÉRIELLE — pendant l''examen, pas avant, pas après' || chr(10)
+  || 'Brassard homolatéral, patient en décubitus, relevé immédiatement après l''acquisition des '
+  || 'diamètres, sur le même cycle de mesure. Une pression prise à une autre consultation donnerait '
+  || 'une distensibilité fausse sans qu''aucun contrôle ne puisse la rattraper.' || chr(10) || chr(10)
+
+  || 'CALCUL — jamais recopié d''un compte rendu' || chr(10)
+  || 'Les diamètres et la pression sont saisis ; les six indices sont recalculés par le module de '
+  || 'mécanique aortique de la plateforme (onglet Mécanique aortique). Une valeur de rapport lue '
+  || 'dans un compte rendu ne porte pas la trace des mesures dont elle sort, et ne se vérifie plus.',
+
+  -- ---- calendrier_visites ----
+  'M0 — inclusion · M6 — intermédiaire · M12 — fin de suivi',
+
+  -- ---- plan_analyse ----
+  'TEST PRINCIPAL — hiérarchisé, ordre fixé avant la première mesure' || chr(10)
+  || '1. Distensibilité des sinus, M0 vs M12, test apparié (t de Student si la distribution des '
+  || 'différences le permet, Wilcoxon sinon), α = 0,05 bilatéral.' || chr(10)
+  || '2. Compliance des sinus — interprétée seulement si l''étape 1 est significative.' || chr(10)
+  || '3. Strain des sinus — interprété seulement si l''étape 2 l''est.' || chr(10)
+  || 'Dès qu''une étape n''est pas significative, les suivantes sont descriptives. Cette hiérarchie '
+  || 'tient le risque global à 5 % sans augmenter l''effectif ; la correction de Bonferroni '
+  || '(α = 0,0167 sur les trois) le ferait passer de 26 à 35 inclusions.' || chr(10) || chr(10)
+
+  || 'CRITÈRES SECONDAIRES — exploratoires, et annoncés comme tels' || chr(10)
+  || 'Jonction sinotubulaire et aorte ascendante : mêmes tests, sans correction, résultats présentés '
+  || 'avec leurs intervalles de confiance et non par leur p. Comparaison entre niveaux par modèle '
+  || 'mixte à mesures répétées (niveau × temps, patient en effet aléatoire).' || chr(10) || chr(10)
+
+  || 'DONNÉES MANQUANTES' || chr(10)
+  || 'Une visite sans pression artérielle relevée ne donne ni distensibilité ni compliance : elle '
+  || 'est exclue de ces analyses, et comptée comme telle dans le diagramme de flux. Aucune valeur '
+  || 'n''est imputée.' || chr(10) || chr(10)
+
+  || 'REPRODUCTIBILITÉ' || chr(10)
+  || 'Coefficient de corrélation intraclasse sur un sous-échantillon relu en aveugle. Une variation '
+  || 'à douze mois inférieure à l''erreur de mesure n''est pas une variation.'
 WHERE NOT EXISTS (SELECT 1 FROM etudes WHERE acronyme = 'MECA-AORTE');
 
 -- ------------------------------------------------------------

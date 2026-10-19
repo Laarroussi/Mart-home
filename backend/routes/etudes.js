@@ -73,7 +73,10 @@ function synopsis(b) {
     fraction(b.puissance),
     fraction(b.alpha),
     vide(b.taille_effet),
-    vide(b.calcul_effectif)
+    vide(b.calcul_effectif),
+    vide(b.protocole_mesure),
+    vide(b.calendrier_visites),
+    vide(b.plan_analyse)
   ];
 }
 
@@ -159,9 +162,10 @@ router.post('/', requireAuth, staff, async (req, res, next) => {
                            objectif_inclusions, notes, cree_par, maj_par,
                            schema_etude, categorie_riph, critere_jugement_principal,
                            criteres_secondaires, population_cible, effectif_calcule,
-                           puissance, alpha, taille_effet, calcul_effectif)
+                           puissance, alpha, taille_effet, calcul_effectif,
+                           protocole_mesure, calendrier_visites, plan_analyse)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$14,
-               $15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING *`,
+               $15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING *`,
       [b.intitule.trim(), vide(b.acronyme), vide(b.resume), vide(b.numero_cpp),
        vide(b.numero_nct), vide(b.promoteur), vide(b.investigateur_principal),
        vide(b.type_etude), statut, vide(b.date_debut), vide(b.date_fin),
@@ -190,7 +194,8 @@ router.put('/:id(\\d+)', requireAuth, staff, async (req, res, next) => {
          schema_etude = $16, categorie_riph = $17,
          critere_jugement_principal = $18, criteres_secondaires = $19,
          population_cible = $20, effectif_calcule = $21,
-         puissance = $22, alpha = $23, taille_effet = $24, calcul_effectif = $25
+         puissance = $22, alpha = $23, taille_effet = $24, calcul_effectif = $25,
+         protocole_mesure = $26, calendrier_visites = $27, plan_analyse = $28
        WHERE id = $1 RETURNING *`,
       [req.params.id, vide(b.intitule), vide(b.acronyme), vide(b.resume),
        vide(b.numero_cpp), vide(b.numero_nct), vide(b.promoteur),
