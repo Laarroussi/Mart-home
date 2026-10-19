@@ -21,42 +21,42 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v122';</script>
-  <script src="api-client.js?v=phase122-1"></script>
+  <script>window.MARFAN_VERSION = 'v123';</script>
+  <script src="api-client.js?v=phase123-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase122-1"></script>
+  <script src="questionnaires-defs.js?v=phase123-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase122-1"></script>
+  <script src="medical-parsers.js?v=phase123-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase122-1"></script>
-  <script src="cpet-analyse.js?v=phase122-1"></script>
+  <script src="cpet-graph-preview.js?v=phase123-1"></script>
+  <script src="cpet-analyse.js?v=phase123-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase122-1"></script>
-  <script src="medical-record-ui.js?v=phase122-1"></script>
+  <script src="pdf-extractor.js?v=phase123-1"></script>
+  <script src="medical-record-ui.js?v=phase123-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase122-1"></script>
-  <script src="synthese-ui.js?v=phase122-1"></script>
-  <script src="audit-ui.js?v=phase122-1"></script>
-  <script src="entretien-ui.js?v=phase122-1"></script>
-  <script src="activation-ui.js?v=phase122-1"></script>
-  <script src="document-import.js?v=phase122-1"></script>
-  <script src="activite-ui.js?v=phase122-1"></script>
-  <script src="cpet-detail.js?v=phase122-1"></script>
-  <script src="echo-calculs.js?v=phase122-1"></script>
-  <script src="mecanique-aortique.js?v=phase122-1"></script>
-  <script src="projet-etude.js?v=phase122-1"></script>
-  <script src="echo-detail.js?v=phase122-1"></script>
-  <script src="accueil-activite.js?v=phase122-1"></script>
-  <script src="visio-jitsi.js?v=phase122-1"></script>
-  <script src="video-pilotee.js?v=phase122-1"></script>
-  <script src="fiche-apa.js?v=phase122-1"></script>
-  <script src="inactivite.js?v=phase122-1"></script>
-  <script src="bilans-ui.js?v=phase122-1"></script>
-  <script src="etudes-ui.js?v=phase122-1"></script>
-  <script src="ville-hopital.js?v=phase122-1"></script>
-  <script src="qlibres-ui.js?v=phase122-1"></script>
-  <script src="parametres-ui.js?v=phase122-1"></script>
+  <script src="aortic-consultations.js?v=phase123-1"></script>
+  <script src="synthese-ui.js?v=phase123-1"></script>
+  <script src="audit-ui.js?v=phase123-1"></script>
+  <script src="entretien-ui.js?v=phase123-1"></script>
+  <script src="activation-ui.js?v=phase123-1"></script>
+  <script src="document-import.js?v=phase123-1"></script>
+  <script src="activite-ui.js?v=phase123-1"></script>
+  <script src="cpet-detail.js?v=phase123-1"></script>
+  <script src="echo-calculs.js?v=phase123-1"></script>
+  <script src="mecanique-aortique.js?v=phase123-1"></script>
+  <script src="projet-etude.js?v=phase123-1"></script>
+  <script src="echo-detail.js?v=phase123-1"></script>
+  <script src="accueil-activite.js?v=phase123-1"></script>
+  <script src="visio-jitsi.js?v=phase123-1"></script>
+  <script src="video-pilotee.js?v=phase123-1"></script>
+  <script src="fiche-apa.js?v=phase123-1"></script>
+  <script src="inactivite.js?v=phase123-1"></script>
+  <script src="bilans-ui.js?v=phase123-1"></script>
+  <script src="etudes-ui.js?v=phase123-1"></script>
+  <script src="ville-hopital.js?v=phase123-1"></script>
+  <script src="qlibres-ui.js?v=phase123-1"></script>
+  <script src="parametres-ui.js?v=phase123-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -7017,13 +7017,29 @@
         const li = document.createElement('li');
         li.className = 'patient-item' + (patient.id === selectedPatient.id ? ' active' : '');
         li.onclick = () => setSelectedPatient(patient.id);
+        // Une donnée absente s'affiche absente : « null · null ans » laissait
+        // croire à un défaut d'affichage alors que le champ n'est simplement
+        // pas renseigné — le sexe, l'âge et le gène ne sont plus exigés à la
+        // création.
+        // 0, '?' et '—' sont les valeurs de remplacement posées par
+        // l'adaptateur quand le champ est absent : les afficher telles quelles
+        // ferait lire « 0 ans » comme un âge.
+        const absent = (v) => v === null || v === undefined || v === '' ||
+                              v === 0 || v === '?' || v === '—';
+        const ou = (v, suffixe) => absent(v) ? '—' : v + (suffixe || '');
+        const meta = [ou(patient.sex), ou(patient.age, ' ans'), ou(patient.gene),
+                      patient.evaluations.length + ' éval.'].join(' · ');
         li.innerHTML = `
           <div class="patient-avatar" style="background:${gradientFor(patient.id)}">${initials(patient.id)}</div>
           <div class="patient-item-body">
             <div class="patient-line">
               <div>
-                <div class="patient-name">${patient.id}</div>
-                <div class="patient-meta">${patient.sex} · ${patient.age} ans · ${patient.gene} · ${patient.evaluations.length} éval.</div>
+                <div class="patient-name">${patient.id}${patient.estEssai
+                  ? ' <span style="font-size:9.5px; font-weight:800; letter-spacing:.06em;'
+                    + ' color:#92400e; background:#fffbeb; border:1px solid #fde68a;'
+                    + ' border-radius:4px; padding:1px 5px; vertical-align:middle;">DÉMO</span>'
+                  : ''}</div>
+                <div class="patient-meta">${meta}</div>
               </div>
               <span class="status ${patient.statusClass}">${patient.status}</span>
             </div>
@@ -7721,7 +7737,14 @@
     $('dossierSubtitle').textContent = `Résultats détaillés de ${selectedPatient.id} (${evals.length} évaluation${evals.length > 1 ? 's' : ''}).`;
     $('dossierAvatar').style.background = gradientFor(selectedPatient.id);
     $('dossierAvatar').textContent = initials(selectedPatient.id);
-    $('dossierPatientTitle').textContent = selectedPatient.id;
+    // Le titre du dossier dit « DÉMO » quand c'en est un. C'est l'écran où
+    // l'on saisit, donc celui où la confusion coûte le plus cher.
+    $('dossierPatientTitle').innerHTML = selectedPatient.estEssai
+      ? selectedPatient.id +
+        ' <span style="font-size:11px; font-weight:800; letter-spacing:.06em; color:#92400e;' +
+        ' background:#fffbeb; border:1px solid #fde68a; border-radius:5px; padding:2px 7px;' +
+        ' vertical-align:middle;">DÉMO — données fictives</span>'
+      : selectedPatient.id;
     $('dossierPatientMeta').textContent = `${selectedPatient.sex || '?'} · ${selectedPatient.age || '?'} ans · ${selectedPatient.gene || '—'} · ${selectedPatient.status || 'Stable'}`;
     $('dossierRiskFactor').textContent = selectedPatient.riskFactor || '—';
     $('dossierRiskComment').textContent = selectedPatient.riskComment || '';
@@ -17098,6 +17121,13 @@
         etude_id: p.etude_id || null,
         // Phase 42 : population suivie, qui donne le préfixe de l'identifiant
         categorie: p.categorie || String(p.id || '').slice(0, 3).toUpperCase(),
+        // Dossier de démonstration. Sans cette ligne, le drapeau arrivait bien
+        // du serveur mais était perdu à l'adaptation, et le badge « DÉMO »
+        // n'apparaissait jamais — une panne silencieuse, du genre qu'on ne
+        // découvre qu'en confondant un dossier d'essai avec un vrai.
+        // Un seul concept dans l'interface : « ce dossier n'est pas un vrai
+        // dossier ». Peu importe lequel des deux drapeaux le dit.
+        estEssai: p.is_demo === true || p.bac_a_sable === true,
         // Phase 12.4 : plus de "Baseline" fictive auto-générée. Un patient sans évaluations
         // affiche un tableau vide et un message "Aucune évaluation enregistrée pour ce patient
         // — importez un CPET/onde de pouls ou remplissez un questionnaire".
@@ -22454,12 +22484,21 @@
       return (c.initials || '').trim();
     };
 
-    /** Code et identité réunis : « MRF-007 · Yanis G. ». */
+    /**
+     * Code et identité réunis : « MRF-007 · Yanis G. ».
+     *
+     * Un dossier de démonstration porte la mention « DÉMO » partout où son
+     * étiquette apparaît — listes, menus déroulants, onglets du carnet. Ce
+     * n'est pas une coquetterie : on saisit volontiers n'importe quoi dans un
+     * dossier d'essai, et il suffit d'un écran où rien ne le distingue pour
+     * qu'une valeur fabriquée soit lue comme une mesure.
+     */
     window.etiquettePatient = function (p) {
       if (!p) return '';
       const code = p.id || '';
       const lisible = window.nomLisiblePatient(p);
-      return lisible ? code + ' · ' + lisible : code;
+      const base = lisible ? code + ' · ' + lisible : code;
+      return p.estEssai ? base + ' · DÉMO' : base;
     };
 
     /**

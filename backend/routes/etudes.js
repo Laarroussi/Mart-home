@@ -88,7 +88,13 @@ router.get('/', requireAuth, staff, async (req, res, next) => {
   try {
     const r = await query(
       `SELECT e.*,
-              (SELECT COUNT(*)::int FROM patients p WHERE p.etude_id = e.id) AS nb_inclus,
+              -- Les dossiers de démonstration ne sont pas des inclusions :
+              -- un effectif d'étude affiché doit être défendable devant un
+              -- comité, et il l'est d'autant moins qu'il compte un dossier
+              -- d'essai.
+              (SELECT COUNT(*)::int FROM patients p
+                WHERE p.etude_id = e.id
+                  AND p.id IN (SELECT id FROM v_dossiers_reels)) AS nb_inclus,
               (SELECT COUNT(*)::int FROM ecrf_sections s WHERE s.etude_id = e.id) AS nb_sections,
               (SELECT COUNT(*)::int FROM ecrf_variables v
                  JOIN ecrf_sections s2 ON s2.id = v.section_id

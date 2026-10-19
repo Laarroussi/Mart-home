@@ -10,9 +10,15 @@ const router = express.Router();
 router.get('/overview', requireAuth, requireRole('principal_admin', 'investigator'), async (req, res, next) => {
   try {
     const [overview, geneDist, evalCount] = await Promise.all([
+      // v_cohort_overview écarte déjà les dossiers de démonstration
+      // (migration 044) ; les deux requêtes suivantes doivent le faire aussi,
+      // sinon la page affiche un total de patients et un total d'évaluations
+      // qui ne portent pas sur la même population.
       query('SELECT * FROM v_cohort_overview'),
-      query(`SELECT gene, COUNT(*) AS count FROM patients GROUP BY gene ORDER BY count DESC`),
-      query('SELECT COUNT(*) AS total FROM evaluations')
+      query(`SELECT gene, COUNT(*) AS count FROM patients WHERE id IN (SELECT id FROM v_dossiers_reels)
+              GROUP BY gene ORDER BY count DESC`),
+      query(`SELECT COUNT(*) AS total FROM evaluations e
+              WHERE e.patient_id IN (SELECT id FROM v_dossiers_reels)`)
     ]);
     res.json({
       ...overview.rows[0],
@@ -49,12 +55,14 @@ router.get('/activite', requireAuth, requireRole('principal_admin', 'investigato
                     ROUND(AVG(hr_avg))::int            AS fc_moyenne,
                     MIN(started_at)::date              AS premiere,
                     MAX(started_at)::date              AS derniere
-               FROM training_sessions WHERE status = 'completed'`),
+               FROM training_sessions WHERE status = 'completed'
+                AND patient_id IN (SELECT id FROM v_dossiers_reels)`),
 
       query(`SELECT COALESCE(modalite, 'non_precisee') AS modalite,
                     COUNT(*)::int AS nb,
                     ROUND(SUM(duration_s) / 3600.0, 1) AS heures
                FROM training_sessions WHERE status = 'completed'
+                AND patient_id IN (SELECT id FROM v_dossiers_reels)
               GROUP BY COALESCE(modalite, 'non_precisee') ORDER BY nb DESC`),
 
       // Charge par semaine : c'est l'évolution qui se lit, pas le total.
@@ -63,6 +71,7 @@ router.get('/activite', requireAuth, requireRole('principal_admin', 'investigato
                     ROUND(SUM(duration_s) / 3600.0, 1) AS heures
                FROM training_sessions
               WHERE status = 'completed'
+                AND patient_id IN (SELECT id FROM v_dossiers_reels)
                 AND started_at >= date_trunc('week', NOW()) - ($1 || ' weeks')::interval
               GROUP BY 1 ORDER BY 1`, [semaines]),
 
@@ -70,11 +79,12 @@ router.get('/activite', requireAuth, requireRole('principal_admin', 'investigato
       // taux moyen calculé sur ceux qui n'en ont pas n'aurait aucun sens.
       query(`SELECT COUNT(*)::int AS avec_prescription,
                     ROUND(AVG(seances_par_semaine)::numeric, 1) AS rythme_moyen
-               FROM training_program_patients WHERE seances_par_semaine IS NOT NULL`)
+               FROM training_program_patients tpp
+              WHERE seances_par_semaine IS NOT NULL
+                AND tpp.patient_id IN (SELECT id FROM v_dossiers_reels)`)
         .catch(() => ({ rows: [{ avec_prescription: 0, rythme_moyen: null }] })),
 
-      query(`SELECT COUNT(*)::int AS total FROM patients
-              WHERE NOT COALESCE(is_demo, FALSE)`)
+      query(`SELECT COUNT(*)::int AS total FROM v_dossiers_reels`)
     ]);
 
     const g = glob.rows[0] || {};
@@ -112,12 +122,14 @@ router.get('/database', requireAuth, requireRole('principal_admin', 'investigato
                e.eval_id, e.label, e.eval_date, e.vo2, e.sv1, e.sv2, e.ve_vco2_slope,
                e.watts, e.fc_max, e.force_kg, e.sf36, e.gpaq, e.aorta, e.validated, e.note
         FROM patients p JOIN evaluations e ON e.patient_id = p.id
+        WHERE p.id IN (SELECT id FROM v_dossiers_reels)
         ORDER BY p.id, e.eval_id`);
       res.json({ mode, rows });
     } else if (mode === 'wide') {
       const max = await query('SELECT MAX(eval_count) AS m FROM (SELECT COUNT(*) AS eval_count FROM evaluations GROUP BY patient_id) t');
       const maxEval = parseInt(max.rows[0].m, 10) || 0;
-      const patients = await query('SELECT * FROM patients ORDER BY id');
+      const patients = await query(
+        'SELECT * FROM patients WHERE id IN (SELECT id FROM v_dossiers_reels) ORDER BY id');
       const evals = await query('SELECT * FROM evaluations ORDER BY patient_id, eval_id');
       const map = {};
       evals.rows.forEach(e => { (map[e.patient_id] ||= []).push(e); });
