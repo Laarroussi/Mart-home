@@ -21,42 +21,43 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v125';</script>
-  <script src="api-client.js?v=phase125-1"></script>
+  <script>window.MARFAN_VERSION = 'v126';</script>
+  <script src="api-client.js?v=phase126-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase125-1"></script>
+  <script src="questionnaires-defs.js?v=phase126-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase125-1"></script>
+  <script src="medical-parsers.js?v=phase126-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase125-1"></script>
-  <script src="cpet-analyse.js?v=phase125-1"></script>
+  <script src="cpet-graph-preview.js?v=phase126-1"></script>
+  <script src="cpet-analyse.js?v=phase126-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase125-1"></script>
-  <script src="medical-record-ui.js?v=phase125-1"></script>
+  <script src="pdf-extractor.js?v=phase126-1"></script>
+  <script src="medical-record-ui.js?v=phase126-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase125-1"></script>
-  <script src="synthese-ui.js?v=phase125-1"></script>
-  <script src="audit-ui.js?v=phase125-1"></script>
-  <script src="entretien-ui.js?v=phase125-1"></script>
-  <script src="activation-ui.js?v=phase125-1"></script>
-  <script src="document-import.js?v=phase125-1"></script>
-  <script src="activite-ui.js?v=phase125-1"></script>
-  <script src="cpet-detail.js?v=phase125-1"></script>
-  <script src="echo-calculs.js?v=phase125-1"></script>
-  <script src="mecanique-aortique.js?v=phase125-1"></script>
-  <script src="projet-etude.js?v=phase125-1"></script>
-  <script src="echo-detail.js?v=phase125-1"></script>
-  <script src="accueil-activite.js?v=phase125-1"></script>
-  <script src="visio-jitsi.js?v=phase125-1"></script>
-  <script src="video-pilotee.js?v=phase125-1"></script>
-  <script src="fiche-apa.js?v=phase125-1"></script>
-  <script src="inactivite.js?v=phase125-1"></script>
-  <script src="bilans-ui.js?v=phase125-1"></script>
-  <script src="etudes-ui.js?v=phase125-1"></script>
-  <script src="ville-hopital.js?v=phase125-1"></script>
-  <script src="qlibres-ui.js?v=phase125-1"></script>
-  <script src="parametres-ui.js?v=phase125-1"></script>
+  <script src="aortic-consultations.js?v=phase126-1"></script>
+  <script src="synthese-ui.js?v=phase126-1"></script>
+  <script src="audit-ui.js?v=phase126-1"></script>
+  <script src="entretien-ui.js?v=phase126-1"></script>
+  <script src="activation-ui.js?v=phase126-1"></script>
+  <script src="document-import.js?v=phase126-1"></script>
+  <script src="activite-ui.js?v=phase126-1"></script>
+  <script src="cpet-detail.js?v=phase126-1"></script>
+  <script src="echo-calculs.js?v=phase126-1"></script>
+  <script src="mecanique-aortique.js?v=phase126-1"></script>
+  <script src="projet-etude.js?v=phase126-1"></script>
+  <script src="aide-media.js?v=phase126-1"></script>
+  <script src="echo-detail.js?v=phase126-1"></script>
+  <script src="accueil-activite.js?v=phase126-1"></script>
+  <script src="visio-jitsi.js?v=phase126-1"></script>
+  <script src="video-pilotee.js?v=phase126-1"></script>
+  <script src="fiche-apa.js?v=phase126-1"></script>
+  <script src="inactivite.js?v=phase126-1"></script>
+  <script src="bilans-ui.js?v=phase126-1"></script>
+  <script src="etudes-ui.js?v=phase126-1"></script>
+  <script src="ville-hopital.js?v=phase126-1"></script>
+  <script src="qlibres-ui.js?v=phase126-1"></script>
+  <script src="parametres-ui.js?v=phase126-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2921,7 +2922,10 @@
             <strong style="font-size:15px; color:#0b1530; display:block;">Rejoindre la séance en visio</strong>
             <span style="font-size:12.5px; color:var(--muted);">Votre soignant vous attend dans la salle. Autorisez l'accès à la caméra et au micro lorsque le navigateur le demande.</span>
           </div>
-          <button class="pat-btn-success" onclick="patJoinSession()" style="padding:14px 26px; font-size:15px; white-space:nowrap;">▶ Rejoindre la séance</button>
+          <div style="display:flex; gap:9px; flex-wrap:wrap; align-items:center;">
+            <button class="pat-btn-success" onclick="patJoinSession()" style="padding:14px 26px; font-size:15px; white-space:nowrap;">▶ Rejoindre la séance</button>
+            <button class="pat-btn-secondary" onclick="aideMedia()" style="white-space:nowrap;">🎤 Ma caméra ne marche pas</button>
+          </div>
         </article>
 
         <!-- Zone principale : vidéo investigateur en grand -->
@@ -2944,6 +2948,7 @@
                 <div style="display:flex; gap:10px; justify-content:center; margin-top:18px; flex-wrap:wrap;">
                   <button class="pat-btn-success" onclick="patJoinSession()">▶ Rejoindre la séance</button>
                   <button class="pat-btn-secondary" onclick="patConnectHR()" style="color:#063b35;">⌁ Cardio Bluetooth</button>
+                  <button class="pat-btn-secondary" onclick="aideMedia()" style="color:#063b35;">🎤 Ma caméra ne marche pas</button>
                 </div>
               </div>
             </div>
@@ -16063,6 +16068,110 @@
    * Ce diagnostic répond aux quatre premiers. Le cinquième demande quelqu'un
    * en face : aucun code exécuté ici ne peut voir l'écran d'un autre.
    */
+  // ================================================================
+  // AIDE CAMÉRA ET MICRO
+  // ----------------------------------------------------------------
+  // Le patient ouvre cet écran au moment où ça ne marche pas. Il n'est donc
+  // pas d'humeur à lire : on teste réellement l'accès, on dit ce qui coince,
+  // et on n'affiche que les étapes correspondant à SON navigateur.
+  //
+  // Le test est fait sur demande et non à l'ouverture : demander la caméra
+  // sans prévenir ferait surgir une fenêtre d'autorisation que le patient
+  // n'attend pas, et qu'il refuserait par réflexe — aggravant le problème
+  // qu'on essaie de résoudre.
+  // ================================================================
+  window.aideMedia = function () {
+    var A = window.AideMedia;
+    if (!A) { alert('Aide indisponible.'); return; }
+    var env = A.environnement(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
+    var plan = A.etapes(env);
+
+    var anc = document.getElementById('aideMediaModal');
+    if (anc) anc.remove();
+
+    var d = document.createElement('div');
+    d.id = 'aideMediaModal';
+    d.style.cssText = 'position:fixed; inset:0; background:rgba(11,21,48,.82); z-index:10080; ' +
+      'display:flex; align-items:center; justify-content:center; padding:16px;';
+    d.innerHTML =
+      '<div style="background:#fff; border-radius:16px; max-width:620px; width:100%; ' +
+        'max-height:88vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,.3);">' +
+        '<div style="padding:20px 24px 14px; border-bottom:1px solid #e8edf4; display:flex; ' +
+          'align-items:flex-start; gap:12px;">' +
+          '<div style="flex:1;">' +
+            '<h3 style="margin:0 0 4px; font-size:17px; font-weight:800; color:#0b1530;">' +
+              plan.titre + '</h3>' +
+            '<p style="margin:0; font-size:12.5px; color:#64748b; line-height:1.55;">' +
+              plan.intro + '</p>' +
+          '</div>' +
+          '<button id="aideMediaFermer" style="border:none; background:#f1f5f9; border-radius:8px; ' +
+            'width:30px; height:30px; font-size:16px; cursor:pointer; color:#475569;">✕</button>' +
+        '</div>' +
+
+        '<div style="padding:16px 24px;">' +
+          '<button id="aideMediaTester" class="btn-gradient" style="width:100%; padding:12px;">' +
+            '🔎 Tester ma caméra et mon micro</button>' +
+          '<div id="aideMediaResultat" style="margin-top:12px;"></div>' +
+        '</div>' +
+
+        '<div style="padding:0 24px 20px;">' +
+          plan.blocs.map(function (b) {
+            return '<div style="margin-bottom:14px; padding:14px 16px; border-radius:11px; ' +
+              'border:1px solid ' + (b.urgent ? '#fde68a' : '#e8edf4') + '; ' +
+              'background:' + (b.urgent ? '#fffbeb' : '#f8fafc') + ';">' +
+              '<div style="font-size:13px; font-weight:800; color:' +
+                (b.urgent ? '#92400e' : '#0b1530') + '; margin-bottom:7px;">' + b.titre + '</div>' +
+              '<ol style="margin:0; padding-left:19px; font-size:12.5px; line-height:1.7; color:#334155;">' +
+                b.points.map(function (p) { return '<li style="margin-bottom:4px;">' + p + '</li>'; }).join('') +
+              '</ol></div>';
+          }).join('') +
+          (plan.secours
+            ? '<div style="padding:14px 16px; border-radius:11px; background:#ecfeff; ' +
+              'border:1px solid #a5f3fc; font-size:12.5px; line-height:1.7; color:#0e7490;">' +
+              '<strong>Dernier recours</strong><br>' + plan.secours +
+              '<br><a href="https://www.mozilla.org/fr/firefox/new/" target="_blank" rel="noopener" ' +
+              'style="color:#0891b2; font-weight:700;">Télécharger Firefox</a></div>'
+            : '') +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(d);
+
+    var fermer = function () { d.remove(); };
+    d.addEventListener('click', function (ev) { if (ev.target === d) fermer(); });
+    document.getElementById('aideMediaFermer').addEventListener('click', fermer);
+
+    document.getElementById('aideMediaTester').addEventListener('click', async function () {
+      var z = document.getElementById('aideMediaResultat');
+      var dire = function (fond, bord, couleur, html) {
+        z.innerHTML = '<div style="padding:13px 15px; border-radius:10px; background:' + fond +
+          '; border:1px solid ' + bord + '; color:' + couleur +
+          '; font-size:12.5px; line-height:1.65;">' + html + '</div>';
+      };
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        dire('#fef2f2', '#fecaca', '#991b1b',
+          '<strong>Ce navigateur ne sait pas utiliser la caméra sur cette page.</strong><br>' +
+          (env.inApp ? 'Ouvrez la page dans un vrai navigateur, comme indiqué ci-dessous.'
+                     : 'Suivez les étapes ci-dessous, ou essayez un autre navigateur.'));
+        return;
+      }
+      dire('#f8fafc', '#e2e8f0', '#475569', 'Test en cours… autorisez si le navigateur le demande.');
+      try {
+        var flux = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        var cam = flux.getVideoTracks().length, mic = flux.getAudioTracks().length;
+        flux.getTracks().forEach(function (t) { t.stop(); });   // on relâche aussitôt
+        dire('#ecfdf5', '#a7f3d0', '#065f46',
+          '<strong>Tout fonctionne.</strong><br>Caméra : ' + (cam ? 'détectée ✓' : 'absente') +
+          ' · Micro : ' + (mic ? 'détecté ✓' : 'absent') +
+          '<br>Fermez cette fenêtre et cliquez sur « Rejoindre la séance ».');
+      } catch (err) {
+        var i = window.AideMedia.interpreterErreur(err);
+        dire('#fffbeb', '#fde68a', '#92400e',
+          '<strong>Ça n\'a pas marché.</strong><br>' + i.texte +
+          (i.cause === 'refus' ? '<br>Suivez les étapes ci-dessous, puis refaites ce test.' : ''));
+      }
+    });
+  };
+
   function diagnosticPartage() {
     const l = [];
     const ua = navigator.userAgent;
