@@ -8,8 +8,23 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Marfan APA — Espace investigateur</title>
+
+  <!-- Application installable.
+       Installée, la plateforme s'ouvre depuis une icône et non depuis un
+       lien : c'est ce qui règle le vrai problème des séances en visio, à
+       savoir le navigateur interne de WhatsApp, qui n'a pas le droit
+       d'utiliser la caméra. Les autorisations, elles, restent celles du
+       navigateur et du système — l'installation ne les remplace pas. -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0891b2">
+  <link rel="icon" type="image/png" sizes="32x32" href="icones/favicon-32.png">
+  <link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Marfan APA">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
@@ -21,43 +36,44 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v126';</script>
-  <script src="api-client.js?v=phase126-1"></script>
+  <script>window.MARFAN_VERSION = 'v128';</script>
+  <script src="api-client.js?v=phase128-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase126-1"></script>
+  <script src="questionnaires-defs.js?v=phase128-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase126-1"></script>
+  <script src="medical-parsers.js?v=phase128-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase126-1"></script>
-  <script src="cpet-analyse.js?v=phase126-1"></script>
+  <script src="cpet-graph-preview.js?v=phase128-1"></script>
+  <script src="cpet-analyse.js?v=phase128-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase126-1"></script>
-  <script src="medical-record-ui.js?v=phase126-1"></script>
+  <script src="pdf-extractor.js?v=phase128-1"></script>
+  <script src="medical-record-ui.js?v=phase128-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase126-1"></script>
-  <script src="synthese-ui.js?v=phase126-1"></script>
-  <script src="audit-ui.js?v=phase126-1"></script>
-  <script src="entretien-ui.js?v=phase126-1"></script>
-  <script src="activation-ui.js?v=phase126-1"></script>
-  <script src="document-import.js?v=phase126-1"></script>
-  <script src="activite-ui.js?v=phase126-1"></script>
-  <script src="cpet-detail.js?v=phase126-1"></script>
-  <script src="echo-calculs.js?v=phase126-1"></script>
-  <script src="mecanique-aortique.js?v=phase126-1"></script>
-  <script src="projet-etude.js?v=phase126-1"></script>
-  <script src="aide-media.js?v=phase126-1"></script>
-  <script src="echo-detail.js?v=phase126-1"></script>
-  <script src="accueil-activite.js?v=phase126-1"></script>
-  <script src="visio-jitsi.js?v=phase126-1"></script>
-  <script src="video-pilotee.js?v=phase126-1"></script>
-  <script src="fiche-apa.js?v=phase126-1"></script>
-  <script src="inactivite.js?v=phase126-1"></script>
-  <script src="bilans-ui.js?v=phase126-1"></script>
-  <script src="etudes-ui.js?v=phase126-1"></script>
-  <script src="ville-hopital.js?v=phase126-1"></script>
-  <script src="qlibres-ui.js?v=phase126-1"></script>
-  <script src="parametres-ui.js?v=phase126-1"></script>
+  <script src="aortic-consultations.js?v=phase128-1"></script>
+  <script src="synthese-ui.js?v=phase128-1"></script>
+  <script src="audit-ui.js?v=phase128-1"></script>
+  <script src="entretien-ui.js?v=phase128-1"></script>
+  <script src="activation-ui.js?v=phase128-1"></script>
+  <script src="document-import.js?v=phase128-1"></script>
+  <script src="activite-ui.js?v=phase128-1"></script>
+  <script src="cpet-detail.js?v=phase128-1"></script>
+  <script src="echo-calculs.js?v=phase128-1"></script>
+  <script src="mecanique-aortique.js?v=phase128-1"></script>
+  <script src="projet-etude.js?v=phase128-1"></script>
+  <script src="aide-media.js?v=phase128-1"></script>
+  <script src="installation.js?v=phase128-1"></script>
+  <script src="echo-detail.js?v=phase128-1"></script>
+  <script src="accueil-activite.js?v=phase128-1"></script>
+  <script src="visio-jitsi.js?v=phase128-1"></script>
+  <script src="video-pilotee.js?v=phase128-1"></script>
+  <script src="fiche-apa.js?v=phase128-1"></script>
+  <script src="inactivite.js?v=phase128-1"></script>
+  <script src="bilans-ui.js?v=phase128-1"></script>
+  <script src="etudes-ui.js?v=phase128-1"></script>
+  <script src="ville-hopital.js?v=phase128-1"></script>
+  <script src="qlibres-ui.js?v=phase128-1"></script>
+  <script src="parametres-ui.js?v=phase128-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2925,6 +2941,7 @@
           <div style="display:flex; gap:9px; flex-wrap:wrap; align-items:center;">
             <button class="pat-btn-success" onclick="patJoinSession()" style="padding:14px 26px; font-size:15px; white-space:nowrap;">▶ Rejoindre la séance</button>
             <button class="pat-btn-secondary" onclick="aideMedia()" style="white-space:nowrap;">🎤 Ma caméra ne marche pas</button>
+            <button class="pat-btn-secondary" onclick="ecranInstallation()" style="white-space:nowrap;">📲 Installer l'application</button>
           </div>
         </article>
 
@@ -2949,6 +2966,7 @@
                   <button class="pat-btn-success" onclick="patJoinSession()">▶ Rejoindre la séance</button>
                   <button class="pat-btn-secondary" onclick="patConnectHR()" style="color:#063b35;">⌁ Cardio Bluetooth</button>
                   <button class="pat-btn-secondary" onclick="aideMedia()" style="color:#063b35;">🎤 Ma caméra ne marche pas</button>
+                  <button class="pat-btn-secondary" onclick="ecranInstallation()" style="color:#063b35;">📲 Installer l'application</button>
                 </div>
               </div>
             </div>
@@ -8400,14 +8418,78 @@
     drawLineChart(chartId, values, compareValues, labels, unit, compareType, chartDetailOptions(unit + ' — evaluation detaillee', key, evalIndices));
   }
 
-  function getSf36DimensionValues(patient, evalIndex) {
-    const ev = patient.evaluations[evalIndex] || last(patient.evaluations);
-    return sf36Dimensions.map(d => Math.max(0, Math.min(100, ev.sf36 + d.offset)));
+  /**
+   * Valeur SF-36 exploitable d'une évaluation, ou null.
+   *
+   * `ev.sf36 + offset` sur une valeur absente donnait NaN, et sur une
+   * évaluation absente faisait tomber toute la fiche. C'est ce qui se
+   * passait : un seul patient sans évaluation suffisait à casser l'affichage
+   * du dossier de TOUS les autres, parce que la moyenne de groupe parcourt
+   * la cohorte entière. Une donnée manquante doit sortir du calcul, pas
+   * l'interrompre.
+   */
+  function sf36Valeur(ev) {
+    if (!ev) return null;
+    const v = ev.sf36;
+    // Number(null) vaut 0, Number('') aussi. Passer directement par Number()
+    // transformerait donc un questionnaire NON REMPLI en un score de 0 sur
+    // 100 — soit le pire score possible, affiché comme une mesure. Le vide
+    // est écarté avant toute conversion.
+    if (v === null || v === undefined || v === '') return null;
+    const x = Number(v);
+    return Number.isFinite(x) ? x : null;
   }
 
+  /** Les 8 dimensions pour une évaluation, ou null si elle n'a pas de SF-36. */
+  function getSf36DimensionValues(patient, evalIndex) {
+    const evals = (patient && patient.evaluations) || [];
+    if (!evals.length) return null;
+    const base = sf36Valeur(evals[evalIndex] || last(evals));
+    if (base === null) return null;
+    return sf36Dimensions.map(d => Math.max(0, Math.min(100, base + d.offset)));
+  }
+
+  /** Suivi d'une dimension : seules les évaluations renseignées sont rendues. */
   function getSf36DimensionTrend(patient, dimensionKey) {
     const dim = sf36Dimensions.find(d => d.key === dimensionKey) || sf36Dimensions[0];
-    return patient.evaluations.map(ev => Math.max(0, Math.min(100, ev.sf36 + dim.offset)));
+    const evals = (patient && patient.evaluations) || [];
+    const points = [];
+    evals.forEach((ev, i) => {
+      const base = sf36Valeur(ev);
+      if (base === null) return;
+      points.push({ valeur: Math.max(0, Math.min(100, base + dim.offset)),
+                    libelle: ev.label, index: i });
+    });
+    return points;
+  }
+
+  /** Message à la place d'un graphique vide — jamais un graphique à zéro. */
+  function graphiqueSansDonnee(idCanvas, texte) {
+    const el = $(idCanvas);
+    if (!el) return;
+    const hote = el.parentNode;
+    if (!hote) return;
+    let note = hote.querySelector('[data-vide="' + idCanvas + '"]');
+    if (!note) {
+      note = document.createElement('p');
+      note.setAttribute('data-vide', idCanvas);
+      note.style.cssText = 'margin:14px 0 0; padding:12px 14px; background:#f8fafc; ' +
+        'border:1px dashed #cbd5e1; border-radius:9px; font-size:12.5px; line-height:1.6; ' +
+        'color:#64748b; text-align:center;';
+      hote.appendChild(note);
+    }
+    note.textContent = texte;
+    note.style.display = 'block';
+    el.style.display = 'none';
+  }
+
+  function graphiqueAvecDonnee(idCanvas) {
+    const el = $(idCanvas);
+    if (!el) return;
+    el.style.display = '';
+    const hote = el.parentNode;
+    const note = hote && hote.querySelector('[data-vide="' + idCanvas + '"]');
+    if (note) note.style.display = 'none';
   }
 
   function renderSf36Graph() {
@@ -8417,44 +8499,72 @@
 
     if (dim === 'all') {
       // Vue ensemble des 8 dimensions
+      const valeurs = getSf36DimensionValues(selectedPatient, lastIdx);
+      if (!valeurs) {
+        graphiqueSansDonnee('graphSf36Chart',
+          'Aucun questionnaire SF-36 renseigné pour ce patient. ' +
+          'Le graphique apparaîtra dès la première réponse.');
+        return;
+      }
+      graphiqueAvecDonnee('graphSf36Chart');
+
       if (mode === 'baselast') {
         // Comparaison baseline (1ʳᵉ éval) vs dernière éval pour chaque dimension
         const baselineVals = getSf36DimensionValues(selectedPatient, 0);
-        const lastVals = getSf36DimensionValues(selectedPatient, lastIdx);
-        drawBarComparisonChart('graphSf36Chart', sf36Dimensions.map(d => d.short), baselineVals, lastVals);
+        drawBarComparisonChart('graphSf36Chart', sf36Dimensions.map(d => d.short),
+                               baselineVals || valeurs, valeurs);
       } else {
-        // Mode 'group' : dernière éval du patient vs moyenne du groupe (dernière éval)
-        const values = getSf36DimensionValues(selectedPatient, lastIdx);
-        const compare = sf36Dimensions.map((_, i) =>
-          Math.round(patients.reduce((s, p) => s + getSf36DimensionValues(p, p.evaluations.length - 1)[i], 0) / patients.length)
-        );
-        drawBarComparisonChart('graphSf36Chart', sf36Dimensions.map(d => d.short), values, compare);
+        // Moyenne de groupe : seuls les patients qui ont un SF-36 y entrent.
+        // Diviser par l'effectif total ferait baisser la moyenne à chaque
+        // dossier vide — une cohorte qui paraît aller plus mal parce qu'on y
+        // a ajouté des patients qui n'ont pas encore répondu.
+        const dispo = patients
+          .map(p => getSf36DimensionValues(p, ((p.evaluations || []).length) - 1))
+          .filter(Boolean);
+        const compare = dispo.length
+          ? sf36Dimensions.map((_, i) =>
+              Math.round(dispo.reduce((s, v) => s + v[i], 0) / dispo.length))
+          : null;
+        drawBarComparisonChart('graphSf36Chart', sf36Dimensions.map(d => d.short), valeurs, compare);
       }
       return;
     }
 
     // Vue d'une dimension spécifique au cours du temps
-    const allValues = getSf36DimensionTrend(selectedPatient, dim);
-    const allLabels = labelsFor(selectedPatient);
+    const points = getSf36DimensionTrend(selectedPatient, dim);
+    if (!points.length) {
+      graphiqueSansDonnee('graphSf36Chart',
+        'Aucun questionnaire SF-36 renseigné pour ce patient.');
+      return;
+    }
+    graphiqueAvecDonnee('graphSf36Chart');
+    const allValues = points.map(p => p.valeur);
+    const allLabels = points.map(p => p.libelle);
+    const allIndices = points.map(p => p.index);
 
     if (mode === 'baselast') {
       const lastI = allValues.length - 1;
       if (lastI <= 0) {
-        drawLineChart('graphSf36Chart', allValues, null, allLabels, 'SF-36', null, chartDetailOptions('SF-36 — détail', 'sf36', allValues.map((_, i) => i)));
+        drawLineChart('graphSf36Chart', allValues, null, allLabels, 'SF-36', null, chartDetailOptions('SF-36 — détail', 'sf36', allIndices));
         return;
       }
       const values = [allValues[0], allValues[lastI]];
       const labels = ['Baseline (' + (allLabels[0] || 'T0') + ')', 'Dernière (' + (allLabels[lastI] || 'Tn') + ')'];
-      drawLineChart('graphSf36Chart', values, null, labels, 'SF-36', null, chartDetailOptions('SF-36 — détail', 'sf36', [0, lastI]));
+      drawLineChart('graphSf36Chart', values, null, labels, 'SF-36', null, chartDetailOptions('SF-36 — détail', 'sf36', [allIndices[0], allIndices[lastI]]));
       return;
     }
 
-    // Mode 'group'
+    // Mode 'group' — la moyenne ne porte que sur les patients qui ont une
+    // valeur à ce rang. getSf36DimensionTrend renvoie désormais des points
+    // { valeur, libelle, index } et non des nombres : lire l'élément
+    // directement donnerait « [object Object] » dans la moyenne.
     const compareValues = allValues.map((_, i) => {
-      const vs = patients.map(p => getSf36DimensionTrend(p, dim)[i]).filter(v => v != null);
-      return vs.length ? Math.round(vs.reduce((a,b) => a+b, 0) / vs.length) : null;
+      const vs = patients
+        .map(p => (getSf36DimensionTrend(p, dim)[i] || {}).valeur)
+        .filter(v => v != null);
+      return vs.length ? Math.round(vs.reduce((a, b) => a + b, 0) / vs.length) : null;
     });
-    drawLineChart('graphSf36Chart', allValues, compareValues, allLabels, 'SF-36', 'group', chartDetailOptions('SF-36 — détail', 'sf36', allValues.map((_, i) => i)));
+    drawLineChart('graphSf36Chart', allValues, compareValues, allLabels, 'SF-36', 'group', chartDetailOptions('SF-36 — détail', 'sf36', allIndices));
   }
 
   // ============================================================
@@ -15232,9 +15342,105 @@
    * « pas pour vous » et « c'est terminé » appellent des réactions
    * différentes, et une page muette n'aide personne.
    */
+  /**
+   * Scène d'entretien utilisable quel que soit l'espace.
+   *
+   * Le panneau « Entraînement individuel » vit dans #appInvestigator, que le
+   * CSS masque entièrement en mode patient (body.mode-patient #appInvestigator
+   * { display:none }). Un patient qui ouvrait son lien de séance déclenchait
+   * donc bien switchMainTab('individuel') — et ne voyait strictement rien
+   * bouger. Aucun message d'erreur : le panneau était affiché, mais dans un
+   * conteneur invisible.
+   *
+   * On lui donne donc sa propre scène, posée sur document.body, donc hors des
+   * deux coquilles. Le soignant, lui, garde son onglet.
+   */
+  function indivScenePatient() {
+    let hote = document.getElementById('indivScenePatient');
+    if (hote) return hote;
+    hote = document.createElement('div');
+    hote.id = 'indivScenePatient';
+    hote.style.cssText = 'position:fixed; inset:0; z-index:9600; background:#020617; ' +
+      'display:flex; flex-direction:column;';
+    hote.innerHTML =
+      '<div style="padding:10px 14px; background:rgba(11,21,48,.96); color:#fff; display:flex; ' +
+        'align-items:center; gap:10px; flex-wrap:wrap; border-bottom:1px solid rgba(255,255,255,.08);">' +
+        '<strong style="font-size:13.5px;">Entretien individuel</strong>' +
+        '<span id="indivScenePatientEtat" style="font-size:12px; color:#94a3b8;"></span>' +
+        '<button onclick="aideMedia()" style="margin-left:auto; border:none; cursor:pointer; ' +
+          'background:rgba(255,255,255,.12); color:#fff; border-radius:8px; padding:7px 12px; ' +
+          'font-size:12px;">🎤 Ma caméra ne marche pas</button>' +
+        '<button onclick="indivQuitterScenePatient()" style="border:none; cursor:pointer; ' +
+          'background:#991b1b; color:#fff; border-radius:8px; padding:7px 12px; font-size:12px;">' +
+          'Quitter</button>' +
+      '</div>' +
+      '<div id="indivStagePatient" style="flex:1; min-height:0;"></div>';
+    document.body.appendChild(hote);
+    return hote;
+  }
+
+  window.indivQuitterScenePatient = function () {
+    try { if (window.VisioJitsi && window.VisioJitsi.quitter) window.VisioJitsi.quitter(); } catch (_) {}
+    const h = document.getElementById('indivScenePatient');
+    if (h) h.remove();
+  };
+
+  function indivEstEspacePatient() {
+    return document.body.classList.contains('mode-patient');
+  }
+
+  async function indivEntrerCotePatient(salle, mention, jeSuisInvite) {
+    indivScenePatient();
+    const u = (window.MarfanAPI && window.MarfanAPI.currentUser && window.MarfanAPI.currentUser()) || {};
+    const options = {
+      salle: salle,
+      nomAffiche: u.patient_id || u.name || 'Participant'
+    };
+    if (jeSuisInvite) options.onCommandeVideo = msg => recevoirVideoSeance(msg);
+    const etat = document.getElementById('indivScenePatientEtat');
+    try {
+      await window.VisioJitsi.rejoindre('indivStagePatient', options);
+      if (etat) etat.textContent = mention + ' · ' +
+        new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      if (etat) etat.textContent = '';
+      const zone = document.getElementById('indivStagePatient');
+      if (zone) zone.innerHTML =
+        '<div style="padding:34px; text-align:center; color:#fff;">' +
+        '<div style="font-size:42px; margin-bottom:10px;">⚠️</div>' +
+        '<strong style="font-size:17px;">Impossible d\'entrer dans la salle</strong>' +
+        '<p style="color:#cbd5e1; margin-top:9px; max-width:460px; margin-left:auto; ' +
+        'margin-right:auto; line-height:1.6; font-size:13px;">' +
+        ((e && e.message) || '') + '</p>' +
+        '<button onclick="aideMedia()" style="margin-top:14px; border:none; cursor:pointer; ' +
+        'background:#0891b2; color:#fff; border-radius:9px; padding:10px 18px; font-size:13px;">' +
+        'Vérifier ma caméra et mon micro</button></div>';
+    }
+  }
+
   window.indivOuvrirDepuisLien = async function () {
     const jeton = new URLSearchParams(location.search).get('seance');
     if (!jeton) return;
+
+    // Côté patient : scène dédiée, car l'onglet du soignant est masqué.
+    if (indivEstEspacePatient()) {
+      try {
+        const r = await window.MarfanAPI.visioIndividuelle.lire(jeton);
+        await indivEntrerCotePatient(r.seance.salle, 'Entretien rejoint',
+                                     r.vous_etes === 'invite');
+      } catch (e) {
+        indivScenePatient();
+        const zone = document.getElementById('indivStagePatient');
+        if (zone) zone.innerHTML =
+          '<div style="padding:34px; text-align:center; color:#fff;">' +
+          '<div style="font-size:42px; margin-bottom:10px;">✖</div>' +
+          '<strong style="font-size:17px;">' + ((e && e.message) || 'Lien invalide.') + '</strong>' +
+          '<p style="color:#cbd5e1; margin-top:9px; font-size:13px;">' +
+          'Demandez un nouveau lien au soignant qui vous a invité.</p></div>';
+      }
+      return;
+    }
+
     try {
       const r = await window.MarfanAPI.visioIndividuelle.lire(jeton);
       _indivSeance = r.seance;
@@ -16080,6 +16286,109 @@
   // n'attend pas, et qu'il refuserait par réflexe — aggravant le problème
   // qu'on essaie de résoudre.
   // ================================================================
+  // ----------------------------------------------------------------
+  // Écran d'installation
+  // ----------------------------------------------------------------
+  window.ecranInstallation = function () {
+    var I = window.Installation;
+    if (!I) { alert('Installation indisponible.'); return; }
+    var et = I.etat();
+    var ins = I.instructions();
+
+    var anc = document.getElementById('installModal');
+    if (anc) anc.remove();
+
+    var d = document.createElement('div');
+    d.id = 'installModal';
+    d.style.cssText = 'position:fixed; inset:0; background:rgba(11,21,48,.82); z-index:10080; ' +
+      'display:flex; align-items:center; justify-content:center; padding:16px;';
+
+    var corps;
+    if (et.installee) {
+      corps =
+        '<div style="padding:16px 24px 22px;">' +
+          '<div style="padding:14px 16px; border-radius:11px; background:#ecfdf5; ' +
+            'border:1px solid #a7f3d0; color:#065f46; font-size:13px; line-height:1.7;">' +
+            '<strong>C\'est déjà fait.</strong><br>Vous utilisez l\'application installée : ' +
+            'elle a sa propre fenêtre, et vous la relancez depuis son icône.' +
+          '</div></div>';
+    } else {
+      corps =
+        '<div style="padding:16px 24px 6px;">' +
+          (ins.possible && !ins.manuel
+            ? '<button id="installLancer" class="btn-gradient" style="width:100%; padding:13px; ' +
+              'font-size:14px;">⬇ Installer Marfan APA</button>' +
+              '<div id="installRetour" style="margin-top:10px;"></div>'
+            : '') +
+        '</div>' +
+        '<div style="padding:10px 24px 20px;">' +
+          '<div style="padding:14px 16px; border-radius:11px; background:#f8fafc; ' +
+            'border:1px solid #e8edf4;">' +
+            '<div style="font-size:13px; font-weight:800; color:#0b1530; margin-bottom:8px;">' +
+              ins.titre + '</div>' +
+            '<ol style="margin:0; padding-left:19px; font-size:12.5px; line-height:1.75; color:#334155;">' +
+              ins.etapes.map(function (p) { return '<li style="margin-bottom:5px;">' + p + '</li>'; }).join('') +
+            '</ol>' +
+            (ins.note ? '<p style="margin:9px 0 0; font-size:11.5px; color:#64748b; line-height:1.6;">' +
+              ins.note + '</p>' : '') +
+          '</div>' +
+          // Dire ce que l'installation ne fait pas. Un patient qui installe en
+          // croyant que la caméra sera réglée revient déçu, et n'essaie plus.
+          '<div style="margin-top:12px; padding:13px 15px; border-radius:11px; background:#fffbeb; ' +
+            'border:1px solid #fde68a; font-size:12px; line-height:1.65; color:#92400e;">' +
+            '<strong>Ce que ça change, et ce que ça ne change pas.</strong><br>' +
+            'Vous lancez depuis une icône : fini le lien ouvert dans WhatsApp, qui est la cause ' +
+            'la plus fréquente des problèmes de caméra. En revanche, l\'autorisation caméra et ' +
+            'micro reste à donner une fois à votre navigateur — le bouton ' +
+            '« Ma caméra ne marche pas » vous guide.' +
+          '</div>' +
+        '</div>';
+    }
+
+    d.innerHTML =
+      '<div style="background:#fff; border-radius:16px; max-width:560px; width:100%; ' +
+        'max-height:88vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,.3);">' +
+        '<div style="padding:20px 24px 14px; border-bottom:1px solid #e8edf4; display:flex; ' +
+          'align-items:flex-start; gap:12px;">' +
+          '<img src="icones/icone-192.png" alt="" style="width:44px; height:44px; border-radius:11px;">' +
+          '<div style="flex:1;">' +
+            '<h3 style="margin:0 0 3px; font-size:17px; font-weight:800; color:#0b1530;">' +
+              'Installer Marfan APA</h3>' +
+            '<p style="margin:0; font-size:12.5px; color:#64748b; line-height:1.55;">' +
+              'Une icône sur votre appareil, et la séance s\'ouvre dans sa propre fenêtre.</p>' +
+          '</div>' +
+          '<button id="installFermer" style="border:none; background:#f1f5f9; border-radius:8px; ' +
+            'width:30px; height:30px; font-size:16px; cursor:pointer; color:#475569;">✕</button>' +
+        '</div>' + corps +
+      '</div>';
+    document.body.appendChild(d);
+
+    var fermer = function () { d.remove(); };
+    d.addEventListener('click', function (ev) { if (ev.target === d) fermer(); });
+    document.getElementById('installFermer').addEventListener('click', fermer);
+
+    var b = document.getElementById('installLancer');
+    if (b) {
+      b.addEventListener('click', async function () {
+        var z = document.getElementById('installRetour');
+        var r = await I.installer();
+        var dire = function (f, bo, c, t) {
+          z.innerHTML = '<div style="padding:11px 13px; border-radius:9px; background:' + f +
+            '; border:1px solid ' + bo + '; color:' + c + '; font-size:12.5px; line-height:1.6;">' +
+            t + '</div>';
+        };
+        if (r === 'acceptee') dire('#ecfdf5', '#a7f3d0', '#065f46',
+          '<strong>Installée.</strong> L\'icône est sur votre bureau ou dans votre menu. ' +
+          'Lancez la séance depuis elle la prochaine fois.');
+        else if (r === 'refusee') dire('#f8fafc', '#e2e8f0', '#475569',
+          'Installation annulée. Vous pourrez la relancer depuis ce bouton quand vous voudrez.');
+        else dire('#fffbeb', '#fde68a', '#92400e',
+          'Votre navigateur n\'a pas proposé l\'installation automatique. ' +
+          'Suivez les étapes ci-dessous — elles mènent au même résultat.');
+      });
+    }
+  };
+
   window.aideMedia = function () {
     var A = window.AideMedia;
     if (!A) { alert('Aide indisponible.'); return; }

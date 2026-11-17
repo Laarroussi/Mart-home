@@ -21,7 +21,30 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
   Header set X-Content-Type-Options "nosniff"
   Header set X-Frame-Options "SAMEORIGIN"
   Header set Referrer-Policy "strict-origin-when-cross-origin"
-  Header set Permissions-Policy "geolocation=(), microphone=(self), camera=(self)"
+
+  # ----------------------------------------------------------------
+  # Permissions-Policy — la caméra doit être déléguée à Jitsi
+  # ----------------------------------------------------------------
+  # La valeur précédente était :
+  #     microphone=(self), camera=(self)
+  #
+  # « self » signifie : cette origine, et elle seule. Or la visioconférence
+  # n'est pas servie par ce site : elle tourne dans une iframe de 8x8.vc.
+  # L'attribut allow="camera; microphone" posé sur cette iframe demandait
+  # donc une délégation que cet en-tête refusait — et le navigateur refusait
+  # sans rien afficher d'explicite.
+  #
+  # Ce qui explique le symptôme qui nous a occupés des jours : AUCUN réglage
+  # côté poste ne pouvait y changer quoi que ce soit. Autorisation système
+  # donnée, autorisation du site donnée, et toujours ni image ni son.
+  #
+  # Et ce qui explique aussi pourquoi Firefox fonctionnait : Firefox
+  # n'applique pas cet en-tête HTTP, il ne tient compte que de l'attribut
+  # allow de l'iframe. Chrome et Edge, eux, l'appliquent strictement.
+  #
+  # Les deux domaines sont listés : 8x8.vc en service normal, meet.jit.si en
+  # secours (voir DOMAINE_LIBRE dans visio-jitsi.js).
+  Header set Permissions-Policy "geolocation=(), microphone=(self \"https://8x8.vc\" \"https://meet.jit.si\"), camera=(self \"https://8x8.vc\" \"https://meet.jit.si\"), display-capture=(self \"https://8x8.vc\" \"https://meet.jit.si\")"
 </IfModule>
 
 # ----- Compression GZIP -----
@@ -43,6 +66,21 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
   # Désactive explicitement le cache HTML (pour qu'index.html ne soit jamais cached)
   <FilesMatch "\.(html)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+# ----- Application installable -----
+# Sans le bon type MIME, Chrome ignore le manifeste et ne propose jamais
+# l'installation — sans message d'erreur, là encore.
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+</IfModule>
+<IfModule mod_headers.c>
+  # Le service worker doit être revalidé à chaque fois : c'est lui qui décide
+  # du reste, et une version figée de ce fichier-là serait durable.
+  <FilesMatch "^sw\.js$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Service-Worker-Allowed "/"
   </FilesMatch>
 </IfModule>
 
