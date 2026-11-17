@@ -167,6 +167,113 @@
   // ============================================================
   // CÔTÉ SOIGNANT
   // ============================================================
+
+  /**
+   * Charge une vidéo chez tout le monde, EN PAUSE.
+   *
+   * Séparer « charger » de « lancer » n'est pas qu'un confort d'interface.
+   * Quand la lecture partait du même clic que la sélection, chaque patient
+   * commençait à télécharger au moment du départ : ceux qui ont une connexion
+   * lente démarraient avec plusieurs secondes de retard, et le groupe ne
+   * faisait pas le même geste au même moment. En chargeant d'abord, tout le
+   * monde est en mémoire tampon sur la première image, et le départ est
+   * commun.
+   *
+   * La boucle d'annonce tourne dès le chargement : un patient qui rejoint
+   * pendant que la vidéo est en pause reçoit lui aussi la bonne vidéo à la
+   * bonne position.
+   */
+  async function charger(conteneurId, videoId, titre) {
+    if (!window.VisioJitsi || !window.VisioJitsi.estActif()) {
+      throw new Error("Démarrez d'abord la séance : la vidéo est envoyée aux patients par la salle.");
+    }
+    _role = 'soignant';
+    _videoId = videoId;
+    _titre = titre || '';
+    await preparer();
+    await creerLecteur(conteneurId, videoId, 0, false);
+
+    window.VisioJitsi.commanderVideo({
+      action: 'charger', videoId: videoId, titre: _titre, position: 0
+    });
+    majEtat('Chargée chez les patients · prête à lancer');
+    lancerBoucleSync();
+  }
+
+  /** Lecture pour tout le monde. */
+  function lire() {
+    if (!_lecteur) return false;
+    try { _lecteur.playVideo(); } catch (_) {}
+    annoncer('lancer');
+    return true;
+  }
+
+  /** Pause pour tout le monde, à la position courante. */
+  function pause() {
+    if (!_lecteur) return false;
+    try { _lecteur.pauseVideo(); } catch (_) {}
+    annoncer('pause');
+    return true;
+  }
+
+  /**
+   * Déplacement dans la vidéo, répercuté chez tout le monde.
+   * `enLecture` conserve l'état : reculer pendant une pause ne doit pas
+   * relancer la séance à l'insu du soignant.
+   */
+  function allerA(position) {
+    if (!_lecteur) return false;
+    var enLecture = false;
+    try {
+      enLecture = _lecteur.getPlayerState() === 1;
+      _lecteur.seekTo(Math.max(0, position || 0), true);
+    } catch (_) {}
+    annoncer(enLecture ? 'lancer' : 'pause', position);
+    return true;
+  }
+
+  /** Position et durée courantes, pour la barre de progression. */
+  function position() {
+    if (!_lecteur) return null;
+    try {
+      return {
+        courante: _lecteur.getCurrentTime() || 0,
+        duree: _lecteur.getDuration() || 0,
+        enLecture: _lecteur.getPlayerState() === 1
+      };
+    } catch (_) { return null; }
+  }
+
+  function annoncer(action, pos) {
+    if (!window.VisioJitsi || !window.VisioJitsi.estActif()) return;
+    var p = pos;
+    if (p == null) { try { p = _lecteur.getCurrentTime() || 0; } catch (_) { p = 0; } }
+    try {
+      window.VisioJitsi.commanderVideo({
+        action: action, videoId: _videoId, titre: _titre, position: p
+      });
+    } catch (_) {}
+  }
+
+  function lancerBoucleSync() {
+    if (_minuterie) clearInterval(_minuterie);
+    _minuterie = setInterval(function () {
+      if (!_lecteur || !window.VisioJitsi || !window.VisioJitsi.estActif()) return;
+      var p = 0, enLecture = false;
+      try {
+        p = _lecteur.getCurrentTime() || 0;
+        enLecture = _lecteur.getPlayerState() === 1;
+      } catch (_) { return; }
+      try {
+        window.VisioJitsi.commanderVideo({
+          action: enLecture ? 'sync' : 'pause',
+          videoId: _videoId, titre: _titre, position: p
+        });
+      } catch (_) {}
+      majEtat(enLecture ? 'Lecture · ' + formater(p) : 'En pause · ' + formater(p));
+    }, PERIODE_SYNC_MS);
+  }
+
   async function diffuser(conteneurId, videoId, titre) {
     if (!window.VisioJitsi || !window.VisioJitsi.estActif()) {
       throw new Error("Démarrez d'abord la séance : la vidéo est envoyée aux patients par la salle.");
@@ -179,23 +286,7 @@
 
     window.VisioJitsi.commanderVideo({ action: 'lancer', videoId: videoId, titre: _titre, position: 0 });
     majEtat('Diffusée à tous les patients');
-
-    if (_minuterie) clearInterval(_minuterie);
-    _minuterie = setInterval(function () {
-      if (!_lecteur || !window.VisioJitsi || !window.VisioJitsi.estActif()) return;
-      var p = 0, enLecture = false;
-      try {
-        p = _lecteur.getCurrentTime() || 0;
-        enLecture = _lecteur.getPlayerState() === 1;
-      } catch (_) { return; }
-      try {
-        window.VisioJitsi.commanderVideo({
-          action: enLecture ? 'sync' : 'pause',
-          videoId: _videoId, position: p
-        });
-      } catch (_) {}
-      majEtat(enLecture ? 'Diffusée · ' + formater(p) : 'En pause · ' + formater(p));
-    }, PERIODE_SYNC_MS);
+    lancerBoucleSync();
   }
 
   function arreter() {
@@ -232,24 +323,44 @@
     }
     if (!msg.videoId) return;
 
+    // « charger » : la vidéo s'installe à l'écran, à l'arrêt. Le patient voit
+    // ce qui va être fait et attend le départ, qui sera commun à tous.
+    var enAttente = msg.action === 'charger' || msg.action === 'pause';
+
     // Première commande, ou changement de vidéo : on (re)construit le lecteur.
     if (!_lecteur || _videoId !== msg.videoId) {
       _videoId = msg.videoId;
       _titre = msg.titre || _titre;
       if (typeof surAffichage === 'function') surAffichage(true);
       await preparer();
-      await creerLecteur(conteneurId, msg.videoId, msg.position || 0, true);
-      majEtat('Séance en cours');
+      await creerLecteur(conteneurId, msg.videoId, msg.position || 0, !enAttente);
+      majEtat(enAttente ? 'Prête — votre soignant va lancer la vidéo' : 'Séance en cours');
       return;
     }
 
-    // Vidéo déjà en place : on se contente de corriger le décalage.
+    // Vidéo déjà en place : on applique la commande et on corrige l'écart.
     try {
-      if (msg.action === 'pause') { _lecteur.pauseVideo(); majEtat('En pause'); return; }
+      if (msg.action === 'pause' || msg.action === 'charger') {
+        _lecteur.pauseVideo();
+        var cible = msg.position || 0;
+        // Un déplacement demandé pendant la pause doit être suivi, même
+        // minime : c'est le soignant qui revient sur un passage précis.
+        if (Math.abs((_lecteur.getCurrentTime() || 0) - cible) > 0.4) {
+          _lecteur.seekTo(cible, true);
+        }
+        majEtat('En pause');
+        return;
+      }
       var local = _lecteur.getCurrentTime() || 0;
       var ecart = Math.abs(local - (msg.position || 0));
       if (ecart > ECART_TOLERE_S) _lecteur.seekTo(msg.position || 0, true);
-      if (_lecteur.getPlayerState() !== 1) _lecteur.playVideo();
+      if (_lecteur.getPlayerState() !== 1) {
+        _lecteur.playVideo();
+        // Le départ n'est pas déclenché par un clic du patient : on repasse
+        // par la mise en sourdine puis le rétablissement du son, seule
+        // combinaison que les navigateurs laissent partir sans geste.
+        setTimeout(activerSon, 700);
+      }
       majEtat('Séance en cours');
     } catch (_) {}
   }
@@ -265,7 +376,12 @@
 
   window.VideoPilotee = {
     preparer: preparer,
-    diffuser: diffuser,
+    charger: charger,         // sélection : installe la vidéo, en pause, chez tous
+    lire: lire,               // départ commun
+    pause: pause,
+    allerA: allerA,           // barre de progression
+    position: position,
+    diffuser: diffuser,       // ancien geste : charge ET lance d'un coup
     arreter: arreter,
     recevoir: recevoir,
     estEnCours: estEnCours

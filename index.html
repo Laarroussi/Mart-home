@@ -36,44 +36,44 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v132';</script>
-  <script src="api-client.js?v=phase132-1"></script>
+  <script>window.MARFAN_VERSION = 'v134';</script>
+  <script src="api-client.js?v=phase134-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase132-1"></script>
+  <script src="questionnaires-defs.js?v=phase134-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase132-1"></script>
+  <script src="medical-parsers.js?v=phase134-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase132-1"></script>
-  <script src="cpet-analyse.js?v=phase132-1"></script>
+  <script src="cpet-graph-preview.js?v=phase134-1"></script>
+  <script src="cpet-analyse.js?v=phase134-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase132-1"></script>
-  <script src="medical-record-ui.js?v=phase132-1"></script>
+  <script src="pdf-extractor.js?v=phase134-1"></script>
+  <script src="medical-record-ui.js?v=phase134-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase132-1"></script>
-  <script src="synthese-ui.js?v=phase132-1"></script>
-  <script src="audit-ui.js?v=phase132-1"></script>
-  <script src="entretien-ui.js?v=phase132-1"></script>
-  <script src="activation-ui.js?v=phase132-1"></script>
-  <script src="document-import.js?v=phase132-1"></script>
-  <script src="activite-ui.js?v=phase132-1"></script>
-  <script src="cpet-detail.js?v=phase132-1"></script>
-  <script src="echo-calculs.js?v=phase132-1"></script>
-  <script src="mecanique-aortique.js?v=phase132-1"></script>
-  <script src="projet-etude.js?v=phase132-1"></script>
-  <script src="aide-media.js?v=phase132-1"></script>
-  <script src="installation.js?v=phase132-1"></script>
-  <script src="echo-detail.js?v=phase132-1"></script>
-  <script src="accueil-activite.js?v=phase132-1"></script>
-  <script src="visio-jitsi.js?v=phase132-1"></script>
-  <script src="video-pilotee.js?v=phase132-1"></script>
-  <script src="fiche-apa.js?v=phase132-1"></script>
-  <script src="inactivite.js?v=phase132-1"></script>
-  <script src="bilans-ui.js?v=phase132-1"></script>
-  <script src="etudes-ui.js?v=phase132-1"></script>
-  <script src="ville-hopital.js?v=phase132-1"></script>
-  <script src="qlibres-ui.js?v=phase132-1"></script>
-  <script src="parametres-ui.js?v=phase132-1"></script>
+  <script src="aortic-consultations.js?v=phase134-1"></script>
+  <script src="synthese-ui.js?v=phase134-1"></script>
+  <script src="audit-ui.js?v=phase134-1"></script>
+  <script src="entretien-ui.js?v=phase134-1"></script>
+  <script src="activation-ui.js?v=phase134-1"></script>
+  <script src="document-import.js?v=phase134-1"></script>
+  <script src="activite-ui.js?v=phase134-1"></script>
+  <script src="cpet-detail.js?v=phase134-1"></script>
+  <script src="echo-calculs.js?v=phase134-1"></script>
+  <script src="mecanique-aortique.js?v=phase134-1"></script>
+  <script src="projet-etude.js?v=phase134-1"></script>
+  <script src="aide-media.js?v=phase134-1"></script>
+  <script src="installation.js?v=phase134-1"></script>
+  <script src="echo-detail.js?v=phase134-1"></script>
+  <script src="accueil-activite.js?v=phase134-1"></script>
+  <script src="visio-jitsi.js?v=phase134-1"></script>
+  <script src="video-pilotee.js?v=phase134-1"></script>
+  <script src="fiche-apa.js?v=phase134-1"></script>
+  <script src="inactivite.js?v=phase134-1"></script>
+  <script src="bilans-ui.js?v=phase134-1"></script>
+  <script src="etudes-ui.js?v=phase134-1"></script>
+  <script src="ville-hopital.js?v=phase134-1"></script>
+  <script src="qlibres-ui.js?v=phase134-1"></script>
+  <script src="parametres-ui.js?v=phase134-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -785,13 +785,18 @@
        priorité au chiffre et à la barre d'intensité, et la visioconférence
        reste en dessous pour le son et le contact.
        ============================================================ */
+    /* Une seule colonne : la vidéo en haut, pleine largeur, et la bande des
+       patients juste en dessous. Les deux colonnes latérales restent dans la
+       grille — du code les remplit encore dans certains cas — mais elles sont
+       vides en usage normal et ne prennent donc aucune place. */
     .scene-visio {
       display: grid;
-      grid-template-columns: 196px minmax(0, 1fr) 196px;
-      grid-template-areas: "g c d" "b b b";
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: "c" "b" "g" "d";
       gap: 12px;
       align-items: stretch;
     }
+    .scene-g:empty, .scene-d:empty { display: none; }
     .scene-g { grid-area: g; } .scene-d { grid-area: d; }
     /* La colonne centrale doit suivre la hauteur des colonnes de vignettes :
        sans cela, la vidéo s'arrêtait après deux patients et laissait un vide
@@ -5051,6 +5056,7 @@
               </div>
               <div style="padding:10px 14px; background:rgba(11,21,48,.96); border-top:1px solid rgba(255,255,255,.08); display:flex; gap:9px; flex-wrap:wrap; align-items:center;">
                 <button class="btn-light" style="padding:7px 12px; font-size:12px;" onclick="visioBasculerMosaique()" id="visioMosaiqueBtn">🔲 Vue mosaïque</button>
+                <button class="btn-light" style="padding:7px 12px; font-size:12px;" onclick="selecteurVideos()">🎬 Choisir une vidéo</button>
               </div>
             </div>
           </article>
@@ -16182,17 +16188,196 @@
     if (zone) zone.style.display = 'block';
     if (stop) stop.style.display = 'inline-flex';
     try {
-      await window.VideoPilotee.diffuser('seanceLecteur', youtubeId, titre || '');
-      toast('🎬 <strong>' + (titre || 'Vidéo') + '</strong> lancée chez tous les patients connectés.', 'success', 7000);
+      // Sélectionner CHARGE, et ne lance pas. Le départ est un geste à part,
+      // pour que tous les patients partent de la même image au même instant.
+      await window.VideoPilotee.charger('seanceLecteur', youtubeId, titre || '');
+      pupitreVideo(true);
+      toast('🎬 <strong>' + (titre || 'Vidéo') + '</strong> chargée chez les patients. ' +
+            'Appuyez sur <strong>Lecture</strong> pour lancer.', 'info', 7000);
     } catch (e) {
       if (zone) zone.style.display = 'none';
       if (stop) stop.style.display = 'none';
+      pupitreVideo(false);
       alert(e && e.message ? e.message : 'Diffusion impossible.');
     }
   };
 
+  // ================================================================
+  // SÉLECTEUR FLOTTANT DE VIDÉOS
+  // ----------------------------------------------------------------
+  // Une petite fenêtre, déplaçable, qui ne recouvre pas la scène.
+  //
+  // La bande de vignettes vidéo était tout en bas de la page : pour changer
+  // d'exercice en pleine séance, il fallait faire défiler, perdre de vue ses
+  // patients, choisir, puis remonter. Ici, la liste est à portée et la
+  // fenêtre se pousse du doigt si elle gêne.
+  //
+  // Elle est volontairement petite et sans fond sombre derrière : une modale
+  // plein écran pendant une séance en direct, c'est quelques secondes
+  // pendant lesquelles on ne voit plus personne.
+  // ================================================================
+  window.selecteurVideos = function () {
+    const existe = document.getElementById('selVideoPanneau');
+    if (existe) { existe.remove(); return; }       // le bouton bascule
+
+    const liste = (typeof trainingVideos !== 'undefined' && trainingVideos.length)
+      ? trainingVideos : [];
+
+    const p = document.createElement('div');
+    p.id = 'selVideoPanneau';
+    p.style.cssText = 'position:fixed; right:22px; bottom:22px; z-index:9400; width:330px; ' +
+      'max-width:calc(100vw - 32px); background:#fff; border-radius:14px; ' +
+      'box-shadow:0 18px 50px rgba(11,21,48,.28); border:1px solid #e2e8f0; overflow:hidden;';
+    p.innerHTML =
+      '<div id="selVideoBarre" style="padding:11px 14px; background:#0b1530; color:#fff; ' +
+        'display:flex; align-items:center; gap:9px; cursor:move; user-select:none;">' +
+        '<span style="font-size:13px; font-weight:800;">🎬 Choisir une vidéo</span>' +
+        '<button id="selVideoFermer" style="margin-left:auto; border:none; cursor:pointer; ' +
+          'background:rgba(255,255,255,.14); color:#fff; border-radius:7px; width:24px; height:24px; ' +
+          'font-size:13px; line-height:1;">✕</button>' +
+      '</div>' +
+      '<div style="padding:13px 14px;">' +
+        (liste.length
+          ? '<select id="selVideoChoix" style="width:100%; padding:10px; border:1px solid #cbd5e1; ' +
+              'border-radius:9px; font-size:13px; font-family:inherit; margin-bottom:9px;">' +
+              '<option value="">— choisir —</option>' +
+              liste.map((v, i) =>
+                '<option value="' + i + '">' + escVg(v.title || v.titre || ('Vidéo ' + (i + 1))) + '</option>'
+              ).join('') +
+            '</select>' +
+            '<button id="selVideoCharger" class="btn-gradient" style="width:100%; padding:11px; ' +
+              'font-size:13px;" disabled>Charger dans le cadre</button>' +
+            '<p style="margin:9px 0 0; font-size:11.5px; line-height:1.55; color:#64748b;">' +
+              'La vidéo s\'installe chez vous et chez vos patients, <strong>à l\'arrêt</strong>. ' +
+              'Vous la lancez ensuite avec le bouton Lecture.</p>'
+          : '<p style="margin:0; font-size:12.5px; line-height:1.6; color:#64748b;">' +
+            'Aucune vidéo enregistrée. Ajoutez-en depuis « Présentation des entraînements en vidéo ».</p>') +
+      '</div>';
+    document.body.appendChild(p);
+
+    document.getElementById('selVideoFermer').onclick = () => p.remove();
+
+    const choix = document.getElementById('selVideoChoix');
+    const bouton = document.getElementById('selVideoCharger');
+    if (choix && bouton) {
+      choix.addEventListener('change', () => {
+        bouton.disabled = choix.value === '';
+      });
+      bouton.onclick = () => {
+        const v = liste[Number(choix.value)];
+        if (!v) return;
+        const yid = v.youtubeId || v.yid || v.id;
+        diffuserVideoPilotee(yid, v.title || v.titre || '');
+      };
+    }
+
+    // Déplacement à la souris : la fenêtre doit pouvoir sortir du chemin
+    // sans être fermée, parce qu'on la rouvre trois fois par séance.
+    const barre = document.getElementById('selVideoBarre');
+    let ox = 0, oy = 0, actif = false;
+    const bouge = (e) => {
+      if (!actif) return;
+      p.style.left = Math.max(0, e.clientX - ox) + 'px';
+      p.style.top = Math.max(0, e.clientY - oy) + 'px';
+      p.style.right = 'auto';
+      p.style.bottom = 'auto';
+    };
+    barre.addEventListener('mousedown', (e) => {
+      const r = p.getBoundingClientRect();
+      ox = e.clientX - r.left; oy = e.clientY - r.top; actif = true;
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', bouge);
+    document.addEventListener('mouseup', () => { actif = false; });
+  };
+
+  // ================================================================
+  // PUPITRE VIDÉO — lecture, pause, arrêt, barre de progression
+  // ----------------------------------------------------------------
+  // Les commandes sont posées sous le lecteur du soignant, pas dans le
+  // lecteur lui-même : les contrôles de YouTube ne pilotent que SA lecture,
+  // alors que ces boutons-là pilotent celle de toute la salle. La distinction
+  // doit se voir, sinon on met en pause chez soi en croyant l'avoir fait
+  // chez tout le monde.
+  // ================================================================
+  let _pupitreTimer = null;
+
+  function pupitreVideo(visible) {
+    let p = document.getElementById('seancePupitre');
+    if (!visible) {
+      if (_pupitreTimer) { clearInterval(_pupitreTimer); _pupitreTimer = null; }
+      if (p) p.remove();
+      return;
+    }
+    if (p) return;
+
+    const hote = $('seanceLecteur');
+    if (!hote || !hote.parentNode) return;
+    p = document.createElement('div');
+    p.id = 'seancePupitre';
+    p.style.cssText = 'margin-top:10px; padding:12px 14px; background:#0b1530; border-radius:12px; ' +
+      'display:flex; flex-direction:column; gap:9px;';
+    p.innerHTML =
+      '<div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">' +
+        '<button id="pupLire" class="btn-gradient" style="padding:9px 18px; font-size:13px;">▶ Lecture</button>' +
+        '<button id="pupPause" class="btn-light" style="padding:9px 16px; font-size:13px;">⏸ Pause</button>' +
+        '<button id="pupStop" class="btn-light" style="padding:9px 16px; font-size:13px; color:#991b1b;">⏹ Arrêter</button>' +
+        '<span id="pupEtat" style="margin-left:auto; font-size:11.5px; color:#94a3b8;">Chargée · prête</span>' +
+      '</div>' +
+      '<div style="display:flex; align-items:center; gap:10px;">' +
+        '<span id="pupTemps" style="font-size:11.5px; color:#cbd5e1; font-variant-numeric:tabular-nums; ' +
+          'min-width:46px;">0:00</span>' +
+        '<input id="pupBarre" type="range" min="0" max="1000" value="0" step="1" ' +
+          'style="flex:1; accent-color:#0891b2; cursor:pointer;">' +
+        '<span id="pupDuree" style="font-size:11.5px; color:#94a3b8; font-variant-numeric:tabular-nums; ' +
+          'min-width:46px; text-align:right;">—</span>' +
+      '</div>' +
+      '<div style="font-size:11px; color:#64748b; line-height:1.5;">' +
+        'Ces commandes pilotent la vidéo chez <strong style="color:#94a3b8;">tous les patients</strong>. ' +
+        'Les boutons du lecteur ci-dessus ne pilotent que votre propre écran.' +
+      '</div>';
+    hote.parentNode.insertBefore(p, hote.nextSibling);
+
+    const mmss = (s) => {
+      s = Math.max(0, Math.floor(s || 0));
+      return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    };
+    const etat = (t) => { const e = document.getElementById('pupEtat'); if (e) e.textContent = t; };
+
+    document.getElementById('pupLire').onclick = () => {
+      if (window.VideoPilotee.lire()) etat('Lecture chez tous les patients');
+    };
+    document.getElementById('pupPause').onclick = () => {
+      if (window.VideoPilotee.pause()) etat('En pause chez tous les patients');
+    };
+    document.getElementById('pupStop').onclick = () => { arreterDiffusionVideo(); };
+
+    // Pendant que l'on glisse, la barre ne doit pas être réécrite par la
+    // boucle d'affichage, sinon le curseur saute sous le doigt.
+    const barre = document.getElementById('pupBarre');
+    let glisse = false;
+    barre.addEventListener('input', () => { glisse = true; });
+    barre.addEventListener('change', () => {
+      const p2 = window.VideoPilotee.position();
+      if (p2 && p2.duree) window.VideoPilotee.allerA(p2.duree * (barre.value / 1000));
+      glisse = false;
+    });
+
+    if (_pupitreTimer) clearInterval(_pupitreTimer);
+    _pupitreTimer = setInterval(() => {
+      const pos = window.VideoPilotee.position();
+      if (!pos) return;
+      const t = document.getElementById('pupTemps');
+      const d = document.getElementById('pupDuree');
+      if (t) t.textContent = mmss(pos.courante);
+      if (d) d.textContent = pos.duree ? mmss(pos.duree) : '—';
+      if (!glisse && pos.duree) barre.value = Math.round((pos.courante / pos.duree) * 1000);
+    }, 500);
+  }
+
   window.arreterDiffusionVideo = function () {
     try { window.VideoPilotee.arreter(); } catch (_) {}
+    pupitreVideo(false);
     const zone = $('seanceLecteur'); if (zone) { zone.style.display = 'none'; zone.innerHTML = ''; }
     const stop = $('seanceStopVideoBtn'); if (stop) stop.style.display = 'none';
     toast('⏹ Diffusion arrêtée.', 'info');
@@ -16675,6 +16860,23 @@
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+  /**
+   * Temps écoulé depuis le début de la séance de CE patient.
+   *
+   * La valeur vient du serveur (`duree_s`, calculé en base sur l'heure de
+   * début), et non d'un compteur entretenu par le navigateur du soignant :
+   * un onglet laissé en arrière-plan voit ses minuteries ralenties jusqu'à
+   * un appel par minute, et le chronomètre affiché divergerait de la durée
+   * réellement enregistrée. Deux durées pour la même séance, c'est l'erreur
+   * qui nous a déjà coûté une heure d'entraînement comptée 48 secondes.
+   */
+  function dureeSeance(patientId) {
+    const m = (typeof mesureLive === 'function') ? mesureLive(patientId) : null;
+    if (!m || m.duree_s == null) return '—';
+    const s = Math.max(0, Math.floor(m.duree_s));
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+
   function zoneVisio(fc, seuils) {
     if (fc < seuils.sv1) return { nom: 'Endurance', couleur: '#0f766e', fond: '#ecfdf5' };
     if (fc < seuils.sv2) return { nom: 'Seuil',     couleur: '#b45309', fond: '#fffbeb' };
@@ -16711,8 +16913,10 @@
             ' <span style="color:#94a3b8; font-weight:600;">· SV1 ' + seuils.sv1 + ' · SV2 ' + seuils.sv2 + '</span></div>' +
           // Le CR10 est un ressenti déclaré par le patient à la fin de sa
           // séance : il n'existe pas pendant. Il était ici tiré au sort.
-          '<div class="vg-bas"><span data-kcal>' +
-            (s.kcal != null ? Number(s.kcal).toFixed(0) + ' kcal' : '— kcal') + '</span></div>'
+          '<div class="vg-bas">' +
+            '<span data-duree>' + dureeSeance(p.id) + '</span>' +
+            '<span data-kcal>' +
+              (s.kcal != null ? Number(s.kcal).toFixed(0) + ' kcal' : '— kcal') + '</span></div>'
         : '<div style="font-size:12px; color:#94a3b8; padding:6px 0;">Non connecté</div>') +
       '</article>';
   }
@@ -16733,12 +16937,17 @@
         'Aucun patient connecté pour l\'instant. Les vignettes apparaîtront ici dès qu\'ils rejoindront la séance.</div>';
       return;
     }
-    const gauche = liste.slice(0, VISIO_PAR_COLONNE);
-    const droite = liste.slice(VISIO_PAR_COLONNE, VISIO_PAR_COLONNE * 2);
-    const reste  = liste.slice(VISIO_PAR_COLONNE * 2);
-    g.innerHTML = gauche.map(vignetteVisio).join('');
-    d.innerHTML = droite.map(vignetteVisio).join('');
-    b.innerHTML = reste.map(vignetteVisio).join('');
+    // Toutes les vignettes sous la vidéo, en une seule bande.
+    //
+    // Elles étaient réparties en deux colonnes latérales et une rangée basse,
+    // ce qui rétrécissait la vidéo d'entraînement — celle qui guide
+    // l'exercice — et obligeait à balayer l'écran dans trois directions pour
+    // faire le tour de ses patients. En bande unique, le regard passe de la
+    // vidéo aux patients d'un seul mouvement, et la vidéo occupe toute la
+    // largeur.
+    g.innerHTML = '';
+    d.innerHTML = '';
+    b.innerHTML = liste.map(vignetteVisio).join('');
   }
   window.renderSceneVisio = renderSceneVisio;
 
@@ -16767,6 +16976,8 @@
         zone.innerHTML = escVg(z.nom) +
           ' <span style="color:#94a3b8; font-weight:600;">· SV1 ' + seuils.sv1 + ' · SV2 ' + seuils.sv2 + '</span>';
       }
+      const duree = carte.querySelector('[data-duree]');
+      if (duree) duree.textContent = dureeSeance(p.id);
       const kcal = carte.querySelector('[data-kcal]');
       if (kcal) kcal.textContent = s.kcal != null ? Number(s.kcal).toFixed(0) + ' kcal' : '— kcal';
       carte.classList.toggle('alerte', !!s.alert);
