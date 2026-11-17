@@ -36,44 +36,44 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v131';</script>
-  <script src="api-client.js?v=phase131-1"></script>
+  <script>window.MARFAN_VERSION = 'v132';</script>
+  <script src="api-client.js?v=phase132-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase131-1"></script>
+  <script src="questionnaires-defs.js?v=phase132-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase131-1"></script>
+  <script src="medical-parsers.js?v=phase132-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase131-1"></script>
-  <script src="cpet-analyse.js?v=phase131-1"></script>
+  <script src="cpet-graph-preview.js?v=phase132-1"></script>
+  <script src="cpet-analyse.js?v=phase132-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase131-1"></script>
-  <script src="medical-record-ui.js?v=phase131-1"></script>
+  <script src="pdf-extractor.js?v=phase132-1"></script>
+  <script src="medical-record-ui.js?v=phase132-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase131-1"></script>
-  <script src="synthese-ui.js?v=phase131-1"></script>
-  <script src="audit-ui.js?v=phase131-1"></script>
-  <script src="entretien-ui.js?v=phase131-1"></script>
-  <script src="activation-ui.js?v=phase131-1"></script>
-  <script src="document-import.js?v=phase131-1"></script>
-  <script src="activite-ui.js?v=phase131-1"></script>
-  <script src="cpet-detail.js?v=phase131-1"></script>
-  <script src="echo-calculs.js?v=phase131-1"></script>
-  <script src="mecanique-aortique.js?v=phase131-1"></script>
-  <script src="projet-etude.js?v=phase131-1"></script>
-  <script src="aide-media.js?v=phase131-1"></script>
-  <script src="installation.js?v=phase131-1"></script>
-  <script src="echo-detail.js?v=phase131-1"></script>
-  <script src="accueil-activite.js?v=phase131-1"></script>
-  <script src="visio-jitsi.js?v=phase131-1"></script>
-  <script src="video-pilotee.js?v=phase131-1"></script>
-  <script src="fiche-apa.js?v=phase131-1"></script>
-  <script src="inactivite.js?v=phase131-1"></script>
-  <script src="bilans-ui.js?v=phase131-1"></script>
-  <script src="etudes-ui.js?v=phase131-1"></script>
-  <script src="ville-hopital.js?v=phase131-1"></script>
-  <script src="qlibres-ui.js?v=phase131-1"></script>
-  <script src="parametres-ui.js?v=phase131-1"></script>
+  <script src="aortic-consultations.js?v=phase132-1"></script>
+  <script src="synthese-ui.js?v=phase132-1"></script>
+  <script src="audit-ui.js?v=phase132-1"></script>
+  <script src="entretien-ui.js?v=phase132-1"></script>
+  <script src="activation-ui.js?v=phase132-1"></script>
+  <script src="document-import.js?v=phase132-1"></script>
+  <script src="activite-ui.js?v=phase132-1"></script>
+  <script src="cpet-detail.js?v=phase132-1"></script>
+  <script src="echo-calculs.js?v=phase132-1"></script>
+  <script src="mecanique-aortique.js?v=phase132-1"></script>
+  <script src="projet-etude.js?v=phase132-1"></script>
+  <script src="aide-media.js?v=phase132-1"></script>
+  <script src="installation.js?v=phase132-1"></script>
+  <script src="echo-detail.js?v=phase132-1"></script>
+  <script src="accueil-activite.js?v=phase132-1"></script>
+  <script src="visio-jitsi.js?v=phase132-1"></script>
+  <script src="video-pilotee.js?v=phase132-1"></script>
+  <script src="fiche-apa.js?v=phase132-1"></script>
+  <script src="inactivite.js?v=phase132-1"></script>
+  <script src="bilans-ui.js?v=phase132-1"></script>
+  <script src="etudes-ui.js?v=phase132-1"></script>
+  <script src="ville-hopital.js?v=phase132-1"></script>
+  <script src="qlibres-ui.js?v=phase132-1"></script>
+  <script src="parametres-ui.js?v=phase132-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -17361,7 +17361,7 @@
     patHrConnected = false;
     if ($('patHrValue')) $('patHrValue').textContent = '—';
 
-    const vrai = document.querySelector('.apiBtnConnectBelt');
+    const vrai = document.querySelector('.apiBtnStartSession');
     if (!vrai) {
       if ($('patHrCap')) $('patHrCap').textContent =
         'La carte « Ma séance d\'entraînement » n\'est pas encore chargée. Patientez un instant.';
@@ -19304,9 +19304,24 @@
         </div>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;">
           <div style="display:flex; flex-direction:column; gap:4px;">
-            <button class="apiBtnConnectBelt pat-btn-secondary" style="padding:14px; font-size:13px;">⌁ Connecter la ceinture</button>
+            <!--
+              Un seul bouton visible : « Démarrer ma séance ».
+
+              Il y en avait deux — connecter la ceinture, puis démarrer — et
+              la moitié des patients n'appuyait que sur le premier. Ils
+              voyaient leur pouls à l'écran, faisaient leur séance, et rien
+              n'était enregistré : l'enregistrement ne commence qu'au second.
+              Deux boutons dont l'ordre compte et dont rien ne le dit, c'est
+              une erreur d'interface, pas une erreur du patient.
+
+              Les deux boutons d'origine restent dans la page mais masqués :
+              toute la logique existante les cible par leur classe (activation,
+              désactivation, libellés), et la fenêtre de démarrage les
+              actionne. Les retirer aurait demandé de réécrire ce qui marche.
+            -->
+            <button class="apiBtnConnectBelt pat-btn-secondary" style="display:none;">⌁ Connecter la ceinture</button>
             <button onclick="bleAfficherTousAppareils()" type="button"
-              style="border:none; background:transparent; color:#64748b; font-size:11.5px; text-decoration:underline; cursor:pointer; padding:2px;">Ma ceinture n'apparaît pas — afficher tous les appareils</button>
+              style="display:none;">Ma ceinture n'apparaît pas — afficher tous les appareils</button>
             <!--
               Verdict automatique sur l'appareil du patient.
 
@@ -19319,7 +19334,7 @@
             -->
             <div id="bleVerdict" style="display:none; font-size:11.5px; line-height:1.5; padding:8px 10px; border-radius:8px;"></div>
           </div>
-          <button class="apiBtnStartSession pat-btn-success" style="padding:14px; font-size:13px;">▶ Démarrer la séance</button>
+          <button class="apiBtnStartSession pat-btn-success" style="padding:16px; font-size:14px; font-weight:800;">▶ Démarrer ma séance</button>
           <button class="apiBtnStopSession pat-btn-secondary" disabled style="padding:14px; font-size:13px; background:#fee2e2; color:#991b1b; opacity:0.4;">■ Arrêter la séance</button>
         </div>
         <div class="apiTrainingMetrics" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; opacity:0.5; pointer-events:none;">
@@ -19686,9 +19701,96 @@
       }
       allConn.forEach(b => b.onclick = connectHandler);
 
-      async function startHandler() {
+      /**
+       * Fenêtre de démarrage : une question, deux réponses.
+       *
+       * La séance est enregistrée dans les deux cas. C'est le point que la
+       * fenêtre doit faire passer, parce que la crainte « sans ceinture, ça
+       * ne compte pas » suffit à faire renoncer quelqu'un qui n'a pas la
+       * sienne sous la main — et une séance faite mais non enregistrée est
+       * une séance perdue pour le suivi.
+       */
+      function fenetreDemarrage() {
+        const anc = document.getElementById('seanceDemarrageModal');
+        if (anc) anc.remove();
+
+        const possible = isWebBluetoothSupported();
+        const d = document.createElement('div');
+        d.id = 'seanceDemarrageModal';
+        d.style.cssText = 'position:fixed; inset:0; background:rgba(11,21,48,.82); z-index:10090; ' +
+          'display:flex; align-items:center; justify-content:center; padding:16px;';
+        d.innerHTML =
+          '<div style="background:#fff; border-radius:16px; max-width:460px; width:100%; ' +
+            'box-shadow:0 24px 60px rgba(0,0,0,.3); overflow:hidden;">' +
+            '<div style="padding:22px 24px 6px;">' +
+              '<h3 style="margin:0 0 6px; font-size:18px; font-weight:800; color:#0b1530;">' +
+                'Avez-vous votre ceinture cardiaque ?</h3>' +
+              '<p style="margin:0; font-size:13px; line-height:1.65; color:#64748b;">' +
+                'Dans les deux cas, votre séance sera enregistrée : durée, contenu et ressenti. ' +
+                'La ceinture ajoute le suivi de la fréquence cardiaque.</p>' +
+            '</div>' +
+            '<div style="padding:16px 24px 22px; display:flex; flex-direction:column; gap:9px;">' +
+              (possible
+                ? '<button id="seanceAvecCeinture" class="pat-btn-success" ' +
+                  'style="padding:15px; font-size:14px; font-weight:800;">' +
+                  '⌁ Oui — connecter ma ceinture</button>'
+                : '<div style="padding:12px 14px; border-radius:10px; background:#fffbeb; ' +
+                  'border:1px solid #fde68a; font-size:12.5px; line-height:1.6; color:#92400e;">' +
+                  '<strong>La ceinture n\'est pas connectable sur cet appareil.</strong><br>' +
+                  'Sur ordinateur, utilisez Chrome ou Edge. Sur iPhone et iPad, aucun navigateur ' +
+                  'ne le permet — c\'est une limite d\'Apple. Votre séance sera enregistrée sans ' +
+                  'la fréquence cardiaque.</div>') +
+              '<button id="seanceSansCeinture" class="pat-btn-secondary" ' +
+                'style="padding:15px; font-size:14px;">Non — démarrer sans ceinture</button>' +
+              (possible
+                ? '<button id="seanceTousAppareils" type="button" style="border:none; ' +
+                  'background:transparent; color:#64748b; font-size:11.5px; text-decoration:underline; ' +
+                  'cursor:pointer; padding:4px;">Ma ceinture n\'apparaît pas dans la liste</button>'
+                : '') +
+              '<button id="seanceAnnuler" type="button" style="border:none; background:transparent; ' +
+                'color:#94a3b8; font-size:12px; cursor:pointer; padding:4px;">Annuler</button>' +
+              '<div id="seanceDemarrageEtat" style="font-size:12.5px; line-height:1.6;"></div>' +
+            '</div>' +
+          '</div>';
+        document.body.appendChild(d);
+
+        const fermer = () => d.remove();
+        const etat = (txt, couleur) => {
+          const z = document.getElementById('seanceDemarrageEtat');
+          if (z) { z.textContent = txt; z.style.color = couleur || '#64748b'; }
+        };
+        document.getElementById('seanceAnnuler').onclick = fermer;
+        d.addEventListener('click', (ev) => { if (ev.target === d) fermer(); });
+
+        const tous = document.getElementById('seanceTousAppareils');
+        if (tous) tous.onclick = () => { try { bleAfficherTousAppareils(); } catch (_) {} };
+
+        document.getElementById('seanceSansCeinture').onclick = () => {
+          fermer();
+          startHandler(true);
+        };
+
+        const avec = document.getElementById('seanceAvecCeinture');
+        if (avec) avec.onclick = async () => {
+          avec.disabled = true;
+          etat('Sélectionnez votre ceinture dans la fenêtre du navigateur…');
+          await connectHandler();
+          if (_train.beltConnected) {
+            etat('Ceinture connectée. La séance démarre…', '#065f46');
+            setTimeout(() => { fermer(); startHandler(true); }, 500);
+          } else {
+            avec.disabled = false;
+            avec.textContent = '⌁ Réessayer la connexion';
+            // On ne démarre pas à sa place : s'il voulait sa ceinture, lui
+            // imposer une séance sans serait lui retirer son choix.
+            etat('La ceinture n\'a pas été connectée. Réessayez, ou démarrez sans.', '#92400e');
+          }
+        };
+      }
+
+      async function startHandler(choixDejaFait) {
         // Ceinture OPTIONNELLE : on prévient juste le patient si non connectée
-        if (!_train.beltConnected) {
+        if (!choixDejaFait && !_train.beltConnected) {
           if (!confirm('La ceinture n\'est pas connectée. Voulez-vous démarrer la séance sans suivi de fréquence cardiaque ?\n\n(La durée, le contenu et le ressenti d\'effort seront quand même enregistrés.)')) return;
         }
         try {
@@ -19839,7 +19941,9 @@
         }
       };
 
-      allStart.forEach(b => b.onclick = startHandler);
+      // Le bouton unique passe par la fenêtre ; startHandler reste appelable
+      // directement (il l'est depuis la fenêtre, avec le choix déjà fait).
+      allStart.forEach(b => b.onclick = fenetreDemarrage);
       allStop.forEach(b => b.onclick = stopHandler);
       async function stopHandler() {
         if (!_train.sessionId) return;
