@@ -36,44 +36,44 @@
   <!-- Repère de version affiché dans la base de données. Il répond d'un
        regard à « cette correction est-elle en ligne ? », question qui nous a
        coûté plusieurs allers-retours. -->
-  <script>window.MARFAN_VERSION = 'v128';</script>
-  <script src="api-client.js?v=phase128-1"></script>
+  <script>window.MARFAN_VERSION = 'v131';</script>
+  <script src="api-client.js?v=phase131-1"></script>
   <!-- Définitions des questionnaires validés (SF-36, GPAQ) + scoring officiel -->
-  <script src="questionnaires-defs.js?v=phase128-1"></script>
+  <script src="questionnaires-defs.js?v=phase131-1"></script>
   <!-- Parseurs d'examens médicaux (CPET XLSX + Onde de pouls CSV) -->
-  <script src="medical-parsers.js?v=phase128-1"></script>
+  <script src="medical-parsers.js?v=phase131-1"></script>
   <!-- Aperçu graphique CPET (v3 : sliders sous chaque graphe, O₂=bleu/CO₂=rouge, plateau rampe, OUES robuste) -->
-  <script src="cpet-graph-preview.js?v=phase128-1"></script>
-  <script src="cpet-analyse.js?v=phase128-1"></script>
+  <script src="cpet-graph-preview.js?v=phase131-1"></script>
+  <script src="cpet-analyse.js?v=phase131-1"></script>
   <!-- Phase 12.1 : Dossier médical structuré (extraction PDF + 8 sections + synthèse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="pdf-extractor.js?v=phase128-1"></script>
-  <script src="medical-record-ui.js?v=phase128-1"></script>
+  <script src="pdf-extractor.js?v=phase131-1"></script>
+  <script src="medical-record-ui.js?v=phase131-1"></script>
   <!-- Phase 13 : Suivi aortique + Consultations chronologiques -->
-  <script src="aortic-consultations.js?v=phase128-1"></script>
-  <script src="synthese-ui.js?v=phase128-1"></script>
-  <script src="audit-ui.js?v=phase128-1"></script>
-  <script src="entretien-ui.js?v=phase128-1"></script>
-  <script src="activation-ui.js?v=phase128-1"></script>
-  <script src="document-import.js?v=phase128-1"></script>
-  <script src="activite-ui.js?v=phase128-1"></script>
-  <script src="cpet-detail.js?v=phase128-1"></script>
-  <script src="echo-calculs.js?v=phase128-1"></script>
-  <script src="mecanique-aortique.js?v=phase128-1"></script>
-  <script src="projet-etude.js?v=phase128-1"></script>
-  <script src="aide-media.js?v=phase128-1"></script>
-  <script src="installation.js?v=phase128-1"></script>
-  <script src="echo-detail.js?v=phase128-1"></script>
-  <script src="accueil-activite.js?v=phase128-1"></script>
-  <script src="visio-jitsi.js?v=phase128-1"></script>
-  <script src="video-pilotee.js?v=phase128-1"></script>
-  <script src="fiche-apa.js?v=phase128-1"></script>
-  <script src="inactivite.js?v=phase128-1"></script>
-  <script src="bilans-ui.js?v=phase128-1"></script>
-  <script src="etudes-ui.js?v=phase128-1"></script>
-  <script src="ville-hopital.js?v=phase128-1"></script>
-  <script src="qlibres-ui.js?v=phase128-1"></script>
-  <script src="parametres-ui.js?v=phase128-1"></script>
+  <script src="aortic-consultations.js?v=phase131-1"></script>
+  <script src="synthese-ui.js?v=phase131-1"></script>
+  <script src="audit-ui.js?v=phase131-1"></script>
+  <script src="entretien-ui.js?v=phase131-1"></script>
+  <script src="activation-ui.js?v=phase131-1"></script>
+  <script src="document-import.js?v=phase131-1"></script>
+  <script src="activite-ui.js?v=phase131-1"></script>
+  <script src="cpet-detail.js?v=phase131-1"></script>
+  <script src="echo-calculs.js?v=phase131-1"></script>
+  <script src="mecanique-aortique.js?v=phase131-1"></script>
+  <script src="projet-etude.js?v=phase131-1"></script>
+  <script src="aide-media.js?v=phase131-1"></script>
+  <script src="installation.js?v=phase131-1"></script>
+  <script src="echo-detail.js?v=phase131-1"></script>
+  <script src="accueil-activite.js?v=phase131-1"></script>
+  <script src="visio-jitsi.js?v=phase131-1"></script>
+  <script src="video-pilotee.js?v=phase131-1"></script>
+  <script src="fiche-apa.js?v=phase131-1"></script>
+  <script src="inactivite.js?v=phase131-1"></script>
+  <script src="bilans-ui.js?v=phase131-1"></script>
+  <script src="etudes-ui.js?v=phase131-1"></script>
+  <script src="ville-hopital.js?v=phase131-1"></script>
+  <script src="qlibres-ui.js?v=phase131-1"></script>
+  <script src="parametres-ui.js?v=phase131-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2964,7 +2964,7 @@
                 <p style="color:#ccfbf1; margin-top:10px; max-width:480px; line-height:1.6;">Cliquez sur <strong>« Rejoindre la séance »</strong> pour voir votre coach et la vidéo d'entraînement partagée.</p>
                 <div style="display:flex; gap:10px; justify-content:center; margin-top:18px; flex-wrap:wrap;">
                   <button class="pat-btn-success" onclick="patJoinSession()">▶ Rejoindre la séance</button>
-                  <button class="pat-btn-secondary" onclick="patConnectHR()" style="color:#063b35;">⌁ Cardio Bluetooth</button>
+                  <button class="pat-btn-secondary" onclick="patConnectHR()" style="color:#063b35;">⌁ Connecter ma ceinture</button>
                   <button class="pat-btn-secondary" onclick="aideMedia()" style="color:#063b35;">🎤 Ma caméra ne marche pas</button>
                   <button class="pat-btn-secondary" onclick="ecranInstallation()" style="color:#063b35;">📲 Installer l'application</button>
                 </div>
@@ -13476,55 +13476,72 @@
 
   function initParticipantState(p) {
     if (visioState.participants[p.id]) return visioState.participants[p.id];
-    const baseHR = 65 + Math.round(Math.random() * 12);
-    const baseSBP = 110 + Math.round(Math.random() * 14);
-    const baseDBP = 68 + Math.round(Math.random() * 12);
+    // Aucune constante inventée : tout part à null et n'est rempli que par
+    // une mesure réellement remontée par la ceinture du patient.
     visioState.participants[p.id] = {
-      hr: baseHR, bp: { sys: baseSBP, dia: baseDBP },
-      kcal: 0, baseHR, age: p.age, weight: 65 + Math.round(Math.random() * 25),
-      micOn: true, camOn: true, alert: p.statusClass === 'alert',
-      borg: 2 + Math.floor(Math.random() * 3),
+      hr: null, pa: null, kcal: null,
+      age: p.age,
+      micOn: true, camOn: true, alert: false,
       connected: p.connected !== false,
       lastTick: Date.now()
     };
     return visioState.participants[p.id];
   }
 
+  // ================================================================
+  // Mesures réelles des séances en cours
+  // ----------------------------------------------------------------
+  // Remplies par rafraichirMonitoringVisio(), qui interroge /training/live.
+  // Un patient absent de cette table n'a PAS de mesure : ni ceinture
+  // connectée, ni séance démarrée. Son vignette affiche une absence.
+  //
+  // Ce qu'il y avait avant à la place : une simulation. La fréquence
+  // cardiaque suivait une sinusoïde autour d'une valeur tirée au hasard, la
+  // pression artérielle en était déduite par une formule linéaire, et les
+  // alertes se déclenchaient sur ces chiffres-là. Pendant une vraie séance,
+  // le soignant lisait donc des constantes inventées, et pouvait voir une
+  // alerte rouge sur un patient parfaitement calme — ou, bien pire, aucune
+  // alerte sur un patient en difficulté.
+  // ================================================================
+  window.__mesuresLive = {};
+
+  function mesureLive(patientId) {
+    const m = window.__mesuresLive[patientId];
+    if (!m) return null;
+    // Une mesure vieille de plus de deux minutes n'est plus un direct.
+    if (m.recueParIci && Date.now() - m.recueParIci > 120000) return null;
+    return m;
+  }
+
   function visioTick() {
     if (!visioState.sessionActive) return;
-    const now = Date.now();
     let cumEnergy = 0, hrSum = 0, hrCount = 0, alerts = [];
     patients.forEach(p => {
       const s = visioState.participants[p.id] || initParticipantState(p);
       if (!s.connected) return;
-      // FC : variation autour de baseHR + facteur Borg + bruit
-      const targetHR = s.baseHR + s.borg * 6 + (Math.sin(now / 8000 + p.id.charCodeAt(0)) * 5);
-      s.hr = Math.round(s.hr + (targetHR - s.hr) * 0.18 + (Math.random() - 0.5) * 2);
-      s.hr = Math.max(55, Math.min(165, s.hr));
-      // PA estimée (formule simplifiée : variation linéaire vs FC)
-      s.bp.sys = Math.round(110 + (s.hr - 70) * 0.55 + (Math.random() - 0.5) * 3);
-      s.bp.dia = Math.round(68 + (s.hr - 70) * 0.22 + (Math.random() - 0.5) * 2);
-      // Dépense énergétique = METs * poids * minutes
-      // METs estimé via FC : (FC - FCrepos) / (FCmax - FCrepos) * 10 + 1
-      const fcMax = 220 - s.age;
-      const reserve = Math.max(0.1, (s.hr - s.baseHR) / Math.max(1, fcMax - s.baseHR));
-      const mets = 1 + reserve * 9;
-      const dtMin = (now - s.lastTick) / 60000;
-      s.kcal += mets * 3.5 * s.weight / 200 * dtMin;
-      s.lastTick = now;
-      // Alerte fondée sur les seuils ventilatoires du test d'effort du patient
-      // lorsqu'ils existent, sinon sur la formule théorique.
-      let sAlerte;
-      try {
-        const seuilsP = seuilsPatient(p);
-        sAlerte = s.hr >= seuilsP.sv2;
-      } catch (_) {
-        sAlerte = s.hr > 0.85 * fcMax;
+      const m = mesureLive(p.id);
+      s.hr = m && m.fc != null ? m.fc : null;
+      s.pa = m && m.pa_estimee != null ? m.pa_estimee : null;
+      s.kcal = m && m.kcal != null ? m.kcal : null;
+
+      // Sans fréquence cardiaque, aucune alerte : l'absence de mesure n'est
+      // pas une absence de risque, et afficher « Aucune » dans les deux cas
+      // confondrait les deux situations.
+      s.alert = false;
+      if (s.hr != null) {
+        const fcMax = 220 - (p.age || 40);
+        let sAlerte;
+        try {
+          const seuilsP = seuilsPatient(p);
+          sAlerte = s.hr >= seuilsP.sv2;
+        } catch (_) {
+          sAlerte = s.hr > 0.85 * fcMax;
+        }
+        s.alert = sAlerte || (p.statusClass === 'alert' && s.hr > 0.75 * fcMax);
+        if (s.alert) alerts.push(p.id);
+        hrSum += s.hr; hrCount++;
       }
-      s.alert = sAlerte || (p.statusClass === 'alert' && s.hr > 0.75 * fcMax);
-      if (s.alert) alerts.push(p.id);
-      cumEnergy += s.kcal;
-      hrSum += s.hr; hrCount++;
+      if (s.kcal != null) cumEnergy += s.kcal;
     });
     // Vignettes de la scène : mise à jour en place.
     try { majVignettesVisio(); } catch (e) { console.warn('[visio] vignettes :', e && e.message); }
@@ -13538,11 +13555,12 @@
       const bpEl = tile.querySelector('.vt-stat.bp strong');
       const kcalEl = tile.querySelector('.vt-stat.kcal strong');
       const pulseEl = tile.querySelector('.vt-hr-pulse');
-      if (hrEl) hrEl.textContent = s.hr;
-      if (bpEl) bpEl.textContent = s.bp.sys + '/' + s.bp.dia;
-      if (kcalEl) kcalEl.textContent = s.kcal.toFixed(1);
-      if (pulseEl) pulseEl.textContent = '♥ ' + s.hr;
-      tile.classList.toggle('alert', s.alert);
+      // « — » quand il n'y a pas de mesure : c'est une absence, pas un zéro.
+      if (hrEl) hrEl.textContent = s.hr != null ? s.hr : '—';
+      if (bpEl) bpEl.textContent = s.pa != null ? s.pa : '—';
+      if (kcalEl) kcalEl.textContent = s.kcal != null ? Number(s.kcal).toFixed(1) : '—';
+      if (pulseEl) pulseEl.textContent = s.hr != null ? '♥ ' + s.hr : '♥ —';
+      tile.classList.toggle('alert', !!s.alert);
       tile.classList.toggle('disconnected', !s.connected);
     });
     // Header monitoring
@@ -13556,15 +13574,27 @@
     if ($('visioCumEnergy')) $('visioCumEnergy').textContent = Math.round(cumEnergy) + ' kcal';
     if ($('visioAlertsList')) $('visioAlertsList').textContent = alerts.length ? alerts.join(' · ') : 'Aucune';
 
-    // Synchroniser les métriques patient si on est en mode patient
+    // ----------------------------------------------------------------
+    // Les constantes du patient ne viennent PAS d'ici
+    // ----------------------------------------------------------------
+    // Ce bloc recopiait visioState.participants dans l'écran du patient :
+    // fréquence cardiaque, PRESSION ARTÉRIELLE et dépense énergétique. Or
+    // ces valeurs sortent de initParticipantState, c'est-à-dire de
+    // « 65 + Math.random() * 12 ». Le patient lisait donc sur son écran un
+    // pouls et une tension entièrement inventés, pendant une vraie séance.
+    //
+    // Une pression artérielle fabriquée est la plus dangereuse des trois :
+    // c'est sur elle que repose toute la prudence dans le syndrome de
+    // Marfan, et elle n'est mesurable par aucun capteur de cette
+    // plateforme — seulement au brassard.
+    //
+    // Les vraies mesures existent et ont leur propre affichage : la carte
+    // « Ma séance d'entraînement », alimentée par la ceinture connectée en
+    // Bluetooth et envoyée au serveur. Tant qu'aucune ceinture n'est
+    // branchée, l'écran affiche une absence.
     if (document.body.className === 'mode-patient') {
-      const currentPat = patients[patientUserIdx];
-      const s = visioState.participants[currentPat.id];
-      if (s) {
-        if ($('patHrValue')) $('patHrValue').textContent = s.hr;
-        if ($('patBpValue')) $('patBpValue').textContent = s.bp.sys + '/' + s.bp.dia;
-        if ($('patEnergyValue')) $('patEnergyValue').textContent = s.kcal.toFixed(1);
-      }
+      if ($('patBpValue') && !$('patBpValue').dataset.reel) $('patBpValue').textContent = '—';
+      if ($('patEnergyValue') && !$('patEnergyValue').dataset.reel) $('patEnergyValue').textContent = '—';
     }
   }
 
@@ -15741,6 +15771,13 @@
     });
     seances = Object.values(parPatient);
 
+    // Les vignettes de la scène lisent cette table plutôt que de simuler.
+    // Elle est remise à plat à chaque rafraîchissement : un patient qui a
+    // arrêté sa séance doit cesser d'afficher sa dernière valeur.
+    const table = {};
+    seances.forEach(s => { table[s.patient_id] = Object.assign({}, s, { recueParIci: Date.now() }); });
+    window.__mesuresLive = table;
+
     // Et on ne montre que les patients réellement présents dans la salle.
     // Les patients rejoignent sous leur code d'étude : on compare les noms.
     try {
@@ -16605,11 +16642,11 @@
           <span class="vt-name">${p.id} · ${p.sex.charAt(0)} · ${p.age} ans</span>
           <span class="vt-status"></span>
         </div>
-        ${s.connected ? `<span class="vt-hr-pulse">♥ ${s.hr}</span>` : ''}
+        ${s.connected ? `<span class="vt-hr-pulse">♥ ${s.hr != null ? s.hr : '—'}</span>` : ''}
         ${s.connected ? `<div class="vt-overlay">
-          <div class="vt-stat hr"><small>FC</small><strong>${s.hr}</strong></div>
-          <div class="vt-stat bp"><small>PA est.</small><strong>${s.bp.sys}/${s.bp.dia}</strong></div>
-          <div class="vt-stat kcal"><small>kcal</small><strong>${s.kcal.toFixed(1)}</strong></div>
+          <div class="vt-stat hr"><small>FC</small><strong>${s.hr != null ? s.hr : '—'}</strong></div>
+          <div class="vt-stat bp"><small>PA est.</small><strong>${s.pa != null ? s.pa : '—'}</strong></div>
+          <div class="vt-stat kcal"><small>kcal</small><strong>${s.kcal != null ? Number(s.kcal).toFixed(1) : '—'}</strong></div>
         </div>` : ''}
       </article>`;
     }).join('');
@@ -16666,13 +16703,16 @@
         (s.alert ? '<span title="Au-dessus du second seuil">⚠</span>' : '') +
       '</div>' +
       (s.connected
-        ? '<div class="vg-fc"><strong data-fc style="color:' + z.couleur + ';">' + s.hr + '</strong>' +
+        ? '<div class="vg-fc"><strong data-fc style="color:' + z.couleur + ';">' +
+              (s.hr != null ? s.hr : '—') + '</strong>' +
             '<small>bpm</small></div>' +
           '<div class="vg-barre"><div data-barre style="width:' + part + '%; background:' + z.couleur + ';"></div></div>' +
           '<div class="vg-zone" data-zone style="color:' + z.couleur + ';">' + escVg(z.nom) +
             ' <span style="color:#94a3b8; font-weight:600;">· SV1 ' + seuils.sv1 + ' · SV2 ' + seuils.sv2 + '</span></div>' +
-          '<div class="vg-bas"><span>CR10 <strong data-borg style="color:#0b1530;">' + s.borg + '</strong></span>' +
-            '<span data-kcal>' + s.kcal.toFixed(0) + ' kcal</span></div>'
+          // Le CR10 est un ressenti déclaré par le patient à la fin de sa
+          // séance : il n'existe pas pendant. Il était ici tiré au sort.
+          '<div class="vg-bas"><span data-kcal>' +
+            (s.kcal != null ? Number(s.kcal).toFixed(0) + ' kcal' : '— kcal') + '</span></div>'
         : '<div style="font-size:12px; color:#94a3b8; padding:6px 0;">Non connecté</div>') +
       '</article>';
   }
@@ -16718,7 +16758,7 @@
         Math.round(((s.hr - bas) / Math.max(1, seuils.pic - bas)) * 100)));
 
       const fc = carte.querySelector('[data-fc]');
-      if (fc) { fc.textContent = s.hr; fc.style.color = z.couleur; }
+      if (fc) { fc.textContent = s.hr != null ? s.hr : '—'; fc.style.color = z.couleur; }
       const barre = carte.querySelector('[data-barre]');
       if (barre) { barre.style.width = part + '%'; barre.style.background = z.couleur; }
       const zone = carte.querySelector('[data-zone]');
@@ -16727,8 +16767,8 @@
         zone.innerHTML = escVg(z.nom) +
           ' <span style="color:#94a3b8; font-weight:600;">· SV1 ' + seuils.sv1 + ' · SV2 ' + seuils.sv2 + '</span>';
       }
-      const borg = carte.querySelector('[data-borg]'); if (borg) borg.textContent = s.borg;
-      const kcal = carte.querySelector('[data-kcal]'); if (kcal) kcal.textContent = s.kcal.toFixed(0) + ' kcal';
+      const kcal = carte.querySelector('[data-kcal]');
+      if (kcal) kcal.textContent = s.kcal != null ? Number(s.kcal).toFixed(0) + ' kcal' : '— kcal';
       carte.classList.toggle('alerte', !!s.alert);
       carte.classList.toggle('hors-ligne', !s.connected);
     });
@@ -17292,18 +17332,49 @@
     if ($('patSessionStatus')) $('patSessionStatus').textContent = 'En séance · ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     // S'assurer que le patient courant est dans participants
     try { initParticipantState(patients[patientUserIdx]); } catch (_) {}
-    if (!patHrConnected) patConnectHR();
+    // Autrefois : patConnectHR() était appelé ici, ce qui affichait une
+    // fréquence cardiaque inventée dès l'entrée dans la salle, sans qu'aucune
+    // ceinture ne soit branchée. Rejoindre une visio ne mesure rien : la
+    // ceinture se connecte explicitement, dans la carte d'entraînement.
   }
 
+  /**
+   * « ⌁ Cardio Bluetooth » — conduit à la VRAIE connexion de ceinture.
+   *
+   * Ce bouton simulait la connexion : il affichait au patient une fréquence
+   * cardiaque tirée au hasard — « 88 + Math.random() * 18 » — et annonçait
+   * « Connexion Bluetooth établie ». Aucune ceinture n'était interrogée,
+   * aucune mesure n'était envoyée au serveur.
+   *
+   * C'est ce qui explique le signalement : le patient appuyait, voyait un
+   * pouls plausible à l'écran, faisait sa séance en confiance, et il
+   * n'arrivait jamais rien en base. Le bouton ne mentait pas qu'à nous : il
+   * montrait au patient des chiffres cliniques inventés, ce que les règles
+   * de données de ce projet interdisent explicitement.
+   *
+   * La vraie connexion existe — classe `apiBtnConnectBelt`, dans la carte
+   * « Ma séance d'entraînement » juste en dessous. Ce bouton y mène
+   * désormais au lieu de la mimer.
+   */
   function patConnectHR() {
-    patHrConnected = true;
-    if (patHrInterval) clearInterval(patHrInterval);
-    patHrInterval = setInterval(() => {
-      const hr = 88 + Math.round(Math.random() * 18) + patBorgValue * 3;
-      if ($('patHrValue')) $('patHrValue').textContent = Math.min(150, hr) + ' bpm';
-      if ($('patHrCap')) $('patHrCap').textContent = hr < 105 ? 'Zone légère à modérée.' : hr < 130 ? 'Zone modérée.' : 'Zone plus élevée, restez attentif.';
-    }, 1800);
-    if ($('patHrCap')) $('patHrCap').textContent = 'Connexion Bluetooth établie.';
+    if (patHrInterval) { clearInterval(patHrInterval); patHrInterval = null; }
+    patHrConnected = false;
+    if ($('patHrValue')) $('patHrValue').textContent = '—';
+
+    const vrai = document.querySelector('.apiBtnConnectBelt');
+    if (!vrai) {
+      if ($('patHrCap')) $('patHrCap').textContent =
+        'La carte « Ma séance d\'entraînement » n\'est pas encore chargée. Patientez un instant.';
+      return;
+    }
+    if ($('patHrCap')) $('patHrCap').textContent =
+      'La connexion se fait dans la carte « Ma séance d\'entraînement », juste en dessous.';
+    try { vrai.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+    // Un repère visuel : sans lui, le patient arrive sur la carte sans savoir
+    // sur quoi appuyer parmi les trois boutons.
+    vrai.style.transition = 'box-shadow .25s';
+    vrai.style.boxShadow = '0 0 0 4px rgba(8,145,178,.45)';
+    setTimeout(function () { vrai.style.boxShadow = ''; }, 2400);
   }
 
   // Bouton "Accueil" désormais directement intégré au top-shell investigateur (HTML statique)
@@ -19689,6 +19760,28 @@
             setTextAll('apiMetricHr', hr != null ? hr : (stale ? '⚠' : '…'));
             setTextAll('apiMetricPa', pa != null ? pa : '--');
             setTextAll('apiMetricEnergy', _train.energyCumul.toFixed(1));
+
+            // Le bandeau FC / PA / kcal en haut de l'écran patient affiche
+            // maintenant CES valeurs-ci, les seules mesurées. Il était
+            // auparavant alimenté par le simulateur, et restait donc figé sur
+            // des chiffres inventés pendant que la vraie carte, juste en
+            // dessous, en affichait d'autres. Deux nombres différents pour la
+            // même grandeur, sur le même écran.
+            //
+            // `dataset.reel` marque ces cases comme renseignées : la boucle de
+            // la visio ne les remettra plus à « — ».
+            const poser = (id, valeur) => {
+              const el = $(id);
+              if (!el) return;
+              el.textContent = valeur;
+              el.dataset.reel = '1';
+            };
+            poser('patHrValue', hr != null ? hr : (stale ? '⚠' : '—'));
+            poser('patBpValue', pa != null ? pa : '—');
+            poser('patEnergyValue', _train.energyCumul.toFixed(1));
+            if ($('patHrCap')) $('patHrCap').textContent =
+              hr != null ? 'bpm · ceinture connectée'
+                         : (stale ? 'signal perdu — rapprochez la ceinture' : 'en attente de la ceinture');
             const mm = Math.floor(_train.elapsed / 60).toString().padStart(2,'0');
             const ss = (_train.elapsed % 60).toString().padStart(2,'0');
             setTextAll('apiMetricDuration', mm + ':' + ss);
